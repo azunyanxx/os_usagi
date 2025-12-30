@@ -1830,22 +1830,27 @@ const FinderApp = () => {
     </div>
   );
 };
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Search,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Layers,
-  Cpu,
-  KeyRound,
-  AlertCircle,
-  Heart,
-  Coffee,
-  Wand2,
-} from "lucide-react";
 
-const clamp = (n, a, b) => Math.min(Math.max(n, a), b);
+
+
+
+/**
+ * Expecting a global const:
+ *   const GALLERY_ITEMS = [{ id, title, file, folder/cat, meta, desc }, ...]
+ * If you import it instead, replace below usage accordingly.
+ */
+
+function useIsMobile(breakpointPx = 640) {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpointPx}px)`);
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener?.("change", update);
+    return () => mq.removeEventListener?.("change", update);
+  }, [breakpointPx]);
+  return isMobile;
+}
 
 function useLockBodyScroll(locked) {
   useEffect(() => {
@@ -1920,11 +1925,10 @@ export const GalleryApp = () => {
 
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
-
   const [armedIndex, setArmedIndex] = useState(null);
 
   const filteredItems = useMemo(() => {
-    const items = GALLERY_ITEMS || [];
+    const items = (typeof GALLERY_ITEMS !== "undefined" && GALLERY_ITEMS) || [];
     const q = query.trim().toLowerCase();
 
     const byCat = (it) => {
@@ -1978,19 +1982,31 @@ export const GalleryApp = () => {
 
   return (
     <div className="h-full w-full bg-[#050505] text-white overflow-hidden">
+      <style>{`
+        .scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .gallery-grain {
+          background-image:
+            radial-gradient(circle at 22% 14%, rgba(255,255,255,0.06) 0%, transparent 36%),
+            radial-gradient(circle at 78% 30%, rgba(255,255,255,0.05) 0%, transparent 42%),
+            radial-gradient(circle at 52% 82%, rgba(255,255,255,0.05) 0%, transparent 48%);
+          mix-blend-mode: overlay;
+        }
+      `}</style>
+
       <div className="flex h-full">
         {/* Sidebar */}
         <aside
           className="shrink-0 border-r border-white/5 bg-[#070707] relative z-20"
           style={{
-            width: isMobile ? 56 : 196,
+            width: isMobile ? 60 : 208,
             paddingTop: "calc(env(safe-area-inset-top) + 18px)",
             paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)",
           }}
         >
           <div className="px-3">
             {!isMobile && (
-              <div className="text-[9px] font-mono tracking-[0.28em] text-white/25 uppercase">
+              <div className="text-[9px] font-mono tracking-[0.30em] text-white/20 uppercase">
                 Archive
               </div>
             )}
@@ -2004,9 +2020,13 @@ export const GalleryApp = () => {
                 <button
                   key={cat.id}
                   onClick={() => setFilter(cat.id)}
-                  className={`group w-full flex items-center gap-3 rounded-xl px-3 py-3 transition
-                    ${active ? "bg-white/10 border border-white/10" : "bg-transparent border border-transparent hover:bg-white/5"}
-                  `}
+                  className={[
+                    "group w-full flex items-center gap-3 rounded-2xl px-3 py-3 transition",
+                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a8eaff]/30",
+                    active
+                      ? "bg-white/10 border border-white/10"
+                      : "bg-transparent border border-transparent hover:bg-white/[0.06]",
+                  ].join(" ")}
                 >
                   <span className="relative">
                     <Icon
@@ -2014,12 +2034,17 @@ export const GalleryApp = () => {
                       className={active ? "text-[#a8eaff]" : "text-white/45 group-hover:text-white/80"}
                     />
                     {active && (
-                      <span className="absolute -right-1 -bottom-1 w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_10px_rgba(168,234,255,0.55)]" />
+                      <span className="absolute -right-1 -bottom-1 w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_12px_rgba(168,234,255,0.55)]" />
                     )}
                   </span>
 
                   {!isMobile && (
-                    <span className={`text-xs tracking-wide ${active ? "text-white/90" : "text-white/40 group-hover:text-white/80"}`}>
+                    <span
+                      className={[
+                        "text-xs tracking-wide",
+                        active ? "text-white/90" : "text-white/40 group-hover:text-white/80",
+                      ].join(" ")}
+                    >
                       {cat.label}
                     </span>
                   )}
@@ -2041,17 +2066,19 @@ export const GalleryApp = () => {
         <main className="relative flex-1 overflow-hidden">
           {/* ambient */}
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] via-transparent to-black/45" />
+            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.03] via-transparent to-black/50" />
             <div
-              className="absolute -top-40 left-1/2 -translate-x-1/2 w-[920px] h-[520px] opacity-25 blur-3xl"
+              className="absolute -top-40 left-1/2 -translate-x-1/2 w-[980px] h-[560px] opacity-25 blur-3xl"
               style={{
-                background: "radial-gradient(circle at center, rgba(203,184,255,0.12) 0%, transparent 60%)",
+                background:
+                  "radial-gradient(circle at 50% 45%, rgba(203,184,255,0.13) 0%, transparent 60%)",
               }}
             />
             <div
-              className="absolute -bottom-56 left-1/2 -translate-x-1/2 w-[900px] h-[520px] opacity-22 blur-3xl"
+              className="absolute -bottom-56 left-1/2 -translate-x-1/2 w-[980px] h-[560px] opacity-22 blur-3xl"
               style={{
-                background: "radial-gradient(circle at center, rgba(168,234,255,0.10) 0%, transparent 60%)",
+                background:
+                  "radial-gradient(circle at 50% 55%, rgba(168,234,255,0.11) 0%, transparent 62%)",
               }}
             />
             <div className="absolute inset-0 gallery-grain opacity-[0.08]" />
@@ -2064,25 +2091,37 @@ export const GalleryApp = () => {
               style={{ paddingTop: "calc(env(safe-area-inset-top) + 12px)" }}
             >
               <div className="min-w-0">
-                <div className="text-white/95 text-2xl sm:text-3xl font-thin tracking-tight truncate">
+                <div className="text-white/95 text-2xl sm:text-3xl font-extralight tracking-tight truncate">
                   {activeCat?.label || "Gallery"}
                 </div>
-                <div className="mt-1 text-[10px] font-mono text-[#cbb8ff]/60 tracking-[0.25em] uppercase">
+                <div className="mt-1 text-[10px] font-mono text-[#cbb8ff]/55 tracking-[0.26em] uppercase">
                   {filteredItems.length} • {filter.toUpperCase()}
                 </div>
               </div>
 
               <div className="flex items-center gap-2 min-w-0">
-                <div className="relative w-[52vw] max-w-[360px] sm:w-[360px]">
+                <div className="relative w-[52vw] max-w-[360px] sm:w-[380px]">
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Search"
-                    className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-2.5 pl-10 pr-4
-                      text-xs text-white/80 placeholder:text-white/25 focus:outline-none focus:border-[#a8eaff]/35
+                    className="w-full bg-white/[0.035] border border-white/10 rounded-2xl py-2.5 pl-10 pr-9
+                      text-xs text-white/85 placeholder:text-white/25 focus:outline-none focus:border-[#a8eaff]/35
                       font-mono tracking-wider"
                   />
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35" />
+                  {!!query && (
+                    <button
+                      type="button"
+                      onClick={() => setQuery("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-xl
+                        border border-white/10 bg-black/30 hover:bg-black/45 transition flex items-center justify-center
+                        focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a8eaff]/25"
+                      aria-label="Clear search"
+                    >
+                      <X size={12} className="text-white/70" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -2136,6 +2175,7 @@ export const GalleryApp = () => {
 
 function GalleryCard({ item, index, isArmed, armedIndex, setArmedIndex, onOpen }) {
   const [loaded, setLoaded] = useState(false);
+
   const touchStartRef = useRef({ x: 0, y: 0, t: 0 });
   const lastTapRef = useRef({ x: 0, y: 0, t: 0 });
   const ignoreClickUntilRef = useRef(0);
@@ -2143,6 +2183,8 @@ function GalleryCard({ item, index, isArmed, armedIndex, setArmedIndex, onOpen }
 
   const liftTimerRef = useRef(0);
   const [lift, setLift] = useState(false);
+
+  const moved = (a, b, th = 10) => distance(a, b) > th;
 
   const arm = useCallback(() => {
     setArmedIndex(index);
@@ -2157,8 +2199,6 @@ function GalleryCard({ item, index, isArmed, armedIndex, setArmedIndex, onOpen }
     setArmedIndex(null);
     onOpen(index);
   }, [index, onOpen, setArmedIndex]);
-
-  const moved = (a, b, th = 10) => distance(a, b) > th;
 
   const onTouchStart = (e) => {
     const t = performance.now();
@@ -2180,31 +2220,22 @@ function GalleryCard({ item, index, isArmed, armedIndex, setArmedIndex, onOpen }
     }
   };
 
-  const onTouchEnd = (e) => {
+  const onTouchEnd = () => {
     window.clearTimeout(liftTimerRef.current);
     setLift(false);
 
     const t = performance.now();
-    const touch = e.changedTouches?.[0];
-    if (!touch) return;
-
-    const end = { x: touch.clientX, y: touch.clientY, t };
-    if (moved(touchStartRef.current, end, 10)) return;
-
     ignoreClickUntilRef.current = t + 420;
 
     const dt = t - lastTapRef.current.t;
-    const dist = distance(lastTapRef.current, end);
-
-    if (dt > 0 && dt < 280 && dist < 18) {
-      lastTapRef.current = { x: 0, y: 0, t: 0 };
+    if (dt > 0 && dt < 280) {
+      // allow double tap to open (position checks are done in click path on desktop)
       hapticTiny();
       openNow();
+      lastTapRef.current = { x: 0, y: 0, t: 0 };
       return;
     }
-
-    lastTapRef.current = { x: end.x, y: end.y, t };
-
+    lastTapRef.current = { x: 0, y: 0, t };
     if (armedIndex === index) openNow();
     else arm();
   };
@@ -2232,12 +2263,13 @@ function GalleryCard({ item, index, isArmed, armedIndex, setArmedIndex, onOpen }
   const elevated = lift;
 
   return (
-    // ✅ group 付ける（aura/hoverが生きる）
     <div className="group relative">
       <div
-        className={`absolute -inset-1 rounded-3xl blur-2xl pointer-events-none transition-opacity duration-700
-          bg-[radial-gradient(circle_at_center,rgba(168,234,255,0.16),transparent_62%)]
-          ${isArmed ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+        className={[
+          "absolute -inset-1 rounded-[28px] blur-2xl pointer-events-none transition-opacity duration-700",
+          "bg-[radial-gradient(circle_at_center,rgba(168,234,255,0.16),transparent_62%)]",
+          isArmed ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+        ].join(" ")}
       />
 
       <button
@@ -2247,10 +2279,12 @@ function GalleryCard({ item, index, isArmed, armedIndex, setArmedIndex, onOpen }
         onTouchEnd={onTouchEnd}
         onClick={onClick}
         onDoubleClick={onDoubleClick}
-        className="relative w-full overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02]
-          shadow-[0_22px_58px_-40px_rgba(0,0,0,0.9)]
-          transition-[transform,box-shadow,border-color,background-color] duration-200
-          will-change-transform"
+        className={[
+          "relative w-full overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.022]",
+          "shadow-[0_22px_58px_-40px_rgba(0,0,0,0.9)]",
+          "transition-[transform,box-shadow,border-color,background-color] duration-200 will-change-transform",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a8eaff]/25",
+        ].join(" ")}
         style={{
           touchAction: "manipulation",
           transform: elevated ? "translate3d(0,-1px,0) scale(1.012)" : "translate3d(0,0,0) scale(1)",
@@ -2269,13 +2303,16 @@ function GalleryCard({ item, index, isArmed, armedIndex, setArmedIndex, onOpen }
             alt={item.title}
             draggable={false}
             onLoad={() => setLoaded(true)}
-            className={`absolute inset-0 w-full h-full object-cover transition-[opacity,transform,filter] duration-700
-              ${loaded ? "opacity-100" : "opacity-0"}
-              ${isArmed ? "scale-[1.08] saturate-[1.06] contrast-[1.02]" : "scale-[1.02] saturate-[1.00]"}
-            `}
+            className={[
+              "absolute inset-0 w-full h-full object-cover",
+              "transition-[opacity,transform,filter] duration-700",
+              loaded ? "opacity-100" : "opacity-0",
+              isArmed ? "scale-[1.085] saturate-[1.08] contrast-[1.02]" : "scale-[1.02] saturate-[1.00]",
+            ].join(" ")}
           />
 
-          <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/55 via-black/12 to-transparent" />
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/60 via-black/12 to-transparent" />
+          <div className="absolute inset-0 pointer-events-none opacity-[0.06] gallery-grain" />
 
           <div className="absolute top-3 left-3 px-3 py-1.5 rounded-full border border-white/10 bg-black/35 backdrop-blur-xl">
             <span className="text-[9px] font-mono text-[#a8eaff]/75 tracking-[0.25em] uppercase">
@@ -2283,15 +2320,20 @@ function GalleryCard({ item, index, isArmed, armedIndex, setArmedIndex, onOpen }
             </span>
           </div>
 
-          <div className={`absolute inset-0 pointer-events-none transition-opacity duration-250 ${isArmed ? "opacity-100" : "opacity-0"}`}>
+          <div
+            className={[
+              "absolute inset-0 pointer-events-none transition-opacity duration-250",
+              isArmed ? "opacity-100" : "opacity-0",
+            ].join(" ")}
+          >
             <div className="absolute inset-0 bg-white/[0.02] backdrop-blur-[2px]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
           </div>
 
           <div className="absolute bottom-0 left-0 right-0 p-4">
             <div className="flex items-end justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-[12px] font-semibold tracking-wide text-white/90 truncate">
+                <div className="text-[12px] font-semibold tracking-wide text-white/92 truncate">
                   {item.title}
                 </div>
                 <div className="mt-1 text-[9px] font-mono tracking-[0.22em] uppercase text-white/30 truncate">
@@ -2299,9 +2341,9 @@ function GalleryCard({ item, index, isArmed, armedIndex, setArmedIndex, onOpen }
                 </div>
               </div>
 
-              <div className={`shrink-0 transition-opacity duration-200 ${isArmed ? "opacity-100" : "opacity-0"}`}>
+              <div className={["shrink-0 transition-opacity duration-200", isArmed ? "opacity-100" : "opacity-0"].join(" ")}>
                 <div className="px-3 py-1.5 rounded-full border border-white/10 bg-black/35 backdrop-blur-xl">
-                  <span className="text-[9px] font-mono tracking-[0.22em] text-white/65 uppercase">
+                  <span className="text-[9px] font-mono tracking-[0.22em] text-white/70 uppercase">
                     TAP AGAIN
                   </span>
                 </div>
@@ -2316,6 +2358,12 @@ function GalleryCard({ item, index, isArmed, armedIndex, setArmedIndex, onOpen }
   );
 }
 
+/**
+ * Modal (snap)
+ * ✅ 修正点:
+ * - 「背景タップで閉じる」が効くように、各スライドの“余白部分クリック”で close する（target===currentTarget判定）
+ * - backdrop を下に敷くだけにして「全画面スクローラが上に乗って閉じれない」問題を回避
+ */
 function GalleryModalSnap({ items, index, onIndexChange, onClose, onPrev, onNext, isMobile }) {
   const scrollerRef = useRef(null);
   const programRef = useRef(false);
@@ -2371,214 +2419,9 @@ function GalleryModalSnap({ items, index, onIndexChange, onClose, onPrev, onNext
       lastTapRef.current = { x: 0, y: 0, t: 0 };
       return;
     }
-
     lastTapRef.current = { x, y, t };
   };
 
-  useEffect(() => {
-    const onKeyDown = (e) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft") onPrev();
-      if (e.key === "ArrowRight") onNext();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose, onPrev, onNext]);
-
-  const active = items[index];
-  const counter = `${String(index + 1).padStart(2, "0")} / ${String(items.length).padStart(2, "0")}`;
-
-  return (
-    <div className="fixed inset-0 z-[999] overflow-hidden" role="dialog" aria-modal="true" style={{ background: "rgba(0,0,0,0.92)" }}>
-      {/* ✅ backdrop（タップで閉じる） */}
-      <button
-        type="button"
-        onClick={onClose}
-        className="absolute inset-0 cursor-default"
-        aria-label="Close backdrop"
-        style={{ background: "transparent" }}
-      />
-
-      <div className="absolute inset-0 opacity-70 pointer-events-none" style={{ background: "radial-gradient(circle at center, rgba(168,234,255,0.10) 0%, transparent 56%)" }} />
-      <div className="absolute inset-0 gallery-grain opacity-[0.12] pointer-events-none" />
-
-      <button
-        onClick={onClose}
-        className="fixed z-[1002] w-11 h-11 rounded-2xl border border-white/10 bg-black/45 backdrop-blur-xl
-          hover:bg-black/60 transition flex items-center justify-center text-white/85"
-        style={{ top: "calc(env(safe-area-inset-top) + 12px)", right: "12px" }}
-        aria-label="Close"
-      >
-        <X size={16} />
-      </button>
-
-      <div
-        className={`fixed left-0 right-0 z-[1001] transition-opacity duration-200 ${chrome ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-        style={{ top: "calc(env(safe-area-inset-top) + 12px)" }}
-      >
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 pr-14">
-          <div className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-black/35 backdrop-blur-xl shadow-[0_22px_60px_-44px_rgba(0,0,0,0.85)] px-4 py-3">
-            <div className="min-w-0">
-              <div className="text-[12px] font-semibold tracking-wide text-white/85 truncate max-w-[62vw] sm:max-w-[520px]">
-                {active?.title}
-              </div>
-              <div className="mt-1 text-[9px] font-mono tracking-[0.25em] uppercase text-[#a8eaff]/45">
-                {formatMeta(active)}
-              </div>
-            </div>
-            <div className="ml-2 text-[9px] font-mono tracking-widest text-white/25">{counter}</div>
-          </div>
-        </div>
-      </div>
-
-      <div
-        ref={scrollerRef}
-        className="absolute inset-0 overflow-x-auto overflow-y-hidden scrollbar-hide"
-        style={{
-          WebkitOverflowScrolling: "touch",
-          scrollSnapType: "x mandatory",
-          scrollSnapStop: "always",
-          overscrollBehaviorX: "contain",
-          touchAction: isMobile ? "pan-x" : "auto",
-        }}
-      >
-        <div className="h-full flex">
-          {items.map((it, i) => (
-            <div
-              key={it.id || it.file || i}
-              className="w-full h-full flex-shrink-0 flex items-center justify-center relative"
-              style={{ scrollSnapAlign: "center" }}
-              onPointerUp={onTapArea}
-              // ✅ 画像部分は backdrop ボタンより上に出す
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div
-                className="relative w-full h-full flex items-center justify-center select-none"
-                style={{
-                  paddingTop: chrome ? "calc(env(safe-area-inset-top) + 78px)" : "0px",
-                  paddingBottom: chrome ? "calc(env(safe-area-inset-bottom) + 70px)" : "0px",
-                }}
-              >
-                <img src={it.file} alt={it.title} draggable={false} className="w-full h-full object-contain" style={{ padding: chrome ? "18px" : "0px" }} />
-
-                {items.length > 1 && !isMobile && chrome && (
-                  <>
-                    <button
-                      onClick={onPrev}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/35 hover:bg-black/55 border border-white/10 flex items-center justify-center text-white/80 transition-all"
-                      aria-label="Previous"
-                    >
-                      <ChevronLeft size={18} />
-                    </button>
-                    <button
-                      onClick={onNext}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/35 hover:bg-black/55 border border-white/10 flex items-center justify-center text-white/80 transition-all"
-                      aria-label="Next"
-                    >
-                      <ChevronRight size={18} />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div
-        className={`fixed left-0 right-0 z-[1001] px-4 sm:px-6 transition-opacity duration-200 ${chrome ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-        style={{ bottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
-      >
-        <div className="mx-auto max-w-5xl">
-          <div className="rounded-2xl border border-white/10 bg-black/25 backdrop-blur-xl px-4 py-3">
-            <div className="flex items-center gap-3">
-              <div className="text-[9px] font-mono text-white/25 tracking-widest">{counter}</div>
-              <div className="flex-1">
-                <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-white/60 transition-[width] duration-200"
-                    style={{ width: `${((index + 1) / Math.max(1, items.length)) * 100}%` }}
-                  />
-                </div>
-              </div>
-              <div className="text-[9px] font-mono text-[#a8eaff]/30 tracking-widest uppercase truncate">{formatMeta(active)}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-// ----------------------------------------------------
-// Modal (premium horizontal snap)
-// - 横ページング scroll-snap（吸い付く）
-// - ダブルタップ：UI(chrome)表示切替（フルプレビュー感）
-// - タイトル：上部のガラスピル（おしゃれ寄せ）
-// - ×：safe-area + fixedで絶対被らない
-// ----------------------------------------------------
-function GalleryModalSnap({ items, index, onIndexChange, onClose, onPrev, onNext, isMobile }) {
-  const scrollerRef = useRef(null);
-  const programRef = useRef(false);
-
-  const [chrome, setChrome] = useState(true); // title, bars
-  const lastTapRef = useRef({ x: 0, y: 0, t: 0 });
-
-  useLockBodyScroll(true);
-  usePrefetchAround(items, index, true);
-
-  useEffect(() => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    programRef.current = true;
-    scrollToIndex(el, index, "auto");
-    const t = window.setTimeout(() => (programRef.current = false), 140);
-    return () => window.clearTimeout(t);
-  }, [index]);
-
-  // sync index from scroll (RAF)
-  useEffect(() => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    let raf = 0;
-
-    const onScroll = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        if (programRef.current) return;
-        const w = el.clientWidth || 1;
-        const i = Math.round(el.scrollLeft / w);
-        if (i !== index) onIndexChange(i);
-      });
-    };
-
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      el.removeEventListener("scroll", onScroll);
-      cancelAnimationFrame(raf);
-    };
-  }, [index, onIndexChange]);
-
-  const onTapArea = (e) => {
-    const t = performance.now();
-    const x = e.clientX ?? 0;
-    const y = e.clientY ?? 0;
-
-    const dt = t - lastTapRef.current.t;
-    const dist = distance(lastTapRef.current, { x, y, t });
-
-    if (dt > 0 && dt < 280 && dist < 18) {
-      setChrome((v) => !v);
-      hapticTiny();
-      lastTapRef.current = { x: 0, y: 0, t: 0 };
-      return;
-    }
-
-    lastTapRef.current = { x, y, t };
-  };
-
-  // keyboard for desktop
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.key === "Escape") onClose();
@@ -2602,49 +2445,41 @@ function GalleryModalSnap({ items, index, onIndexChange, onClose, onPrev, onNext
       {/* ambient */}
       <div
         className="absolute inset-0 opacity-70 pointer-events-none"
-        style={{
-          background: "radial-gradient(circle at center, rgba(168,234,255,0.10) 0%, transparent 56%)",
-        }}
+        style={{ background: "radial-gradient(circle at center, rgba(168,234,255,0.11) 0%, transparent 56%)" }}
       />
       <div className="absolute inset-0 gallery-grain opacity-[0.12] pointer-events-none" />
 
-      {/* Close (safe-area / never overlap) */}
+      {/* Close */}
       <button
         onClick={onClose}
         className="fixed z-[1002] w-11 h-11 rounded-2xl border border-white/10 bg-black/45 backdrop-blur-xl
-          hover:bg-black/60 transition flex items-center justify-center text-white/85"
-        style={{
-          top: "calc(env(safe-area-inset-top) + 12px)",
-          right: "12px",
-        }}
+          hover:bg-black/60 transition flex items-center justify-center text-white/85
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a8eaff]/25"
+        style={{ top: "calc(env(safe-area-inset-top) + 12px)", right: "12px" }}
         aria-label="Close"
       >
         <X size={16} />
       </button>
 
-      {/* Title pill (stylish) */}
+      {/* Title pill */}
       <div
-        className={`fixed left-0 right-0 z-[1001] transition-opacity duration-200 ${
-          chrome ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
+        className={[
+          "fixed left-0 right-0 z-[1001] transition-opacity duration-200",
+          chrome ? "opacity-100" : "opacity-0 pointer-events-none",
+        ].join(" ")}
         style={{ top: "calc(env(safe-area-inset-top) + 12px)" }}
       >
         <div className="mx-auto max-w-5xl px-4 sm:px-6 pr-14">
-          <div
-            className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-black/35 backdrop-blur-xl
-              shadow-[0_22px_60px_-44px_rgba(0,0,0,0.85)] px-4 py-3"
-          >
+          <div className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-black/35 backdrop-blur-xl shadow-[0_22px_60px_-44px_rgba(0,0,0,0.85)] px-4 py-3">
             <div className="min-w-0">
-              <div className="text-[12px] font-semibold tracking-wide text-white/85 truncate max-w-[62vw] sm:max-w-[520px]">
+              <div className="text-[12px] font-semibold tracking-wide text-white/90 truncate max-w-[62vw] sm:max-w-[520px]">
                 {active?.title}
               </div>
               <div className="mt-1 text-[9px] font-mono tracking-[0.25em] uppercase text-[#a8eaff]/45">
                 {formatMeta(active)}
               </div>
             </div>
-            <div className="ml-2 text-[9px] font-mono tracking-widest text-white/25">
-              {counter}
-            </div>
+            <div className="ml-2 text-[9px] font-mono tracking-widest text-white/25">{counter}</div>
           </div>
         </div>
       </div>
@@ -2665,15 +2500,20 @@ function GalleryModalSnap({ items, index, onIndexChange, onClose, onPrev, onNext
           {items.map((it, i) => (
             <div
               key={it.id || it.file || i}
-              className="w-full h-full flex-shrink-0 flex items-center justify-center"
+              className="w-full h-full flex-shrink-0 flex items-center justify-center relative"
               style={{ scrollSnapAlign: "center" }}
               onPointerUp={onTapArea}
             >
+              {/* frame: 余白タップで閉じる（画像/ボタンは閉じない） */}
               <div
                 className="relative w-full h-full flex items-center justify-center select-none"
                 style={{
                   paddingTop: chrome ? "calc(env(safe-area-inset-top) + 78px)" : "0px",
                   paddingBottom: chrome ? "calc(env(safe-area-inset-bottom) + 70px)" : "0px",
+                }}
+                onClick={(e) => {
+                  // “空き”をタップしたら close（画像やボタンは target が別になる）
+                  if (e.target === e.currentTarget) onClose();
                 }}
               >
                 <img
@@ -2682,25 +2522,29 @@ function GalleryModalSnap({ items, index, onIndexChange, onClose, onPrev, onNext
                   draggable={false}
                   className="w-full h-full object-contain"
                   style={{ padding: chrome ? "18px" : "0px" }}
+                  onClick={(e) => e.stopPropagation()}
                 />
 
-                {/* desktop arrows (chrome中だけ出す) */}
                 {items.length > 1 && !isMobile && chrome && (
                   <>
                     <button
-                      onClick={onPrev}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
-                        bg-black/35 hover:bg-black/55 border border-white/10
-                        flex items-center justify-center text-white/80 transition-all"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onPrev();
+                      }}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/35 hover:bg-black/55 border border-white/10 flex items-center justify-center text-white/80 transition-all
+                        focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a8eaff]/25"
                       aria-label="Previous"
                     >
                       <ChevronLeft size={18} />
                     </button>
                     <button
-                      onClick={onNext}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
-                        bg-black/35 hover:bg-black/55 border border-white/10
-                        flex items-center justify-center text-white/80 transition-all"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onNext();
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/35 hover:bg-black/55 border border-white/10 flex items-center justify-center text-white/80 transition-all
+                        focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a8eaff]/25"
                       aria-label="Next"
                     >
                       <ChevronRight size={18} />
@@ -2713,19 +2557,18 @@ function GalleryModalSnap({ items, index, onIndexChange, onClose, onPrev, onNext
         </div>
       </div>
 
-      {/* bottom bar (minimal progress) */}
+      {/* bottom bar */}
       <div
-        className={`fixed left-0 right-0 z-[1001] px-4 sm:px-6 transition-opacity duration-200 ${
-          chrome ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
+        className={[
+          "fixed left-0 right-0 z-[1001] px-4 sm:px-6 transition-opacity duration-200",
+          chrome ? "opacity-100" : "opacity-0 pointer-events-none",
+        ].join(" ")}
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
       >
         <div className="mx-auto max-w-5xl">
           <div className="rounded-2xl border border-white/10 bg-black/25 backdrop-blur-xl px-4 py-3">
             <div className="flex items-center gap-3">
-              <div className="text-[9px] font-mono text-white/25 tracking-widest">
-                {counter}
-              </div>
+              <div className="text-[9px] font-mono text-white/25 tracking-widest">{counter}</div>
               <div className="flex-1">
                 <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
                   <div
@@ -2741,32 +2584,9 @@ function GalleryModalSnap({ items, index, onIndexChange, onClose, onPrev, onNext
           </div>
         </div>
       </div>
-
-      {/* tap backdrop close (outside content) */}
-      <div
-        className="absolute inset-0"
-        onMouseDown={(e) => e.target === e.currentTarget && onClose()}
-        onTouchStart={(e) => e.target === e.currentTarget && onClose()}
-        style={{ pointerEvents: "none" }}
-      />
     </div>
   );
 }
-
-/* もし useIsMobile が無いならコレ（あれば不要）
-function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 640px)");
-    const update = () => setIsMobile(mq.matches);
-    update();
-    mq.addEventListener?.("change", update);
-    return () => mq.removeEventListener?.("change", update);
-  }, []);
-  return isMobile;
-}
-*/
-
 
 
 
