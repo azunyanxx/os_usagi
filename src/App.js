@@ -1847,7 +1847,43 @@ const FinderApp = () => {
  * { id, folder, title, file, meta, desc? }
  */
 
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import {
+  Layers,
+  Cpu,
+  Key as KeyIcon,
+  AlertCircle,
+  Heart,
+  Coffee,
+  Wand2,
+  Search,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2,
+} from "lucide-react";
 
+/**
+ * GalleryApp (OS Bunny style)
+ * - category filter (sidebar on desktop / chips on mobile)
+ * - search
+ * - lightbox modal (prev/next, ESC, arrow keys, swipe)
+ * - same aesthetic as your snippet: dark + glass + cyan/lavender
+ *
+ * expected item shape:
+ * { id, folder, title, file, meta, desc? }
+ */
+
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+};
 
 const isImageLike = (url = "", meta = "") => {
   const u = url.toLowerCase();
@@ -2285,6 +2321,12 @@ export default function GalleryApp({
     </div>
   );
 }
+
+
+
+
+
+
 
 
 
