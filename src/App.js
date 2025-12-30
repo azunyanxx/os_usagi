@@ -1831,16 +1831,13 @@ const FinderApp = () => {
   );
 };
 
-// -- GALLERY APP (JAPANESE EMOTION ARCHIVE + PEEK GLASS + MODAL) --
+// -- GALLERY APP (UPGRADED: GLASS + SOFT GLOW + FULL PREVIEW) --
 const GalleryApp = () => {
-  const isMobile = useIsMobile(); // 既にある前提。なければ下に簡易版のhook貼ってる
-  const [filter, setFilter] = useState("all");
+  const isMobile = useIsMobile();
 
+  const [filter, setFilter] = useState("all");
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
-
-  // ★ single tap/click Peek 用
-  const [armedIndex, setArmedIndex] = useState(null);
 
   const CATEGORIES = useMemo(
     () => [
@@ -1864,14 +1861,13 @@ const GalleryApp = () => {
     );
   }, [filter]);
 
-  // filter変えたらPeek解除
+  // フィルター変えた時、モーダル開いてたら事故るので閉じる + index戻す
   useEffect(() => {
-    setArmedIndex(null);
+    setOpen(false);
     setActiveIndex(0);
   }, [filter]);
 
   const openModal = useCallback((idx) => {
-    setArmedIndex(null);
     setActiveIndex(idx);
     setOpen(true);
   }, []);
@@ -1899,18 +1895,327 @@ const GalleryApp = () => {
   }, [open, closeModal, prev, next]);
 
   return (
-    <div className="flex h-full bg-[#050505]">
+    <div className="flex h-full">
       {/* Left Sidebar */}
-      <div className="w-14 sm:w-48 border-r border-white/5 flex flex-col items-center sm:items-stretch py-6 gap-2 bg-[#080808] z-20">
-        <div className="text-[9px] font-mono text-white/30 mb-4 px-4 tracking-widest hidden sm:block">
+      <div className="w-40 bg-[#0a0a0a] border-r border-white/5 p-4 hidden sm:block">
+        <p className="text-[10px] font-mono text-white/40 tracking-[0.3em] uppercase mb-6">
           Archive
+        </p>
+
+        <div className="space-y-1">
+          {CATEGORIES.map((cat) => (
+            <div
+              key={cat.id}
+              onClick={() => setFilter(cat.id)}
+              className={`group flex items-center gap-3 px-3 py-3 rounded-md cursor-pointer transition-all duration-300 ${
+                filter === cat.id
+                  ? "bg-white/10 text-white"
+                  : "text-white/30 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <cat.icon size={16} className={filter === cat.id ? "text-[#a8eaff]" : ""} />
+              <span className="text-xs">{cat.label}</span>
+              {filter === cat.id && (
+                <div className="ml-auto w-1 h-1 rounded-full bg-[#a8eaff] animate-pulse" />
+              )}
+            </div>
+          ))}
         </div>
 
-        {CATEGORIES.map((cat) => (
+        <div className="mt-10 text-[10px] text-white/20 font-mono tracking-widest">
+          {filteredItems.length} ITEMS
+        </div>
+      </div>
+
+      {/* Main */}
+      <div className="flex-1 p-6 sm:p-10 overflow-y-auto scrollbar-hide pb-24 sm:pb-10 relative">
+        {/* ambient glow */}
+        <div className="absolute inset-0 pointer-events-none">
           <div
-            key={cat.id}
-            onClick={() => setFilter(cat.id)}
-            className={`group flex items-center gap-3 px-3
+            className="absolute -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[500px] opacity-30 blur-3xl"
+            style={{
+              background:
+                "radial-gradient(circle at center, rgba(168,234,255,0.14) 0%, transparent 60%)",
+            }}
+          />
+          <div
+            className="absolute -bottom-40 left-1/2 -translate-x-1/2 w-[900px] h-[500px] opacity-25 blur-3xl"
+            style={{
+              background:
+                "radial-gradient(circle at center, rgba(203,184,255,0.12) 0%, transparent 60%)",
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] via-transparent to-transparent" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-end justify-between mb-8 relative z-10">
+          <div>
+            <h2 className="text-3xl sm:text-4xl font-thin tracking-tighter text-white/95 mb-1">
+              {CATEGORIES.find((c) => c.id === filter)?.label}
+            </h2>
+            <p className="text-[10px] font-mono text-[#cbb8ff] tracking-[0.2em] uppercase">
+              Fragmented Memories
+            </p>
+            <p className="mt-2 text-[10px] text-white/30 font-mono tracking-widest">
+              {isMobile ? "double tap to preview" : "double click to preview"}
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            <button className="w-9 h-9 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors text-white/60">
+              <Search size={14} />
+            </button>
+          </div>
+        </div>
+
+        {/* Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pb-10 relative z-10">
+          {filteredItems.map((item, idx) => (
+            <GalleryCard key={item.id} item={item} index={idx} onOpen={openModal} />
+          ))}
+        </div>
+
+        {/* Modal */}
+        {open && filteredItems[activeIndex] && (
+          <GalleryModal
+            item={filteredItems[activeIndex]}
+            onClose={closeModal}
+            onPrev={prev}
+            onNext={next}
+            hasMany={filteredItems.length > 1}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
+// --- Card: glass + edge glow + mouse-follow highlight + mobile double tap ---
+function GalleryCard({ item, index, onOpen }) {
+  const btnRef = useRef(null);
+  const lastTapRef = useRef(0);
+  const tapTimerRef = useRef(null);
+
+  // マウス位置に追従する“ガラス反射”
+  const onMouseMove = (e) => {
+    const el = btnRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * 100;
+    const y = ((e.clientY - r.top) / r.height) * 100;
+    el.style.setProperty("--mx", `${x}%`);
+    el.style.setProperty("--my", `${y}%`);
+  };
+
+  const onMouseLeave = () => {
+    const el = btnRef.current;
+    if (!el) return;
+    el.style.removeProperty("--mx");
+    el.style.removeProperty("--my");
+  };
+
+  // モバイル：ダブルタップで開く（単タップは何もしない）
+  const onTouchEnd = () => {
+    const now = Date.now();
+    const dt = now - lastTapRef.current;
+
+    if (dt > 0 && dt < 280) {
+      lastTapRef.current = 0;
+      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+      onOpen(index);
+      return;
+    }
+
+    lastTapRef.current = now;
+    // “ダブル判定待ち”だけ（何もしない）
+    tapTimerRef.current = setTimeout(() => {}, 280);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    };
+  }, []);
+
+  return (
+    <div className="group relative">
+      {/* outer aura */}
+      <div
+        className="absolute -inset-1 rounded-[28px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-2xl pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle at center, rgba(168,234,255,0.18) 0%, transparent 60%)",
+        }}
+      />
+
+      {/* glass frame */}
+      <button
+        ref={btnRef}
+        type="button"
+        className="relative w-full aspect-[4/3] rounded-[28px] overflow-hidden border border-white/10
+          bg-white/[0.02] backdrop-blur-xl text-left
+          shadow-[0_20px_50px_-20px_rgba(0,0,0,0.7)]
+          transition-all duration-700
+          group-hover:border-[#a8eaff]/35 group-hover:shadow-[0_0_60px_rgba(168,234,255,0.10)]
+          active:scale-[0.98]"
+        onDoubleClick={() => onOpen(index)}
+        onTouchEnd={onTouchEnd}
+        onMouseMove={onMouseMove}
+        onMouseLeave={onMouseLeave}
+        // 単クリックでは開かない（誤タップ防止）
+        onClick={(e) => e.preventDefault()}
+        aria-label={`${item.title} preview`}
+      >
+        {/* image */}
+        <div
+          className="absolute inset-0 bg-cover bg-center transition-transform duration-[1400ms] ease-out
+            scale-100 group-hover:scale-[1.06] opacity-85 group-hover:opacity-100
+            grayscale group-hover:grayscale-0"
+          style={{ backgroundImage: `url(${item.file})` }}
+        />
+
+        {/* soft vignette */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/10" />
+
+        {/* mouse-follow highlight (glass reflection) */}
+        <div
+          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.10), transparent 55%)",
+          }}
+        />
+
+        {/* meta + title */}
+        <div className="absolute bottom-0 left-0 right-0 p-5">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_10px_rgba(168,234,255,0.5)]" />
+              <span className="text-[9px] font-mono text-[#a8eaff]/90 tracking-[0.25em] uppercase">
+                {item.meta}
+              </span>
+            </div>
+
+            {/* index chip */}
+            <span className="shrink-0 text-[9px] font-mono text-white/30 tracking-[0.25em]">
+              #{String(index + 1).padStart(2, "0")}
+            </span>
+          </div>
+
+          <div className="text-sm text-white tracking-[0.08em] font-semibold truncate">
+            {item.title}
+          </div>
+
+          <div className="mt-1 text-[10px] text-white/40 font-light tracking-wide line-clamp-2">
+            {item.desc || "Visual memory fragment."}
+          </div>
+        </div>
+
+        {/* edge line */}
+        <div className="absolute inset-0 rounded-[28px] pointer-events-none border border-white/0 group-hover:border-white/15 transition-colors duration-700" />
+      </button>
+    </div>
+  );
+}
+
+// --- Modal: cinematic preview ---
+function GalleryModal({ item, onClose, onPrev, onNext, hasMany }) {
+  return (
+    <div
+      className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+      onTouchStart={(e) => e.target === e.currentTarget && onClose()}
+    >
+      {/* backdrop */}
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-md" />
+
+      {/* center glow */}
+      <div
+        className="absolute inset-0 opacity-70 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle at center, rgba(168,234,255,0.12) 0%, transparent 55%)",
+        }}
+      />
+
+      <div className="relative w-full max-w-5xl">
+        <div
+          className="absolute -inset-1 rounded-3xl blur-2xl opacity-60 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(circle at center, rgba(203,184,255,0.14) 0%, transparent 60%)",
+          }}
+        />
+
+        <div className="relative bg-[#070707] border border-white/10 rounded-2xl overflow-hidden shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85)]">
+          {/* top bar */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/30">
+            <div className="min-w-0">
+              <div className="text-white/85 text-sm font-semibold tracking-wide truncate">
+                {item.title}
+              </div>
+              <div className="text-[10px] font-mono text-[#a8eaff]/70 tracking-[0.25em] uppercase">
+                {item.meta}
+              </div>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-full border border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center text-white/70"
+              aria-label="Close"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* image */}
+          <div className="relative bg-black">
+            <img
+              src={item.file}
+              alt={item.title}
+              className="w-full max-h-[78vh] object-contain"
+              draggable={false}
+            />
+
+            {hasMany && (
+              <>
+                <button
+                  onClick={onPrev}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
+                    bg-black/35 hover:bg-black/55 border border-white/10
+                    flex items-center justify-center text-white/80 transition-all"
+                  aria-label="Previous"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button
+                  onClick={onNext}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
+                    bg-black/35 hover:bg-black/55 border border-white/10
+                    flex items-center justify-center text-white/80 transition-all"
+                  aria-label="Next"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* footer */}
+          <div className="px-4 py-3 border-t border-white/10 bg-black/25">
+            <div className="text-[10px] text-white/40 font-mono tracking-widest">
+              click/tap backdrop to close • Esc • ← →
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 
 // -- MUSIC APP (REDESIGNED WITH HEADPHONE RABBIT) --
