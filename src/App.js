@@ -813,11 +813,15 @@ const MobileProvider = ({ children }) => {
 const useIsMobile = () => React.useContext(MobileContext);
 
 const useTime = () => {
-  const [time, setTime] = useState(new Date());
+  const isMobile = useIsMobile();
+  const [time, setTime] = useState(() => new Date());
+
   useEffect(() => {
-    const t = setInterval(() => setTime(new Date()), 1000);
+    const interval = isMobile ? 60_000 : 1_000; // mobileは1分、PCは1秒
+    const t = setInterval(() => setTime(new Date()), interval);
     return () => clearInterval(t);
-  }, []);
+  }, [isMobile]);
+
   return time;
 };
 
