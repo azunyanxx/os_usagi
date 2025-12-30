@@ -1853,7 +1853,9 @@ import {
   Wand2,
 } from "lucide-react";
 
-/* ========= utils ========= */
+/* ========= helpers ========= */
+const clamp = (n, a, b) => Math.min(Math.max(n, a), b);
+
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -1877,50 +1879,320 @@ function useLockBodyScroll(locked) {
   }, [locked]);
 }
 
-function distance(a, b) {
-  return Math.hypot((a.x ?? 0) - (b.x ?? 0), (a.y ?? 0) - (b.y ?? 0));
-}
-
 function hapticTiny() {
   try {
     navigator.vibrate?.(8);
   } catch {}
 }
 
-function formatMeta(item, filter) {
-  const cat = (item?.folder || filter || "all").toUpperCase();
-  const ext = (item?.meta || "IMG").toUpperCase();
-  return `${cat} • ${ext}`;
+function distance(a, b) {
+  return Math.hypot((a?.x ?? 0) - (b?.x ?? 0), (a?.y ?? 0) - (b?.y ?? 0));
 }
 
-/* ========= single / double tap helper ========= */
 function useSingleDoubleTap({ onSingle, onDouble, delay = 240 }) {
-  const timer = useRef(0);
-  const lastTap = useRef({ x: 0, y: 0, t: 0 });
+  const timerRef = useRef(0);
+  const lastRef = useRef({ x: 0, y: 0, t: 0 });
 
   return (x, y) => {
     const t = performance.now();
-    const dt = t - lastTap.current.t;
-    const dist = distance(lastTap.current, { x, y, t });
+    const dt = t - lastRef.current.t;
+    const dist = distance(lastRef.current, { x, y, t });
 
-    // double tap
+    // double
     if (dt > 0 && dt < delay && dist < 18) {
-      window.clearTimeout(timer.current);
-      timer.current = 0;
-      lastTap.current = { x: 0, y: 0, t: 0 };
+      window.clearTimeout(timerRef.current);
+      timerRef.current = 0;
+      lastRef.current = { x: 0, y: 0, t: 0 };
       hapticTiny();
       onDouble?.();
       return;
     }
 
-    // single tap (delayed)
-    lastTap.current = { x, y, t };
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => {
+    // single (delayed)
+    lastRef.current = { x, y, t };
+    window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => {
       onSingle?.();
-      timer.current = 0;
+      timerRef.current = 0;
     }, delay);
   };
+}
+
+function scrollToIndex(container, i, behavior = "smooth") {
+  if (!container) return;
+  const w = container.clientWidth || 1;
+  container.scrollTo({ left: i * w, behavior });
+}
+
+/* ========= UI bits ========= */
+function PeekPopover({ item, rect, onClose }) {
+  // card上 “その場” 感を出すため、rect に寄せて出す（ただし画面外に出ないよう clamp）
+  const w = 420; // popover width target
+  const h = 280; // popover height target
+  const pad = 12;
+
+  const left = rect
+    ? clamp(rect.left + rect.width / 2 - w / 2, pad, window.innerWidth - w - pad)
+    : clamp(window.innerWidth / 2 - w / 2, pad, window.innerWidth - w - pad);
+
+  const top = rect
+    ? clamp(rect.top + rect.height / 2 - h / 2, pad + 72, window.innerHeight - h - pad - 24)
+    : clamp(window.innerHeight / 2 - h / 2, pad + 72, window.innerHeight - h - pad - 24);
+
+  return (
+    <div className="fixed inset-0 z-[200]">
+      {/* click-away */}
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute inset-0"
+        style={{ background: "rgba(0,0,0,0.35)" }}
+        aria-label="Close peek"
+      />
+      {/* popover */}
+      <div
+        className="absolute rounded-3xl border border-white/10 bg-black/35 backdrop-blur-2xl overflow-hidden shadow-[0_30px_80px_-55px_rgba(0,0,0,0.95)]"
+        style={{ left, top, width: w, height: h }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* glass edge */}
+        <div className="peek-glass-edge" />
+        <div className="peek-specular" />
+
+        <div className="absolute inset-0">
+          <img
+            src={item.file}
+            alt={item.title}
+            className="w-full h-full object-cover scale-[1.06]"
+            draggable={false}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+        </div>
+
+        <div className="absolute left-0 right-0 bottom-0 p-4">
+          <div className="flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <div className="titleSerif text-[16px] text-white/92 font-[520] tracking-tight truncate">
+                {item.title}
+              </div>
+              <div className="uiMono mt-1 text-[10px] tracking-[0.24em] uppercase text-[#a8eaff]/55 truncate">
+                {item.meta || "IMG"}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="shrink-0 w-9 h-9 rounded-2xl border border-white/10 bg-black/35 hover:bg-black/55 transition flex items-center justify-center text-white/85"
+              aria-label="Close"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GalleryModalSnap({ items, index, setIndex, onClose, isMobile }) {
+  const scrollerRef = useRef(null);
+  const programRef = useRef(false);
+
+  useLockBodyScroll(true);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    programRef.current = true;
+    scrollToIndex(el, index, "auto");
+    const t = window.setTimeout(() => (programRef.current = false), 120);
+    return () => window.clearTimeout(t);
+  }, [index]);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+
+    let raf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        if (programRef.current) return;
+        const w = el.clientWidth || 1;
+        const i = Math.round(el.scrollLeft / w);
+        if (i !== index) setIndex(i);
+      });
+    };
+
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(raf);
+    };
+  }, [index, setIndex]);
+
+  const active = items[index];
+  const counter = `${String(index + 1).padStart(2, "0")} / ${String(items.length).padStart(2, "0")}`;
+
+  const prev = () => setIndex((i) => (i - 1 + items.length) % items.length);
+  const next = () => setIndex((i) => (i + 1) % items.length);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") next();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [items.length]);
+
+  return (
+    <div className="fixed inset-0 z-[999] overflow-hidden" role="dialog" aria-modal="true">
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute inset-0"
+        style={{ background: "rgba(0,0,0,0.92)" }}
+        aria-label="Close modal"
+      />
+
+      <div className="absolute inset-0 pointer-events-none">
+        <div
+          className="absolute inset-0 opacity-70"
+          style={{ background: "radial-gradient(circle at center, rgba(168,234,255,0.10) 0%, transparent 56%)" }}
+        />
+        <div className="absolute inset-0 gallery-grain opacity-[0.12]" />
+      </div>
+
+      {/* close */}
+      <button
+        onClick={onClose}
+        className="fixed z-[1002] w-11 h-11 rounded-2xl border border-white/10 bg-black/45 backdrop-blur-xl
+          hover:bg-black/60 transition flex items-center justify-center text-white/85"
+        style={{ top: "calc(env(safe-area-inset-top) + 12px)", right: "12px" }}
+        aria-label="Close"
+      >
+        <X size={16} />
+      </button>
+
+      {/* title pill */}
+      <div
+        className="fixed left-0 right-0 z-[1001]"
+        style={{ top: "calc(env(safe-area-inset-top) + 12px)" }}
+      >
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 pr-14">
+          <div className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-black/35 backdrop-blur-xl shadow-[0_22px_60px_-44px_rgba(0,0,0,0.85)] px-4 py-3">
+            <div className="min-w-0">
+              <div className="uiSans text-[12px] font-semibold tracking-wide text-white/85 truncate max-w-[62vw] sm:max-w-[520px]">
+                {active?.title}
+              </div>
+              <div className="uiMono mt-1 text-[9px] tracking-[0.25em] uppercase text-[#a8eaff]/45">
+                {active?.meta || "IMG"}
+              </div>
+            </div>
+            <div className="ml-2 uiMono text-[9px] tracking-widest text-white/25">{counter}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ✅ scroll-snap swiper */}
+      <div
+        ref={scrollerRef}
+        className="absolute inset-0 overflow-x-auto overflow-y-hidden scrollbar-hide"
+        style={{
+          WebkitOverflowScrolling: "touch",
+          scrollSnapType: "x mandatory",
+          scrollSnapStop: "always",
+          overscrollBehaviorX: "contain",
+          touchAction: isMobile ? "pan-x" : "auto",
+        }}
+      >
+        <div className="h-full flex">
+          {items.map((it, i) => (
+            <div
+              key={it.id || it.file || i}
+              className="w-full h-full flex-shrink-0 flex items-center justify-center"
+              style={{ scrollSnapAlign: "center" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                className="relative w-full h-full flex items-center justify-center select-none"
+                style={{
+                  paddingTop: "calc(env(safe-area-inset-top) + 78px)",
+                  paddingBottom: "calc(env(safe-area-inset-bottom) + 70px)",
+                }}
+              >
+                <img
+                  src={it.file}
+                  alt={it.title}
+                  draggable={false}
+                  className="w-full h-full object-contain"
+                  style={{ padding: "18px" }}
+                />
+
+                {/* desktop arrows */}
+                {!isMobile && items.length > 1 && (
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        prev();
+                      }}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
+                        bg-black/35 hover:bg-black/55 border border-white/10
+                        flex items-center justify-center text-white/80 transition-all"
+                      aria-label="Previous"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        next();
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
+                        bg-black/35 hover:bg-black/55 border border-white/10
+                        flex items-center justify-center text-white/80 transition-all"
+                      aria-label="Next"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* bottom bar */}
+      <div
+        className="fixed left-0 right-0 z-[1001] px-4 sm:px-6"
+        style={{ bottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
+      >
+        <div className="mx-auto max-w-5xl">
+          <div className="rounded-2xl border border-white/10 bg-black/25 backdrop-blur-xl px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="uiMono text-[9px] text-white/25 tracking-widest">{counter}</div>
+              <div className="flex-1">
+                <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-white/60 transition-[width] duration-200"
+                    style={{ width: `${((index + 1) / Math.max(1, items.length)) * 100}%` }}
+                  />
+                </div>
+              </div>
+              <div className="uiMono text-[9px] text-[#a8eaff]/30 tracking-widest uppercase truncate">
+                SWIPE
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /* ========= MAIN ========= */
@@ -1931,23 +2203,22 @@ export const GalleryApp = () => {
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
 
-  // modal
+  // peek popover
+  const [peek, setPeek] = useState(null); // { item, rect }
+
+  // full modal
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState("peek"); // "peek" (single tap zoom) | "full" (double tap)
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const CATEGORIES = useMemo(
-    () => [
-      { id: "all", label: "All", icon: Layers },
-      { id: "system", label: "System", icon: Cpu },
-      { id: "key", label: "Emotion Key", icon: KeyIcon },
-      { id: "emotion", label: "Heart Error", icon: AlertCircle },
-      { id: "life", label: "Life Log", icon: Heart },
-      { id: "work", label: "Work", icon: Coffee },
-      { id: "magic", label: "Magic", icon: Wand2 },
-    ],
-    []
-  );
+  const CATEGORIES = [
+    { id: "all", label: "All", icon: Layers },
+    { id: "system", label: "System", icon: Cpu },
+    { id: "key", label: "Emotion Key", icon: KeyIcon },
+    { id: "emotion", label: "Heart Error", icon: AlertCircle },
+    { id: "life", label: "Life Log", icon: Heart },
+    { id: "work", label: "Work", icon: Coffee },
+    { id: "magic", label: "Magic", icon: Wand2 },
+  ];
 
   const filteredItems = useMemo(() => {
     const items = GALLERY_ITEMS || [];
@@ -1955,8 +2226,7 @@ export const GalleryApp = () => {
 
     const byCat = (item) => {
       if (filter === "all") return true;
-      if (filter === "key") return item.title?.endsWith?.(".key");
-      return item.folder === filter;
+      return item.folder === filter || (filter === "key" && item.title?.endsWith?.(".key"));
     };
 
     const byText = (item) => {
@@ -1968,56 +2238,33 @@ export const GalleryApp = () => {
     return items.filter((it) => byCat(it) && byText(it));
   }, [filter, query]);
 
-  const activeLabel = CATEGORIES.find((c) => c.id === filter)?.label || "All";
-
-  const openPeek = (idx) => {
-    setActiveIndex(idx);
-    setMode("peek");
-    setOpen(true);
-  };
   const openFull = (idx) => {
+    setPeek(null);
     setActiveIndex(idx);
-    setMode("full");
     setOpen(true);
   };
-  const close = () => setOpen(false);
-
-  const prev = () => {
-    setActiveIndex((i) => (i - 1 + filteredItems.length) % filteredItems.length);
-  };
-  const next = () => {
-    setActiveIndex((i) => (i + 1) % filteredItems.length);
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (e) => {
-      if (e.key === "Escape") close();
-      if (e.key === "ArrowLeft") prev();
-      if (e.key === "ArrowRight") next();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, filteredItems.length]);
 
   return (
-    <div className="h-full w-full bg-[#050505] text-white overflow-hidden">
-      {/* fonts + glass utilities */}
+    <div className="h-full">
+      {/* ✅ リッチフォント + glass/specular（ここで確実に効かせる） */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,200..900,0..100&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,260..900,0..100&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap');
+        .titleSerif { font-family: Fraunces, ui-serif, Georgia, serif; }
+        .uiSans { font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
+        .uiMono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
 
         .gallery-grain{
           background-image: url("data:image/svg+xml,%3Csvg xmlns='https://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
           background-size: 180px 180px;
         }
 
-        /* ✅ borderだけ光るガラス縁 */
+        /* ✅ hoverで“縁だけ”光らせる（maskでborderのみ） */
         .glass-edge{
           position:absolute; inset:0;
           padding:1px;
-          border-radius: 18px;
+          border-radius: 12px; /* = rounded-lg */
           background: linear-gradient(135deg,
-            rgba(168,234,255,.80),
+            rgba(168,234,255,.85),
             rgba(203,184,255,.55),
             rgba(255,255,255,.10)
           );
@@ -2033,112 +2280,109 @@ export const GalleryApp = () => {
         }
         .group:hover .glass-edge{
           opacity:1;
-          filter: drop-shadow(0 0 18px rgba(168,234,255,.18))
-                  drop-shadow(0 0 28px rgba(203,184,255,.12));
+          filter: drop-shadow(0 0 16px rgba(168,234,255,.18))
+                  drop-shadow(0 0 26px rgba(203,184,255,.12));
         }
 
-        /* ✅ 角のspecular反射 */
-        .specular-corners{
+        /* ✅ 角の薄い反射（specular） */
+        .specular{
           position:absolute; inset:0;
-          border-radius: 18px;
+          border-radius: 12px; /* rounded-lg */
           pointer-events:none;
           opacity:0;
           transition: opacity 420ms ease;
           mix-blend-mode: screen;
           background:
-            radial-gradient(120px 110px at 0% 0%, rgba(255,255,255,.16), rgba(255,255,255,0) 60%),
-            radial-gradient(120px 110px at 100% 0%, rgba(255,255,255,.12), rgba(255,255,255,0) 60%),
-            radial-gradient(140px 120px at 0% 100%, rgba(255,255,255,.10), rgba(255,255,255,0) 62%),
-            radial-gradient(140px 120px at 100% 100%, rgba(255,255,255,.08), rgba(255,255,255,0) 62%);
+            radial-gradient(140px 120px at 0% 0%, rgba(255,255,255,.16), rgba(255,255,255,0) 60%),
+            radial-gradient(140px 120px at 100% 0%, rgba(255,255,255,.12), rgba(255,255,255,0) 60%),
+            radial-gradient(160px 140px at 0% 100%, rgba(255,255,255,.10), rgba(255,255,255,0) 62%),
+            radial-gradient(160px 140px at 100% 100%, rgba(255,255,255,.08), rgba(255,255,255,0) 62%);
         }
-        .group:hover .specular-corners{ opacity:1; }
+        .group:hover .specular{ opacity:1; }
 
-        .titleSerif { font-family: Fraunces, ui-serif, Georgia, serif; }
-        .uiSans { font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
-        .uiMono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+        /* peek popover用も同じ質感 */
+        .peek-glass-edge{
+          position:absolute; inset:0;
+          padding:1px; border-radius: 24px;
+          background: linear-gradient(135deg,
+            rgba(168,234,255,.80),
+            rgba(203,184,255,.48),
+            rgba(255,255,255,.10)
+          );
+          opacity:1; pointer-events:none;
+          -webkit-mask:
+            linear-gradient(#000 0 0) content-box,
+            linear-gradient(#000 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          filter: drop-shadow(0 0 18px rgba(168,234,255,.12));
+        }
+        .peek-specular{
+          position:absolute; inset:0; border-radius:24px;
+          pointer-events:none; mix-blend-mode: screen;
+          background:
+            radial-gradient(160px 140px at 0% 0%, rgba(255,255,255,.16), rgba(255,255,255,0) 62%),
+            radial-gradient(180px 160px at 100% 0%, rgba(255,255,255,.12), rgba(255,255,255,0) 62%);
+          opacity:.9;
+        }
       `}</style>
 
-      <div className="flex flex-nowrap h-full min-h-0">
-        {/* Left Sidebar (✅絶対1列縦) */}
-        <div
-          className="shrink-0 border-r border-white/5 flex flex-col items-center sm:items-stretch py-6 gap-2 bg-[#080808] z-20"
-          style={{ width: isMobile ? 56 : 200 }}
-        >
-          <div className="text-[10px] uiMono text-white/25 mb-4 px-4 tracking-[0.34em] hidden sm:block">
+      {/* ✅ 前のと同じ “flex + 左サイドバー” を崩さない：flex-nowrap / min-w-0 を追加 */}
+      <div className="flex flex-nowrap h-full bg-[#050505] text-white overflow-hidden">
+        {/* Left Sidebar（←これが “ない” ってことが起きないように固定） */}
+        <div className="w-14 sm:w-48 border-r border-white/5 flex flex-col items-center sm:items-stretch py-6 gap-2 bg-[#080808] z-20 shrink-0">
+          <div className="text-[9px] uiMono text-white/30 mb-4 px-4 tracking-widest hidden sm:block">
             Archive
           </div>
 
-          {CATEGORIES.map((cat) => {
-            const ActiveIcon = cat.icon;
-            const active = filter === cat.id;
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setFilter(cat.id)}
-                className={[
-                  "group w-full px-3 py-3 rounded-md cursor-pointer transition-all duration-300 relative overflow-hidden",
-                  "flex items-center",
-                  isMobile ? "justify-center" : "justify-start gap-3",
-                  active ? "bg-white/10 text-white" : "text-white/30 hover:text-white hover:bg-white/5",
-                ].join(" ")}
-              >
-                {/* active rail */}
-                <span
-                  className={[
-                    "absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-8 rounded-full transition-opacity",
-                    active ? "opacity-100" : "opacity-0 group-hover:opacity-60",
-                  ].join(" ")}
-                  style={{
-                    background:
-                      "linear-gradient(180deg, rgba(168,234,255,0.0), rgba(168,234,255,0.85), rgba(203,184,255,0.0))",
-                    boxShadow: "0 0 18px rgba(168,234,255,0.25)",
-                  }}
-                />
-
-                <ActiveIcon size={16} className={active ? "text-[#a8eaff]" : ""} />
-                <span className="hidden sm:block text-xs tracking-wide uiSans">
-                  {cat.label}
-                </span>
-                {active && (
-                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_8px_#a8eaff] hidden sm:block" />
-                )}
-              </button>
-            );
-          })}
+          {/* ✅ 1列縦：mapの各行は block 幅 w-full にする（sm以上はstretchで幅が効く） */}
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => {
+                setFilter(cat.id);
+                setPeek(null);
+              }}
+              className={`group w-full flex items-center gap-3 px-3 py-3 rounded-md cursor-pointer transition-all duration-300 ${
+                filter === cat.id
+                  ? "bg-white/10 text-white"
+                  : "text-white/30 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <cat.icon size={16} className={filter === cat.id ? "text-[#a8eaff]" : ""} />
+              <span className="hidden sm:block text-xs tracking-wide uiSans">
+                {cat.label}
+              </span>
+              {filter === cat.id && (
+                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_8px_#a8eaff] hidden sm:block" />
+              )}
+            </button>
+          ))}
 
           <div className="mt-auto px-4 hidden sm:block">
-            <div className="text-[10px] uiMono text-white/18 border-t border-white/5 pt-4 tracking-[0.28em]">
+            <div className="text-[9px] uiMono text-white/20 border-t border-white/5 pt-4 tracking-widest">
               {filteredItems.length} ITEMS
             </div>
           </div>
         </div>
 
         {/* Main Gallery Area */}
-        <div
-          className="relative flex-1 min-w-0 p-6 sm:p-10 overflow-y-auto scrollbar-hide pb-24 sm:pb-10"
-          style={{
-            paddingTop: "calc(env(safe-area-inset-top) + 18px)",
-            paddingBottom: "calc(env(safe-area-inset-bottom) + 90px)",
-          }}
-        >
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#a8eaff]/7 via-transparent to-transparent" />
-            <div className="absolute inset-0 gallery-grain opacity-[0.07]" />
-          </div>
+        <div className="flex-1 min-w-0 p-6 sm:p-10 overflow-y-auto scrollbar-hide pb-24 sm:pb-10 relative">
+          <div className="absolute inset-0 bg-gradient-to-b from-[#a8eaff]/5 via-transparent to-transparent pointer-events-none" />
+          <div className="absolute inset-0 gallery-grain opacity-[0.07] pointer-events-none" />
 
-          {/* Header */}
+          {/* Header + ✅検索バー */}
           <div className="relative flex items-end justify-between mb-8 gap-4">
             <div className="min-w-0">
-              <h2 className="titleSerif text-3xl sm:text-4xl font-[520] tracking-tight text-white/95 mb-1">
-                {activeLabel}
+              <h2 className="titleSerif text-3xl sm:text-4xl font-[520] tracking-tight text-white/95 mb-1 animate-fade-in">
+                {CATEGORIES.find((c) => c.id === filter)?.label}
               </h2>
-              <p className="text-[10px] uiMono text-[#cbb8ff]/70 tracking-[0.24em] uppercase">
+              <p className="text-[10px] uiMono text-[#cbb8ff]/70 tracking-[0.2em] uppercase animate-fade-in">
                 Fragmented Memories
               </p>
             </div>
 
-            {/* Search bar (✅ちゃんと欲しいやつ) */}
             <div className="flex items-center gap-2">
               <div className="relative w-[52vw] max-w-[360px] sm:w-[360px]">
                 <input
@@ -2161,304 +2405,111 @@ export const GalleryApp = () => {
                 key={item.id || item.file || idx}
                 item={item}
                 idx={idx}
-                filter={filter}
-                onSingle={() => openPeek(idx)}
-                onDouble={() => openFull(idx)}
+                onPeek={(rect) => {
+                  setOpen(false);
+                  setPeek({ item, rect });
+                }}
+                onOpenFull={() => openFull(idx)}
               />
             ))}
           </div>
-
-          {filteredItems.length === 0 && (
-            <div className="relative py-24 text-center">
-              <div className="text-white/25 text-sm uiMono tracking-widest">NO RESULTS</div>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Modal */}
+      {/* ✅ peek = モーダルじゃなく popover */}
+      {peek?.item && (
+        <PeekPopover
+          item={peek.item}
+          rect={peek.rect}
+          onClose={() => setPeek(null)}
+        />
+      )}
+
+      {/* ✅ double tap = フルスクリーン / ✅ mobile swipe = scroll-snap */}
       {open && filteredItems[activeIndex] && (
-        <GalleryModal
+        <GalleryModalSnap
           items={filteredItems}
           index={activeIndex}
-          mode={mode}
-          setMode={setMode}
+          setIndex={(i) => setActiveIndex((i + filteredItems.length) % filteredItems.length)}
+          onClose={() => setOpen(false)}
           isMobile={isMobile}
-          onClose={close}
-          onPrev={prev}
-          onNext={next}
-          onIndexChange={(i) =>
-            setActiveIndex((i + filteredItems.length) % filteredItems.length)
-          }
         />
       )}
     </div>
   );
 };
 
-/* ========= Card ========= */
-function GalleryCard({ item, idx, filter, onSingle, onDouble }) {
-  const [loaded, setLoaded] = useState(false);
+function GalleryCard({ item, idx, onPeek, onOpenFull }) {
+  const cardRef = useRef(null);
 
   const tap = useSingleDoubleTap({
-    onSingle,
-    onDouble,
-    delay: 240,
-  });
-
-  return (
-    <div
-      className={`group relative cursor-pointer perspective-1000`}
-      style={{ animationDelay: `${idx * 50}ms` }}
-    >
-      <button
-        type="button"
-        onPointerUp={(e) => {
-          const x = e.clientX ?? (e.changedTouches?.[0]?.clientX ?? 0);
-          const y = e.clientY ?? (e.changedTouches?.[0]?.clientY ?? 0);
-          tap(x, y);
-        }}
-        onDoubleClick={(e) => {
-          e.preventDefault();
-          onDouble?.();
-        }}
-        className="relative w-full overflow-hidden rounded-[18px] border border-white/10 bg-[#111]
-          transition-all duration-700 group-hover:shadow-[0_0_40px_rgba(168,234,255,0.10)] group-hover:scale-[1.01]"
-        style={{ touchAction: "manipulation" }}
-        aria-label={`${item.title} preview`}
-      >
-        {/* ✅ hoverで縁だけ光る */}
-        <div className="glass-edge" />
-        {/* ✅ 角のspecular */}
-        <div className="specular-corners" />
-
-        {/* Image */}
-        <div className="relative aspect-[4/3] bg-black">
-          {!loaded && <div className="absolute inset-0 bg-white/[0.03] animate-pulse" />}
-
-          <div
-            className="absolute inset-0 bg-cover bg-center transition-all duration-[1.5s] ease-out scale-100 group-hover:scale-105
-              opacity-80 group-hover:opacity-100 grayscale group-hover:grayscale-0"
-            style={{ backgroundImage: `url(${item.file})` }}
-            onLoad={() => setLoaded(true)}
-          />
-
-          {/* Overlay Gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90 pointer-events-none" />
-
-          {/* Content */}
-          <div className="absolute bottom-0 left-0 right-0 p-6 flex flex-col items-start gap-1 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-            <div className="flex items-center gap-2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">
-              <div className="w-1 h-1 rounded-full bg-[#a8eaff]" />
-              <span className="text-[9px] uiMono text-[#a8eaff] tracking-widest">
-                {item.meta}
-              </span>
-            </div>
-
-            <h3 className="text-sm font-bold tracking-[0.10em] text-white uiSans">
-              {item.title}
-            </h3>
-
-            <p className="text-[10px] text-white/55 font-light tracking-wide max-w-[90%] hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity delay-200 uiSans">
-              {item.desc || "No description."}
-            </p>
-
-            {/* hint */}
-            <div className="mt-2 text-[9px] uiMono tracking-[0.22em] text-white/28 uppercase opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-              Tap: Peek / Double: Full
-            </div>
-          </div>
-
-          {/* hover edge soft */}
-          <div className="absolute inset-0 border border-white/0 group-hover:border-white/18 rounded-[18px] transition-all duration-500 pointer-events-none" />
-        </div>
-      </button>
-    </div>
-  );
-}
-
-/* ========= Modal ========= */
-function GalleryModal({ items, index, mode, setMode, isMobile, onClose, onPrev, onNext, onIndexChange }) {
-  useLockBodyScroll(true);
-
-  const active = items[index];
-  const counter = `${String(index + 1).padStart(2, "0")} / ${String(items.length).padStart(2, "0")}`;
-
-  // click area: single = toggle chrome / double = full toggle
-  const lastTapRef = useRef({ x: 0, y: 0, t: 0 });
-  const [chrome, setChrome] = useState(true);
-
-  const tap = useSingleDoubleTap({
-    onSingle: () => setChrome((v) => !v),
+    onSingle: () => {
+      const el = cardRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      onPeek(rect);
+    },
     onDouble: () => {
-      setMode((m) => (m === "full" ? "peek" : "full"));
-      hapticTiny();
+      onOpenFull();
     },
     delay: 240,
   });
 
   return (
-    <div className="fixed inset-0 z-[999] overflow-hidden" role="dialog" aria-modal="true">
-      {/* backdrop */}
-      <button
-        type="button"
-        onClick={onClose}
-        className="absolute inset-0"
-        aria-label="Close"
-        style={{ background: "rgba(0,0,0,0.92)" }}
-      />
+    <div
+      ref={cardRef}
+      className={`group relative cursor-pointer perspective-1000 animate-fade-in ${item.span || "aspect-[4/3]"}`}
+      style={{ animationDelay: `${idx * 50}ms` }}
+      onPointerUp={(e) => {
+        const x = e.clientX ?? (e.changedTouches?.[0]?.clientX ?? 0);
+        const y = e.clientY ?? (e.changedTouches?.[0]?.clientY ?? 0);
+        tap(x, y);
+      }}
+      onDoubleClick={(e) => {
+        e.preventDefault();
+        onOpenFull();
+      }}
+    >
+      {/* Card Container - White Glass Feel */}
+      <div className="absolute inset-0 bg-[#111] border border-white/10 rounded-lg overflow-hidden transition-all duration-700 group-hover:border-[#a8eaff]/50 group-hover:shadow-[0_0_40px_rgba(168,234,255,0.1)] group-hover:scale-[1.01]">
+        {/* ✅ glass edge only */}
+        <div className="glass-edge" />
+        {/* ✅ specular corners */}
+        <div className="specular" />
 
-      {/* ambient */}
-      <div
-        className="absolute inset-0 opacity-70 pointer-events-none"
-        style={{ background: "radial-gradient(circle at center, rgba(168,234,255,0.10) 0%, transparent 56%)" }}
-      />
-      <div className="absolute inset-0 gallery-grain opacity-[0.12] pointer-events-none" />
-
-      {/* close */}
-      <button
-        onClick={onClose}
-        className="fixed z-[1002] w-11 h-11 rounded-2xl border border-white/10 bg-black/45 backdrop-blur-xl
-          hover:bg-black/60 transition flex items-center justify-center text-white/85"
-        style={{ top: "calc(env(safe-area-inset-top) + 12px)", right: "12px" }}
-        aria-label="Close"
-      >
-        <X size={16} />
-      </button>
-
-      {/* top pill */}
-      <div
-        className={`fixed left-0 right-0 z-[1001] transition-opacity duration-200 ${chrome ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-        style={{ top: "calc(env(safe-area-inset-top) + 12px)" }}
-      >
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 pr-14">
-          <div className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-black/35 backdrop-blur-xl shadow-[0_22px_60px_-44px_rgba(0,0,0,0.85)] px-4 py-3">
-            <div className="min-w-0">
-              <div className="text-[12px] font-semibold tracking-wide text-white/85 truncate max-w-[62vw] sm:max-w-[520px] uiSans">
-                {active?.title}
-              </div>
-              <div className="mt-1 text-[9px] uiMono tracking-[0.25em] uppercase text-[#a8eaff]/45">
-                {formatMeta(active, active?.folder)}
-              </div>
-            </div>
-            <div className="ml-2 text-[9px] uiMono tracking-widest text-white/25">{counter}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* content */}
-      <div
-        className="absolute inset-0 flex items-center justify-center"
-        onPointerUp={(e) => {
-          // stop click bubbling to backdrop
-          e.stopPropagation();
-          const x = e.clientX ?? (e.changedTouches?.[0]?.clientX ?? 0);
-          const y = e.clientY ?? (e.changedTouches?.[0]?.clientY ?? 0);
-          tap(x, y);
-        }}
-        onDoubleClick={(e) => {
-          e.preventDefault();
-          setMode((m) => (m === "full" ? "peek" : "full"));
-        }}
-      >
+        {/* Image */}
         <div
-          className="relative w-full h-full flex items-center justify-center select-none"
-          style={{
-            paddingTop: chrome ? "calc(env(safe-area-inset-top) + 78px)" : "0px",
-            paddingBottom: chrome ? "calc(env(safe-area-inset-bottom) + 70px)" : "0px",
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* ✅ single=peek: 少しズーム＋余白あり / double=full: さらに大きく */}
-          <img
-            src={active.file}
-            alt={active.title}
-            draggable={false}
-            className="w-full h-full object-contain transition-transform duration-300"
-            style={{
-              padding: chrome ? "18px" : "0px",
-              transform:
-                mode === "full"
-                  ? "scale(1.12)"
-                  : "scale(1.03)",
-            }}
-          />
+          className="absolute inset-0 bg-cover bg-center transition-all duration-[1.5s] ease-out scale-100 group-hover:scale-105 opacity-80 group-hover:opacity-100 grayscale group-hover:grayscale-0"
+          style={{ backgroundImage: `url(${item.file})` }}
+        />
 
-          {/* arrows */}
-          {items.length > 1 && !isMobile && chrome && (
-            <>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPrev();
-                }}
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/35 hover:bg-black/55 border border-white/10 flex items-center justify-center text-white/80 transition-all"
-                aria-label="Previous"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onNext();
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/35 hover:bg-black/55 border border-white/10 flex items-center justify-center text-white/80 transition-all"
-                aria-label="Next"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </>
-          )}
+        {/* Overlay Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
 
-          {/* bottom bar */}
-          <div
-            className={`fixed left-0 right-0 z-[1001] px-4 sm:px-6 transition-opacity duration-200 ${chrome ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-            style={{ bottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
-          >
-            <div className="mx-auto max-w-5xl">
-              <div className="rounded-2xl border border-white/10 bg-black/25 backdrop-blur-xl px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="text-[9px] uiMono text-white/25 tracking-widest">{counter}</div>
-                  <div className="flex-1">
-                    <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-white/60 transition-[width] duration-200"
-                        style={{ width: `${((index + 1) / Math.max(1, items.length)) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div className="text-[9px] uiMono text-[#a8eaff]/30 tracking-widest uppercase truncate">
-                    {mode === "full" ? "FULL" : "PEEK"}
-                  </div>
-                </div>
-              </div>
-            </div>
+        {/* Content */}
+        <div className="absolute bottom-0 left-0 right-0 p-6 flex flex-col items-start gap-1 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+          <div className="flex items-center gap-2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">
+            <div className="w-1 h-1 rounded-full bg-[#a8eaff]" />
+            <span className="text-[9px] uiMono text-[#a8eaff] tracking-widest">
+              {item.meta}
+            </span>
           </div>
 
-          {/* swipe zones for mobile (optional simple tap) */}
-          {items.length > 1 && isMobile && (
-            <>
-              <button
-                className="absolute left-0 top-0 bottom-0 w-1/5"
-                style={{ background: "transparent" }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPrev();
-                }}
-                aria-label="Prev"
-              />
-              <button
-                className="absolute right-0 top-0 bottom-0 w-1/5"
-                style={{ background: "transparent" }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onNext();
-                }}
-                aria-label="Next"
-              />
-            </>
-          )}
+          <h3 className="text-sm font-bold tracking-[0.1em] text-white uiSans">
+            {item.title}
+          </h3>
+
+          <p className="text-[10px] text-white/50 font-light tracking-wide max-w-[90%] hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity delay-200 uiSans">
+            {item.desc || "No description."}
+          </p>
+
+          <div className="mt-2 text-[9px] uiMono tracking-[0.22em] text-white/28 uppercase opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+            Tap: Peek / Double: Full
+          </div>
         </div>
+
+        {/* Hover Glow Edge (your original) */}
+        <div className="absolute inset-0 border border-white/0 group-hover:border-white/20 rounded-lg transition-all duration-500 pointer-events-none" />
       </div>
     </div>
   );
