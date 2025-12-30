@@ -1846,45 +1846,91 @@ import {
   X,
 } from "lucide-react";
 
-/**
- * ✅ Gallery App (Mobile-first / Sidebar always on)
- * - Left sidebar is ALWAYS visible (mobile = icon rail)
- * - Open preview: Mobile = double tap / Desktop = double click
- * - Keep glass / glow / vignette / cinematic modal
- */
+// -- GALLERY APP (MOBILE-FIRST • AWARD-LEANING) --
+// Replace your existing GalleryApp / GalleryCard / GalleryModal with this whole block.
 
-export const GalleryApp = () => {
+const clamp = (n, a, b) => Math.min(Math.max(n, a), b);
+
+function useLockBodyScroll(locked) {
+  useEffect(() => {
+    if (!locked) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [locked]);
+}
+
+function usePrefetchAround(items, index, enabled = true) {
+  useEffect(() => {
+    if (!enabled) return;
+    if (!items?.length) return;
+    const ids = [
+      index,
+      (index + 1) % items.length,
+      (index - 1 + items.length) % items.length,
+    ];
+    ids.forEach((i) => {
+      const src = items[i]?.file;
+      if (!src) return;
+      const img = new Image();
+      img.decoding = "async";
+      img.loading = "eager";
+      img.src = src;
+    });
+  }, [items, index, enabled]);
+}
+
+function formatMeta(item) {
+  const cat = (item?.folder || item?.cat || "all").toUpperCase();
+  const ext = (item?.meta || "IMG").toUpperCase();
+  return `${cat} • ${ext}`;
+}
+
+const GalleryApp = () => {
   const isMobile = useIsMobile();
-
-  const [filter, setFilter] = useState("all");
-  const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
 
   const CATEGORIES = useMemo(
     () => [
       { id: "all", label: "All", icon: Layers },
       { id: "system", label: "System", icon: Cpu },
-      { id: "key", label: "Emotion Key", icon: KeyIcon },
-      { id: "emotion", label: "Heart Error", icon: AlertCircle },
-      { id: "life", label: "Life Log", icon: Heart },
+      { id: "key", label: "Keys", icon: KeyIcon },
+      { id: "emotion", label: "Emotion", icon: AlertCircle },
+      { id: "life", label: "Life", icon: Heart },
       { id: "work", label: "Work", icon: Coffee },
       { id: "magic", label: "Magic", icon: Wand2 },
     ],
     []
   );
 
-  const filteredItems = useMemo(() => {
-    const items = GALLERY_ITEMS; // ← 既存の GALLERY_ITEMS を使用
-    if (filter === "all") return items;
-    return items.filter(
-      (item) =>
-        item.folder === filter ||
-        (filter === "key" && String(item.title || "").endsWith(".key"))
-    );
-  }, [filter]);
+  const [filter, setFilter] = useState("all");
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [searchOpen, setSearchOpen] = useState(false);
 
+  const filteredItems = useMemo(() => {
+    const items = GALLERY_ITEMS || [];
+    const q = query.trim().toLowerCase();
+
+    const byCat = (it) => {
+      if (filter === "all") return true;
+      if (filter === "key") return String(it?.title || "").endsWith(".key");
+      return it.folder === filter || it.cat === filter;
+    };
+
+    const byText = (it) => {
+      if (!q) return true;
+      const t = `${it?.title || ""} ${it?.desc || ""} ${it?.meta || ""}`.toLowerCase();
+      return t.includes(q);
+    };
+
+    return items.filter((it) => byCat(it) && byText(it));
+  }, [filter, query]);
+
+  // filter change safety
   useEffect(() => {
-    // フィルター切替時に事故るので閉じる
     setOpen(false);
     setActiveIndex(0);
   }, [filter]);
@@ -1895,16 +1941,14 @@ export const GalleryApp = () => {
   }, []);
 
   const closeModal = useCallback(() => setOpen(false), []);
-
   const prev = useCallback(() => {
     setActiveIndex((i) => (i - 1 + filteredItems.length) % filteredItems.length);
   }, [filteredItems.length]);
-
   const next = useCallback(() => {
     setActiveIndex((i) => (i + 1) % filteredItems.length);
   }, [filteredItems.length]);
 
-  // keyboard controls (Desktop)
+  // keyboard (desktop)
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e) => {
@@ -1916,152 +1960,226 @@ export const GalleryApp = () => {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, closeModal, prev, next]);
 
-  const currentLabel = CATEGORIES.find((c) => c.id === filter)?.label ?? "Archive";
-
   return (
-    <div className="w-full h-full flex bg-[#050505] text-white relative overflow-hidden">
-      {/* ambient backdrop (keep stylish) */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div
-          className="absolute -top-40 left-1/2 -translate-x-1/2 w-[920px] h-[520px] opacity-35 blur-3xl"
-          style={{
-            background:
-              "radial-gradient(circle at center, rgba(168,234,255,0.16) 0%, transparent 60%)",
-          }}
-        />
-        <div
-          className="absolute -bottom-40 left-1/2 -translate-x-1/2 w-[920px] h-[520px] opacity-25 blur-3xl"
-          style={{
-            background:
-              "radial-gradient(circle at center, rgba(203,184,255,0.14) 0%, transparent 60%)",
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] via-transparent to-transparent" />
-      </div>
-
-      {/* LEFT SIDEBAR (ALWAYS ON) */}
-      <aside
-        className="
-          relative z-20
-          w-16 sm:w-56
-          border-r border-white/10
-          bg-black/30 backdrop-blur-2xl
-          flex flex-col
-        "
-      >
-        {/* header */}
-        <div className="px-2 sm:px-4 py-4 border-b border-white/10">
-          <div className="text-[10px] font-mono tracking-[0.35em] text-[#a8eaff]/70 uppercase text-center sm:text-left">
-            Archive
+    <div className="h-full w-full flex bg-[#050505] relative overflow-hidden">
+      {/* left rail (desktop only) */}
+      <aside className="hidden sm:flex w-56 border-r border-white/5 bg-black/35 backdrop-blur-xl p-4 flex-col">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <div className="text-white/80 text-sm tracking-wide font-semibold">Gallery</div>
+            <div className="text-[10px] font-mono text-[#cbb8ff]/70 tracking-[0.25em] uppercase">
+              Memory Archive
+            </div>
           </div>
-          <div className="mt-2 hidden sm:block">
-            <div className="text-xs text-white/80 tracking-wide font-light">
-              Fragment Index
-            </div>
-            <div className="text-[10px] text-white/30 font-mono tracking-widest mt-1">
-              curated memories
-            </div>
+          <div className="w-8 h-8 rounded-full border border-white/10 bg-white/[0.03] flex items-center justify-center">
+            <ImageIcon size={16} className="text-white/50" />
           </div>
         </div>
 
-        {/* categories */}
-        <div className="p-2 sm:p-3 space-y-1">
-          {CATEGORIES.map((cat) => {
-            const active = filter === cat.id;
-            const Icon = cat.icon;
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setFilter(cat.id)}
-                className={[
-                  "w-full rounded-xl transition-all duration-300",
-                  "flex items-center justify-center sm:justify-start",
-                  "gap-0 sm:gap-3 px-2 sm:px-3 py-3",
-                  active
-                    ? "bg-white/10 text-white border border-white/10 shadow-[0_0_30px_rgba(168,234,255,0.08)]"
-                    : "text-white/35 hover:text-white hover:bg-white/5 border border-transparent",
-                ].join(" ")}
-                aria-label={cat.label}
-              >
-                <Icon size={16} className={active ? "text-[#a8eaff]" : "text-white/35"} />
-                <span className="hidden sm:block text-xs">{cat.label}</span>
-
-                {/* active indicator (keep chic) */}
-                <span className="ml-auto hidden sm:flex items-center gap-2">
-                  {active && (
-                    <>
-                      <span className="text-[9px] font-mono tracking-[0.25em] text-[#a8eaff]/70">
-                        ON
-                      </span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_12px_rgba(168,234,255,0.6)] animate-pulse" />
-                    </>
-                  )}
-                </span>
-              </button>
-            );
-          })}
+        <div className="space-y-1">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setFilter(cat.id)}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all
+                ${filter === cat.id ? "bg-white/10 text-white" : "text-white/40 hover:text-white hover:bg-white/5"}`}
+            >
+              <cat.icon size={16} className={filter === cat.id ? "text-[#a8eaff]" : "text-white/30"} />
+              <span className="text-xs">{cat.label}</span>
+              {filter === cat.id && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#a8eaff] animate-pulse" />}
+            </button>
+          ))}
         </div>
 
-        {/* footer */}
-        <div className="mt-auto p-3 border-t border-white/10">
-          <div className="text-[9px] font-mono tracking-[0.3em] text-white/35 text-center sm:text-left">
-            {filteredItems.length} ITEMS
-          </div>
-          <div className="mt-2 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-          <div className="mt-2 text-[9px] font-mono tracking-widest text-white/20 text-center sm:text-left">
-            // double tap to preview
-          </div>
+        <div className="mt-auto pt-5 border-t border-white/5 flex items-center justify-between text-[10px] font-mono text-white/30 tracking-widest">
+          <span>{filteredItems.length} ITEMS</span>
+          <span className="text-[#a8eaff]/60">{query ? "FILTERED" : "READY"}</span>
         </div>
       </aside>
 
-      {/* MAIN */}
-      <main className="relative z-10 flex-1 overflow-y-auto scrollbar-hide pb-24 sm:pb-10">
-        {/* Header */}
-        <div className="px-4 sm:px-10 pt-6 sm:pt-10">
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <h2 className="text-3xl sm:text-4xl font-thin tracking-tighter text-white/95">
-                {currentLabel}
-              </h2>
-              <p className="text-[10px] font-mono text-[#cbb8ff] tracking-[0.2em] uppercase mt-1">
-                Fragmented Memories
-              </p>
-              <p className="mt-2 text-[10px] text-white/30 font-mono tracking-widest">
-                {isMobile ? "double tap to preview" : "double click to preview"}
-              </p>
+      {/* main */}
+      <main className="flex-1 relative overflow-hidden">
+        {/* ambient */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div
+            className="absolute -top-56 left-1/2 -translate-x-1/2 w-[960px] h-[560px] opacity-40 blur-3xl"
+            style={{
+              background:
+                "radial-gradient(circle at center, rgba(168,234,255,0.14) 0%, transparent 60%)",
+            }}
+          />
+          <div
+            className="absolute -bottom-56 left-1/2 -translate-x-1/2 w-[980px] h-[560px] opacity-35 blur-3xl"
+            style={{
+              background:
+                "radial-gradient(circle at center, rgba(203,184,255,0.12) 0%, transparent 60%)",
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] via-transparent to-black/30" />
+          <div className="absolute inset-0 gallery-grain opacity-[0.08]" />
+        </div>
+
+        {/* top (mobile) */}
+        <div className="sm:hidden sticky top-0 z-30 bg-black/35 backdrop-blur-2xl border-b border-white/5">
+          <div className="px-4 pt-4 pb-3">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0">
+                <div className="text-white/90 text-xl font-light tracking-tight truncate">
+                  {CATEGORIES.find((c) => c.id === filter)?.label || "Gallery"}
+                </div>
+                <div className="text-[10px] font-mono text-[#cbb8ff]/70 tracking-[0.25em] uppercase">
+                  {filteredItems.length} fragments
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSearchOpen((v) => !v)}
+                  className="w-10 h-10 rounded-2xl border border-white/10 bg-white/[0.03] active:scale-[0.98] transition"
+                  aria-label="Search"
+                >
+                  <Search size={16} className="mx-auto text-white/70" />
+                </button>
+
+                <button
+                  onClick={() => {
+                    // quick cycle category on mobile (feels like native)
+                    const idx = CATEGORIES.findIndex((c) => c.id === filter);
+                    const nextCat = CATEGORIES[(idx + 1) % CATEGORIES.length];
+                    setFilter(nextCat.id);
+                  }}
+                  className="w-10 h-10 rounded-2xl border border-white/10 bg-white/[0.03] active:scale-[0.98] transition"
+                  aria-label="Next category"
+                >
+                  <ChevronRight size={16} className="mx-auto text-white/70" />
+                </button>
+              </div>
             </div>
 
-            <button
-              type="button"
-              className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors text-white/60"
-              aria-label="Search"
-              onClick={() => {
-                // ここは“雰囲気用”に残す（検索UIは後で足せる）
-              }}
+            {/* search */}
+            <div
+              className={`mt-3 overflow-hidden transition-all duration-500 ${
+                searchOpen ? "max-h-20 opacity-100" : "max-h-0 opacity-0"
+              }`}
             >
-              <Search size={16} />
-            </button>
+              <div className="relative">
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search"
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3 px-4 pr-10
+                    text-xs text-white/85 placeholder:text-white/25 focus:outline-none focus:border-[#a8eaff]/40
+                    font-mono tracking-wider"
+                />
+                <button
+                  onClick={() => setQuery("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl border border-white/10
+                    bg-white/[0.03] text-white/50"
+                  aria-label="Clear"
+                >
+                  <X size={14} className="mx-auto" />
+                </button>
+              </div>
+            </div>
+
+            {/* chips */}
+            <div className="mt-3 flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+              {CATEGORIES.map((cat) => {
+                const active = filter === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setFilter(cat.id)}
+                    className={`shrink-0 px-3 py-2 rounded-full text-[10px] font-mono tracking-widest border transition
+                      ${
+                        active
+                          ? "border-[#a8eaff]/40 bg-[#a8eaff]/10 text-white"
+                          : "border-white/10 bg-white/[0.02] text-white/45"
+                      }`}
+                  >
+                    {cat.label.toUpperCase()}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        {/* Grid */}
-        <div className="px-4 sm:px-10 mt-6 sm:mt-10">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pb-10">
-            {filteredItems.map((item, idx) => (
-              <GalleryCard key={item.id} item={item} index={idx} onOpen={openModal} />
-            ))}
+        {/* desktop header */}
+        <div className="hidden sm:block sticky top-0 z-20 bg-black/15 backdrop-blur-xl border-b border-white/5">
+          <div className="px-8 py-6 flex items-end justify-between">
+            <div>
+              <div className="text-white/95 text-3xl font-thin tracking-tight">
+                {CATEGORIES.find((c) => c.id === filter)?.label || "Gallery"}
+              </div>
+              <div className="mt-1 text-[10px] font-mono text-[#cbb8ff]/70 tracking-[0.25em] uppercase">
+                {filteredItems.length} fragments
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search"
+                  className="w-64 bg-white/[0.03] border border-white/10 rounded-full py-2.5 px-4 pr-10
+                    text-xs text-white/80 placeholder:text-white/25 focus:outline-none focus:border-[#a8eaff]/40
+                    font-mono tracking-wider"
+                />
+                <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35" />
+              </div>
+
+              <div className="text-[10px] font-mono text-white/25 tracking-widest border border-white/10 px-3 py-2 rounded-full bg-white/[0.02]">
+                {filter.toUpperCase()}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Modal */}
+        {/* grid */}
+        <div
+          className="relative z-10 h-full overflow-y-auto scrollbar-hide"
+          style={{
+            paddingBottom: isMobile
+              ? "calc(env(safe-area-inset-bottom) + 18px)"
+              : "24px",
+          }}
+        >
+          <div className="px-4 sm:px-8 pt-6 pb-10">
+            {/* hero row (mobile only, if available) */}
+            {isMobile && filteredItems[0] && (
+              <div className="mb-6">
+                <GalleryHero item={filteredItems[0]} onOpen={() => openModal(0)} />
+              </div>
+            )}
+
+            <div
+              className={`grid gap-3 sm:gap-6 ${
+                isMobile
+                  ? "grid-cols-2"
+                  : "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+              }`}
+            >
+              {filteredItems.map((item, idx) => (
+                <GalleryCard key={item.id} item={item} index={idx} onOpen={openModal} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* modal */}
         {open && filteredItems[activeIndex] && (
           <GalleryModal
             item={filteredItems[activeIndex]}
+            index={activeIndex}
+            total={filteredItems.length}
             onClose={closeModal}
             onPrev={prev}
             onNext={next}
             hasMany={filteredItems.length > 1}
+            isMobile={isMobile}
+            items={filteredItems}
           />
         )}
       </main>
@@ -2069,14 +2187,73 @@ export const GalleryApp = () => {
   );
 };
 
-// --- Card: glass + edge glow + mobile double tap (single tap does nothing) ---
+function GalleryHero({ item, onOpen }) {
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="w-full rounded-[28px] overflow-hidden border border-white/10 bg-white/[0.02]
+        shadow-[0_24px_60px_-30px_rgba(0,0,0,0.85)] active:scale-[0.99] transition"
+      aria-label={`${item.title} preview`}
+    >
+      <div className="relative aspect-[16/10]">
+        {/* image */}
+        <img
+          src={item.file}
+          alt={item.title}
+          onLoad={() => setLoaded(true)}
+          className={`absolute inset-0 w-full h-full object-cover transition-all duration-[900ms]
+            ${loaded ? "opacity-100 scale-100" : "opacity-0 scale-[1.03]"}`}
+          draggable={false}
+        />
+        {/* skeleton */}
+        {!loaded && (
+          <div className="absolute inset-0 bg-white/[0.03] animate-pulse" />
+        )}
+
+        {/* overlays */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-black/10" />
+        <div
+          className="absolute inset-0 opacity-70 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(520px circle at 30% 20%, rgba(168,234,255,0.14), transparent 60%)",
+          }}
+        />
+
+        {/* text */}
+        <div className="absolute bottom-0 left-0 right-0 p-5">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <span className="text-[9px] font-mono text-[#a8eaff]/85 tracking-[0.25em] uppercase">
+              {formatMeta(item)}
+            </span>
+            <span className="text-[9px] font-mono text-white/25 tracking-[0.25em]">
+              FEATURED
+            </span>
+          </div>
+          <div className="text-white/95 text-lg font-semibold tracking-wide truncate">
+            {item.title}
+          </div>
+          <div className="mt-1 text-[11px] text-white/45 leading-relaxed line-clamp-2">
+            {item.desc || "Visual memory fragment."}
+          </div>
+        </div>
+
+        {/* edge */}
+        <div className="absolute inset-0 border border-white/10 rounded-[28px] pointer-events-none" />
+      </div>
+    </button>
+  );
+}
+
+// --- Card: mobile tap open (no accidental double-tap rule), premium glass & highlight ---
 function GalleryCard({ item, index, onOpen }) {
   const btnRef = useRef(null);
-  const lastTapRef = useRef(0);
-  const tapTimerRef = useRef(null);
+  const [loaded, setLoaded] = useState(false);
 
-  // mouse-follow highlight (desktop)
-  const onMouseMove = (e) => {
+  const onMove = (e) => {
     const el = btnRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
@@ -2085,123 +2262,160 @@ function GalleryCard({ item, index, onOpen }) {
     el.style.setProperty("--mx", `${x}%`);
     el.style.setProperty("--my", `${y}%`);
   };
-  const onMouseLeave = () => {
+
+  const onLeave = () => {
     const el = btnRef.current;
     if (!el) return;
     el.style.removeProperty("--mx");
     el.style.removeProperty("--my");
   };
 
-  // ✅ Mobile: double tap to open (single tap = no open)
-  const onTouchEnd = () => {
-    const now = Date.now();
-    const dt = now - lastTapRef.current;
-
-    if (dt > 0 && dt < 280) {
-      lastTapRef.current = 0;
-      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
-      onOpen(index);
-      return;
-    }
-
-    lastTapRef.current = now;
-    tapTimerRef.current = setTimeout(() => {}, 280);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
-    };
-  }, []);
-
   return (
-    <div className="group relative">
-      {/* outer aura */}
+    <div className="relative group">
+      {/* aura */}
       <div
-        className="absolute -inset-1 rounded-[28px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-2xl pointer-events-none"
+        className="absolute -inset-2 rounded-[26px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-2xl pointer-events-none"
         style={{
           background:
-            "radial-gradient(circle at center, rgba(168,234,255,0.18) 0%, transparent 60%)",
+            "radial-gradient(circle at center, rgba(168,234,255,0.14) 0%, transparent 60%)",
         }}
       />
 
-      {/* glass frame */}
       <button
         ref={btnRef}
         type="button"
-        className="
-          relative w-full aspect-[4/3] rounded-[28px] overflow-hidden
-          border border-white/10
+        onClick={() => onOpen(index)}
+        onMouseMove={onMove}
+        onMouseLeave={onLeave}
+        className="relative w-full rounded-[24px] overflow-hidden border border-white/10
           bg-white/[0.02] backdrop-blur-xl text-left
-          shadow-[0_20px_50px_-20px_rgba(0,0,0,0.75)]
+          shadow-[0_18px_46px_-26px_rgba(0,0,0,0.85)]
           transition-all duration-700
-          group-hover:border-[#a8eaff]/35 group-hover:shadow-[0_0_60px_rgba(168,234,255,0.10)]
-          active:scale-[0.98]
-        "
-        onDoubleClick={() => onOpen(index)} // Desktop
-        onTouchEnd={onTouchEnd} // Mobile
-        onMouseMove={onMouseMove}
-        onMouseLeave={onMouseLeave}
-        onClick={(e) => e.preventDefault()} // single click = no open
+          group-hover:border-[#a8eaff]/30 group-hover:shadow-[0_0_60px_rgba(168,234,255,0.10)]
+          active:scale-[0.985]"
         aria-label={`${item.title} preview`}
       >
-        {/* image */}
-        <div
-          className="
-            absolute inset-0 bg-cover bg-center
-            transition-transform duration-[1400ms] ease-out
-            scale-100 group-hover:scale-[1.06]
-            opacity-85 group-hover:opacity-100
-            grayscale group-hover:grayscale-0
-          "
-          style={{ backgroundImage: `url(${item.file})` }}
-        />
+        <div className="relative aspect-[4/4]">
+          {/* image */}
+          <img
+            src={item.file}
+            alt={item.title}
+            onLoad={() => setLoaded(true)}
+            className={`absolute inset-0 w-full h-full object-cover transition-all duration-[1200ms] ease-out
+              ${loaded ? "opacity-90 group-hover:opacity-100 scale-100" : "opacity-0 scale-[1.02]"}
+              grayscale group-hover:grayscale-0`}
+            draggable={false}
+          />
+          {!loaded && <div className="absolute inset-0 bg-white/[0.03] animate-pulse" />}
 
-        {/* soft vignette */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/10" />
+          {/* vignette */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/10" />
 
-        {/* glass reflection */}
-        <div
-          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.10), transparent 55%)",
-          }}
-        />
+          {/* glass highlight */}
+          <div
+            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(360px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.10), transparent 55%)",
+            }}
+          />
 
-        {/* meta + title */}
-        <div className="absolute bottom-0 left-0 right-0 p-5">
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_10px_rgba(168,234,255,0.5)]" />
-              <span className="text-[9px] font-mono text-[#a8eaff]/90 tracking-[0.25em] uppercase">
-                {item.meta}
-              </span>
-            </div>
-
-            <span className="shrink-0 text-[9px] font-mono text-white/30 tracking-[0.25em]">
-              #{String(index + 1).padStart(2, "0")}
+          {/* label */}
+          <div className="absolute top-3 left-3 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_10px_rgba(168,234,255,0.5)]" />
+            <span className="text-[9px] font-mono text-[#a8eaff]/85 tracking-[0.25em] uppercase">
+              {item.meta || "IMG"}
             </span>
           </div>
 
-          <div className="text-sm text-white tracking-[0.08em] font-semibold truncate">
-            {item.title}
+          {/* index */}
+          <div className="absolute top-3 right-3 text-[9px] font-mono text-white/25 tracking-[0.25em]">
+            #{String(index + 1).padStart(2, "0")}
           </div>
 
-          <div className="mt-1 text-[10px] text-white/40 font-light tracking-wide line-clamp-2">
-            {item.desc || "Visual memory fragment."}
+          {/* footer */}
+          <div className="absolute bottom-0 left-0 right-0 p-4">
+            <div className="text-[12px] text-white/95 tracking-wide font-semibold truncate">
+              {item.title}
+            </div>
+            <div className="mt-1 text-[10px] text-white/45 font-light tracking-wide line-clamp-2">
+              {item.desc || "Visual memory fragment."}
+            </div>
           </div>
+
+          {/* edge */}
+          <div className="absolute inset-0 rounded-[24px] pointer-events-none border border-white/0 group-hover:border-white/15 transition-colors duration-700" />
         </div>
-
-        {/* edge line */}
-        <div className="absolute inset-0 rounded-[28px] pointer-events-none border border-white/0 group-hover:border-white/15 transition-colors duration-700" />
       </button>
     </div>
   );
 }
 
-// --- Modal: cinematic preview (mobile-friendly) ---
-function GalleryModal({ item, onClose, onPrev, onNext, hasMany }) {
+// --- Modal: swipe (mobile) • cinematic • ultra-clean ---
+function GalleryModal({ item, index, total, onClose, onPrev, onNext, hasMany, isMobile, items }) {
+  const [loaded, setLoaded] = useState(false);
+  const [drag, setDrag] = useState({ x: 0, y: 0, active: false });
+  const startRef = useRef({ x: 0, y: 0 });
+  const lastRef = useRef({ x: 0, y: 0 });
+  const rafRef = useRef(0);
+
+  useLockBodyScroll(true);
+  usePrefetchAround(items, index, true);
+
+  const apply = (x, y, active) => {
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      setDrag({ x, y, active });
+    });
+  };
+
+  const onPointerDown = (e) => {
+    if (!isMobile) return;
+    startRef.current = { x: e.clientX, y: e.clientY };
+    lastRef.current = { x: 0, y: 0 };
+    apply(0, 0, true);
+  };
+
+  const onPointerMove = (e) => {
+    if (!isMobile) return;
+    if (!drag.active) return;
+    const dx = e.clientX - startRef.current.x;
+    const dy = e.clientY - startRef.current.y;
+    lastRef.current = { x: dx, y: dy };
+    apply(dx, dy, true);
+  };
+
+  const onPointerUp = () => {
+    if (!isMobile) return;
+    if (!drag.active) return;
+
+    const { x: dx, y: dy } = lastRef.current;
+    const ax = Math.abs(dx);
+    const ay = Math.abs(dy);
+
+    // Vertical swipe down to close
+    if (dy > 90 && ay > ax * 1.1) {
+      apply(dx, dy, false);
+      setTimeout(onClose, 120);
+      return;
+    }
+
+    // Horizontal swipe for navigation
+    if (hasMany && ax > 70 && ax > ay * 1.1) {
+      apply(0, 0, false);
+      if (dx > 0) onPrev();
+      else onNext();
+      return;
+    }
+
+    // Snap back
+    apply(0, 0, false);
+  };
+
+  const scale = drag.active ? 0.985 : 1;
+  const backdropOpacity = clamp(0.92 - Math.abs(drag.y) / 520, 0.45, 0.92);
+  const cardTransform = `translate3d(${drag.x * 0.6}px, ${drag.y}px, 0) scale(${scale})`;
+
   return (
     <div
       className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-6"
@@ -2209,11 +2423,9 @@ function GalleryModal({ item, onClose, onPrev, onNext, hasMany }) {
       aria-modal="true"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
       onTouchStart={(e) => e.target === e.currentTarget && onClose()}
+      style={{ background: `rgba(0,0,0,${backdropOpacity})` }}
     >
-      {/* backdrop */}
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
-
-      {/* center glow */}
+      {/* glow */}
       <div
         className="absolute inset-0 opacity-70 pointer-events-none"
         style={{
@@ -2221,6 +2433,7 @@ function GalleryModal({ item, onClose, onPrev, onNext, hasMany }) {
             "radial-gradient(circle at center, rgba(168,234,255,0.12) 0%, transparent 55%)",
         }}
       />
+      <div className="absolute inset-0 gallery-grain opacity-[0.12] pointer-events-none" />
 
       <div className="relative w-full max-w-5xl">
         <div
@@ -2231,33 +2444,58 @@ function GalleryModal({ item, onClose, onPrev, onNext, hasMany }) {
           }}
         />
 
-        <div className="relative bg-[#070707] border border-white/10 rounded-2xl overflow-hidden shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85)]">
+        <div
+          className="relative bg-[#070707] border border-white/10 rounded-2xl overflow-hidden
+            shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85)]"
+          style={{ transform: cardTransform, transition: drag.active ? "none" : "transform 220ms ease" }}
+        >
           {/* top bar */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/30">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/35 backdrop-blur-xl">
             <div className="min-w-0">
-              <div className="text-white/85 text-sm font-semibold tracking-wide truncate">
+              <div className="text-white/90 text-sm font-semibold tracking-wide truncate">
                 {item.title}
               </div>
-              <div className="text-[10px] font-mono text-[#a8eaff]/70 tracking-[0.25em] uppercase">
-                {item.meta}
+              <div className="text-[10px] font-mono text-[#a8eaff]/65 tracking-[0.25em] uppercase">
+                {formatMeta(item)}
               </div>
             </div>
 
-            <button
-              onClick={onClose}
-              className="w-9 h-9 rounded-full border border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center text-white/70"
-              aria-label="Close"
-            >
-              <X size={16} />
-            </button>
+            <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-2 text-[9px] font-mono text-white/25 tracking-widest border border-white/10 px-3 py-2 rounded-full bg-white/[0.02]">
+                {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+              </div>
+
+              <button
+                onClick={onClose}
+                className="w-10 h-10 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center text-white/80"
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
 
           {/* image */}
-          <div className="relative bg-black">
+          <div
+            className="relative bg-black select-none"
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+          >
+            {!loaded && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-8 h-8 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
+              </div>
+            )}
+
             <img
               src={item.file}
               alt={item.title}
-              className="w-full max-h-[78vh] object-contain"
+              onLoad={() => setLoaded(true)}
+              className={`w-full max-h-[78vh] object-contain transition-opacity duration-500 ${
+                loaded ? "opacity-100" : "opacity-0"
+              }`}
               draggable={false}
             />
 
@@ -2265,11 +2503,9 @@ function GalleryModal({ item, onClose, onPrev, onNext, hasMany }) {
               <>
                 <button
                   onClick={onPrev}
-                  className="
-                    absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
+                  className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
                     bg-black/35 hover:bg-black/55 border border-white/10
-                    flex items-center justify-center text-white/80 transition-all
-                  "
+                    items-center justify-center text-white/80 transition-all"
                   aria-label="Previous"
                 >
                   <ChevronLeft size={18} />
@@ -2277,23 +2513,53 @@ function GalleryModal({ item, onClose, onPrev, onNext, hasMany }) {
 
                 <button
                   onClick={onNext}
-                  className="
-                    absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
+                  className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
                     bg-black/35 hover:bg-black/55 border border-white/10
-                    flex items-center justify-center text-white/80 transition-all
-                  "
+                    items-center justify-center text-white/80 transition-all"
                   aria-label="Next"
                 >
                   <ChevronRight size={18} />
                 </button>
               </>
             )}
+
+            {/* subtle bottom meta on mobile */}
+            <div className="sm:hidden absolute left-0 right-0 bottom-0 p-3">
+              <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl px-4 py-3 flex items-center justify-between">
+                <div className="min-w-0">
+                  <div className="text-[10px] font-mono text-white/55 tracking-widest truncate">
+                    {item.title}
+                  </div>
+                  <div className="text-[9px] font-mono text-[#a8eaff]/55 tracking-[0.25em] uppercase">
+                    {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+                  </div>
+                </div>
+                {hasMany && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={onPrev}
+                      className="w-10 h-10 rounded-2xl border border-white/10 bg-white/[0.03] text-white/80"
+                      aria-label="Previous"
+                    >
+                      <ChevronLeft size={16} className="mx-auto" />
+                    </button>
+                    <button
+                      onClick={onNext}
+                      className="w-10 h-10 rounded-2xl border border-white/10 bg-white/[0.03] text-white/80"
+                      aria-label="Next"
+                    >
+                      <ChevronRight size={16} className="mx-auto" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* footer */}
-          <div className="px-4 py-3 border-t border-white/10 bg-black/25">
-            <div className="text-[10px] text-white/40 font-mono tracking-widest">
-              tap backdrop to close • Esc • ← →
+          {/* footer (desktop) */}
+          <div className="hidden sm:block px-4 py-3 border-t border-white/10 bg-black/25">
+            <div className="text-[10px] text-white/35 font-mono tracking-widest">
+              Esc • ← → • click backdrop to close
             </div>
           </div>
         </div>
@@ -3630,6 +3896,26 @@ const GLOBAL_CSS = `
 /* 100dvh support fallback */
 body { margin: 0; background: #000; overflow: hidden; height: 100vh; height: 100dvh; }
 `;
+/* --- Gallery micro-grain (premium texture) --- */
+.gallery-grain{
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+  background-size: 140px 140px;
+  mix-blend-mode: overlay;
+}
+
+/* line-clamp helper (if not already) */
+.line-clamp-2{
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+
+/* slightly nicer tap feel */
+button{ -webkit-tap-highlight-color: transparent; }
+
+
 
 export default function os_usagi_xxxx() {
   const [mode, setMode] = useState("power");
