@@ -1831,15 +1831,10 @@ const FinderApp = () => {
   );
 };
 
-// --- GALLERY APP (MINIMAL • QUIET • PREMIUM • MOBILE-FIRST) ---
-// ✅ Mobile: scroll-snap horizontal paging (finger-sticky)
-// ✅ Tile: long-press lift (scale + shadow)
-// ✅ Category chips: one-finger swipe to prev/next category (also tap)
-// ✅ Keep existing “double tap full preview” logic untouched (not implemented/changed here)
+これぜんぶんかきかえて、ちゃんとおしゃれにして
+// --- GALLERY APP (MINIMAL • QUIET • PREMIUM) ---
 
 const clamp = (n, a, b) => Math.min(Math.max(n, a), b);
-
-// --- utils ------------------------------------------------------
 
 function useLockBodyScroll(locked) {
   useEffect(() => {
@@ -1877,56 +1872,6 @@ function formatMeta(item) {
   const ext = (item?.meta || "IMG").toUpperCase();
   return `${cat} • ${ext}`;
 }
-
-// swipe step helper: 1-finger prev/next
-function useSwipeStep({
-  enabled,
-  onStep, // (dir: -1 | 1) => void
-  threshold = 44,
-  slope = 1.2,
-}) {
-  const startRef = useRef({ x: 0, y: 0, active: false });
-
-  const onPointerDown = useCallback(
-    (e) => {
-      if (!enabled) return;
-      if (e.pointerType === "mouse") return;
-      startRef.current = { x: e.clientX, y: e.clientY, active: true };
-    },
-    [enabled]
-  );
-
-  const onPointerMove = useCallback(
-    (e) => {
-      if (!enabled) return;
-      if (!startRef.current.active) return;
-      const dx = e.clientX - startRef.current.x;
-      const dy = e.clientY - startRef.current.y;
-      if (Math.abs(dx) > Math.abs(dy) * slope) e.preventDefault?.();
-    },
-    [enabled, slope]
-  );
-
-  const onPointerUp = useCallback(
-    (e) => {
-      if (!enabled) return;
-      if (!startRef.current.active) return;
-      startRef.current.active = false;
-
-      const dx = e.clientX - startRef.current.x;
-      const dy = e.clientY - startRef.current.y;
-
-      if (Math.abs(dx) > threshold && Math.abs(dx) > Math.abs(dy) * slope) {
-        onStep(dx < 0 ? 1 : -1); // left swipe => next
-      }
-    },
-    [enabled, onStep, threshold, slope]
-  );
-
-  return { onPointerDown, onPointerMove, onPointerUp };
-}
-
-// --- main app ---------------------------------------------------
 
 const GalleryApp = () => {
   const isMobile = useIsMobile();
@@ -2001,26 +1946,26 @@ const GalleryApp = () => {
       {/* ambient */}
       <div className="absolute inset-0 pointer-events-none">
         <div
-          className="absolute -top-72 left-1/2 -translate-x-1/2 w-[980px] h-[560px] opacity-40 blur-3xl"
+          className="absolute -top-64 left-1/2 -translate-x-1/2 w-[980px] h-[560px] opacity-35 blur-3xl"
           style={{
             background:
-              "radial-gradient(circle at center, rgba(168,234,255,0.13) 0%, transparent 60%)",
+              "radial-gradient(circle at center, rgba(168,234,255,0.12) 0%, transparent 60%)",
           }}
         />
         <div
-          className="absolute -bottom-72 left-1/2 -translate-x-1/2 w-[980px] h-[560px] opacity-35 blur-3xl"
+          className="absolute -bottom-64 left-1/2 -translate-x-1/2 w-[980px] h-[560px] opacity-30 blur-3xl"
           style={{
             background:
-              "radial-gradient(circle at center, rgba(203,184,255,0.12) 0%, transparent 60%)",
+              "radial-gradient(circle at center, rgba(203,184,255,0.10) 0%, transparent 60%)",
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.03] via-transparent to-black/50" />
-        <div className="absolute inset-0 gallery-grain opacity-[0.085]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] via-transparent to-black/40" />
+        <div className="absolute inset-0 gallery-grain opacity-[0.08]" />
       </div>
 
       {/* header */}
-      <div className="relative z-30 sticky top-0 bg-black/25 backdrop-blur-2xl border-b border-white/5">
-        <div className="px-4 sm:px-8 pt-5 pb-4 flex items-center justify-between gap-3">
+      <div className="relative z-20 sticky top-0 bg-black/25 backdrop-blur-2xl border-b border-white/5">
+        <div className="px-4 sm:px-8 py-5 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-white/95 text-2xl sm:text-3xl font-thin tracking-tight truncate">
               Gallery
@@ -2035,13 +1980,12 @@ const GalleryApp = () => {
             <button
               onClick={() => setPickerOpen(true)}
               className="h-10 px-4 rounded-full border border-white/10 bg-white/[0.03] hover:bg-white/[0.06]
-                text-[10px] font-mono tracking-widest text-white/70 transition
-                shadow-[0_18px_50px_-38px_rgba(203,184,255,0.25)]"
+                text-[10px] font-mono tracking-widest text-white/70 transition"
             >
               {activeLabel.toUpperCase()}
             </button>
 
-            {/* search (desktop) */}
+            {/* search */}
             <div className="relative hidden sm:block">
               <input
                 value={query}
@@ -2060,7 +2004,7 @@ const GalleryApp = () => {
             {/* mobile search icon */}
             <button
               onClick={() => setQuery((v) => (v ? "" : v))}
-              className="sm:hidden w-10 h-10 rounded-2xl border border-white/10 bg-white/[0.03] active:scale-[0.98] transition"
+              className="sm:hidden w-10 h-10 rounded-2xl border border-white/10 bg-white/[0.03]"
               aria-label="Search"
             >
               <Search size={16} className="mx-auto text-white/60" />
@@ -2069,7 +2013,7 @@ const GalleryApp = () => {
         </div>
 
         {/* mobile search bar */}
-        <div className="sm:hidden px-4 pb-3">
+        <div className="sm:hidden px-4 pb-4">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -2079,18 +2023,39 @@ const GalleryApp = () => {
               font-mono tracking-wider"
           />
         </div>
-
-        {/* mobile category chips (swipe to step category) */}
-        {isMobile && (
-          <MobileCategoryChips
-            categories={CATEGORIES}
-            value={filter}
-            onChange={setFilter}
-          />
-        )}
       </div>
 
-      {/* content */}
+{/* mobile category chips (quick) */}
+{isMobile && (
+  <div className="relative z-20 px-4 pb-3 -mt-2">
+    <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1">
+      {CATEGORIES.map((cat) => {
+        const active = filter === cat.id;
+        return (
+          <button
+            key={cat.id}
+            onClick={() => setFilter(cat.id)}
+            className={`shrink-0 h-9 px-4 rounded-full border text-[10px] font-mono tracking-widest transition
+              ${
+                active
+                  ? "border-[#a8eaff]/35 bg-[#a8eaff]/12 text-white shadow-[0_10px_30px_-18px_rgba(168,234,255,0.35)]"
+                  : "border-white/10 bg-white/[0.02] text-white/50 active:scale-[0.98]"
+              }`}
+          >
+            {cat.label.toUpperCase()}
+          </button>
+        );
+      })}
+    </div>
+
+    {/* subtle fade edges */}
+    <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-black/70 to-transparent" />
+    <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-black/70 to-transparent" />
+  </div>
+)}
+
+
+      {/* content (masonry-ish via columns) */}
       <div
         className="relative z-10 h-full overflow-y-auto scrollbar-hide"
         style={{
@@ -2105,7 +2070,12 @@ const GalleryApp = () => {
               ${isMobile ? "columns-2" : "columns-2 md:columns-3 lg:columns-4"}`}
           >
             {filteredItems.map((item, idx) => (
-              <GalleryTile key={item.id} item={item} index={idx} onOpen={openModal} />
+              <GalleryTile
+                key={item.id}
+                item={item}
+                index={idx}
+                onOpen={openModal}
+              />
             ))}
           </div>
 
@@ -2119,7 +2089,7 @@ const GalleryApp = () => {
         </div>
       </div>
 
-      {/* filter picker */}
+      {/* filter picker (bottom sheet on mobile, modal on desktop) */}
       {pickerOpen && (
         <div
           className="fixed inset-0 z-[999] bg-black/70 backdrop-blur-sm"
@@ -2154,7 +2124,7 @@ const GalleryApp = () => {
                       className={`px-3 py-3 rounded-xl border text-[10px] font-mono tracking-widest transition
                         ${
                           active
-                            ? "border-[#a8eaff]/35 bg-[#a8eaff]/10 text-white shadow-[0_16px_50px_-40px_rgba(168,234,255,0.30)]"
+                            ? "border-[#a8eaff]/35 bg-[#a8eaff]/10 text-white"
                             : "border-white/10 bg-white/[0.02] text-white/50 hover:text-white hover:bg-white/[0.05]"
                         }`}
                     >
@@ -2177,7 +2147,6 @@ const GalleryApp = () => {
           onClose={closeModal}
           onPrev={prev}
           onNext={next}
-          onSetIndex={setActiveIndex} // ★ scroll-snap syncing
           hasMany={filteredItems.length > 1}
           isMobile={isMobile}
           items={filteredItems}
@@ -2187,113 +2156,20 @@ const GalleryApp = () => {
   );
 };
 
-// --- components -------------------------------------------------
-
-function MobileCategoryChips({ categories, value, onChange }) {
-  const chipRefs = useRef(new Map());
-
-  const indexOf = useCallback(
-    (id) => Math.max(0, categories.findIndex((c) => c.id === id)),
-    [categories]
-  );
-
-  const step = useCallback(
-    (dir) => {
-      const i = indexOf(value);
-      const next = clamp(i + dir, 0, categories.length - 1);
-      const id = categories[next]?.id;
-      if (id && id !== value) onChange(id);
-    },
-    [categories, value, onChange, indexOf]
-  );
-
-  const swipe = useSwipeStep({
-    enabled: true,
-    onStep: (dir) => step(dir),
-    threshold: 44,
-    slope: 1.2,
-  });
-
-  useEffect(() => {
-    const el = chipRefs.current.get(value);
-    el?.scrollIntoView?.({ behavior: "smooth", inline: "center", block: "nearest" });
-  }, [value]);
-
-  return (
-    <div className="relative z-20 px-4 pb-3 -mt-1">
-      <div
-        className="flex gap-2 overflow-x-auto scrollbar-hide py-1"
-        style={{ touchAction: "pan-y" }}
-        onPointerDown={swipe.onPointerDown}
-        onPointerMove={swipe.onPointerMove}
-        onPointerUp={swipe.onPointerUp}
-        onPointerCancel={swipe.onPointerUp}
-      >
-        {categories.map((cat) => {
-          const active = value === cat.id;
-          return (
-            <button
-              key={cat.id}
-              ref={(node) => {
-                if (!node) return;
-                chipRefs.current.set(cat.id, node);
-              }}
-              onClick={() => onChange(cat.id)}
-              className={`shrink-0 h-9 px-4 rounded-full border text-[10px] font-mono tracking-widest transition
-                ${
-                  active
-                    ? "border-[#a8eaff]/35 bg-[#a8eaff]/12 text-white shadow-[0_14px_40px_-28px_rgba(168,234,255,0.35)]"
-                    : "border-white/10 bg-white/[0.02] text-white/50 active:scale-[0.98]"
-                }`}
-            >
-              {cat.label.toUpperCase()}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* fade edges */}
-      <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-black/70 to-transparent" />
-      <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-black/70 to-transparent" />
-    </div>
-  );
-}
-
 function GalleryTile({ item, index, onOpen }) {
   const [loaded, setLoaded] = useState(false);
-  const [press, setPress] = useState(false);
-  const timerRef = useRef(0);
 
-  const clear = () => {
-    window.clearTimeout(timerRef.current);
-    timerRef.current = 0;
-    setPress(false);
-  };
-
-  const onPointerDown = (e) => {
-    if (e.pointerType === "mouse") return;
-    clear();
-    timerRef.current = window.setTimeout(() => setPress(true), 110);
-  };
-
+  // masonry: avoid breaking inside columns
   return (
     <button
       type="button"
       onClick={() => onOpen(index)}
-      onPointerDown={onPointerDown}
-      onPointerUp={clear}
-      onPointerCancel={clear}
-      onPointerLeave={clear}
-      onContextMenu={(e) => e.preventDefault()}
-      className={`mb-3 sm:mb-5 w-full break-inside-avoid rounded-2xl overflow-hidden
+      className="mb-3 sm:mb-5 w-full break-inside-avoid rounded-2xl overflow-hidden
         border border-white/10 bg-white/[0.02]
         shadow-[0_18px_46px_-30px_rgba(0,0,0,0.85)]
         hover:border-[#a8eaff]/25 hover:bg-white/[0.04]
-        transition-transform transition-shadow duration-200
-        ${press ? "scale-[1.02] shadow-[0_34px_90px_-55px_rgba(168,234,255,0.35)]" : "scale-100"}
-      `}
+        transition"
       aria-label={`${item.title} preview`}
-      style={{ touchAction: "manipulation" }}
     >
       <div className="relative">
         <img
@@ -2307,12 +2183,14 @@ function GalleryTile({ item, index, onOpen }) {
         />
         {!loaded && <div className="aspect-square w-full bg-white/[0.03] animate-pulse" />}
 
+        {/* minimal tag */}
         <div className="absolute top-3 left-3 px-3 py-1.5 rounded-full border border-white/10 bg-black/45 backdrop-blur-xl">
           <span className="text-[9px] font-mono text-[#a8eaff]/80 tracking-[0.25em] uppercase">
             {item.meta || "IMG"}
           </span>
         </div>
 
+        {/* title (quiet) */}
         <div className="absolute bottom-0 left-0 right-0 p-4">
           <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl px-4 py-3">
             <div className="text-[11px] text-white/90 tracking-wide font-semibold truncate">
@@ -2330,7 +2208,8 @@ function GalleryTile({ item, index, onOpen }) {
   );
 }
 
-// --- Modal: premium mobile (scroll-snap paging + drag-to-close on top bar) ---
+// --- Modal: ultra-clean, no “how to use” text ---
+// --- Modal: premium mobile gestures, no “how to use” text ---
 function GalleryModalMinimal({
   item,
   index,
@@ -2338,101 +2217,106 @@ function GalleryModalMinimal({
   onClose,
   onPrev,
   onNext,
-  onSetIndex,
   hasMany,
   isMobile,
   items,
 }) {
   const [loaded, setLoaded] = useState(false);
-
-  // close drag (mobile, top bar only)
-  const [closeDrag, setCloseDrag] = useState({ y: 0, active: false });
-  const closeStartRef = useRef({ y: 0, t: 0 });
+  const [drag, setDrag] = useState({ x: 0, y: 0, active: false });
+  const startRef = useRef({ x: 0, y: 0, t: 0 });
+  const lastRef = useRef({ x: 0, y: 0, t: 0 });
+  const pointerIdRef = useRef(null);
   const rafRef = useRef(0);
-
-  // snap pager
-  const scRef = useRef(null);
-  const wRef = useRef(1);
-  const scrollEndRef = useRef(0);
 
   useLockBodyScroll(true);
   usePrefetchAround(items, index, true);
 
+  // reset loader when item changes
   useEffect(() => setLoaded(false), [item?.file]);
 
-  const applyClose = (y, active) => {
+  const apply = (x, y, active) => {
     cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(() => setCloseDrag({ y, active }));
+    rafRef.current = requestAnimationFrame(() => setDrag({ x, y, active }));
   };
 
-  const onTopDown = (e) => {
-    if (!isMobile) return;
-    if (e.pointerType === "mouse") return;
-    closeStartRef.current = { y: e.clientY, t: performance.now() };
-    applyClose(0, true);
+  const rubber = (d, k = 0.55) => {
+    // iOS-ish resistance
+    const s = Math.sign(d);
+    const a = Math.abs(d);
+    return s * (1 - 1 / (a * k / 140 + 1)) * 140;
   };
 
-  const onTopMove = (e) => {
+  const onPointerDown = (e) => {
     if (!isMobile) return;
-    if (!closeDrag.active) return;
-    const dy = e.clientY - closeStartRef.current.y;
-    const y = dy < 0 ? dy * 0.35 : dy;
-    applyClose(y, true);
+    pointerIdRef.current = e.pointerId;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    const t = performance.now();
+    startRef.current = { x: e.clientX, y: e.clientY, t };
+    lastRef.current = { x: 0, y: 0, t };
+    apply(0, 0, true);
   };
 
-  const onTopUp = () => {
+  const onPointerMove = (e) => {
     if (!isMobile) return;
-    if (!closeDrag.active) return;
-    const dy = closeDrag.y;
-    const dt = Math.max(1, performance.now() - closeStartRef.current.t);
+    if (!drag.active) return;
+    const t = performance.now();
+
+    const dx = e.clientX - startRef.current.x;
+    const dy = e.clientY - startRef.current.y;
+
+    // resistance: vertical close feels “heavier”, horizontal is “snappier”
+    const rx = rubber(dx, 0.7);
+    const ry = dy < 0 ? rubber(dy, 0.55) : dy; // upward also resists a bit
+
+    lastRef.current = { x: dx, y: dy, t };
+    apply(rx, ry, true);
+  };
+
+  const onPointerUp = () => {
+    if (!isMobile) return;
+    if (!drag.active) return;
+
+    const { x: dx, y: dy, t: t1 } = lastRef.current;
+    const { t: t0 } = startRef.current;
+    const dt = Math.max(1, t1 - t0);
+
+    const vx = dx / dt; // px/ms
     const vy = dy / dt;
 
-    if (dy > 90 || vy > 0.85) {
-      applyClose(dy, false);
+    const ax = Math.abs(dx);
+    const ay = Math.abs(dy);
+
+    // swipe down close (distance OR velocity)
+    if ((dy > 90 && ay > ax * 1.05) || (vy > 0.75 && dy > 40)) {
+      apply(drag.x, dy, false);
       setTimeout(onClose, 120);
       return;
     }
-    applyClose(0, false);
+
+    // swipe left/right nav (distance OR velocity)
+    if (
+      hasMany &&
+      ((ax > 70 && ax > ay * 1.05) || Math.abs(vx) > 0.85) &&
+      ay < 140
+    ) {
+      apply(0, 0, false);
+      if (dx > 0) onPrev();
+      else onNext();
+      return;
+    }
+
+    apply(0, 0, false);
   };
 
-  // snap width + keep aligned on rotate
-  useEffect(() => {
-    if (!isMobile) return;
-    const el = scRef.current;
-    if (!el) return;
+  const scale = drag.active ? 0.988 : 1;
 
-    const ro = new ResizeObserver(() => {
-      wRef.current = el.clientWidth || 1;
-      el.scrollTo({ left: wRef.current * index, behavior: "instant" });
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [isMobile, index]);
+  const backdropOpacity = clamp(
+    0.92 - Math.max(0, drag.y) / 520 - Math.abs(drag.x) / 1200,
+    0.45,
+    0.92
+  );
 
-  // external index changes => scroll
-  useEffect(() => {
-    if (!isMobile) return;
-    const el = scRef.current;
-    if (!el) return;
-    const w = wRef.current || el.clientWidth || 1;
-    el.scrollTo({ left: w * index, behavior: "smooth" });
-  }, [isMobile, index]);
-
-  const syncIndexFromScroll = () => {
-    const el = scRef.current;
-    if (!el) return;
-    const w = wRef.current || el.clientWidth || 1;
-    const i = clamp(Math.round(el.scrollLeft / w), 0, items.length - 1);
-    if (i !== index) onSetIndex?.(i);
-  };
-
-  const onScroll = () => {
-    window.clearTimeout(scrollEndRef.current);
-    scrollEndRef.current = window.setTimeout(syncIndexFromScroll, 90);
-  };
-
-  const backdropOpacity = clamp(0.92 - Math.max(0, closeDrag.y) / 520, 0.45, 0.92);
-  const cardTransform = `translate3d(0, ${closeDrag.y}px, 0) scale(${closeDrag.active ? 0.992 : 1})`;
+  const cardTransform = `translate3d(${drag.x * 0.85}px, ${drag.y}px, 0) scale(${scale})`;
 
   return (
     <div
@@ -2443,6 +2327,7 @@ function GalleryModalMinimal({
       onTouchStart={(e) => e.target === e.currentTarget && onClose()}
       style={{ background: `rgba(0,0,0,${backdropOpacity})` }}
     >
+      {/* ambient */}
       <div
         className="absolute inset-0 opacity-70 pointer-events-none"
         style={{
@@ -2472,18 +2357,12 @@ function GalleryModalMinimal({
             shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85)]"
           style={{
             transform: cardTransform,
-            transition: closeDrag.active ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)",
+            transition: drag.active ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)",
           }}
         >
-          {/* top bar (drag-to-close only here on mobile) */}
-          <div
-            className="relative flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/35 backdrop-blur-xl"
-            style={{ touchAction: "pan-y" }}
-            onPointerDown={onTopDown}
-            onPointerMove={onTopMove}
-            onPointerUp={onTopUp}
-            onPointerCancel={onTopUp}
-          >
+          {/* top bar */}
+          <div className="relative flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/35 backdrop-blur-xl">
+            {/* drag handle (mobile only, no text) */}
             {isMobile && (
               <div className="absolute left-1/2 -translate-x-1/2 top-2 w-12 h-1 rounded-full bg-white/15" />
             )}
@@ -2512,90 +2391,82 @@ function GalleryModalMinimal({
             </div>
           </div>
 
-          {/* image area */}
-          <div className="relative bg-black select-none">
-            {isMobile ? (
-              <div
-                ref={scRef}
-                onScroll={onScroll}
-                className="w-full overflow-x-auto scrollbar-hide flex snap-x snap-mandatory"
-                style={{
-                  WebkitOverflowScrolling: "touch",
-                  overscrollBehaviorX: "contain",
-                  scrollBehavior: "smooth",
-                  touchAction: "pan-x",
-                }}
-              >
-                {items.map((it, i) => (
-                  <div
-                    key={it.id || i}
-                    className="snap-center shrink-0 w-full flex items-center justify-center"
-                    style={{ minHeight: "min(78vh, 720px)" }}
-                  >
-                    {!loaded && i === index && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-8 h-8 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
-                      </div>
-                    )}
-
-                    <img
-                      src={it.file}
-                      alt={it.title}
-                      onLoad={() => i === index && setLoaded(true)}
-                      className={`w-full max-h-[78vh] object-contain transition-opacity duration-300 ${
-                        i === index && loaded ? "opacity-100" : "opacity-95"
-                      }`}
-                      draggable={false}
-                    />
-                  </div>
-                ))}
+          {/* image */}
+          <div
+            className="relative bg-black select-none"
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            style={{
+              touchAction: "none", // keep gestures crisp
+            }}
+          >
+            {!loaded && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-8 h-8 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
               </div>
-            ) : (
+            )}
+
+            <img
+              src={item.file}
+              alt={item.title}
+              onLoad={() => setLoaded(true)}
+              className={`w-full max-h-[78vh] object-contain transition-opacity duration-500 ${
+                loaded ? "opacity-100" : "opacity-0"
+              }`}
+              draggable={false}
+            />
+
+            {/* edge hint glow while dragging horizontally */}
+            {hasMany && isMobile && (
               <>
-                {!loaded && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-8 h-8 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
-                  </div>
-                )}
-
-                <img
-                  src={item.file}
-                  alt={item.title}
-                  onLoad={() => setLoaded(true)}
-                  className={`w-full max-h-[78vh] object-contain transition-opacity duration-500 ${
-                    loaded ? "opacity-100" : "opacity-0"
-                  }`}
-                  draggable={false}
+                <div
+                  className="pointer-events-none absolute inset-y-0 left-0 w-16"
+                  style={{
+                    opacity: clamp(Math.max(0, drag.x) / 140, 0, 0.35),
+                    background:
+                      "linear-gradient(to right, rgba(168,234,255,0.22), transparent)",
+                  }}
                 />
+                <div
+                  className="pointer-events-none absolute inset-y-0 right-0 w-16"
+                  style={{
+                    opacity: clamp(Math.max(0, -drag.x) / 140, 0, 0.35),
+                    background:
+                      "linear-gradient(to left, rgba(168,234,255,0.22), transparent)",
+                  }}
+                />
+              </>
+            )}
 
-                {hasMany && (
-                  <>
-                    <button
-                      onClick={onPrev}
-                      className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
-                        bg-black/35 hover:bg-black/55 border border-white/10
-                        items-center justify-center text-white/80 transition-all"
-                      aria-label="Previous"
-                    >
-                      <ChevronLeft size={18} />
-                    </button>
+            {/* desktop arrows */}
+            {hasMany && (
+              <>
+                <button
+                  onClick={onPrev}
+                  className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
+                    bg-black/35 hover:bg-black/55 border border-white/10
+                    items-center justify-center text-white/80 transition-all"
+                  aria-label="Previous"
+                >
+                  <ChevronLeft size={18} />
+                </button>
 
-                    <button
-                      onClick={onNext}
-                      className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
-                        bg-black/35 hover:bg-black/55 border border-white/10
-                        items-center justify-center text-white/80 transition-all"
-                      aria-label="Next"
-                    >
-                      <ChevronRight size={18} />
-                    </button>
-                  </>
-                )}
+                <button
+                  onClick={onNext}
+                  className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
+                    bg-black/35 hover:bg-black/55 border border-white/10
+                    items-center justify-center text-white/80 transition-all"
+                  aria-label="Next"
+                >
+                  <ChevronRight size={18} />
+                </button>
               </>
             )}
           </div>
 
-          {/* mobile footer */}
+          {/* mobile bottom indicator (premium, no text) */}
           {isMobile && (
             <div className="px-4 py-3 border-t border-white/10 bg-black/25 backdrop-blur-xl">
               <div className="flex items-center justify-between">
@@ -2603,6 +2474,7 @@ function GalleryModalMinimal({
                   {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
                 </div>
 
+                {/* dots */}
                 <div className="flex items-center gap-1.5">
                   {Array.from({ length: Math.min(total, 9) }).map((_, i) => {
                     const t = Math.min(total, 9);
