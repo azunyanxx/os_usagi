@@ -846,7 +846,7 @@ const AudioEngine = {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = type;
-    osc.frequency.se、tValueAtTime(freq, t);
+    osc.frequency.setValueAtTime(freq, t);
     gain.gain.setValueAtTime(0, t);
     gain.gain.linearRampToValueAtTime(vol, t + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
@@ -1646,7 +1646,7 @@ const SystemApp = () => {
                   </p>
 
                   <p className="mt-2 text-[8px] font-mono text-[#a8eaff]/40 tracking-[0.3em]">
-                    // value matched: 19951215
+                    // value matched: 19921215
                   </p>
                 </div>
               )}
