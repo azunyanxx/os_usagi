@@ -1831,9 +1831,15 @@ const FinderApp = () => {
   );
 };
 
-// -- GALLERY APP (MOBILE-FIRST • AWARD-LEANING) --
+// --- GALLERY APP (MINIMAL • QUIET • PREMIUM • MOBILE-FIRST) ---
+// ✅ Mobile: scroll-snap horizontal paging (finger-sticky)
+// ✅ Tile: long-press lift (scale + shadow)
+// ✅ Category chips: one-finger swipe to prev/next category (also tap)
+// ✅ Keep existing “double tap full preview” logic untouched (not implemented/changed here)
 
 const clamp = (n, a, b) => Math.min(Math.max(n, a), b);
+
+// --- utils ------------------------------------------------------
 
 function useLockBodyScroll(locked) {
   useEffect(() => {
@@ -1872,27 +1878,78 @@ function formatMeta(item) {
   return `${cat} • ${ext}`;
 }
 
+// swipe step helper: 1-finger prev/next
+function useSwipeStep({
+  enabled,
+  onStep, // (dir: -1 | 1) => void
+  threshold = 44,
+  slope = 1.2,
+}) {
+  const startRef = useRef({ x: 0, y: 0, active: false });
+
+  const onPointerDown = useCallback(
+    (e) => {
+      if (!enabled) return;
+      if (e.pointerType === "mouse") return;
+      startRef.current = { x: e.clientX, y: e.clientY, active: true };
+    },
+    [enabled]
+  );
+
+  const onPointerMove = useCallback(
+    (e) => {
+      if (!enabled) return;
+      if (!startRef.current.active) return;
+      const dx = e.clientX - startRef.current.x;
+      const dy = e.clientY - startRef.current.y;
+      if (Math.abs(dx) > Math.abs(dy) * slope) e.preventDefault?.();
+    },
+    [enabled, slope]
+  );
+
+  const onPointerUp = useCallback(
+    (e) => {
+      if (!enabled) return;
+      if (!startRef.current.active) return;
+      startRef.current.active = false;
+
+      const dx = e.clientX - startRef.current.x;
+      const dy = e.clientY - startRef.current.y;
+
+      if (Math.abs(dx) > threshold && Math.abs(dx) > Math.abs(dy) * slope) {
+        onStep(dx < 0 ? 1 : -1); // left swipe => next
+      }
+    },
+    [enabled, onStep, threshold, slope]
+  );
+
+  return { onPointerDown, onPointerMove, onPointerUp };
+}
+
+// --- main app ---------------------------------------------------
+
 const GalleryApp = () => {
   const isMobile = useIsMobile();
 
   const CATEGORIES = useMemo(
     () => [
-      { id: "all", label: "All", icon: Layers },
-      { id: "system", label: "System", icon: Cpu },
-      { id: "key", label: "Keys", icon: KeyIcon },
-      { id: "emotion", label: "Emotion", icon: AlertCircle },
-      { id: "life", label: "Life", icon: Heart },
-      { id: "work", label: "Work", icon: Coffee },
-      { id: "magic", label: "Magic", icon: Wand2 },
+      { id: "all", label: "All" },
+      { id: "system", label: "System" },
+      { id: "emotion", label: "Emotion" },
+      { id: "life", label: "Life" },
+      { id: "work", label: "Work" },
+      { id: "magic", label: "Magic" },
+      { id: "key", label: "Keys" },
     ],
     []
   );
 
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
+
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [searchOpen, setSearchOpen] = useState(false);
 
   const filteredItems = useMemo(() => {
     const items = GALLERY_ITEMS || [];
@@ -1906,24 +1963,17 @@ const GalleryApp = () => {
 
     const byText = (it) => {
       if (!q) return true;
-      const t = `${it?.title || ""} ${it?.desc || ""} ${it?.meta || ""}`.toLowerCase();
+      const t = `${it?.title || ""} ${it?.meta || ""}`.toLowerCase();
       return t.includes(q);
     };
 
     return items.filter((it) => byCat(it) && byText(it));
   }, [filter, query]);
 
-  // filter change safety
-  useEffect(() => {
-    setOpen(false);
-    setActiveIndex(0);
-  }, [filter]);
-
   const openModal = useCallback((idx) => {
     setActiveIndex(idx);
     setOpen(true);
   }, []);
-
   const closeModal = useCallback(() => setOpen(false), []);
   const prev = useCallback(() => {
     setActiveIndex((i) => (i - 1 + filteredItems.length) % filteredItems.length);
@@ -1944,508 +1994,511 @@ const GalleryApp = () => {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, closeModal, prev, next]);
 
+  const activeLabel = CATEGORIES.find((c) => c.id === filter)?.label || "All";
+
   return (
-    <div className="h-full w-full flex bg-[#050505] relative overflow-hidden">
-      {/* left rail (desktop only) */}
-      <aside className="hidden sm:flex w-56 border-r border-white/5 bg-black/35 backdrop-blur-xl p-4 flex-col">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <div className="text-white/80 text-sm tracking-wide font-semibold">Gallery</div>
-            <div className="text-[10px] font-mono text-[#cbb8ff]/70 tracking-[0.25em] uppercase">
-              Memory Archive
-            </div>
-          </div>
-          <div className="w-8 h-8 rounded-full border border-white/10 bg-white/[0.03] flex items-center justify-center">
-            <ImageIcon size={16} className="text-white/50" />
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setFilter(cat.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all
-                ${filter === cat.id ? "bg-white/10 text-white" : "text-white/40 hover:text-white hover:bg-white/5"}`}
-            >
-              <cat.icon size={16} className={filter === cat.id ? "text-[#a8eaff]" : "text-white/30"} />
-              <span className="text-xs">{cat.label}</span>
-              {filter === cat.id && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#a8eaff] animate-pulse" />}
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-auto pt-5 border-t border-white/5 flex items-center justify-between text-[10px] font-mono text-white/30 tracking-widest">
-          <span>{filteredItems.length} ITEMS</span>
-          <span className="text-[#a8eaff]/60">{query ? "FILTERED" : "READY"}</span>
-        </div>
-      </aside>
-
-      {/* main */}
-      <main className="flex-1 relative overflow-hidden">
-        {/* ambient */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div
-            className="absolute -top-56 left-1/2 -translate-x-1/2 w-[960px] h-[560px] opacity-40 blur-3xl"
-            style={{
-              background:
-                "radial-gradient(circle at center, rgba(168,234,255,0.14) 0%, transparent 60%)",
-            }}
-          />
-          <div
-            className="absolute -bottom-56 left-1/2 -translate-x-1/2 w-[980px] h-[560px] opacity-35 blur-3xl"
-            style={{
-              background:
-                "radial-gradient(circle at center, rgba(203,184,255,0.12) 0%, transparent 60%)",
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] via-transparent to-black/30" />
-          <div className="absolute inset-0 gallery-grain opacity-[0.08]" />
-        </div>
-
-        {/* top (mobile) */}
-        <div className="sm:hidden sticky top-0 z-30 bg-black/35 backdrop-blur-2xl border-b border-white/5">
-          <div className="px-4 pt-4 pb-3">
-            <div className="flex items-center justify-between">
-              <div className="min-w-0">
-                <div className="text-white/90 text-xl font-light tracking-tight truncate">
-                  {CATEGORIES.find((c) => c.id === filter)?.label || "Gallery"}
-                </div>
-                <div className="text-[10px] font-mono text-[#cbb8ff]/70 tracking-[0.25em] uppercase">
-                  {filteredItems.length} fragments
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setSearchOpen((v) => !v)}
-                  className="w-10 h-10 rounded-2xl border border-white/10 bg-white/[0.03] active:scale-[0.98] transition"
-                  aria-label="Search"
-                >
-                  <Search size={16} className="mx-auto text-white/70" />
-                </button>
-
-                <button
-                  onClick={() => {
-                    // quick cycle category on mobile (feels like native)
-                    const idx = CATEGORIES.findIndex((c) => c.id === filter);
-                    const nextCat = CATEGORIES[(idx + 1) % CATEGORIES.length];
-                    setFilter(nextCat.id);
-                  }}
-                  className="w-10 h-10 rounded-2xl border border-white/10 bg-white/[0.03] active:scale-[0.98] transition"
-                  aria-label="Next category"
-                >
-                  <ChevronRight size={16} className="mx-auto text-white/70" />
-                </button>
-              </div>
-            </div>
-
-            {/* search */}
-            <div
-              className={`mt-3 overflow-hidden transition-all duration-500 ${
-                searchOpen ? "max-h-20 opacity-100" : "max-h-0 opacity-0"
-              }`}
-            >
-              <div className="relative">
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search"
-                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl py-3 px-4 pr-10
-                    text-xs text-white/85 placeholder:text-white/25 focus:outline-none focus:border-[#a8eaff]/40
-                    font-mono tracking-wider"
-                />
-                <button
-                  onClick={() => setQuery("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl border border-white/10
-                    bg-white/[0.03] text-white/50"
-                  aria-label="Clear"
-                >
-                  <X size={14} className="mx-auto" />
-                </button>
-              </div>
-            </div>
-
-            {/* chips */}
-            <div className="mt-3 flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-              {CATEGORIES.map((cat) => {
-                const active = filter === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setFilter(cat.id)}
-                    className={`shrink-0 px-3 py-2 rounded-full text-[10px] font-mono tracking-widest border transition
-                      ${
-                        active
-                          ? "border-[#a8eaff]/40 bg-[#a8eaff]/10 text-white"
-                          : "border-white/10 bg-white/[0.02] text-white/45"
-                      }`}
-                  >
-                    {cat.label.toUpperCase()}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* desktop header */}
-        <div className="hidden sm:block sticky top-0 z-20 bg-black/15 backdrop-blur-xl border-b border-white/5">
-          <div className="px-8 py-6 flex items-end justify-between">
-            <div>
-              <div className="text-white/95 text-3xl font-thin tracking-tight">
-                {CATEGORIES.find((c) => c.id === filter)?.label || "Gallery"}
-              </div>
-              <div className="mt-1 text-[10px] font-mono text-[#cbb8ff]/70 tracking-[0.25em] uppercase">
-                {filteredItems.length} fragments
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search"
-                  className="w-64 bg-white/[0.03] border border-white/10 rounded-full py-2.5 px-4 pr-10
-                    text-xs text-white/80 placeholder:text-white/25 focus:outline-none focus:border-[#a8eaff]/40
-                    font-mono tracking-wider"
-                />
-                <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35" />
-              </div>
-
-              <div className="text-[10px] font-mono text-white/25 tracking-widest border border-white/10 px-3 py-2 rounded-full bg-white/[0.02]">
-                {filter.toUpperCase()}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* grid */}
+    <div className="h-full w-full bg-[#050505] text-white relative overflow-hidden">
+      {/* ambient */}
+      <div className="absolute inset-0 pointer-events-none">
         <div
-          className="relative z-10 h-full overflow-y-auto scrollbar-hide"
+          className="absolute -top-72 left-1/2 -translate-x-1/2 w-[980px] h-[560px] opacity-40 blur-3xl"
           style={{
-            paddingBottom: isMobile
-              ? "calc(env(safe-area-inset-bottom) + 18px)"
-              : "24px",
+            background:
+              "radial-gradient(circle at center, rgba(168,234,255,0.13) 0%, transparent 60%)",
           }}
-        >
-          <div className="px-4 sm:px-8 pt-6 pb-10">
-            {/* hero row (mobile only, if available) */}
-            {isMobile && filteredItems[0] && (
-              <div className="mb-6">
-                <GalleryHero item={filteredItems[0]} onOpen={() => openModal(0)} />
-              </div>
-            )}
+        />
+        <div
+          className="absolute -bottom-72 left-1/2 -translate-x-1/2 w-[980px] h-[560px] opacity-35 blur-3xl"
+          style={{
+            background:
+              "radial-gradient(circle at center, rgba(203,184,255,0.12) 0%, transparent 60%)",
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.03] via-transparent to-black/50" />
+        <div className="absolute inset-0 gallery-grain opacity-[0.085]" />
+      </div>
 
-            <div
-              className={`grid gap-3 sm:gap-6 ${
-                isMobile
-                  ? "grid-cols-2"
-                  : "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
-              }`}
-            >
-              {filteredItems.map((item, idx) => (
-                <GalleryCard key={item.id} item={item} index={idx} onOpen={openModal} />
-              ))}
+      {/* header */}
+      <div className="relative z-30 sticky top-0 bg-black/25 backdrop-blur-2xl border-b border-white/5">
+        <div className="px-4 sm:px-8 pt-5 pb-4 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-white/95 text-2xl sm:text-3xl font-thin tracking-tight truncate">
+              Gallery
             </div>
+            <div className="mt-1 text-[10px] font-mono text-[#cbb8ff]/70 tracking-[0.25em] uppercase">
+              {activeLabel} • {filteredItems.length}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* filter */}
+            <button
+              onClick={() => setPickerOpen(true)}
+              className="h-10 px-4 rounded-full border border-white/10 bg-white/[0.03] hover:bg-white/[0.06]
+                text-[10px] font-mono tracking-widest text-white/70 transition
+                shadow-[0_18px_50px_-38px_rgba(203,184,255,0.25)]"
+            >
+              {activeLabel.toUpperCase()}
+            </button>
+
+            {/* search (desktop) */}
+            <div className="relative hidden sm:block">
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search"
+                className="w-64 bg-white/[0.03] border border-white/10 rounded-full py-2.5 px-4 pr-10
+                  text-xs text-white/80 placeholder:text-white/25 focus:outline-none focus:border-[#a8eaff]/35
+                  font-mono tracking-wider"
+              />
+              <Search
+                size={14}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30"
+              />
+            </div>
+
+            {/* mobile search icon */}
+            <button
+              onClick={() => setQuery((v) => (v ? "" : v))}
+              className="sm:hidden w-10 h-10 rounded-2xl border border-white/10 bg-white/[0.03] active:scale-[0.98] transition"
+              aria-label="Search"
+            >
+              <Search size={16} className="mx-auto text-white/60" />
+            </button>
           </div>
         </div>
 
-        {/* modal */}
-        {open && filteredItems[activeIndex] && (
-          <GalleryModal
-            item={filteredItems[activeIndex]}
-            index={activeIndex}
-            total={filteredItems.length}
-            onClose={closeModal}
-            onPrev={prev}
-            onNext={next}
-            hasMany={filteredItems.length > 1}
-            isMobile={isMobile}
-            items={filteredItems}
+        {/* mobile search bar */}
+        <div className="sm:hidden px-4 pb-3">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search"
+            className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-3 px-4
+              text-xs text-white/80 placeholder:text-white/25 focus:outline-none focus:border-[#a8eaff]/35
+              font-mono tracking-wider"
+          />
+        </div>
+
+        {/* mobile category chips (swipe to step category) */}
+        {isMobile && (
+          <MobileCategoryChips
+            categories={CATEGORIES}
+            value={filter}
+            onChange={setFilter}
           />
         )}
-      </main>
+      </div>
+
+      {/* content */}
+      <div
+        className="relative z-10 h-full overflow-y-auto scrollbar-hide"
+        style={{
+          paddingBottom: isMobile
+            ? "calc(env(safe-area-inset-bottom) + 18px)"
+            : "24px",
+        }}
+      >
+        <div className="px-4 sm:px-8 py-8">
+          <div
+            className={`gap-3 sm:gap-5 [column-gap:12px] sm:[column-gap:20px]
+              ${isMobile ? "columns-2" : "columns-2 md:columns-3 lg:columns-4"}`}
+          >
+            {filteredItems.map((item, idx) => (
+              <GalleryTile key={item.id} item={item} index={idx} onOpen={openModal} />
+            ))}
+          </div>
+
+          {filteredItems.length === 0 && (
+            <div className="py-24 text-center">
+              <div className="text-white/30 text-sm font-mono tracking-widest">
+                NO RESULTS
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* filter picker */}
+      {pickerOpen && (
+        <div
+          className="fixed inset-0 z-[999] bg-black/70 backdrop-blur-sm"
+          onMouseDown={(e) => e.target === e.currentTarget && setPickerOpen(false)}
+          onTouchStart={(e) => e.target === e.currentTarget && setPickerOpen(false)}
+        >
+          <div className="absolute left-1/2 -translate-x-1/2 top-10 sm:top-20 w-[92%] sm:w-[520px]">
+            <div className="rounded-2xl border border-white/10 bg-[#070707] shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85)] overflow-hidden">
+              <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+                <div className="text-white/80 text-sm font-semibold tracking-wide">
+                  Filter
+                </div>
+                <button
+                  onClick={() => setPickerOpen(false)}
+                  className="w-10 h-10 rounded-2xl border border-white/10 hover:bg-white/10 transition"
+                  aria-label="Close"
+                >
+                  <X size={16} className="mx-auto text-white/70" />
+                </button>
+              </div>
+
+              <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {CATEGORIES.map((cat) => {
+                  const active = filter === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => {
+                        setFilter(cat.id);
+                        setPickerOpen(false);
+                      }}
+                      className={`px-3 py-3 rounded-xl border text-[10px] font-mono tracking-widest transition
+                        ${
+                          active
+                            ? "border-[#a8eaff]/35 bg-[#a8eaff]/10 text-white shadow-[0_16px_50px_-40px_rgba(168,234,255,0.30)]"
+                            : "border-white/10 bg-white/[0.02] text-white/50 hover:text-white hover:bg-white/[0.05]"
+                        }`}
+                    >
+                      {cat.label.toUpperCase()}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* modal */}
+      {open && filteredItems[activeIndex] && (
+        <GalleryModalMinimal
+          item={filteredItems[activeIndex]}
+          index={activeIndex}
+          total={filteredItems.length}
+          onClose={closeModal}
+          onPrev={prev}
+          onNext={next}
+          onSetIndex={setActiveIndex} // ★ scroll-snap syncing
+          hasMany={filteredItems.length > 1}
+          isMobile={isMobile}
+          items={filteredItems}
+        />
+      )}
     </div>
   );
 };
 
-function GalleryHero({ item, onOpen }) {
+// --- components -------------------------------------------------
+
+function MobileCategoryChips({ categories, value, onChange }) {
+  const chipRefs = useRef(new Map());
+
+  const indexOf = useCallback(
+    (id) => Math.max(0, categories.findIndex((c) => c.id === id)),
+    [categories]
+  );
+
+  const step = useCallback(
+    (dir) => {
+      const i = indexOf(value);
+      const next = clamp(i + dir, 0, categories.length - 1);
+      const id = categories[next]?.id;
+      if (id && id !== value) onChange(id);
+    },
+    [categories, value, onChange, indexOf]
+  );
+
+  const swipe = useSwipeStep({
+    enabled: true,
+    onStep: (dir) => step(dir),
+    threshold: 44,
+    slope: 1.2,
+  });
+
+  useEffect(() => {
+    const el = chipRefs.current.get(value);
+    el?.scrollIntoView?.({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [value]);
+
+  return (
+    <div className="relative z-20 px-4 pb-3 -mt-1">
+      <div
+        className="flex gap-2 overflow-x-auto scrollbar-hide py-1"
+        style={{ touchAction: "pan-y" }}
+        onPointerDown={swipe.onPointerDown}
+        onPointerMove={swipe.onPointerMove}
+        onPointerUp={swipe.onPointerUp}
+        onPointerCancel={swipe.onPointerUp}
+      >
+        {categories.map((cat) => {
+          const active = value === cat.id;
+          return (
+            <button
+              key={cat.id}
+              ref={(node) => {
+                if (!node) return;
+                chipRefs.current.set(cat.id, node);
+              }}
+              onClick={() => onChange(cat.id)}
+              className={`shrink-0 h-9 px-4 rounded-full border text-[10px] font-mono tracking-widest transition
+                ${
+                  active
+                    ? "border-[#a8eaff]/35 bg-[#a8eaff]/12 text-white shadow-[0_14px_40px_-28px_rgba(168,234,255,0.35)]"
+                    : "border-white/10 bg-white/[0.02] text-white/50 active:scale-[0.98]"
+                }`}
+            >
+              {cat.label.toUpperCase()}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* fade edges */}
+      <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-black/70 to-transparent" />
+      <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-black/70 to-transparent" />
+    </div>
+  );
+}
+
+function GalleryTile({ item, index, onOpen }) {
   const [loaded, setLoaded] = useState(false);
+  const [press, setPress] = useState(false);
+  const timerRef = useRef(0);
+
+  const clear = () => {
+    window.clearTimeout(timerRef.current);
+    timerRef.current = 0;
+    setPress(false);
+  };
+
+  const onPointerDown = (e) => {
+    if (e.pointerType === "mouse") return;
+    clear();
+    timerRef.current = window.setTimeout(() => setPress(true), 110);
+  };
 
   return (
     <button
       type="button"
-      onClick={onOpen}
-      className="w-full rounded-[28px] overflow-hidden border border-white/10 bg-white/[0.02]
-        shadow-[0_24px_60px_-30px_rgba(0,0,0,0.85)] active:scale-[0.99] transition"
+      onClick={() => onOpen(index)}
+      onPointerDown={onPointerDown}
+      onPointerUp={clear}
+      onPointerCancel={clear}
+      onPointerLeave={clear}
+      onContextMenu={(e) => e.preventDefault()}
+      className={`mb-3 sm:mb-5 w-full break-inside-avoid rounded-2xl overflow-hidden
+        border border-white/10 bg-white/[0.02]
+        shadow-[0_18px_46px_-30px_rgba(0,0,0,0.85)]
+        hover:border-[#a8eaff]/25 hover:bg-white/[0.04]
+        transition-transform transition-shadow duration-200
+        ${press ? "scale-[1.02] shadow-[0_34px_90px_-55px_rgba(168,234,255,0.35)]" : "scale-100"}
+      `}
       aria-label={`${item.title} preview`}
+      style={{ touchAction: "manipulation" }}
     >
-      <div className="relative aspect-[16/10]">
-        {/* image */}
+      <div className="relative">
         <img
           src={item.file}
           alt={item.title}
           onLoad={() => setLoaded(true)}
-          className={`absolute inset-0 w-full h-full object-cover transition-all duration-[900ms]
-            ${loaded ? "opacity-100 scale-100" : "opacity-0 scale-[1.03]"}`}
+          className={`w-full h-auto block transition-opacity duration-500 ${
+            loaded ? "opacity-100" : "opacity-0"
+          }`}
           draggable={false}
         />
-        {/* skeleton */}
-        {!loaded && (
-          <div className="absolute inset-0 bg-white/[0.03] animate-pulse" />
-        )}
+        {!loaded && <div className="aspect-square w-full bg-white/[0.03] animate-pulse" />}
 
-        {/* overlays */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-black/10" />
-        <div
-          className="absolute inset-0 opacity-70 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(520px circle at 30% 20%, rgba(168,234,255,0.14), transparent 60%)",
-          }}
-        />
+        <div className="absolute top-3 left-3 px-3 py-1.5 rounded-full border border-white/10 bg-black/45 backdrop-blur-xl">
+          <span className="text-[9px] font-mono text-[#a8eaff]/80 tracking-[0.25em] uppercase">
+            {item.meta || "IMG"}
+          </span>
+        </div>
 
-        {/* text */}
-        <div className="absolute bottom-0 left-0 right-0 p-5">
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <span className="text-[9px] font-mono text-[#a8eaff]/85 tracking-[0.25em] uppercase">
+        <div className="absolute bottom-0 left-0 right-0 p-4">
+          <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl px-4 py-3">
+            <div className="text-[11px] text-white/90 tracking-wide font-semibold truncate">
+              {item.title}
+            </div>
+            <div className="mt-1 text-[9px] font-mono text-white/35 tracking-[0.22em] uppercase truncate">
               {formatMeta(item)}
-            </span>
-            <span className="text-[9px] font-mono text-white/25 tracking-[0.25em]">
-              FEATURED
-            </span>
-          </div>
-          <div className="text-white/95 text-lg font-semibold tracking-wide truncate">
-            {item.title}
-          </div>
-          <div className="mt-1 text-[11px] text-white/45 leading-relaxed line-clamp-2">
-            {item.desc || "Visual memory fragment."}
+            </div>
           </div>
         </div>
 
-        {/* edge */}
-        <div className="absolute inset-0 border border-white/10 rounded-[28px] pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
       </div>
     </button>
   );
 }
 
-// --- Card: mobile tap open (no accidental double-tap rule), premium glass & highlight ---
-function GalleryCard({ item, index, onOpen }) {
-  const btnRef = useRef(null);
+// --- Modal: premium mobile (scroll-snap paging + drag-to-close on top bar) ---
+function GalleryModalMinimal({
+  item,
+  index,
+  total,
+  onClose,
+  onPrev,
+  onNext,
+  onSetIndex,
+  hasMany,
+  isMobile,
+  items,
+}) {
   const [loaded, setLoaded] = useState(false);
 
-  const onMove = (e) => {
-    const el = btnRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const x = ((e.clientX - r.left) / r.width) * 100;
-    const y = ((e.clientY - r.top) / r.height) * 100;
-    el.style.setProperty("--mx", `${x}%`);
-    el.style.setProperty("--my", `${y}%`);
-  };
-
-  const onLeave = () => {
-    const el = btnRef.current;
-    if (!el) return;
-    el.style.removeProperty("--mx");
-    el.style.removeProperty("--my");
-  };
-
-  return (
-    <div className="relative group">
-      {/* aura */}
-      <div
-        className="absolute -inset-2 rounded-[26px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-2xl pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(circle at center, rgba(168,234,255,0.14) 0%, transparent 60%)",
-        }}
-      />
-
-      <button
-        ref={btnRef}
-        type="button"
-        onClick={() => onOpen(index)}
-        onMouseMove={onMove}
-        onMouseLeave={onLeave}
-        className="relative w-full rounded-[24px] overflow-hidden border border-white/10
-          bg-white/[0.02] backdrop-blur-xl text-left
-          shadow-[0_18px_46px_-26px_rgba(0,0,0,0.85)]
-          transition-all duration-700
-          group-hover:border-[#a8eaff]/30 group-hover:shadow-[0_0_60px_rgba(168,234,255,0.10)]
-          active:scale-[0.985]"
-        aria-label={`${item.title} preview`}
-      >
-        <div className="relative aspect-[4/4]">
-          {/* image */}
-          <img
-            src={item.file}
-            alt={item.title}
-            onLoad={() => setLoaded(true)}
-            className={`absolute inset-0 w-full h-full object-cover transition-all duration-[1200ms] ease-out
-              ${loaded ? "opacity-90 group-hover:opacity-100 scale-100" : "opacity-0 scale-[1.02]"}
-              grayscale group-hover:grayscale-0`}
-            draggable={false}
-          />
-          {!loaded && <div className="absolute inset-0 bg-white/[0.03] animate-pulse" />}
-
-          {/* vignette */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/10" />
-
-          {/* glass highlight */}
-          <div
-            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
-            style={{
-              background:
-                "radial-gradient(360px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.10), transparent 55%)",
-            }}
-          />
-
-          {/* label */}
-          <div className="absolute top-3 left-3 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_10px_rgba(168,234,255,0.5)]" />
-            <span className="text-[9px] font-mono text-[#a8eaff]/85 tracking-[0.25em] uppercase">
-              {item.meta || "IMG"}
-            </span>
-          </div>
-
-          {/* index */}
-          <div className="absolute top-3 right-3 text-[9px] font-mono text-white/25 tracking-[0.25em]">
-            #{String(index + 1).padStart(2, "0")}
-          </div>
-
-          {/* footer */}
-          <div className="absolute bottom-0 left-0 right-0 p-4">
-            <div className="text-[12px] text-white/95 tracking-wide font-semibold truncate">
-              {item.title}
-            </div>
-            <div className="mt-1 text-[10px] text-white/45 font-light tracking-wide line-clamp-2">
-              {item.desc || "Visual memory fragment."}
-            </div>
-          </div>
-
-          {/* edge */}
-          <div className="absolute inset-0 rounded-[24px] pointer-events-none border border-white/0 group-hover:border-white/15 transition-colors duration-700" />
-        </div>
-      </button>
-    </div>
-  );
-}
-
-// --- Modal: swipe (mobile) • cinematic • ultra-clean ---
-function GalleryModal({ item, index, total, onClose, onPrev, onNext, hasMany, isMobile, items }) {
-  const [loaded, setLoaded] = useState(false);
-  const [drag, setDrag] = useState({ x: 0, y: 0, active: false });
-  const startRef = useRef({ x: 0, y: 0 });
-  const lastRef = useRef({ x: 0, y: 0 });
+  // close drag (mobile, top bar only)
+  const [closeDrag, setCloseDrag] = useState({ y: 0, active: false });
+  const closeStartRef = useRef({ y: 0, t: 0 });
   const rafRef = useRef(0);
+
+  // snap pager
+  const scRef = useRef(null);
+  const wRef = useRef(1);
+  const scrollEndRef = useRef(0);
 
   useLockBodyScroll(true);
   usePrefetchAround(items, index, true);
 
-  const apply = (x, y, active) => {
+  useEffect(() => setLoaded(false), [item?.file]);
+
+  const applyClose = (y, active) => {
     cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(() => {
-      setDrag({ x, y, active });
-    });
+    rafRef.current = requestAnimationFrame(() => setCloseDrag({ y, active }));
   };
 
-  const onPointerDown = (e) => {
+  const onTopDown = (e) => {
     if (!isMobile) return;
-    startRef.current = { x: e.clientX, y: e.clientY };
-    lastRef.current = { x: 0, y: 0 };
-    apply(0, 0, true);
+    if (e.pointerType === "mouse") return;
+    closeStartRef.current = { y: e.clientY, t: performance.now() };
+    applyClose(0, true);
   };
 
-  const onPointerMove = (e) => {
+  const onTopMove = (e) => {
     if (!isMobile) return;
-    if (!drag.active) return;
-    const dx = e.clientX - startRef.current.x;
-    const dy = e.clientY - startRef.current.y;
-    lastRef.current = { x: dx, y: dy };
-    apply(dx, dy, true);
+    if (!closeDrag.active) return;
+    const dy = e.clientY - closeStartRef.current.y;
+    const y = dy < 0 ? dy * 0.35 : dy;
+    applyClose(y, true);
   };
 
-  const onPointerUp = () => {
+  const onTopUp = () => {
     if (!isMobile) return;
-    if (!drag.active) return;
+    if (!closeDrag.active) return;
+    const dy = closeDrag.y;
+    const dt = Math.max(1, performance.now() - closeStartRef.current.t);
+    const vy = dy / dt;
 
-    const { x: dx, y: dy } = lastRef.current;
-    const ax = Math.abs(dx);
-    const ay = Math.abs(dy);
-
-    // Vertical swipe down to close
-    if (dy > 90 && ay > ax * 1.1) {
-      apply(dx, dy, false);
+    if (dy > 90 || vy > 0.85) {
+      applyClose(dy, false);
       setTimeout(onClose, 120);
       return;
     }
-
-    // Horizontal swipe for navigation
-    if (hasMany && ax > 70 && ax > ay * 1.1) {
-      apply(0, 0, false);
-      if (dx > 0) onPrev();
-      else onNext();
-      return;
-    }
-
-    // Snap back
-    apply(0, 0, false);
+    applyClose(0, false);
   };
 
-  const scale = drag.active ? 0.985 : 1;
-  const backdropOpacity = clamp(0.92 - Math.abs(drag.y) / 520, 0.45, 0.92);
-  const cardTransform = `translate3d(${drag.x * 0.6}px, ${drag.y}px, 0) scale(${scale})`;
+  // snap width + keep aligned on rotate
+  useEffect(() => {
+    if (!isMobile) return;
+    const el = scRef.current;
+    if (!el) return;
+
+    const ro = new ResizeObserver(() => {
+      wRef.current = el.clientWidth || 1;
+      el.scrollTo({ left: wRef.current * index, behavior: "instant" });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isMobile, index]);
+
+  // external index changes => scroll
+  useEffect(() => {
+    if (!isMobile) return;
+    const el = scRef.current;
+    if (!el) return;
+    const w = wRef.current || el.clientWidth || 1;
+    el.scrollTo({ left: w * index, behavior: "smooth" });
+  }, [isMobile, index]);
+
+  const syncIndexFromScroll = () => {
+    const el = scRef.current;
+    if (!el) return;
+    const w = wRef.current || el.clientWidth || 1;
+    const i = clamp(Math.round(el.scrollLeft / w), 0, items.length - 1);
+    if (i !== index) onSetIndex?.(i);
+  };
+
+  const onScroll = () => {
+    window.clearTimeout(scrollEndRef.current);
+    scrollEndRef.current = window.setTimeout(syncIndexFromScroll, 90);
+  };
+
+  const backdropOpacity = clamp(0.92 - Math.max(0, closeDrag.y) / 520, 0.45, 0.92);
+  const cardTransform = `translate3d(0, ${closeDrag.y}px, 0) scale(${closeDrag.active ? 0.992 : 1})`;
 
   return (
     <div
-      className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-6"
+      className="fixed inset-0 z-[999] flex items-center justify-center"
       role="dialog"
       aria-modal="true"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
       onTouchStart={(e) => e.target === e.currentTarget && onClose()}
       style={{ background: `rgba(0,0,0,${backdropOpacity})` }}
     >
-      {/* glow */}
       <div
         className="absolute inset-0 opacity-70 pointer-events-none"
         style={{
           background:
-            "radial-gradient(circle at center, rgba(168,234,255,0.12) 0%, transparent 55%)",
+            "radial-gradient(circle at center, rgba(168,234,255,0.10) 0%, transparent 55%)",
         }}
       />
       <div className="absolute inset-0 gallery-grain opacity-[0.12] pointer-events-none" />
 
-      <div className="relative w-full max-w-5xl">
+      <div
+        className="relative w-full max-w-5xl px-3 sm:px-6"
+        style={{
+          paddingTop: isMobile ? "calc(env(safe-area-inset-top) + 10px)" : undefined,
+          paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom) + 14px)" : undefined,
+        }}
+      >
         <div
-          className="absolute -inset-1 rounded-3xl blur-2xl opacity-60 pointer-events-none"
+          className="absolute -inset-2 rounded-3xl blur-2xl opacity-60 pointer-events-none"
           style={{
             background:
-              "radial-gradient(circle at center, rgba(203,184,255,0.14) 0%, transparent 60%)",
+              "radial-gradient(circle at center, rgba(203,184,255,0.12) 0%, transparent 60%)",
           }}
         />
 
         <div
           className="relative bg-[#070707] border border-white/10 rounded-2xl overflow-hidden
             shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85)]"
-          style={{ transform: cardTransform, transition: drag.active ? "none" : "transform 220ms ease" }}
+          style={{
+            transform: cardTransform,
+            transition: closeDrag.active ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)",
+          }}
         >
-          {/* top bar */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/35 backdrop-blur-xl">
-            <div className="min-w-0">
+          {/* top bar (drag-to-close only here on mobile) */}
+          <div
+            className="relative flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/35 backdrop-blur-xl"
+            style={{ touchAction: "pan-y" }}
+            onPointerDown={onTopDown}
+            onPointerMove={onTopMove}
+            onPointerUp={onTopUp}
+            onPointerCancel={onTopUp}
+          >
+            {isMobile && (
+              <div className="absolute left-1/2 -translate-x-1/2 top-2 w-12 h-1 rounded-full bg-white/15" />
+            )}
+
+            <div className="min-w-0 pt-1">
               <div className="text-white/90 text-sm font-semibold tracking-wide truncate">
                 {item.title}
               </div>
-              <div className="text-[10px] font-mono text-[#a8eaff]/65 tracking-[0.25em] uppercase">
+              <div className="text-[10px] font-mono text-[#a8eaff]/60 tracking-[0.25em] uppercase">
                 {formatMeta(item)}
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="hidden sm:flex items-center gap-2 text-[9px] font-mono text-white/25 tracking-widest border border-white/10 px-3 py-2 rounded-full bg-white/[0.02]">
+              <div className="hidden sm:flex items-center text-[9px] font-mono text-white/25 tracking-widest border border-white/10 px-3 py-2 rounded-full bg-white/[0.02]">
                 {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
               </div>
 
@@ -2459,99 +2512,125 @@ function GalleryModal({ item, index, total, onClose, onPrev, onNext, hasMany, is
             </div>
           </div>
 
-          {/* image */}
-          <div
-            className="relative bg-black select-none"
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
-          >
-            {!loaded && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-8 h-8 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
+          {/* image area */}
+          <div className="relative bg-black select-none">
+            {isMobile ? (
+              <div
+                ref={scRef}
+                onScroll={onScroll}
+                className="w-full overflow-x-auto scrollbar-hide flex snap-x snap-mandatory"
+                style={{
+                  WebkitOverflowScrolling: "touch",
+                  overscrollBehaviorX: "contain",
+                  scrollBehavior: "smooth",
+                  touchAction: "pan-x",
+                }}
+              >
+                {items.map((it, i) => (
+                  <div
+                    key={it.id || i}
+                    className="snap-center shrink-0 w-full flex items-center justify-center"
+                    style={{ minHeight: "min(78vh, 720px)" }}
+                  >
+                    {!loaded && i === index && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-8 h-8 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
+
+                    <img
+                      src={it.file}
+                      alt={it.title}
+                      onLoad={() => i === index && setLoaded(true)}
+                      className={`w-full max-h-[78vh] object-contain transition-opacity duration-300 ${
+                        i === index && loaded ? "opacity-100" : "opacity-95"
+                      }`}
+                      draggable={false}
+                    />
+                  </div>
+                ))}
               </div>
-            )}
-
-            <img
-              src={item.file}
-              alt={item.title}
-              onLoad={() => setLoaded(true)}
-              className={`w-full max-h-[78vh] object-contain transition-opacity duration-500 ${
-                loaded ? "opacity-100" : "opacity-0"
-              }`}
-              draggable={false}
-            />
-
-            {hasMany && (
+            ) : (
               <>
-                <button
-                  onClick={onPrev}
-                  className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
-                    bg-black/35 hover:bg-black/55 border border-white/10
-                    items-center justify-center text-white/80 transition-all"
-                  aria-label="Previous"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-
-                <button
-                  onClick={onNext}
-                  className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
-                    bg-black/35 hover:bg-black/55 border border-white/10
-                    items-center justify-center text-white/80 transition-all"
-                  aria-label="Next"
-                >
-                  <ChevronRight size={18} />
-                </button>
-              </>
-            )}
-
-            {/* subtle bottom meta on mobile */}
-            <div className="sm:hidden absolute left-0 right-0 bottom-0 p-3">
-              <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl px-4 py-3 flex items-center justify-between">
-                <div className="min-w-0">
-                  <div className="text-[10px] font-mono text-white/55 tracking-widest truncate">
-                    {item.title}
-                  </div>
-                  <div className="text-[9px] font-mono text-[#a8eaff]/55 tracking-[0.25em] uppercase">
-                    {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
-                  </div>
-                </div>
-                {hasMany && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={onPrev}
-                      className="w-10 h-10 rounded-2xl border border-white/10 bg-white/[0.03] text-white/80"
-                      aria-label="Previous"
-                    >
-                      <ChevronLeft size={16} className="mx-auto" />
-                    </button>
-                    <button
-                      onClick={onNext}
-                      className="w-10 h-10 rounded-2xl border border-white/10 bg-white/[0.03] text-white/80"
-                      aria-label="Next"
-                    >
-                      <ChevronRight size={16} className="mx-auto" />
-                    </button>
+                {!loaded && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-8 h-8 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
                   </div>
                 )}
-              </div>
-            </div>
+
+                <img
+                  src={item.file}
+                  alt={item.title}
+                  onLoad={() => setLoaded(true)}
+                  className={`w-full max-h-[78vh] object-contain transition-opacity duration-500 ${
+                    loaded ? "opacity-100" : "opacity-0"
+                  }`}
+                  draggable={false}
+                />
+
+                {hasMany && (
+                  <>
+                    <button
+                      onClick={onPrev}
+                      className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
+                        bg-black/35 hover:bg-black/55 border border-white/10
+                        items-center justify-center text-white/80 transition-all"
+                      aria-label="Previous"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+
+                    <button
+                      onClick={onNext}
+                      className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
+                        bg-black/35 hover:bg-black/55 border border-white/10
+                        items-center justify-center text-white/80 transition-all"
+                      aria-label="Next"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </>
+                )}
+              </>
+            )}
           </div>
 
-          {/* footer (desktop) */}
-          <div className="hidden sm:block px-4 py-3 border-t border-white/10 bg-black/25">
-            <div className="text-[10px] text-white/35 font-mono tracking-widest">
-              Esc • ← → • click backdrop to close
+          {/* mobile footer */}
+          {isMobile && (
+            <div className="px-4 py-3 border-t border-white/10 bg-black/25 backdrop-blur-xl">
+              <div className="flex items-center justify-between">
+                <div className="text-[9px] font-mono text-white/25 tracking-widest">
+                  {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  {Array.from({ length: Math.min(total, 9) }).map((_, i) => {
+                    const t = Math.min(total, 9);
+                    const offset = total > 9 ? clamp(index - 4, 0, total - t) : 0;
+                    const real = i + offset;
+                    const active = real === index;
+                    return (
+                      <span
+                        key={real}
+                        className={`h-1.5 rounded-full transition-all ${
+                          active ? "w-6 bg-white/70" : "w-1.5 bg-white/20"
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+
+                <div className="text-[9px] font-mono text-[#a8eaff]/35 tracking-widest uppercase">
+                  {formatMeta(item)}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-
 
 
 
