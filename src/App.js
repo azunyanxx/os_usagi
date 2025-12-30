@@ -1832,133 +1832,524 @@ const FinderApp = () => {
 };
 
 // -- GALLERY APP (JAPANESE EMOTION ARCHIVE) --
+// -- GALLERY APP (POLISHED: GLASS + SOFT GLOW + PEAK ON SINGLE TAP + SCROLL LOCK + LOADER) --
 const GalleryApp = () => {
+  const isMobile = useIsMobile();
+
   const [filter, setFilter] = useState("all");
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
 
-  const CATEGORIES = [
-    { id: "all", label: "All", icon: Layers },
-    { id: "system", label: "System", icon: Cpu },
-    { id: "key", label: "Emotion Key", icon: KeyIcon },
-    { id: "emotion", label: "Heart Error", icon: AlertCircle },
-    { id: "life", label: "Life Log", icon: Heart },
-    { id: "work", label: "Work", icon: Coffee },
-    { id: "magic", label: "Magic", icon: Wand2 },
-  ];
+  // single tap / click “peek” state
+  const [armedIndex, setArmedIndex] = useState(null);
+  const armTimerRef = useRef(null);
 
-  const getGalleryItems = () => {
-    let items = GALLERY_ITEMS;
+  const CATEGORIES = useMemo(
+    () => [
+      { id: "all", label: "All", icon: Layers },
+      { id: "system", label: "System", icon: Cpu },
+      { id: "key", label: "Emotion Key", icon: KeyIcon },
+      { id: "emotion", label: "Heart Error", icon: AlertCircle },
+      { id: "life", label: "Life Log", icon: Heart },
+      { id: "work", label: "Work", icon: Coffee },
+      { id: "magic", label: "Magic", icon: Wand2 },
+    ],
+    []
+  );
+
+  const filteredItems = useMemo(() => {
+    const items = GALLERY_ITEMS;
     if (filter === "all") return items;
     return items.filter(
       (item) =>
-        item.folder === filter ||
-        (filter === "key" && item.title.endsWith(".key"))
+        item.folder === filter || (filter === "key" && item.title.endsWith(".key"))
     );
-  };
+  }, [filter]);
 
-  const filteredItems = getGalleryItems();
+  const clearArm = useCallback(() => {
+    setArmedIndex(null);
+    if (armTimerRef.current) clearTimeout(armTimerRef.current);
+    armTimerRef.current = null;
+  }, []);
+
+  const arm = useCallback(
+    (idx) => {
+      setArmedIndex(idx);
+      if (armTimerRef.current) clearTimeout(armTimerRef.current);
+      armTimerRef.current = setTimeout(() => setArmedIndex(null), 1400);
+    },
+    []
+  );
+
+  // フィルター変えた時の事故防止
+  useEffect(() => {
+    setOpen(false);
+    setActiveIndex(0);
+    clearArm();
+  }, [filter, clearArm]);
+
+  const openModal = useCallback(
+    (idx) => {
+      clearArm();
+      setActiveIndex(idx);
+      setOpen(true);
+    },
+    [clearArm]
+  );
+
+  const closeModal = useCallback(() => setOpen(false), []);
+
+  const prev = useCallback(() => {
+    setActiveIndex((i) => (i - 1 + filteredItems.length) % filteredItems.length);
+  }, [filteredItems.length]);
+
+  const next = useCallback(() => {
+    setActiveIndex((i) => (i + 1) % filteredItems.length);
+  }, [filteredItems.length]);
+
+  // keyboard controls (PC)
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") closeModal();
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") next();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, closeModal, prev, next]);
+
+  // cleanup timers
+  useEffect(() => {
+    return () => {
+      if (armTimerRef.current) clearTimeout(armTimerRef.current);
+    };
+  }, []);
 
   return (
-    <div className="flex h-full bg-[#050505]">
+    <div className="flex h-full">
       {/* Left Sidebar */}
-      <div className="w-14 sm:w-48 border-r border-white/5 flex flex-col items-center sm:items-stretch py-6 gap-2 bg-[#080808] z-20">
-        <div className="text-[9px] font-mono text-white/30 mb-4 px-4 tracking-widest hidden sm:block">
+      <div className="w-40 bg-[#0a0a0a] border-r border-white/5 p-4 hidden sm:block">
+        <p className="text-[10px] font-mono text-white/40 tracking-[0.3em] uppercase mb-6">
           Archive
+        </p>
+
+        <div className="space-y-1">
+          {CATEGORIES.map((cat) => (
+            <div
+              key={cat.id}
+              onClick={() => setFilter(cat.id)}
+              className={`group flex items-center gap-3 px-3 py-3 rounded-md cursor-pointer transition-all duration-300 ${
+                filter === cat.id
+                  ? "bg-white/10 text-white"
+                  : "text-white/30 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <cat.icon size={16} className={filter === cat.id ? "text-[#a8eaff]" : ""} />
+              <span className="text-xs">{cat.label}</span>
+              {filter === cat.id && (
+                <div className="ml-auto w-1 h-1 rounded-full bg-[#a8eaff] animate-pulse" />
+              )}
+            </div>
+          ))}
         </div>
-        {CATEGORIES.map((cat) => (
-          <div
-            key={cat.id}
-            onClick={() => setFilter(cat.id)}
-            className={`group flex items-center gap-3 px-3 py-3 rounded-md cursor-pointer transition-all duration-300 ${
-              filter === cat.id
-                ? "bg-white/10 text-white"
-                : "text-white/30 hover:text-white hover:bg-white/5"
-            } `}
-          >
-            <cat.icon
-              size={16}
-              className={filter === cat.id ? "text-[#a8eaff]" : ""}
-            />
-            <span className="hidden sm:block text-xs tracking-wide">
-              {cat.label}
-            </span>
-            {filter === cat.id && (
-              <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_8px_#a8eaff] hidden sm:block"></div>
-            )}
-          </div>
-        ))}
-        <div className="mt-auto px-4 hidden sm:block">
-          <div className="text-[9px] font-mono text-white/20 border-t border-white/5 pt-4">
-            {filteredItems.length} ITEMS
-          </div>
+
+        <div className="mt-10 text-[10px] text-white/20 font-mono tracking-widest">
+          {filteredItems.length} ITEMS
         </div>
       </div>
 
-      {/* Main Gallery Area */}
+      {/* Main */}
       <div className="flex-1 p-6 sm:p-10 overflow-y-auto scrollbar-hide pb-24 sm:pb-10 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#a8eaff]/5 via-transparent to-transparent pointer-events-none"></div>
+        {/* ambient glow */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div
+            className="absolute -top-44 left-1/2 -translate-x-1/2 w-[980px] h-[520px] opacity-30 blur-3xl"
+            style={{
+              background:
+                "radial-gradient(circle at center, rgba(168,234,255,0.14) 0%, transparent 60%)",
+            }}
+          />
+          <div
+            className="absolute -bottom-44 left-1/2 -translate-x-1/2 w-[980px] h-[520px] opacity-25 blur-3xl"
+            style={{
+              background:
+                "radial-gradient(circle at center, rgba(203,184,255,0.12) 0%, transparent 60%)",
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.025] via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.03),transparent_55%)]" />
+        </div>
 
-        <div className="flex items-end justify-between mb-8">
+        {/* Header */}
+        <div className="flex items-end justify-between mb-8 relative z-10">
           <div>
-            <h2 className="text-3xl sm:text-4xl font-thin tracking-tighter text-white/95 mb-1 animate-fade-in">
+            <h2 className="text-3xl sm:text-4xl font-thin tracking-tighter text-white/95 mb-1">
               {CATEGORIES.find((c) => c.id === filter)?.label}
             </h2>
-            <p className="text-[10px] font-mono text-[#cbb8ff] tracking-[0.2em] uppercase animate-fade-in">
+            <p className="text-[10px] font-mono text-[#cbb8ff] tracking-[0.2em] uppercase">
               Fragmented Memories
             </p>
+            <p className="mt-2 text-[10px] text-white/30 font-mono tracking-widest">
+              {isMobile ? "tap to peek • tap again to open" : "click to peek • double click to open"}
+            </p>
           </div>
+
           <div className="flex gap-2">
-            <button className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors">
+            <button className="w-9 h-9 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors text-white/60">
               <Search size={14} />
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pb-10">
+        {/* Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pb-10 relative z-10">
           {filteredItems.map((item, idx) => (
-            <div
+            <GalleryCard
               key={item.id}
-              className={`group relative cursor-pointer perspective-1000 animate-fade-in ${
-                item.span || "aspect-[4/3]"
-              }`}
-              style={{ animationDelay: `${idx * 50}ms` }}
-            >
-              {/* Card Container - White Glass Feel */}
-              <div className="absolute inset-0 bg-[#111] border border-white/10 rounded-lg overflow-hidden transition-all duration-700 group-hover:border-[#a8eaff]/50 group-hover:shadow-[0_0_40px_rgba(168,234,255,0.1)] group-hover:scale-[1.01]">
-                {/* Image */}
-                <div
-                  className="absolute inset-0 bg-cover bg-center transition-all duration-[1.5s] ease-out scale-100 group-hover:scale-105 opacity-80 group-hover:opacity-100 grayscale group-hover:grayscale-0"
-                  style={{ backgroundImage: `url(${item.file})` }}
-                ></div>
-
-                {/* Overlay Gradient */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90"></div>
-
-                {/* Content */}
-                <div className="absolute bottom-0 left-0 right-0 p-6 flex flex-col items-start gap-1 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-                  <div className="flex items-center gap-2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">
-                    <div className="w-1 h-1 rounded-full bg-[#a8eaff]"></div>
-                    <span className="text-[9px] font-mono text-[#a8eaff] tracking-widest">
-                      {item.meta}
-                    </span>
-                  </div>
-                  <h3 className="text-sm font-bold tracking-[0.1em] text-white">
-                    {item.title}
-                  </h3>
-                  <p className="text-[10px] text-white/50 font-light tracking-wide max-w-[90%] hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity delay-200">
-                    {item.desc || "No description."}
-                  </p>
-                </div>
-
-                {/* Hover Glow Edge */}
-                <div className="absolute inset-0 border border-white/0 group-hover:border-white/20 rounded-lg transition-all duration-500 pointer-events-none"></div>
-              </div>
-            </div>
+              item={item}
+              index={idx}
+              isMobile={isMobile}
+              isArmed={armedIndex === idx}
+              onArm={arm}
+              onOpen={openModal}
+            />
           ))}
         </div>
+
+        {/* Modal */}
+        {open && filteredItems[activeIndex] && (
+          <GalleryModal
+            item={filteredItems[activeIndex]}
+            onClose={closeModal}
+            onPrev={prev}
+            onNext={next}
+            hasMany={filteredItems.length > 1}
+          />
+        )}
       </div>
     </div>
   );
 };
+
+// --- Card: glass + edge glow + mouse-follow highlight + stylish single tap “peek” ---
+function GalleryCard({ item, index, isMobile, isArmed, onArm, onOpen }) {
+  const btnRef = useRef(null);
+  const lastTapRef = useRef({ t: 0, idx: -1 });
+
+  // マウス位置に追従する“ガラス反射”
+  const onMouseMove = (e) => {
+    const el = btnRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * 100;
+    const y = ((e.clientY - r.top) / r.height) * 100;
+    el.style.setProperty("--mx", `${x}%`);
+    el.style.setProperty("--my", `${y}%`);
+  };
+
+  const onMouseLeave = () => {
+    const el = btnRef.current;
+    if (!el) return;
+    el.style.removeProperty("--mx");
+    el.style.removeProperty("--my");
+  };
+
+  const openOrArm = (idx) => {
+    // armed中にもう一回 → open
+    if (isArmed) return onOpen(idx);
+    onArm(idx);
+  };
+
+  // 触ったとき：1回目はPeek、短時間で同じカードをもう一回でOpen
+  const onPointerUp = (e) => {
+    if (e.pointerType !== "touch") return;
+    const now = Date.now();
+    const dt = now - lastTapRef.current.t;
+    const same = lastTapRef.current.idx === index;
+
+    // 2連続タップ（同じカード）ならOpen
+    if (dt > 0 && dt < 320 && same) {
+      lastTapRef.current = { t: 0, idx: -1 };
+      onOpen(index);
+      return;
+    }
+
+    lastTapRef.current = { t: now, idx: index };
+    openOrArm(index);
+  };
+
+  const onClick = (e) => {
+    // desktop: single click = peek
+    // mobile: pointerUpで処理するので click は無視（誤動作防止）
+    if (isMobile) {
+      e.preventDefault();
+      return;
+    }
+    openOrArm(index);
+  };
+
+  const onKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openOrArm(index);
+    }
+  };
+
+  return (
+    <div className="group relative">
+      {/* outer aura */}
+      <div
+        className="absolute -inset-1 rounded-[28px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-2xl pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle at center, rgba(168,234,255,0.18) 0%, transparent 60%)",
+        }}
+      />
+
+      {/* peek aura (armed) */}
+      <div
+        className={`absolute -inset-1 rounded-[28px] blur-xl pointer-events-none transition-opacity duration-500 ${
+          isArmed ? "opacity-100" : "opacity-0"
+        }`}
+        style={{
+          background:
+            "radial-gradient(circle at center, rgba(203,184,255,0.16) 0%, transparent 62%)",
+        }}
+      />
+
+      <button
+        ref={btnRef}
+        type="button"
+        className={`relative w-full aspect-[4/3] rounded-[28px] overflow-hidden border
+          bg-white/[0.02] backdrop-blur-xl text-left
+          shadow-[0_20px_50px_-20px_rgba(0,0,0,0.7)]
+          transition-all duration-700
+          active:scale-[0.985]
+          ${isArmed ? "border-[#cbb8ff]/35 shadow-[0_0_70px_rgba(203,184,255,0.12)]" : "border-white/10"}
+          group-hover:border-[#a8eaff]/35 group-hover:shadow-[0_0_60px_rgba(168,234,255,0.10)]`}
+        onPointerUp={onPointerUp}
+        onClick={onClick}
+        onDoubleClick={() => !isMobile && onOpen(index)}
+        onMouseMove={onMouseMove}
+        onMouseLeave={onMouseLeave}
+        onKeyDown={onKeyDown}
+        aria-label={`${item.title} preview`}
+      >
+        {/* image */}
+        <div
+          className={`absolute inset-0 bg-cover bg-center transition-transform duration-[1400ms] ease-out
+            ${isArmed ? "scale-[1.03] opacity-100 grayscale-0" : "scale-100 opacity-85 grayscale"}
+            group-hover:scale-[1.06] group-hover:opacity-100 group-hover:grayscale-0`}
+          style={{ backgroundImage: `url(${item.file})` }}
+        />
+
+        {/* soft vignette */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/10" />
+
+        {/* mouse-follow highlight (glass reflection) */}
+        <div
+          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.10), transparent 55%)",
+          }}
+        />
+
+        {/* peek overlay (single tap / click) */}
+        <div
+          className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ${
+            isArmed ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+          <div className="absolute top-4 right-4">
+            <div className="px-3 py-1.5 rounded-full border border-white/15 bg-black/35 backdrop-blur-md">
+              <span className="text-[10px] font-mono tracking-[0.22em] text-white/75 uppercase">
+                Tap again to open
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* meta + title */}
+        <div className="absolute bottom-0 left-0 right-0 p-5">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_10px_rgba(168,234,255,0.5)]" />
+              <span className="text-[9px] font-mono text-[#a8eaff]/90 tracking-[0.25em] uppercase">
+                {item.meta}
+              </span>
+            </div>
+
+            <span className="shrink-0 text-[9px] font-mono text-white/30 tracking-[0.25em]">
+              #{String(index + 1).padStart(2, "0")}
+            </span>
+          </div>
+
+          <div className="text-sm text-white tracking-[0.08em] font-semibold truncate">
+            {item.title}
+          </div>
+
+          <div className="mt-1 text-[10px] text-white/40 font-light tracking-wide line-clamp-2">
+            {item.desc || "Visual memory fragment."}
+          </div>
+        </div>
+
+        {/* edge line */}
+        <div className="absolute inset-0 rounded-[28px] pointer-events-none border border-white/0 group-hover:border-white/15 transition-colors duration-700" />
+      </button>
+    </div>
+  );
+}
+
+// --- Modal: cinematic preview + scroll lock + loader ---
+function GalleryModal({ item, onClose, onPrev, onNext, hasMany }) {
+  const [loaded, setLoaded] = useState(false);
+
+  // scroll lock (iOSもなるべく破綻しないやつ)
+  useEffect(() => {
+    const body = document.body;
+    const prevOverflow = body.style.overflow;
+    const prevPosition = body.style.position;
+    const prevTop = body.style.top;
+    const scrollY = window.scrollY;
+
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+
+    return () => {
+      body.style.overflow = prevOverflow;
+      body.style.position = prevPosition;
+      body.style.top = prevTop;
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
+  useEffect(() => setLoaded(false), [item?.file]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+      onTouchStart={(e) => e.target === e.currentTarget && onClose()}
+    >
+      {/* backdrop */}
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-md" />
+
+      {/* center glow */}
+      <div
+        className="absolute inset-0 opacity-70 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle at center, rgba(168,234,255,0.12) 0%, transparent 55%)",
+        }}
+      />
+
+      <div className="relative w-full max-w-5xl">
+        <div
+          className="absolute -inset-1 rounded-3xl blur-2xl opacity-60 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(circle at center, rgba(203,184,255,0.14) 0%, transparent 60%)",
+          }}
+        />
+
+        <div className="relative bg-[#070707] border border-white/10 rounded-2xl overflow-hidden shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85)]">
+          {/* top bar */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/30">
+            <div className="min-w-0">
+              <div className="text-white/85 text-sm font-semibold tracking-wide truncate">
+                {item.title}
+              </div>
+              <div className="text-[10px] font-mono text-[#a8eaff]/70 tracking-[0.25em] uppercase">
+                {item.meta}
+              </div>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-full border border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center text-white/70"
+              aria-label="Close"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* image area */}
+          <div className="relative bg-black">
+            {/* loader */}
+            {!loaded && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="absolute inset-0 opacity-70">
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/[0.03] via-transparent to-transparent" />
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      background:
+                        "radial-gradient(circle at center, rgba(168,234,255,0.10) 0%, transparent 58%)",
+                    }}
+                  />
+                </div>
+                <div className="relative">
+                  <div className="w-14 h-14 rounded-full border border-white/15 bg-white/[0.03] backdrop-blur-md flex items-center justify-center">
+                    <div className="w-6 h-6 rounded-full border-2 border-white/30 border-t-white/70 animate-spin" />
+                  </div>
+                  <div className="mt-3 text-center text-[10px] font-mono tracking-[0.22em] text-white/40 uppercase">
+                    Loading
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <img
+              src={item.file}
+              alt={item.title}
+              className={`w-full max-h-[78vh] object-contain transition-opacity duration-500 ${
+                loaded ? "opacity-100" : "opacity-0"
+              }`}
+              draggable={false}
+              onLoad={() => setLoaded(true)}
+            />
+
+            {hasMany && (
+              <>
+                <button
+                  onClick={onPrev}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
+                    bg-black/35 hover:bg-black/55 border border-white/10
+                    flex items-center justify-center text-white/80 transition-all"
+                  aria-label="Previous"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button
+                  onClick={onNext}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
+                    bg-black/35 hover:bg-black/55 border border-white/10
+                    flex items-center justify-center text-white/80 transition-all"
+                  aria-label="Next"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* footer */}
+          <div className="px-4 py-3 border-t border-white/10 bg-black/25">
+            <div className="text-[10px] text-white/40 font-mono tracking-widest">
+              click/tap backdrop to close • Esc • ← →
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // -- MUSIC APP (REDESIGNED WITH HEADPHONE RABBIT) --
 const MusicApp = ({ bgm }) => {
