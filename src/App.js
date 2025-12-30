@@ -1832,7 +1832,7 @@ const FinderApp = () => {
 };
 
 // -- GALLERY APP (JAPANESE EMOTION ARCHIVE) --
-// -- GALLERY APP (POLISHED: GLASS + SOFT GLOW + PEAK ON SINGLE TAP + SCROLL LOCK + LOADER) --
+// -- GALLERY APP (FOLDER SIDEBAR + SINGLE-TAP PEEK + ZOOM/BLUR GLASS) --
 const GalleryApp = () => {
   const isMobile = useIsMobile();
 
@@ -1840,9 +1840,8 @@ const GalleryApp = () => {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // single tap / click “peek” state
-  const [armedIndex, setArmedIndex] = useState(null);
-  const armTimerRef = useRef(null);
+  // Peek state (single tap/click)
+  const [peekIndex, setPeekIndex] = useState(null);
 
   const CATEGORIES = useMemo(
     () => [
@@ -1866,38 +1865,17 @@ const GalleryApp = () => {
     );
   }, [filter]);
 
-  const clearArm = useCallback(() => {
-    setArmedIndex(null);
-    if (armTimerRef.current) clearTimeout(armTimerRef.current);
-    armTimerRef.current = null;
+  const openModal = useCallback((idx) => {
+    setActiveIndex(idx);
+    setOpen(true);
+    setPeekIndex(null);
   }, []);
 
-  const arm = useCallback(
-    (idx) => {
-      setArmedIndex(idx);
-      if (armTimerRef.current) clearTimeout(armTimerRef.current);
-      armTimerRef.current = setTimeout(() => setArmedIndex(null), 1400);
-    },
-    []
-  );
-
-  // フィルター変えた時の事故防止
-  useEffect(() => {
+  const closeModal = useCallback(() => {
     setOpen(false);
-    setActiveIndex(0);
-    clearArm();
-  }, [filter, clearArm]);
+  }, []);
 
-  const openModal = useCallback(
-    (idx) => {
-      clearArm();
-      setActiveIndex(idx);
-      setOpen(true);
-    },
-    [clearArm]
-  );
-
-  const closeModal = useCallback(() => setOpen(false), []);
+  const clearPeek = useCallback(() => setPeekIndex(null), []);
 
   const prev = useCallback(() => {
     setActiveIndex((i) => (i - 1 + filteredItems.length) % filteredItems.length);
@@ -1907,78 +1885,100 @@ const GalleryApp = () => {
     setActiveIndex((i) => (i + 1) % filteredItems.length);
   }, [filteredItems.length]);
 
+  // Filter change resets peek/modal index nicely
+  useEffect(() => {
+    setPeekIndex(null);
+    setActiveIndex(0);
+    setOpen(false);
+  }, [filter]);
+
+  // Close peek when clicking outside (desktop)
+  useEffect(() => {
+    if (peekIndex == null || open) return;
+    const onDown = (e) => {
+      const el = e.target;
+      if (!el?.closest?.("[data-gallery-card='true']")) setPeekIndex(null);
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [peekIndex, open]);
+
   // keyboard controls (PC)
   useEffect(() => {
-    if (!open) return;
+    if (!open && peekIndex == null) return;
     const onKeyDown = (e) => {
-      if (e.key === "Escape") closeModal();
-      if (e.key === "ArrowLeft") prev();
-      if (e.key === "ArrowRight") next();
+      if (e.key === "Escape") {
+        if (open) closeModal();
+        else clearPeek();
+      }
+      if (open) {
+        if (e.key === "ArrowLeft") prev();
+        if (e.key === "ArrowRight") next();
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, closeModal, prev, next]);
-
-  // cleanup timers
-  useEffect(() => {
-    return () => {
-      if (armTimerRef.current) clearTimeout(armTimerRef.current);
-    };
-  }, []);
+  }, [open, peekIndex, closeModal, clearPeek, prev, next]);
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full bg-[#050505]">
       {/* Left Sidebar */}
-      <div className="w-40 bg-[#0a0a0a] border-r border-white/5 p-4 hidden sm:block">
-        <p className="text-[10px] font-mono text-white/40 tracking-[0.3em] uppercase mb-6">
+      <div className="w-14 sm:w-52 border-r border-white/5 flex flex-col items-center sm:items-stretch py-6 gap-2 bg-[#080808] z-20">
+        <div className="text-[9px] font-mono text-white/30 mb-4 px-4 tracking-widest hidden sm:block">
           Archive
-        </p>
+        </div>
 
-        <div className="space-y-1">
-          {CATEGORIES.map((cat) => (
-            <div
-              key={cat.id}
-              onClick={() => setFilter(cat.id)}
-              className={`group flex items-center gap-3 px-3 py-3 rounded-md cursor-pointer transition-all duration-300 ${
+        {CATEGORIES.map((cat) => (
+          <div
+            key={cat.id}
+            onClick={() => setFilter(cat.id)}
+            className={`group flex items-center gap-3 px-3 py-3 rounded-md cursor-pointer transition-all duration-300
+              ${
                 filter === cat.id
                   ? "bg-white/10 text-white"
                   : "text-white/30 hover:text-white hover:bg-white/5"
               }`}
-            >
-              <cat.icon size={16} className={filter === cat.id ? "text-[#a8eaff]" : ""} />
-              <span className="text-xs">{cat.label}</span>
-              {filter === cat.id && (
-                <div className="ml-auto w-1 h-1 rounded-full bg-[#a8eaff] animate-pulse" />
-              )}
-            </div>
-          ))}
-        </div>
+          >
+            <cat.icon
+              size={16}
+              className={filter === cat.id ? "text-[#a8eaff]" : ""}
+            />
+            <span className="hidden sm:block text-xs tracking-wide">
+              {cat.label}
+            </span>
 
-        <div className="mt-10 text-[10px] text-white/20 font-mono tracking-widest">
-          {filteredItems.length} ITEMS
+            {filter === cat.id && (
+              <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_10px_rgba(168,234,255,0.75)] hidden sm:block" />
+            )}
+          </div>
+        ))}
+
+        <div className="mt-auto px-4 hidden sm:block">
+          <div className="text-[9px] font-mono text-white/20 border-t border-white/5 pt-4">
+            {filteredItems.length} ITEMS
+          </div>
         </div>
       </div>
 
-      {/* Main */}
+      {/* Main Gallery Area */}
       <div className="flex-1 p-6 sm:p-10 overflow-y-auto scrollbar-hide pb-24 sm:pb-10 relative">
-        {/* ambient glow */}
+        {/* ambient */}
         <div className="absolute inset-0 pointer-events-none">
           <div
-            className="absolute -top-44 left-1/2 -translate-x-1/2 w-[980px] h-[520px] opacity-30 blur-3xl"
+            className="absolute -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[520px] opacity-30 blur-3xl"
             style={{
               background:
                 "radial-gradient(circle at center, rgba(168,234,255,0.14) 0%, transparent 60%)",
             }}
           />
           <div
-            className="absolute -bottom-44 left-1/2 -translate-x-1/2 w-[980px] h-[520px] opacity-25 blur-3xl"
+            className="absolute -bottom-52 left-1/2 -translate-x-1/2 w-[900px] h-[520px] opacity-25 blur-3xl"
             style={{
               background:
                 "radial-gradient(circle at center, rgba(203,184,255,0.12) 0%, transparent 60%)",
             }}
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.025] via-transparent to-transparent" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.03),transparent_55%)]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] via-transparent to-transparent" />
         </div>
 
         {/* Header */}
@@ -1991,7 +1991,9 @@ const GalleryApp = () => {
               Fragmented Memories
             </p>
             <p className="mt-2 text-[10px] text-white/30 font-mono tracking-widest">
-              {isMobile ? "tap to peek • tap again to open" : "click to peek • double click to open"}
+              {isMobile
+                ? "tap to peek • tap again to open"
+                : "click to peek • double click to open"}
             </p>
           </div>
 
@@ -2010,8 +2012,12 @@ const GalleryApp = () => {
               item={item}
               index={idx}
               isMobile={isMobile}
-              isArmed={armedIndex === idx}
-              onArm={arm}
+              isPeeked={peekIndex === idx}
+              onPeek={(i) => {
+                // same card -> open (single tapでも気持ちいい挙動)
+                if (peekIndex === i) openModal(i);
+                else setPeekIndex(i);
+              }}
               onOpen={openModal}
             />
           ))}
@@ -2032,141 +2038,100 @@ const GalleryApp = () => {
   );
 };
 
-// --- Card: glass + edge glow + mouse-follow highlight + stylish single tap “peek” ---
-function GalleryCard({ item, index, isMobile, isArmed, onArm, onOpen }) {
-  const btnRef = useRef(null);
-  const lastTapRef = useRef({ t: 0, idx: -1 });
+// --- Card: single tap Peek = frosted glass + thumb zoom/blur ---
+function GalleryCard({ item, index, isMobile, isPeeked, onPeek, onOpen }) {
+  const lastTapRef = useRef(0);
 
-  // マウス位置に追従する“ガラス反射”
-  const onMouseMove = (e) => {
-    const el = btnRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const x = ((e.clientX - r.left) / r.width) * 100;
-    const y = ((e.clientY - r.top) / r.height) * 100;
-    el.style.setProperty("--mx", `${x}%`);
-    el.style.setProperty("--my", `${y}%`);
-  };
-
-  const onMouseLeave = () => {
-    const el = btnRef.current;
-    if (!el) return;
-    el.style.removeProperty("--mx");
-    el.style.removeProperty("--my");
-  };
-
-  const openOrArm = (idx) => {
-    // armed中にもう一回 → open
-    if (isArmed) return onOpen(idx);
-    onArm(idx);
-  };
-
-  // 触ったとき：1回目はPeek、短時間で同じカードをもう一回でOpen
-  const onPointerUp = (e) => {
-    if (e.pointerType !== "touch") return;
+  const onTouchEnd = (e) => {
+    // mobile double tap to open
+    e.preventDefault();
     const now = Date.now();
-    const dt = now - lastTapRef.current.t;
-    const same = lastTapRef.current.idx === index;
+    const dt = now - lastTapRef.current;
 
-    // 2連続タップ（同じカード）ならOpen
-    if (dt > 0 && dt < 320 && same) {
-      lastTapRef.current = { t: 0, idx: -1 };
+    if (dt > 0 && dt < 330) {
+      lastTapRef.current = 0;
       onOpen(index);
       return;
     }
 
-    lastTapRef.current = { t: now, idx: index };
-    openOrArm(index);
+    lastTapRef.current = now;
+    onPeek(index);
   };
 
   const onClick = (e) => {
-    // desktop: single click = peek
-    // mobile: pointerUpで処理するので click は無視（誤動作防止）
-    if (isMobile) {
-      e.preventDefault();
-      return;
-    }
-    openOrArm(index);
+    // desktop single click peek
+    e.preventDefault();
+    onPeek(index);
   };
 
-  const onKeyDown = (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      openOrArm(index);
-    }
+  const onDoubleClick = (e) => {
+    e.preventDefault();
+    onOpen(index);
   };
 
   return (
-    <div className="group relative">
-      {/* outer aura */}
+    <div
+      data-gallery-card="true"
+      className={`group relative ${item.span ?? ""}`}
+    >
+      {/* aura */}
       <div
-        className="absolute -inset-1 rounded-[28px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-2xl pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(circle at center, rgba(168,234,255,0.18) 0%, transparent 60%)",
-        }}
-      />
-
-      {/* peek aura (armed) */}
-      <div
-        className={`absolute -inset-1 rounded-[28px] blur-xl pointer-events-none transition-opacity duration-500 ${
-          isArmed ? "opacity-100" : "opacity-0"
-        }`}
-        style={{
-          background:
-            "radial-gradient(circle at center, rgba(203,184,255,0.16) 0%, transparent 62%)",
-        }}
+        className={`absolute -inset-1 rounded-2xl transition-opacity duration-700 blur-2xl pointer-events-none
+          ${
+            isPeeked
+              ? "opacity-100"
+              : "opacity-0 group-hover:opacity-100"
+          }
+          bg-[radial-gradient(circle_at_center,rgba(168,234,255,0.18),transparent_60%)]`}
       />
 
       <button
-        ref={btnRef}
         type="button"
-        className={`relative w-full aspect-[4/3] rounded-[28px] overflow-hidden border
+        className={`relative w-full aspect-[4/3] rounded-2xl overflow-hidden border border-white/10
           bg-white/[0.02] backdrop-blur-xl text-left
           shadow-[0_20px_50px_-20px_rgba(0,0,0,0.7)]
-          transition-all duration-700
-          active:scale-[0.985]
-          ${isArmed ? "border-[#cbb8ff]/35 shadow-[0_0_70px_rgba(203,184,255,0.12)]" : "border-white/10"}
-          group-hover:border-[#a8eaff]/35 group-hover:shadow-[0_0_60px_rgba(168,234,255,0.10)]`}
-        onPointerUp={onPointerUp}
-        onClick={onClick}
-        onDoubleClick={() => !isMobile && onOpen(index)}
-        onMouseMove={onMouseMove}
-        onMouseLeave={onMouseLeave}
-        onKeyDown={onKeyDown}
+          transition-all duration-700 active:scale-[0.98]
+          ${isPeeked ? "border-[#cbb8ff]/35 shadow-[0_0_70px_rgba(203,184,255,0.10)]" : ""}
+          group-hover:border-[#a8eaff]/35 group-hover:shadow-[0_0_60px_rgba(168,234,255,0.10)]
+        `}
+        onClick={isMobile ? (e) => e.preventDefault() : onClick}
+        onDoubleClick={isMobile ? undefined : onDoubleClick}
+        onTouchEnd={isMobile ? onTouchEnd : undefined}
         aria-label={`${item.title} preview`}
       >
-        {/* image */}
+        {/* thumb image (Peek中だけ：ちょいズーム + 微ブラー) */}
         <div
-          className={`absolute inset-0 bg-cover bg-center transition-transform duration-[1400ms] ease-out
-            ${isArmed ? "scale-[1.03] opacity-100 grayscale-0" : "scale-100 opacity-85 grayscale"}
-            group-hover:scale-[1.06] group-hover:opacity-100 group-hover:grayscale-0`}
+          className={`absolute inset-0 bg-cover bg-center transition-[transform,opacity,filter] duration-[1400ms] ease-out
+            transform-gpu will-change-transform
+            ${
+              isPeeked
+                ? "scale-[1.10] opacity-100 grayscale-0 blur-sm"
+                : "scale-100 opacity-85 grayscale blur-0"
+            }
+            group-hover:scale-[1.06] group-hover:opacity-100 group-hover:grayscale-0 group-hover:blur-0
+          `}
           style={{ backgroundImage: `url(${item.file})` }}
         />
 
-        {/* soft vignette */}
+        {/* base vignette */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/10" />
 
-        {/* mouse-follow highlight (glass reflection) */}
-        <div
-          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.10), transparent 55%)",
-          }}
-        />
+        {/* micro highlight */}
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700
+          bg-[linear-gradient(110deg,transparent_0%,rgba(255,255,255,0.06)_35%,transparent_60%)]" />
 
-        {/* peek overlay (single tap / click) */}
+        {/* Peek glass overlay (single tap/click) */}
         <div
           className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ${
-            isArmed ? "opacity-100" : "opacity-0"
+            isPeeked ? "opacity-100" : "opacity-0"
           }`}
         >
+          <div className="absolute inset-0 bg-white/[0.02] backdrop-blur-sm" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
           <div className="absolute top-4 right-4">
             <div className="px-3 py-1.5 rounded-full border border-white/15 bg-black/35 backdrop-blur-md">
               <span className="text-[10px] font-mono tracking-[0.22em] text-white/75 uppercase">
-                Tap again to open
+                {isMobile ? "Tap again to open" : "Click again to open"}
               </span>
             </div>
           </div>
@@ -2174,16 +2139,14 @@ function GalleryCard({ item, index, isMobile, isArmed, onArm, onOpen }) {
 
         {/* meta + title */}
         <div className="absolute bottom-0 left-0 right-0 p-5">
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_10px_rgba(168,234,255,0.5)]" />
-              <span className="text-[9px] font-mono text-[#a8eaff]/90 tracking-[0.25em] uppercase">
-                {item.meta}
-              </span>
-            </div>
-
-            <span className="shrink-0 text-[9px] font-mono text-white/30 tracking-[0.25em]">
-              #{String(index + 1).padStart(2, "0")}
+          <div
+            className={`flex items-center gap-2 mb-2 transition-opacity duration-500 ${
+              isPeeked ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_10px_rgba(168,234,255,0.5)]" />
+            <span className="text-[9px] font-mono text-[#a8eaff]/90 tracking-[0.25em] uppercase">
+              {item.meta}
             </span>
           </div>
 
@@ -2191,17 +2154,114 @@ function GalleryCard({ item, index, isMobile, isArmed, onArm, onOpen }) {
             {item.title}
           </div>
 
-          <div className="mt-1 text-[10px] text-white/40 font-light tracking-wide line-clamp-2">
+          <div
+            className={`mt-1 text-[10px] text-white/40 font-light tracking-wide line-clamp-2 transition-opacity duration-500 ${
+              isPeeked ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            }`}
+          >
             {item.desc || "Visual memory fragment."}
           </div>
         </div>
 
         {/* edge line */}
-        <div className="absolute inset-0 rounded-[28px] pointer-events-none border border-white/0 group-hover:border-white/15 transition-colors duration-700" />
+        <div className="absolute inset-0 rounded-2xl pointer-events-none border border-white/0 group-hover:border-white/15 transition-colors duration-700" />
       </button>
     </div>
   );
 }
+
+// --- Modal: cinematic preview ---
+function GalleryModal({ item, onClose, onPrev, onNext, hasMany }) {
+  return (
+    <div
+      className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+      onTouchStart={(e) => e.target === e.currentTarget && onClose()}
+    >
+      {/* backdrop */}
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-md" />
+
+      {/* glow */}
+      <div
+        className="absolute inset-0 opacity-70 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle at center, rgba(168,234,255,0.12) 0%, transparent 55%)",
+        }}
+      />
+
+      <div className="relative w-full max-w-5xl">
+        <div className="absolute -inset-1 rounded-3xl blur-2xl opacity-60
+          bg-[radial-gradient(circle_at_center,rgba(203,184,255,0.14),transparent_60%)] pointer-events-none" />
+
+        <div className="relative bg-[#070707] border border-white/10 rounded-2xl overflow-hidden shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85)]">
+          {/* top bar */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/30">
+            <div className="min-w-0">
+              <div className="text-white/85 text-sm font-semibold tracking-wide truncate">
+                {item.title}
+              </div>
+              <div className="text-[10px] font-mono text-[#a8eaff]/70 tracking-[0.25em] uppercase">
+                {item.meta}
+              </div>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-full border border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center text-white/70"
+              aria-label="Close"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* image */}
+          <div className="relative bg-black">
+            <img
+              src={item.file}
+              alt={item.title}
+              className="w-full max-h-[78vh] object-contain"
+              draggable={false}
+            />
+
+            {hasMany && (
+              <>
+                <button
+                  onClick={onPrev}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
+                    bg-black/35 hover:bg-black/55 border border-white/10
+                    flex items-center justify-center text-white/80 transition-all"
+                  aria-label="Previous"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button
+                  onClick={onNext}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
+                    bg-black/35 hover:bg-black/55 border border-white/10
+                    flex items-center justify-center text-white/80 transition-all"
+                  aria-label="Next"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* footer */}
+          <div className="px-4 py-3 border-t border-white/10 bg-black/25">
+            <div className="text-[10px] text-white/40 font-mono tracking-widest">
+              backdrop to close • Esc • ← →
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 // --- Modal: cinematic preview + scroll lock + loader ---
 function GalleryModal({ item, onClose, onPrev, onNext, hasMany }) {
