@@ -1831,23 +1831,7 @@ const FinderApp = () => {
   );
 };
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Layers,
-  Cpu,
-  AlertCircle,
-  Heart,
-  Coffee,
-  Wand2,
-  Key as KeyIcon,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  X,
-} from "lucide-react";
-
 // -- GALLERY APP (MOBILE-FIRST • AWARD-LEANING) --
-// Replace your existing GalleryApp / GalleryCard / GalleryModal with this whole block.
 
 const clamp = (n, a, b) => Math.min(Math.max(n, a), b);
 
@@ -3895,7 +3879,7 @@ const GLOBAL_CSS = `
 
 /* 100dvh support fallback */
 body { margin: 0; background: #000; overflow: hidden; height: 100vh; height: 100dvh; }
-`;
+
 /* --- Gallery micro-grain (premium texture) --- */
 .gallery-grain{
   background-image:
@@ -3904,7 +3888,7 @@ body { margin: 0; background: #000; overflow: hidden; height: 100vh; height: 100
   mix-blend-mode: overlay;
 }
 
-/* line-clamp helper (if not already) */
+/* line-clamp helper */
 .line-clamp-2{
   display:-webkit-box;
   -webkit-line-clamp:2;
@@ -3914,21 +3898,64 @@ body { margin: 0; background: #000; overflow: hidden; height: 100vh; height: 100
 
 /* slightly nicer tap feel */
 button{ -webkit-tap-highlight-color: transparent; }
+`;
 
-
+function Scanlines({ opacity = 0.12 }) {
+  return (
+    <div
+      className="pointer-events-none fixed inset-0 z-[9999]"
+      style={{
+        backgroundImage:
+          "repeating-linear-gradient(to bottom, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, rgba(0,0,0,0) 3px, rgba(0,0,0,0) 6px)",
+        opacity,
+        mixBlendMode: "overlay",
+      }}
+    />
+  );
+}
 
 export default function os_usagi_xxxx() {
   const [mode, setMode] = useState("power");
   const bgm = useBGM(PLAYLIST);
 
+  // ✅ Rootが全体設定を持つ（SystemAppからここを書き換える）
+  const [settings, setSettings] = useState({
+    scanline: false,
+    brightness: 1.0, // 0.7〜1.2くらいで使うのが綺麗
+    volume: 0.7,     // 0〜1
+  });
+
+  // ✅ BGMに音量反映（useBGM側にメソッドがある前提で分岐）
+  useEffect(() => {
+    if (!bgm) return;
+    if (typeof bgm.setMasterVolume === "function") bgm.setMasterVolume(settings.volume);
+    else if (typeof bgm.setVolume === "function") bgm.setVolume(settings.volume);
+    // どっちも無いなら、useBGMの戻り値に音量setterを足すのが正解
+  }, [bgm, settings.volume]);
+
   return (
     <MobileProvider>
-      <div className="w-full h-[100dvh] bg-black text-white font-sans overflow-hidden">
-        {mode === "power" && <PowerScreen onPower={() => setMode("intro")} />}
-        {mode === "intro" && <IntroScreen onComplete={() => setMode("desktop")} />}
-        {mode === "desktop" && <Desktop bgm={bgm} />}
-
+      <div className="w-full h-[100dvh] bg-black text-white font-sans overflow-hidden relative">
         <style>{GLOBAL_CSS}</style>
+
+        {/* ✅ scanline overlay（brightnessの影響を受けない位置に置く） */}
+        {settings.scanline && <Scanlines />}
+
+        {/* ✅ brightness は「中身」だけにかける */}
+        <div
+          className="absolute inset-0"
+          style={{ filter: `brightness(${settings.brightness})` }}
+        >
+          {mode === "power" && <PowerScreen onPower={() => setMode("intro")} />}
+          {mode === "intro" && <IntroScreen onComplete={() => setMode("desktop")} />}
+          {mode === "desktop" && (
+            <Desktop
+              bgm={bgm}
+              settings={settings}
+              onSettingsChange={setSettings}
+            />
+          )}
+        </div>
       </div>
     </MobileProvider>
   );
