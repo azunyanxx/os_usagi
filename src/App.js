@@ -1831,17 +1831,16 @@ const FinderApp = () => {
   );
 };
 
-// -- GALLERY APP (JAPANESE EMOTION ARCHIVE) --
-// -- GALLERY APP (FOLDER SIDEBAR + SINGLE-TAP PEEK + ZOOM/BLUR GLASS) --
+// -- GALLERY APP (JAPANESE EMOTION ARCHIVE + PEEK GLASS + MODAL) --
 const GalleryApp = () => {
-  const isMobile = useIsMobile();
-
+  const isMobile = useIsMobile(); // 既にある前提。なければ下に簡易版のhook貼ってる
   const [filter, setFilter] = useState("all");
+
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // Peek state (single tap/click)
-  const [peekIndex, setPeekIndex] = useState(null);
+  // ★ single tap/click Peek 用
+  const [armedIndex, setArmedIndex] = useState(null);
 
   const CATEGORIES = useMemo(
     () => [
@@ -1865,17 +1864,19 @@ const GalleryApp = () => {
     );
   }, [filter]);
 
+  // filter変えたらPeek解除
+  useEffect(() => {
+    setArmedIndex(null);
+    setActiveIndex(0);
+  }, [filter]);
+
   const openModal = useCallback((idx) => {
+    setArmedIndex(null);
     setActiveIndex(idx);
     setOpen(true);
-    setPeekIndex(null);
   }, []);
 
-  const closeModal = useCallback(() => {
-    setOpen(false);
-  }, []);
-
-  const clearPeek = useCallback(() => setPeekIndex(null), []);
+  const closeModal = useCallback(() => setOpen(false), []);
 
   const prev = useCallback(() => {
     setActiveIndex((i) => (i - 1 + filteredItems.length) % filteredItems.length);
@@ -1885,45 +1886,22 @@ const GalleryApp = () => {
     setActiveIndex((i) => (i + 1) % filteredItems.length);
   }, [filteredItems.length]);
 
-  // Filter change resets peek/modal index nicely
-  useEffect(() => {
-    setPeekIndex(null);
-    setActiveIndex(0);
-    setOpen(false);
-  }, [filter]);
-
-  // Close peek when clicking outside (desktop)
-  useEffect(() => {
-    if (peekIndex == null || open) return;
-    const onDown = (e) => {
-      const el = e.target;
-      if (!el?.closest?.("[data-gallery-card='true']")) setPeekIndex(null);
-    };
-    window.addEventListener("mousedown", onDown);
-    return () => window.removeEventListener("mousedown", onDown);
-  }, [peekIndex, open]);
-
   // keyboard controls (PC)
   useEffect(() => {
-    if (!open && peekIndex == null) return;
+    if (!open) return;
     const onKeyDown = (e) => {
-      if (e.key === "Escape") {
-        if (open) closeModal();
-        else clearPeek();
-      }
-      if (open) {
-        if (e.key === "ArrowLeft") prev();
-        if (e.key === "ArrowRight") next();
-      }
+      if (e.key === "Escape") closeModal();
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") next();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, peekIndex, closeModal, clearPeek, prev, next]);
+  }, [open, closeModal, prev, next]);
 
   return (
     <div className="flex h-full bg-[#050505]">
       {/* Left Sidebar */}
-      <div className="w-14 sm:w-52 border-r border-white/5 flex flex-col items-center sm:items-stretch py-6 gap-2 bg-[#080808] z-20">
+      <div className="w-14 sm:w-48 border-r border-white/5 flex flex-col items-center sm:items-stretch py-6 gap-2 bg-[#080808] z-20">
         <div className="text-[9px] font-mono text-white/30 mb-4 px-4 tracking-widest hidden sm:block">
           Archive
         </div>
@@ -1932,484 +1910,8 @@ const GalleryApp = () => {
           <div
             key={cat.id}
             onClick={() => setFilter(cat.id)}
-            className={`group flex items-center gap-3 px-3 py-3 rounded-md cursor-pointer transition-all duration-300
-              ${
-                filter === cat.id
-                  ? "bg-white/10 text-white"
-                  : "text-white/30 hover:text-white hover:bg-white/5"
-              }`}
-          >
-            <cat.icon
-              size={16}
-              className={filter === cat.id ? "text-[#a8eaff]" : ""}
-            />
-            <span className="hidden sm:block text-xs tracking-wide">
-              {cat.label}
-            </span>
+            className={`group flex items-center gap-3 px-3
 
-            {filter === cat.id && (
-              <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_10px_rgba(168,234,255,0.75)] hidden sm:block" />
-            )}
-          </div>
-        ))}
-
-        <div className="mt-auto px-4 hidden sm:block">
-          <div className="text-[9px] font-mono text-white/20 border-t border-white/5 pt-4">
-            {filteredItems.length} ITEMS
-          </div>
-        </div>
-      </div>
-
-      {/* Main Gallery Area */}
-      <div className="flex-1 p-6 sm:p-10 overflow-y-auto scrollbar-hide pb-24 sm:pb-10 relative">
-        {/* ambient */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div
-            className="absolute -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[520px] opacity-30 blur-3xl"
-            style={{
-              background:
-                "radial-gradient(circle at center, rgba(168,234,255,0.14) 0%, transparent 60%)",
-            }}
-          />
-          <div
-            className="absolute -bottom-52 left-1/2 -translate-x-1/2 w-[900px] h-[520px] opacity-25 blur-3xl"
-            style={{
-              background:
-                "radial-gradient(circle at center, rgba(203,184,255,0.12) 0%, transparent 60%)",
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] via-transparent to-transparent" />
-        </div>
-
-        {/* Header */}
-        <div className="flex items-end justify-between mb-8 relative z-10">
-          <div>
-            <h2 className="text-3xl sm:text-4xl font-thin tracking-tighter text-white/95 mb-1">
-              {CATEGORIES.find((c) => c.id === filter)?.label}
-            </h2>
-            <p className="text-[10px] font-mono text-[#cbb8ff] tracking-[0.2em] uppercase">
-              Fragmented Memories
-            </p>
-            <p className="mt-2 text-[10px] text-white/30 font-mono tracking-widest">
-              {isMobile
-                ? "tap to peek • tap again to open"
-                : "click to peek • double click to open"}
-            </p>
-          </div>
-
-          <div className="flex gap-2">
-            <button className="w-9 h-9 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors text-white/60">
-              <Search size={14} />
-            </button>
-          </div>
-        </div>
-
-        {/* Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pb-10 relative z-10">
-          {filteredItems.map((item, idx) => (
-            <GalleryCard
-              key={item.id}
-              item={item}
-              index={idx}
-              isMobile={isMobile}
-              isPeeked={peekIndex === idx}
-              onPeek={(i) => {
-                // same card -> open (single tapでも気持ちいい挙動)
-                if (peekIndex === i) openModal(i);
-                else setPeekIndex(i);
-              }}
-              onOpen={openModal}
-            />
-          ))}
-        </div>
-
-        {/* Modal */}
-        {open && filteredItems[activeIndex] && (
-          <GalleryModal
-            item={filteredItems[activeIndex]}
-            onClose={closeModal}
-            onPrev={prev}
-            onNext={next}
-            hasMany={filteredItems.length > 1}
-          />
-        )}
-      </div>
-    </div>
-  );
-};
-
-// --- Card: single tap Peek = frosted glass + thumb zoom/blur ---
-function GalleryCard({ item, index, isMobile, isPeeked, onPeek, onOpen }) {
-  const lastTapRef = useRef(0);
-
-  const onTouchEnd = (e) => {
-    // mobile double tap to open
-    e.preventDefault();
-    const now = Date.now();
-    const dt = now - lastTapRef.current;
-
-    if (dt > 0 && dt < 330) {
-      lastTapRef.current = 0;
-      onOpen(index);
-      return;
-    }
-
-    lastTapRef.current = now;
-    onPeek(index);
-  };
-
-  const onClick = (e) => {
-    // desktop single click peek
-    e.preventDefault();
-    onPeek(index);
-  };
-
-  const onDoubleClick = (e) => {
-    e.preventDefault();
-    onOpen(index);
-  };
-
-  return (
-    <div
-      data-gallery-card="true"
-      className={`group relative ${item.span ?? ""}`}
-    >
-      {/* aura */}
-      <div
-        className={`absolute -inset-1 rounded-2xl transition-opacity duration-700 blur-2xl pointer-events-none
-          ${
-            isPeeked
-              ? "opacity-100"
-              : "opacity-0 group-hover:opacity-100"
-          }
-          bg-[radial-gradient(circle_at_center,rgba(168,234,255,0.18),transparent_60%)]`}
-      />
-
-      <button
-        type="button"
-        className={`relative w-full aspect-[4/3] rounded-2xl overflow-hidden border border-white/10
-          bg-white/[0.02] backdrop-blur-xl text-left
-          shadow-[0_20px_50px_-20px_rgba(0,0,0,0.7)]
-          transition-all duration-700 active:scale-[0.98]
-          ${isPeeked ? "border-[#cbb8ff]/35 shadow-[0_0_70px_rgba(203,184,255,0.10)]" : ""}
-          group-hover:border-[#a8eaff]/35 group-hover:shadow-[0_0_60px_rgba(168,234,255,0.10)]
-        `}
-        onClick={isMobile ? (e) => e.preventDefault() : onClick}
-        onDoubleClick={isMobile ? undefined : onDoubleClick}
-        onTouchEnd={isMobile ? onTouchEnd : undefined}
-        aria-label={`${item.title} preview`}
-      >
-        {/* thumb image (Peek中だけ：ちょいズーム + 微ブラー) */}
-        <div
-          className={`absolute inset-0 bg-cover bg-center transition-[transform,opacity,filter] duration-[1400ms] ease-out
-            transform-gpu will-change-transform
-            ${
-              isPeeked
-                ? "scale-[1.10] opacity-100 grayscale-0 blur-sm"
-                : "scale-100 opacity-85 grayscale blur-0"
-            }
-            group-hover:scale-[1.06] group-hover:opacity-100 group-hover:grayscale-0 group-hover:blur-0
-          `}
-          style={{ backgroundImage: `url(${item.file})` }}
-        />
-
-        {/* base vignette */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/10" />
-
-        {/* micro highlight */}
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700
-          bg-[linear-gradient(110deg,transparent_0%,rgba(255,255,255,0.06)_35%,transparent_60%)]" />
-
-        {/* Peek glass overlay (single tap/click) */}
-        <div
-          className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ${
-            isPeeked ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          <div className="absolute inset-0 bg-white/[0.02] backdrop-blur-sm" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-          <div className="absolute top-4 right-4">
-            <div className="px-3 py-1.5 rounded-full border border-white/15 bg-black/35 backdrop-blur-md">
-              <span className="text-[10px] font-mono tracking-[0.22em] text-white/75 uppercase">
-                {isMobile ? "Tap again to open" : "Click again to open"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* meta + title */}
-        <div className="absolute bottom-0 left-0 right-0 p-5">
-          <div
-            className={`flex items-center gap-2 mb-2 transition-opacity duration-500 ${
-              isPeeked ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-            }`}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_10px_rgba(168,234,255,0.5)]" />
-            <span className="text-[9px] font-mono text-[#a8eaff]/90 tracking-[0.25em] uppercase">
-              {item.meta}
-            </span>
-          </div>
-
-          <div className="text-sm text-white tracking-[0.08em] font-semibold truncate">
-            {item.title}
-          </div>
-
-          <div
-            className={`mt-1 text-[10px] text-white/40 font-light tracking-wide line-clamp-2 transition-opacity duration-500 ${
-              isPeeked ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-            }`}
-          >
-            {item.desc || "Visual memory fragment."}
-          </div>
-        </div>
-
-        {/* edge line */}
-        <div className="absolute inset-0 rounded-2xl pointer-events-none border border-white/0 group-hover:border-white/15 transition-colors duration-700" />
-      </button>
-    </div>
-  );
-}
-
-// --- Modal: cinematic preview ---
-function GalleryModal({ item, onClose, onPrev, onNext, hasMany }) {
-  return (
-    <div
-      className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-6"
-      role="dialog"
-      aria-modal="true"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
-      onTouchStart={(e) => e.target === e.currentTarget && onClose()}
-    >
-      {/* backdrop */}
-      <div className="absolute inset-0 bg-black/75 backdrop-blur-md" />
-
-      {/* glow */}
-      <div
-        className="absolute inset-0 opacity-70 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(circle at center, rgba(168,234,255,0.12) 0%, transparent 55%)",
-        }}
-      />
-
-      <div className="relative w-full max-w-5xl">
-        <div className="absolute -inset-1 rounded-3xl blur-2xl opacity-60
-          bg-[radial-gradient(circle_at_center,rgba(203,184,255,0.14),transparent_60%)] pointer-events-none" />
-
-        <div className="relative bg-[#070707] border border-white/10 rounded-2xl overflow-hidden shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85)]">
-          {/* top bar */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/30">
-            <div className="min-w-0">
-              <div className="text-white/85 text-sm font-semibold tracking-wide truncate">
-                {item.title}
-              </div>
-              <div className="text-[10px] font-mono text-[#a8eaff]/70 tracking-[0.25em] uppercase">
-                {item.meta}
-              </div>
-            </div>
-
-            <button
-              onClick={onClose}
-              className="w-9 h-9 rounded-full border border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center text-white/70"
-              aria-label="Close"
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          {/* image */}
-          <div className="relative bg-black">
-            <img
-              src={item.file}
-              alt={item.title}
-              className="w-full max-h-[78vh] object-contain"
-              draggable={false}
-            />
-
-            {hasMany && (
-              <>
-                <button
-                  onClick={onPrev}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
-                    bg-black/35 hover:bg-black/55 border border-white/10
-                    flex items-center justify-center text-white/80 transition-all"
-                  aria-label="Previous"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <button
-                  onClick={onNext}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
-                    bg-black/35 hover:bg-black/55 border border-white/10
-                    flex items-center justify-center text-white/80 transition-all"
-                  aria-label="Next"
-                >
-                  <ChevronRight size={18} />
-                </button>
-              </>
-            )}
-          </div>
-
-          {/* footer */}
-          <div className="px-4 py-3 border-t border-white/10 bg-black/25">
-            <div className="text-[10px] text-white/40 font-mono tracking-widest">
-              backdrop to close • Esc • ← →
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-// --- Modal: cinematic preview + scroll lock + loader ---
-function GalleryModal({ item, onClose, onPrev, onNext, hasMany }) {
-  const [loaded, setLoaded] = useState(false);
-
-  // scroll lock (iOSもなるべく破綻しないやつ)
-  useEffect(() => {
-    const body = document.body;
-    const prevOverflow = body.style.overflow;
-    const prevPosition = body.style.position;
-    const prevTop = body.style.top;
-    const scrollY = window.scrollY;
-
-    body.style.overflow = "hidden";
-    body.style.position = "fixed";
-    body.style.top = `-${scrollY}px`;
-
-    return () => {
-      body.style.overflow = prevOverflow;
-      body.style.position = prevPosition;
-      body.style.top = prevTop;
-      window.scrollTo(0, scrollY);
-    };
-  }, []);
-
-  useEffect(() => setLoaded(false), [item?.file]);
-
-  return (
-    <div
-      className="fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-6"
-      role="dialog"
-      aria-modal="true"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
-      onTouchStart={(e) => e.target === e.currentTarget && onClose()}
-    >
-      {/* backdrop */}
-      <div className="absolute inset-0 bg-black/75 backdrop-blur-md" />
-
-      {/* center glow */}
-      <div
-        className="absolute inset-0 opacity-70 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(circle at center, rgba(168,234,255,0.12) 0%, transparent 55%)",
-        }}
-      />
-
-      <div className="relative w-full max-w-5xl">
-        <div
-          className="absolute -inset-1 rounded-3xl blur-2xl opacity-60 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(circle at center, rgba(203,184,255,0.14) 0%, transparent 60%)",
-          }}
-        />
-
-        <div className="relative bg-[#070707] border border-white/10 rounded-2xl overflow-hidden shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85)]">
-          {/* top bar */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/30">
-            <div className="min-w-0">
-              <div className="text-white/85 text-sm font-semibold tracking-wide truncate">
-                {item.title}
-              </div>
-              <div className="text-[10px] font-mono text-[#a8eaff]/70 tracking-[0.25em] uppercase">
-                {item.meta}
-              </div>
-            </div>
-
-            <button
-              onClick={onClose}
-              className="w-9 h-9 rounded-full border border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center text-white/70"
-              aria-label="Close"
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          {/* image area */}
-          <div className="relative bg-black">
-            {/* loader */}
-            {!loaded && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="absolute inset-0 opacity-70">
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/[0.03] via-transparent to-transparent" />
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      background:
-                        "radial-gradient(circle at center, rgba(168,234,255,0.10) 0%, transparent 58%)",
-                    }}
-                  />
-                </div>
-                <div className="relative">
-                  <div className="w-14 h-14 rounded-full border border-white/15 bg-white/[0.03] backdrop-blur-md flex items-center justify-center">
-                    <div className="w-6 h-6 rounded-full border-2 border-white/30 border-t-white/70 animate-spin" />
-                  </div>
-                  <div className="mt-3 text-center text-[10px] font-mono tracking-[0.22em] text-white/40 uppercase">
-                    Loading
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <img
-              src={item.file}
-              alt={item.title}
-              className={`w-full max-h-[78vh] object-contain transition-opacity duration-500 ${
-                loaded ? "opacity-100" : "opacity-0"
-              }`}
-              draggable={false}
-              onLoad={() => setLoaded(true)}
-            />
-
-            {hasMany && (
-              <>
-                <button
-                  onClick={onPrev}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
-                    bg-black/35 hover:bg-black/55 border border-white/10
-                    flex items-center justify-center text-white/80 transition-all"
-                  aria-label="Previous"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <button
-                  onClick={onNext}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
-                    bg-black/35 hover:bg-black/55 border border-white/10
-                    flex items-center justify-center text-white/80 transition-all"
-                  aria-label="Next"
-                >
-                  <ChevronRight size={18} />
-                </button>
-              </>
-            )}
-          </div>
-
-          {/* footer */}
-          <div className="px-4 py-3 border-t border-white/10 bg-black/25">
-            <div className="text-[10px] text-white/40 font-mono tracking-widest">
-              click/tap backdrop to close • Esc • ← →
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // -- MUSIC APP (REDESIGNED WITH HEADPHONE RABBIT) --
 const MusicApp = ({ bgm }) => {
