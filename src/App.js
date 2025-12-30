@@ -1897,35 +1897,46 @@ const GalleryApp = () => {
   return (
     <div className="flex h-full">
       {/* Left Sidebar */}
-      <div className="w-40 bg-[#0a0a0a] border-r border-white/5 p-4 hidden sm:block">
-        <p className="text-[10px] font-mono text-white/40 tracking-[0.3em] uppercase mb-6">
-          Archive
-        </p>
+{/* Left Sidebar */}
+<div className="w-16 sm:w-40 bg-[#0a0a0a] border-r border-white/5 p-2 sm:p-4 block shrink-0">
+  <p className="text-[10px] font-mono text-white/40 tracking-[0.3em] uppercase mb-4 sm:mb-6 hidden sm:block">
+    Archive
+  </p>
 
-        <div className="space-y-1">
-          {CATEGORIES.map((cat) => (
-            <div
-              key={cat.id}
-              onClick={() => setFilter(cat.id)}
-              className={`group flex items-center gap-3 px-3 py-3 rounded-md cursor-pointer transition-all duration-300 ${
-                filter === cat.id
-                  ? "bg-white/10 text-white"
-                  : "text-white/30 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <cat.icon size={16} className={filter === cat.id ? "text-[#a8eaff]" : ""} />
-              <span className="text-xs">{cat.label}</span>
-              {filter === cat.id && (
-                <div className="ml-auto w-1 h-1 rounded-full bg-[#a8eaff] animate-pulse" />
-              )}
-            </div>
-          ))}
-        </div>
+  <div className="space-y-1">
+    {CATEGORIES.map((cat) => (
+      <button
+        key={cat.id}
+        type="button"
+        onClick={() => setFilter(cat.id)}
+        className={`group w-full flex items-center justify-center sm:justify-start gap-0 sm:gap-3
+          px-2 sm:px-3 py-3 rounded-md cursor-pointer transition-all duration-300
+          ${filter === cat.id
+            ? "bg-white/10 text-white"
+            : "text-white/30 hover:text-white hover:bg-white/5"
+          }`}
+        aria-label={cat.label}
+      >
+        <cat.icon
+          size={16}
+          className={filter === cat.id ? "text-[#a8eaff]" : "text-white/40 group-hover:text-white"}
+        />
 
-        <div className="mt-10 text-[10px] text-white/20 font-mono tracking-widest">
-          {filteredItems.length} ITEMS
-        </div>
-      </div>
+        {/* ラベルはPCだけ表示 */}
+        <span className="text-xs hidden sm:block">{cat.label}</span>
+
+        {filter === cat.id && (
+          <div className="ml-auto w-1 h-1 rounded-full bg-[#a8eaff] animate-pulse hidden sm:block" />
+        )}
+      </button>
+    ))}
+  </div>
+
+  <div className="mt-6 sm:mt-10 text-[10px] text-white/20 font-mono tracking-widest text-center sm:text-left">
+    {filteredItems.length} ITEMS
+  </div>
+</div>
+
 
       {/* Main */}
       <div className="flex-1 p-6 sm:p-10 overflow-y-auto scrollbar-hide pb-24 sm:pb-10 relative">
