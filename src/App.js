@@ -1834,28 +1834,7 @@ const FinderApp = () => {
 
 
 
-/**
- * Expecting a global const:
- *   const GALLERY_ITEMS = [{ id, title, file, folder/cat, meta, desc }, ...]
- * If you import it instead, replace below usage accordingly.
- */
 
-
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import {
-  Layers,
-  Cpu,
-  Key as KeyIcon,
-  AlertCircle,
-  Heart,
-  Coffee,
-  Wand2,
-  Search,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Maximize2,
-} from "lucide-react";
 
 /**
  * GalleryApp (OS Bunny style)
@@ -1868,16 +1847,7 @@ import {
  * { id, folder, title, file, meta, desc? }
  */
 
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-  return isMobile;
-};
+
 
 const isImageLike = (url = "", meta = "") => {
   const u = url.toLowerCase();
