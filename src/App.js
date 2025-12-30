@@ -1841,652 +1841,477 @@ const FinderApp = () => {
  */
 
 
-/* ========= helpers ========= */
-const clamp = (n, a, b) => Math.min(Math.max(n, a), b);
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import {
+  Layers,
+  Cpu,
+  Key as KeyIcon,
+  AlertCircle,
+  Heart,
+  Coffee,
+  Wand2,
+  Search,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2,
+} from "lucide-react";
 
-function useLockBodyScroll(locked) {
+/**
+ * GalleryApp (OS Bunny style)
+ * - category filter (sidebar on desktop / chips on mobile)
+ * - search
+ * - lightbox modal (prev/next, ESC, arrow keys, swipe)
+ * - same aesthetic as your snippet: dark + glass + cyan/lavender
+ *
+ * expected item shape:
+ * { id, folder, title, file, meta, desc? }
+ */
+
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
-    if (!locked) return;
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+};
+
+const isImageLike = (url = "", meta = "") => {
+  const u = url.toLowerCase();
+  return (
+    u.endsWith(".png") ||
+    u.endsWith(".jpg") ||
+    u.endsWith(".jpeg") ||
+    u.endsWith(".webp") ||
+    u.endsWith(".gif") ||
+    meta === "IMG" ||
+    meta === "JPG"
+  );
+};
+
+const normalize = (s) => (s || "").toString().toLowerCase().trim();
+
+const clampIndex = (i, len) => {
+  if (!len) return 0;
+  return (i % len + len) % len;
+};
+
+function Lightbox({
+  open,
+  items,
+  index,
+  onClose,
+  onPrev,
+  onNext,
+  accent = "#a8eaff",
+}) {
+  const isMobile = useIsMobile();
+  const startX = useRef(null);
+  const startY = useRef(null);
+
+  // keyboard
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+      if (e.key === "ArrowLeft") onPrev?.();
+      if (e.key === "ArrowRight") onNext?.();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose, onPrev, onNext]);
+
+  // lock body scroll
+  useEffect(() => {
+    if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [locked]);
-}
+  }, [open]);
 
-function hapticTiny() {
-  try {
-    navigator.vibrate?.(8);
-  } catch {}
-}
+  const item = items?.[index];
+  if (!open || !item) return null;
 
-function distance(a, b) {
-  return Math.hypot((a?.x ?? 0) - (b?.x ?? 0), (a?.y ?? 0) - (b?.y ?? 0));
-}
+  const onTouchStart = (e) => {
+    const t = e.touches?.[0];
+    if (!t) return;
+    startX.current = t.clientX;
+    startY.current = t.clientY;
+  };
 
-function useSingleDoubleTap({ onSingle, onDouble, delay = 240 }) {
-  const timerRef = useRef(0);
-  const lastRef = useRef({ x: 0, y: 0, t: 0 });
+  const onTouchEnd = (e) => {
+    const t = e.changedTouches?.[0];
+    if (!t) return;
+    const dx = t.clientX - (startX.current ?? t.clientX);
+    const dy = t.clientY - (startY.current ?? t.clientY);
+    startX.current = null;
+    startY.current = null;
 
-  return (x, y) => {
-    const t = performance.now();
-    const dt = t - lastRef.current.t;
-    const dist = distance(lastRef.current, { x, y, t });
-
-    // double
-    if (dt > 0 && dt < delay && dist < 18) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = 0;
-      lastRef.current = { x: 0, y: 0, t: 0 };
-      hapticTiny();
-      onDouble?.();
-      return;
+    // horizontal swipe only
+    if (Math.abs(dx) > 45 && Math.abs(dy) < 40) {
+      if (dx > 0) onPrev?.();
+      else onNext?.();
     }
-
-    // single (delayed)
-    lastRef.current = { x, y, t };
-    window.clearTimeout(timerRef.current);
-    timerRef.current = window.setTimeout(() => {
-      onSingle?.();
-      timerRef.current = 0;
-    }, delay);
   };
-}
-
-function scrollToIndex(container, i, behavior = "smooth") {
-  if (!container) return;
-  const w = container.clientWidth || 1;
-  container.scrollTo({ left: i * w, behavior });
-}
-
-/* ========= UI bits ========= */
-function PeekPopover({ item, rect, onClose }) {
-  // card上 “その場” 感を出すため、rect に寄せて出す（ただし画面外に出ないよう clamp）
-  const w = 420; // popover width target
-  const h = 280; // popover height target
-  const pad = 12;
-
-  const left = rect
-    ? clamp(rect.left + rect.width / 2 - w / 2, pad, window.innerWidth - w - pad)
-    : clamp(window.innerWidth / 2 - w / 2, pad, window.innerWidth - w - pad);
-
-  const top = rect
-    ? clamp(rect.top + rect.height / 2 - h / 2, pad + 72, window.innerHeight - h - pad - 24)
-    : clamp(window.innerHeight / 2 - h / 2, pad + 72, window.innerHeight - h - pad - 24);
-
-  return (
-    <div className="fixed inset-0 z-[200]">
-      {/* click-away */}
-      <button
-        type="button"
-        onClick={onClose}
-        className="absolute inset-0"
-        style={{ background: "rgba(0,0,0,0.35)" }}
-        aria-label="Close peek"
-      />
-      {/* popover */}
-      <div
-        className="absolute rounded-3xl border border-white/10 bg-black/35 backdrop-blur-2xl overflow-hidden shadow-[0_30px_80px_-55px_rgba(0,0,0,0.95)]"
-        style={{ left, top, width: w, height: h }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* glass edge */}
-        <div className="peek-glass-edge" />
-        <div className="peek-specular" />
-
-        <div className="absolute inset-0">
-          <img
-            src={item.file}
-            alt={item.title}
-            className="w-full h-full object-cover scale-[1.06]"
-            draggable={false}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-        </div>
-
-        <div className="absolute left-0 right-0 bottom-0 p-4">
-          <div className="flex items-end justify-between gap-3">
-            <div className="min-w-0">
-              <div className="titleSerif text-[16px] text-white/92 font-[520] tracking-tight truncate">
-                {item.title}
-              </div>
-              <div className="uiMono mt-1 text-[10px] tracking-[0.24em] uppercase text-[#a8eaff]/55 truncate">
-                {item.meta || "IMG"}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="shrink-0 w-9 h-9 rounded-2xl border border-white/10 bg-black/35 hover:bg-black/55 transition flex items-center justify-center text-white/85"
-              aria-label="Close"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function GalleryModalSnap({ items, index, setIndex, onClose, isMobile }) {
-  const scrollerRef = useRef(null);
-  const programRef = useRef(false);
-
-  useLockBodyScroll(true);
-
-  useEffect(() => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    programRef.current = true;
-    scrollToIndex(el, index, "auto");
-    const t = window.setTimeout(() => (programRef.current = false), 120);
-    return () => window.clearTimeout(t);
-  }, [index]);
-
-  useEffect(() => {
-    const el = scrollerRef.current;
-    if (!el) return;
-
-    let raf = 0;
-    const onScroll = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        if (programRef.current) return;
-        const w = el.clientWidth || 1;
-        const i = Math.round(el.scrollLeft / w);
-        if (i !== index) setIndex(i);
-      });
-    };
-
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      el.removeEventListener("scroll", onScroll);
-      cancelAnimationFrame(raf);
-    };
-  }, [index, setIndex]);
-
-  const active = items[index];
-  const counter = `${String(index + 1).padStart(2, "0")} / ${String(items.length).padStart(2, "0")}`;
-
-  const prev = () => setIndex((i) => (i - 1 + items.length) % items.length);
-  const next = () => setIndex((i) => (i + 1) % items.length);
-
-  useEffect(() => {
-    const onKeyDown = (e) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft") prev();
-      if (e.key === "ArrowRight") next();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [items.length]);
-
-  return (
-    <div className="fixed inset-0 z-[999] overflow-hidden" role="dialog" aria-modal="true">
-      <button
-        type="button"
-        onClick={onClose}
-        className="absolute inset-0"
-        style={{ background: "rgba(0,0,0,0.92)" }}
-        aria-label="Close modal"
-      />
-
-      <div className="absolute inset-0 pointer-events-none">
-        <div
-          className="absolute inset-0 opacity-70"
-          style={{ background: "radial-gradient(circle at center, rgba(168,234,255,0.10) 0%, transparent 56%)" }}
-        />
-        <div className="absolute inset-0 gallery-grain opacity-[0.12]" />
-      </div>
-
-      {/* close */}
-      <button
-        onClick={onClose}
-        className="fixed z-[1002] w-11 h-11 rounded-2xl border border-white/10 bg-black/45 backdrop-blur-xl
-          hover:bg-black/60 transition flex items-center justify-center text-white/85"
-        style={{ top: "calc(env(safe-area-inset-top) + 12px)", right: "12px" }}
-        aria-label="Close"
-      >
-        <X size={16} />
-      </button>
-
-      {/* title pill */}
-      <div
-        className="fixed left-0 right-0 z-[1001]"
-        style={{ top: "calc(env(safe-area-inset-top) + 12px)" }}
-      >
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 pr-14">
-          <div className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-black/35 backdrop-blur-xl shadow-[0_22px_60px_-44px_rgba(0,0,0,0.85)] px-4 py-3">
-            <div className="min-w-0">
-              <div className="uiSans text-[12px] font-semibold tracking-wide text-white/85 truncate max-w-[62vw] sm:max-w-[520px]">
-                {active?.title}
-              </div>
-              <div className="uiMono mt-1 text-[9px] tracking-[0.25em] uppercase text-[#a8eaff]/45">
-                {active?.meta || "IMG"}
-              </div>
-            </div>
-            <div className="ml-2 uiMono text-[9px] tracking-widest text-white/25">{counter}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* ✅ scroll-snap swiper */}
-      <div
-        ref={scrollerRef}
-        className="absolute inset-0 overflow-x-auto overflow-y-hidden scrollbar-hide"
-        style={{
-          WebkitOverflowScrolling: "touch",
-          scrollSnapType: "x mandatory",
-          scrollSnapStop: "always",
-          overscrollBehaviorX: "contain",
-          touchAction: isMobile ? "pan-x" : "auto",
-        }}
-      >
-        <div className="h-full flex">
-          {items.map((it, i) => (
-            <div
-              key={it.id || it.file || i}
-              className="w-full h-full flex-shrink-0 flex items-center justify-center"
-              style={{ scrollSnapAlign: "center" }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div
-                className="relative w-full h-full flex items-center justify-center select-none"
-                style={{
-                  paddingTop: "calc(env(safe-area-inset-top) + 78px)",
-                  paddingBottom: "calc(env(safe-area-inset-bottom) + 70px)",
-                }}
-              >
-                <img
-                  src={it.file}
-                  alt={it.title}
-                  draggable={false}
-                  className="w-full h-full object-contain"
-                  style={{ padding: "18px" }}
-                />
-
-                {/* desktop arrows */}
-                {!isMobile && items.length > 1 && (
-                  <>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        prev();
-                      }}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
-                        bg-black/35 hover:bg-black/55 border border-white/10
-                        flex items-center justify-center text-white/80 transition-all"
-                      aria-label="Previous"
-                    >
-                      <ChevronLeft size={18} />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        next();
-                      }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
-                        bg-black/35 hover:bg-black/55 border border-white/10
-                        flex items-center justify-center text-white/80 transition-all"
-                      aria-label="Next"
-                    >
-                      <ChevronRight size={18} />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* bottom bar */}
-      <div
-        className="fixed left-0 right-0 z-[1001] px-4 sm:px-6"
-        style={{ bottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
-      >
-        <div className="mx-auto max-w-5xl">
-          <div className="rounded-2xl border border-white/10 bg-black/25 backdrop-blur-xl px-4 py-3">
-            <div className="flex items-center gap-3">
-              <div className="uiMono text-[9px] text-white/25 tracking-widest">{counter}</div>
-              <div className="flex-1">
-                <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-white/60 transition-[width] duration-200"
-                    style={{ width: `${((index + 1) / Math.max(1, items.length)) * 100}%` }}
-                  />
-                </div>
-              </div>
-              <div className="uiMono text-[9px] text-[#a8eaff]/30 tracking-widest uppercase truncate">
-                SWIPE
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ========= MAIN ========= */
-// -- GALLERY APP (JAPANESE EMOTION ARCHIVE) --
-export const GalleryApp = () => {
-  const isMobile = useIsMobile();
-
-  const [filter, setFilter] = useState("all");
-  const [query, setQuery] = useState("");
-
-  // peek popover
-  const [peek, setPeek] = useState(null); // { item, rect }
-
-  // full modal
-  const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  const CATEGORIES = [
-    { id: "all", label: "All", icon: Layers },
-    { id: "system", label: "System", icon: Cpu },
-    { id: "key", label: "Emotion Key", icon: KeyIcon },
-    { id: "emotion", label: "Heart Error", icon: AlertCircle },
-    { id: "life", label: "Life Log", icon: Heart },
-    { id: "work", label: "Work", icon: Coffee },
-    { id: "magic", label: "Magic", icon: Wand2 },
-  ];
-
-  const filteredItems = useMemo(() => {
-    const items = GALLERY_ITEMS || [];
-    const q = query.trim().toLowerCase();
-
-    const byCat = (item) => {
-      if (filter === "all") return true;
-      return item.folder === filter || (filter === "key" && item.title?.endsWith?.(".key"));
-    };
-
-    const byText = (item) => {
-      if (!q) return true;
-      const t = `${item.title || ""} ${item.meta || ""} ${item.desc || ""}`.toLowerCase();
-      return t.includes(q);
-    };
-
-    return items.filter((it) => byCat(it) && byText(it));
-  }, [filter, query]);
-
-  const openFull = (idx) => {
-    setPeek(null);
-    setActiveIndex(idx);
-    setOpen(true);
-  };
-
-  return (
-    <div className="h-full">
-      {/* ✅ リッチフォント + glass/specular（ここで確実に効かせる） */}
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,260..900,0..100&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap');
-        .titleSerif { font-family: Fraunces, ui-serif, Georgia, serif; }
-        .uiSans { font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
-        .uiMono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
-
-        .gallery-grain{
-          background-image: url("data:image/svg+xml,%3Csvg xmlns='https://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
-          background-size: 180px 180px;
-        }
-
-        /* ✅ hoverで“縁だけ”光らせる（maskでborderのみ） */
-        .glass-edge{
-          position:absolute; inset:0;
-          padding:1px;
-          border-radius: 12px; /* = rounded-lg */
-          background: linear-gradient(135deg,
-            rgba(168,234,255,.85),
-            rgba(203,184,255,.55),
-            rgba(255,255,255,.10)
-          );
-          opacity:0;
-          transition: opacity 420ms ease, filter 420ms ease;
-          pointer-events:none;
-
-          -webkit-mask:
-            linear-gradient(#000 0 0) content-box,
-            linear-gradient(#000 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-        }
-        .group:hover .glass-edge{
-          opacity:1;
-          filter: drop-shadow(0 0 16px rgba(168,234,255,.18))
-                  drop-shadow(0 0 26px rgba(203,184,255,.12));
-        }
-
-        /* ✅ 角の薄い反射（specular） */
-        .specular{
-          position:absolute; inset:0;
-          border-radius: 12px; /* rounded-lg */
-          pointer-events:none;
-          opacity:0;
-          transition: opacity 420ms ease;
-          mix-blend-mode: screen;
-          background:
-            radial-gradient(140px 120px at 0% 0%, rgba(255,255,255,.16), rgba(255,255,255,0) 60%),
-            radial-gradient(140px 120px at 100% 0%, rgba(255,255,255,.12), rgba(255,255,255,0) 60%),
-            radial-gradient(160px 140px at 0% 100%, rgba(255,255,255,.10), rgba(255,255,255,0) 62%),
-            radial-gradient(160px 140px at 100% 100%, rgba(255,255,255,.08), rgba(255,255,255,0) 62%);
-        }
-        .group:hover .specular{ opacity:1; }
-
-        /* peek popover用も同じ質感 */
-        .peek-glass-edge{
-          position:absolute; inset:0;
-          padding:1px; border-radius: 24px;
-          background: linear-gradient(135deg,
-            rgba(168,234,255,.80),
-            rgba(203,184,255,.48),
-            rgba(255,255,255,.10)
-          );
-          opacity:1; pointer-events:none;
-          -webkit-mask:
-            linear-gradient(#000 0 0) content-box,
-            linear-gradient(#000 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-          filter: drop-shadow(0 0 18px rgba(168,234,255,.12));
-        }
-        .peek-specular{
-          position:absolute; inset:0; border-radius:24px;
-          pointer-events:none; mix-blend-mode: screen;
-          background:
-            radial-gradient(160px 140px at 0% 0%, rgba(255,255,255,.16), rgba(255,255,255,0) 62%),
-            radial-gradient(180px 160px at 100% 0%, rgba(255,255,255,.12), rgba(255,255,255,0) 62%);
-          opacity:.9;
-        }
-      `}</style>
-
-      {/* ✅ 前のと同じ “flex + 左サイドバー” を崩さない：flex-nowrap / min-w-0 を追加 */}
-      <div className="flex flex-nowrap h-full bg-[#050505] text-white overflow-hidden">
-        {/* Left Sidebar（←これが “ない” ってことが起きないように固定） */}
-        <div className="w-14 sm:w-48 border-r border-white/5 flex flex-col items-center sm:items-stretch py-6 gap-2 bg-[#080808] z-20 shrink-0">
-          <div className="text-[9px] uiMono text-white/30 mb-4 px-4 tracking-widest hidden sm:block">
-            Archive
-          </div>
-
-          {/* ✅ 1列縦：mapの各行は block 幅 w-full にする（sm以上はstretchで幅が効く） */}
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => {
-                setFilter(cat.id);
-                setPeek(null);
-              }}
-              className={`group w-full flex items-center gap-3 px-3 py-3 rounded-md cursor-pointer transition-all duration-300 ${
-                filter === cat.id
-                  ? "bg-white/10 text-white"
-                  : "text-white/30 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <cat.icon size={16} className={filter === cat.id ? "text-[#a8eaff]" : ""} />
-              <span className="hidden sm:block text-xs tracking-wide uiSans">
-                {cat.label}
-              </span>
-              {filter === cat.id && (
-                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_8px_#a8eaff] hidden sm:block" />
-              )}
-            </button>
-          ))}
-
-          <div className="mt-auto px-4 hidden sm:block">
-            <div className="text-[9px] uiMono text-white/20 border-t border-white/5 pt-4 tracking-widest">
-              {filteredItems.length} ITEMS
-            </div>
-          </div>
-        </div>
-
-        {/* Main Gallery Area */}
-        <div className="flex-1 min-w-0 p-6 sm:p-10 overflow-y-auto scrollbar-hide pb-24 sm:pb-10 relative">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#a8eaff]/5 via-transparent to-transparent pointer-events-none" />
-          <div className="absolute inset-0 gallery-grain opacity-[0.07] pointer-events-none" />
-
-          {/* Header + ✅検索バー */}
-          <div className="relative flex items-end justify-between mb-8 gap-4">
-            <div className="min-w-0">
-              <h2 className="titleSerif text-3xl sm:text-4xl font-[520] tracking-tight text-white/95 mb-1 animate-fade-in">
-                {CATEGORIES.find((c) => c.id === filter)?.label}
-              </h2>
-              <p className="text-[10px] uiMono text-[#cbb8ff]/70 tracking-[0.2em] uppercase animate-fade-in">
-                Fragmented Memories
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="relative w-[52vw] max-w-[360px] sm:w-[360px]">
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search"
-                  className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-2.5 pl-10 pr-4
-                    text-xs text-white/80 placeholder:text-white/25 focus:outline-none focus:border-[#a8eaff]/35
-                    uiMono tracking-wider"
-                />
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35" />
-              </div>
-            </div>
-          </div>
-
-          {/* Cards */}
-          <div className="relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pb-10">
-            {filteredItems.map((item, idx) => (
-              <GalleryCard
-                key={item.id || item.file || idx}
-                item={item}
-                idx={idx}
-                onPeek={(rect) => {
-                  setOpen(false);
-                  setPeek({ item, rect });
-                }}
-                onOpenFull={() => openFull(idx)}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ✅ peek = モーダルじゃなく popover */}
-      {peek?.item && (
-        <PeekPopover
-          item={peek.item}
-          rect={peek.rect}
-          onClose={() => setPeek(null)}
-        />
-      )}
-
-      {/* ✅ double tap = フルスクリーン / ✅ mobile swipe = scroll-snap */}
-      {open && filteredItems[activeIndex] && (
-        <GalleryModalSnap
-          items={filteredItems}
-          index={activeIndex}
-          setIndex={(i) => setActiveIndex((i + filteredItems.length) % filteredItems.length)}
-          onClose={() => setOpen(false)}
-          isMobile={isMobile}
-        />
-      )}
-    </div>
-  );
-};
-
-function GalleryCard({ item, idx, onPeek, onOpenFull }) {
-  const cardRef = useRef(null);
-
-  const tap = useSingleDoubleTap({
-    onSingle: () => {
-      const el = cardRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      onPeek(rect);
-    },
-    onDouble: () => {
-      onOpenFull();
-    },
-    delay: 240,
-  });
 
   return (
     <div
-      ref={cardRef}
-      className={`group relative cursor-pointer perspective-1000 animate-fade-in ${item.span || "aspect-[4/3]"}`}
-      style={{ animationDelay: `${idx * 50}ms` }}
-      onPointerUp={(e) => {
-        const x = e.clientX ?? (e.changedTouches?.[0]?.clientX ?? 0);
-        const y = e.clientY ?? (e.changedTouches?.[0]?.clientY ?? 0);
-        tap(x, y);
+      className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-center justify-center"
+      onMouseDown={(e) => {
+        // click outside to close
+        if (e.target === e.currentTarget) onClose?.();
       }}
-      onDoubleClick={(e) => {
-        e.preventDefault();
-        onOpenFull();
-      }}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
     >
-      {/* Card Container - White Glass Feel */}
-      <div className="absolute inset-0 bg-[#111] border border-white/10 rounded-lg overflow-hidden transition-all duration-700 group-hover:border-[#a8eaff]/50 group-hover:shadow-[0_0_40px_rgba(168,234,255,0.1)] group-hover:scale-[1.01]">
-        {/* ✅ glass edge only */}
-        <div className="glass-edge" />
-        {/* ✅ specular corners */}
-        <div className="specular" />
-
-        {/* Image */}
-        <div
-          className="absolute inset-0 bg-cover bg-center transition-all duration-[1.5s] ease-out scale-100 group-hover:scale-105 opacity-80 group-hover:opacity-100 grayscale group-hover:grayscale-0"
-          style={{ backgroundImage: `url(${item.file})` }}
-        />
-
-        {/* Overlay Gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
-
-        {/* Content */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 flex flex-col items-start gap-1 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-          <div className="flex items-center gap-2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">
-            <div className="w-1 h-1 rounded-full bg-[#a8eaff]" />
-            <span className="text-[9px] uiMono text-[#a8eaff] tracking-widest">
-              {item.meta}
-            </span>
+      {/* frame */}
+      <div
+        className={`relative w-[92vw] ${
+          isMobile ? "h-[86dvh]" : "h-[82vh]"
+        } max-w-5xl bg-[#060606] border border-white/10 rounded-2xl overflow-hidden shadow-[0_40px_100px_-30px_rgba(0,0,0,0.8)]`}
+        style={{
+          boxShadow: `0 0 0 1px rgba(255,255,255,0.06), 0 40px 100px -30px rgba(0,0,0,0.8), 0 0 60px rgba(168,234,255,0.10)`,
+        }}
+      >
+        {/* top bar */}
+        <div className="h-12 px-4 flex items-center justify-between border-b border-white/10 bg-[#0a0a0a]/70 backdrop-blur z-10">
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="w-2 h-2 rounded-full shadow-[0_0_10px_rgba(168,234,255,0.8)]"
+              style={{ background: accent }}
+            />
+            <div className="min-w-0">
+              <div className="text-[11px] font-mono text-white/70 truncate">
+                {item.title}
+              </div>
+              <div className="text-[9px] font-mono text-white/30 tracking-[0.25em] uppercase">
+                {item.meta} · {item.folder}
+              </div>
+            </div>
           </div>
 
-          <h3 className="text-sm font-bold tracking-[0.1em] text-white uiSans">
-            {item.title}
-          </h3>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors text-white/70"
+            aria-label="close"
+          >
+            <X size={16} />
+          </button>
+        </div>
 
-          <p className="text-[10px] text-white/50 font-light tracking-wide max-w-[90%] hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity delay-200 uiSans">
-            {item.desc || "No description."}
-          </p>
+        {/* content */}
+        <div className="relative w-full h-[calc(100%-3rem)]">
+          {/* subtle overlay */}
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top,rgba(168,234,255,0.10),transparent_60%)]" />
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_bottom,rgba(203,184,255,0.08),transparent_60%)]" />
 
-          <div className="mt-2 text-[9px] uiMono tracking-[0.22em] text-white/28 uppercase opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-            Tap: Peek / Double: Full
+          <div className="absolute inset-0 flex items-center justify-center p-6">
+            {isImageLike(item.file, item.meta) ? (
+              <img
+                src={item.file}
+                alt={item.title}
+                className="max-w-full max-h-full object-contain rounded-lg border border-white/10 shadow-[0_0_50px_rgba(168,234,255,0.08)]"
+                loading="eager"
+                draggable={false}
+              />
+            ) : (
+              <div className="w-full h-full rounded-lg border border-white/10 flex flex-col items-center justify-center text-white/30 font-mono">
+                <Maximize2 className="opacity-40 mb-3" />
+                PREVIEW_UNAVAILABLE
+              </div>
+            )}
+          </div>
+
+          {/* nav */}
+          <button
+            onClick={onPrev}
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full border border-white/10 bg-black/40 hover:bg-white/10 transition-colors flex items-center justify-center text-white/70"
+            aria-label="prev"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <button
+            onClick={onNext}
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full border border-white/10 bg-black/40 hover:bg-white/10 transition-colors flex items-center justify-center text-white/70"
+            aria-label="next"
+          >
+            <ChevronRight size={18} />
+          </button>
+
+          {/* bottom info */}
+          <div className="absolute left-0 right-0 bottom-0 px-6 py-4 bg-gradient-to-t from-black/80 via-black/20 to-transparent">
+            <div className="flex items-end justify-between gap-4">
+              <div className="min-w-0">
+                <div className="text-xs text-white/80 tracking-wide truncate">
+                  {item.desc || "Visual memory fragment."}
+                </div>
+                <div className="text-[9px] font-mono text-white/30 tracking-[0.25em] uppercase mt-1">
+                  {index + 1} / {items.length}
+                </div>
+              </div>
+              <div className="text-[9px] font-mono text-white/20 tracking-[0.25em] uppercase hidden sm:block">
+                ← / → · ESC
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function GalleryApp({
+  items = [],
+  defaultFilter = "all",
+  accentCyan = "#a8eaff",
+  accentLav = "#cbb8ff",
+}) {
+  const isMobile = useIsMobile();
+
+  const CATEGORIES = useMemo(
+    () => [
+      { id: "all", label: "All", icon: Layers },
+      { id: "system", label: "System", icon: Cpu },
+      { id: "key", label: "Emotion Key", icon: KeyIcon },
+      { id: "emotion", label: "Heart Error", icon: AlertCircle },
+      { id: "life", label: "Life Log", icon: Heart },
+      { id: "work", label: "Work", icon: Coffee },
+      { id: "magic", label: "Magic", icon: Wand2 },
+    ],
+    []
+  );
+
+  const [filter, setFilter] = useState(defaultFilter);
+  const [q, setQ] = useState("");
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const filteredItems = useMemo(() => {
+    const query = normalize(q);
+    const byFilter = (it) => {
+      if (filter === "all") return true;
+      if (filter === "key") return (it.title || "").endsWith(".key");
+      return it.folder === filter;
+    };
+    const byQuery = (it) => {
+      if (!query) return true;
+      const hay = normalize(
+        `${it.title || ""} ${it.meta || ""} ${it.folder || ""} ${it.desc || ""}`
+      );
+      return hay.includes(query);
+    };
+    return (items || []).filter((it) => byFilter(it) && byQuery(it));
+  }, [items, filter, q]);
+
+  const openAt = useCallback(
+    (i) => {
+      if (!filteredItems.length) return;
+      setActiveIndex(clampIndex(i, filteredItems.length));
+      setLightboxOpen(true);
+    },
+    [filteredItems.length]
+  );
+
+  const next = useCallback(() => {
+    setActiveIndex((prev) => clampIndex(prev + 1, filteredItems.length));
+  }, [filteredItems.length]);
+
+  const prev = useCallback(() => {
+    setActiveIndex((prev) => clampIndex(prev - 1, filteredItems.length));
+  }, [filteredItems.length]);
+
+  // keep index valid if filter/search changes
+  useEffect(() => {
+    setActiveIndex((i) => clampIndex(i, filteredItems.length || 1));
+  }, [filteredItems.length]);
+
+  return (
+    <div className="flex h-full bg-[#050505]">
+      {/* Sidebar (desktop) */}
+      <div className="w-14 sm:w-56 border-r border-white/5 flex flex-col items-center sm:items-stretch py-6 gap-2 bg-[#080808] z-20 shrink-0">
+        <div className="text-[9px] font-mono text-white/30 mb-4 px-4 tracking-widest hidden sm:block">
+          Archive
+        </div>
+
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat.id}
+            onClick={() => setFilter(cat.id)}
+            className={`group flex items-center gap-3 px-3 py-3 rounded-md cursor-pointer transition-all duration-300 text-left ${
+              filter === cat.id
+                ? "bg-white/10 text-white"
+                : "text-white/30 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <cat.icon
+              size={16}
+              className={filter === cat.id ? "text-[#a8eaff]" : ""}
+            />
+            <span className="hidden sm:block text-xs tracking-wide">
+              {cat.label}
+            </span>
+            {filter === cat.id && (
+              <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_8px_#a8eaff] hidden sm:block" />
+            )}
+          </button>
+        ))}
+
+        <div className="mt-auto px-4 hidden sm:block">
+          <div className="text-[9px] font-mono text-white/20 border-t border-white/5 pt-4">
+            {filteredItems.length} ITEMS
+          </div>
+        </div>
+      </div>
+
+      {/* Main */}
+      <div className="flex-1 p-6 sm:p-10 overflow-y-auto scrollbar-hide pb-24 sm:pb-10 relative">
+        <div className="absolute inset-0 bg-gradient-to-b from-[#a8eaff]/5 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(203,184,255,0.06),transparent_55%)] pointer-events-none" />
+
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+          <div>
+            <h2 className="text-3xl sm:text-4xl font-thin tracking-tighter text-white/95 mb-1">
+              {CATEGORIES.find((c) => c.id === filter)?.label}
+            </h2>
+            <p
+              className="text-[10px] font-mono tracking-[0.2em] uppercase"
+              style={{ color: accentLav }}
+            >
+              Fragmented Memories
+            </p>
+          </div>
+
+          {/* Search */}
+          <div className="flex items-center gap-2">
+            <div className="relative w-full sm:w-72">
+              <Search
+                size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25"
+              />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="search fragments..."
+                className="w-full bg-white/5 border border-white/10 rounded-full py-2 pl-9 pr-3 text-[11px] text-white/70 placeholder:text-white/20 focus:outline-none focus:border-[#a8eaff]/40 focus:bg-white/10 transition-all font-mono tracking-wider"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Hover Glow Edge (your original) */}
-        <div className="absolute inset-0 border border-white/0 group-hover:border-white/20 rounded-lg transition-all duration-500 pointer-events-none" />
+        {/* Mobile category chips */}
+        {isMobile && (
+          <div className="flex gap-2 overflow-x-auto pb-4 mb-2 scrollbar-hide">
+            {CATEGORIES.map((cat) => {
+              const active = filter === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setFilter(cat.id)}
+                  className={`shrink-0 px-3 py-2 rounded-full border text-[10px] font-mono tracking-widest transition-all ${
+                    active
+                      ? "border-[#a8eaff]/50 bg-[#a8eaff]/10 text-[#a8eaff]"
+                      : "border-white/10 bg-white/5 text-white/35"
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Grid */}
+        {filteredItems.length === 0 ? (
+          <div className="mt-10 border border-white/10 rounded-2xl p-10 bg-white/[0.02] text-center">
+            <div className="text-[10px] font-mono tracking-[0.3em] text-white/25 uppercase">
+              NO_MATCH
+            </div>
+            <div className="mt-3 text-sm text-white/50">
+              それっぽい記憶、見つからなかった
+            </div>
+            <button
+              onClick={() => setQ("")}
+              className="mt-6 px-4 py-2 rounded-full border border-white/10 text-[10px] font-mono tracking-widest text-white/50 hover:bg-white/5 hover:text-white transition-colors"
+            >
+              CLEAR_SEARCH
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pb-10">
+            {filteredItems.map((item, idx) => (
+              <button
+                key={item.id}
+                onClick={() => openAt(idx)}
+                className="group relative text-left cursor-pointer"
+              >
+                {/* Card */}
+                <div className="relative aspect-[4/3] bg-[#111] border border-white/10 rounded-2xl overflow-hidden transition-all duration-700 group-hover:border-[#a8eaff]/50 group-hover:shadow-[0_0_40px_rgba(168,234,255,0.10)] group-hover:scale-[1.01]">
+                  {/* image */}
+                  {isImageLike(item.file, item.meta) ? (
+                    <img
+                      src={item.file}
+                      alt={item.title}
+                      loading="lazy"
+                      className="absolute inset-0 w-full h-full object-cover transition-all duration-[1400ms] ease-out group-hover:scale-105 opacity-80 group-hover:opacity-100 grayscale group-hover:grayscale-0"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-white/20 font-mono">
+                      PREVIEW
+                    </div>
+                  )}
+
+                  {/* overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
+
+                  {/* meta tag */}
+                  <div className="absolute top-4 left-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                    <div
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{ background: accentCyan }}
+                    />
+                    <span
+                      className="text-[9px] font-mono tracking-[0.25em] uppercase"
+                      style={{ color: accentCyan }}
+                    >
+                      {item.meta}
+                    </span>
+                  </div>
+
+                  {/* content */}
+                  <div className="absolute bottom-0 left-0 right-0 p-6 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+                    <h3 className="text-sm font-bold tracking-[0.08em] text-white">
+                      {item.title}
+                    </h3>
+                    <p className="text-[10px] text-white/50 font-light tracking-wide max-w-[90%] mt-1 hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity delay-200">
+                      {item.desc || "Visual memory fragment."}
+                    </p>
+                  </div>
+
+                  {/* edge glow */}
+                  <div className="absolute inset-0 rounded-2xl border border-white/0 group-hover:border-white/15 transition-all pointer-events-none" />
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Lightbox */}
+      <Lightbox
+        open={lightboxOpen}
+        items={filteredItems}
+        index={activeIndex}
+        onClose={() => setLightboxOpen(false)}
+        onPrev={prev}
+        onNext={next}
+        accent={accentCyan}
+      />
     </div>
   );
 }
