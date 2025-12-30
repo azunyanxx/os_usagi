@@ -1919,7 +1919,7 @@ function useTapGuard() {
 // -----------------------------
 // GALLERY APP
 // -----------------------------
-// --- GALLERY APP (SIDEBAR ICONS • 1-COLUMN MOBILE • PEEK • DOUBLE TAP OPEN • SNAP MODAL) ---
+// --- GALLERY APP (QUALITY / MOBILE 1-COLUMN / RELIABLE PEEK / PREMIUM SNAP MODAL) ---
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Search,
@@ -1973,46 +1973,8 @@ function hapticTiny() {
   } catch {}
 }
 
-// クリック/タップが「タップ」か「スクロール開始」かを見分ける
-function useTapGuard() {
-  const start = useRef({ x: 0, y: 0, t: 0 });
-  return {
-    onDown(e) {
-      start.current = { x: e.clientX ?? 0, y: e.clientY ?? 0, t: performance.now() };
-    },
-    movedTooMuch(e, threshold = 10) {
-      const dx = (e.clientX ?? 0) - start.current.x;
-      const dy = (e.clientY ?? 0) - start.current.y;
-      return Math.hypot(dx, dy) > threshold;
-    },
-  };
-}
-
-function useRafScrollIndex(ref) {
-  const raf = useRef(0);
-  const [idx, setIdx] = useState(0);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const onScroll = () => {
-      cancelAnimationFrame(raf.current);
-      raf.current = requestAnimationFrame(() => {
-        const w = el.clientWidth || 1;
-        setIdx(Math.round(el.scrollLeft / w));
-      });
-    };
-
-    el.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => {
-      el.removeEventListener("scroll", onScroll);
-      cancelAnimationFrame(raf.current);
-    };
-  }, [ref]);
-
-  return idx;
+function distance(a, b) {
+  return Math.hypot((a.x ?? 0) - (b.x ?? 0), (a.y ?? 0) - (b.y ?? 0));
 }
 
 function scrollToIndex(container, i, behavior = "smooth") {
@@ -2021,9 +1983,9 @@ function scrollToIndex(container, i, behavior = "smooth") {
   container.scrollTo({ left: i * w, behavior });
 }
 
-// ---------------------------------------------
-//  GalleryApp
-// ---------------------------------------------
+// ----------------------------------------------------
+// GalleryApp
+// ----------------------------------------------------
 export const GalleryApp = () => {
   const isMobile = useIsMobile();
 
@@ -2046,7 +2008,7 @@ export const GalleryApp = () => {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // ★ single tap peek
+  // single tap peek
   const [armedIndex, setArmedIndex] = useState(null);
 
   const filteredItems = useMemo(() => {
@@ -2089,6 +2051,7 @@ export const GalleryApp = () => {
     setActiveIndex((i) => (i + 1) % filteredItems.length);
   }, [filteredItems.length]);
 
+  // keyboard (desktop)
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e) => {
@@ -2105,7 +2068,7 @@ export const GalleryApp = () => {
   return (
     <div className="h-full w-full bg-[#050505] text-white overflow-hidden">
       <div className="flex h-full">
-        {/* Left Sidebar (icon rail) */}
+        {/* Left Sidebar (前の感じ：細いアイコンレール) */}
         <aside
           className="shrink-0 border-r border-white/5 bg-[#070707] relative z-20"
           style={{
@@ -2165,27 +2128,25 @@ export const GalleryApp = () => {
 
         {/* Main */}
         <main className="relative flex-1 overflow-hidden">
-          {/* ambient */}
+          {/* ambient (前の雰囲気に寄せる：薄い霧) */}
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] via-transparent to-black/45" />
             <div
               className="absolute -top-40 left-1/2 -translate-x-1/2 w-[920px] h-[520px] opacity-25 blur-3xl"
               style={{
-                background:
-                  "radial-gradient(circle at center, rgba(168,234,255,0.12) 0%, transparent 60%)",
+                background: "radial-gradient(circle at center, rgba(203,184,255,0.12) 0%, transparent 60%)",
               }}
             />
             <div
-              className="absolute -bottom-56 left-1/2 -translate-x-1/2 w-[900px] h-[520px] opacity-25 blur-3xl"
+              className="absolute -bottom-56 left-1/2 -translate-x-1/2 w-[900px] h-[520px] opacity-22 blur-3xl"
               style={{
-                background:
-                  "radial-gradient(circle at center, rgba(203,184,255,0.10) 0%, transparent 60%)",
+                background: "radial-gradient(circle at center, rgba(168,234,255,0.10) 0%, transparent 60%)",
               }}
             />
             <div className="absolute inset-0 gallery-grain opacity-[0.08]" />
           </div>
 
-          {/* Top bar (sticky) */}
+          {/* Top bar (検索バー欲しい) */}
           <header className="relative z-20 sticky top-0 border-b border-white/5 bg-black/20 backdrop-blur-2xl">
             <div
               className="px-4 sm:px-8 py-4 flex items-center justify-between gap-3"
@@ -2206,7 +2167,7 @@ export const GalleryApp = () => {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Search"
-                    className="w-[180px] sm:w-[340px] bg-white/[0.03] border border-white/10 rounded-2xl py-2.5 pl-10 pr-4
+                    className="w-[200px] sm:w-[360px] bg-white/[0.03] border border-white/10 rounded-2xl py-2.5 pl-10 pr-4
                       text-xs text-white/80 placeholder:text-white/25 focus:outline-none focus:border-[#a8eaff]/35
                       font-mono tracking-wider"
                   />
@@ -2216,7 +2177,7 @@ export const GalleryApp = () => {
             </div>
           </header>
 
-          {/* List */}
+          {/* List (モバイル1列固定にする：isMobileに依存しない) */}
           <section
             className="relative z-10 h-full overflow-y-auto scrollbar-hide"
             style={{
@@ -2224,17 +2185,12 @@ export const GalleryApp = () => {
             }}
           >
             <div className="px-4 sm:px-8 py-7">
-              <div
-                className={`grid gap-5 sm:gap-7 ${
-                  isMobile ? "grid-cols-1" : "grid-cols-2 lg:grid-cols-3"
-                }`}
-              >
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
                 {filteredItems.map((item, idx) => (
                   <GalleryCard
                     key={item.id || item.file || idx}
                     item={item}
                     index={idx}
-                    isMobile={isMobile}
                     isArmed={armedIndex === idx}
                     armedIndex={armedIndex}
                     setArmedIndex={setArmedIndex}
@@ -2258,13 +2214,10 @@ export const GalleryApp = () => {
             <GalleryModalSnap
               items={filteredItems}
               index={activeIndex}
-              total={filteredItems.length}
+              onIndexChange={(i) => setActiveIndex((i + filteredItems.length) % filteredItems.length)}
               onClose={closeModal}
               onPrev={prev}
               onNext={next}
-              onIndexChange={(i) =>
-                setActiveIndex((i + filteredItems.length) % filteredItems.length)
-              }
               isMobile={isMobile}
             />
           )}
@@ -2274,28 +2227,25 @@ export const GalleryApp = () => {
   );
 };
 
-// ---------------------------------------------
-//  Card (single tap = Peek / double tap = Open / long press lift)
-//  重要: 「画像が見えない」問題を潰すため、タイトルは常時デカいプレートにしない
-// ---------------------------------------------
-function GalleryCard({
-  item,
-  index,
-  isMobile,
-  isArmed,
-  armedIndex,
-  setArmedIndex,
-  onOpen,
-}) {
+// ----------------------------------------------------
+// Card（シングルタップPeekが“ちゃんと効く”版）
+// - Androidの「タップが click に化ける / スクロールと競合」対策：touchイベント主体 + ghost click抑制
+// - ダブルタップ：Open（維持）
+// - Peek中：微ズーム + 彩度UP（息）
+// - 長押し：リフト（軽く）
+// ----------------------------------------------------
+function GalleryCard({ item, index, isArmed, armedIndex, setArmedIndex, onOpen }) {
   const [loaded, setLoaded] = useState(false);
 
-  const tapGuard = useTapGuard();
-  const lastTapRef = useRef({ t: 0, x: 0, y: 0 });
+  const touchStartRef = useRef({ x: 0, y: 0, t: 0 });
+  const lastTapRef = useRef({ x: 0, y: 0, t: 0 });
+  const ignoreClickUntilRef = useRef(0);
+
   const armTimerRef = useRef(0);
 
-  const [press, setPress] = useState(false);
+  // long press lift
+  const liftTimerRef = useRef(0);
   const [lift, setLift] = useState(false);
-  const liftTimer = useRef(0);
 
   const arm = useCallback(() => {
     setArmedIndex(index);
@@ -2311,102 +2261,119 @@ function GalleryCard({
     onOpen(index);
   }, [index, onOpen, setArmedIndex]);
 
-  const onPointerDown = (e) => {
-    tapGuard.onDown(e);
+  const moved = (a, b, th = 10) => distance(a, b) > th;
 
-    setPress(true);
-    window.clearTimeout(liftTimer.current);
-    liftTimer.current = window.setTimeout(() => setLift(true), 140);
+  const onTouchStart = (e) => {
+    const t = performance.now();
+    const touch = e.touches?.[0];
+    if (!touch) return;
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, t };
+
+    // long press lift
+    window.clearTimeout(liftTimerRef.current);
+    liftTimerRef.current = window.setTimeout(() => setLift(true), 150);
   };
 
-  const onPointerMove = (e) => {
-    if (tapGuard.movedTooMuch(e, 10)) {
-      window.clearTimeout(liftTimer.current);
+  const onTouchMove = (e) => {
+    const touch = e.touches?.[0];
+    if (!touch) return;
+    const cur = { x: touch.clientX, y: touch.clientY, t: performance.now() };
+    if (moved(touchStartRef.current, cur, 10)) {
+      window.clearTimeout(liftTimerRef.current);
       setLift(false);
     }
   };
 
-  const onPointerUp = (e) => {
-    window.clearTimeout(liftTimer.current);
-    setPress(false);
+  const onTouchEnd = (e) => {
+    window.clearTimeout(liftTimerRef.current);
     setLift(false);
 
-    // スクロールのつもりなら何もしない
-    if (tapGuard.movedTooMuch(e, 10)) return;
+    const t = performance.now();
+    const touch = e.changedTouches?.[0];
+    if (!touch) return;
 
-    const now = performance.now();
-    const x = e.clientX ?? 0;
-    const y = e.clientY ?? 0;
+    const end = { x: touch.clientX, y: touch.clientY, t };
+    if (moved(touchStartRef.current, end, 10)) return; // scroll
 
-    const dt = now - lastTapRef.current.t;
-    const dist = Math.hypot(x - lastTapRef.current.x, y - lastTapRef.current.y);
+    // ghost click抑制（touch後にclickが来る端末用）
+    ignoreClickUntilRef.current = t + 420;
 
-    // ダブルタップ（短時間 & ほぼ同じ位置） = Open
+    const dt = t - lastTapRef.current.t;
+    const dist = distance(lastTapRef.current, end);
+
+    // double tap => open
     if (dt > 0 && dt < 280 && dist < 18) {
-      lastTapRef.current = { t: 0, x: 0, y: 0 };
+      lastTapRef.current = { x: 0, y: 0, t: 0 };
       hapticTiny();
       openNow();
       return;
     }
 
-    lastTapRef.current = { t: now, x, y };
+    lastTapRef.current = { x: end.x, y: end.y, t };
 
-    // シングルタップ:
-    // - まだarmedじゃない -> Peek
-    // - armed中にもう一度タップ -> Open（「2回タップでフル」じゃなく、体感として自然）
-    if (armedIndex === index) {
-      openNow();
-    } else {
-      arm();
-    }
+    // single tap:
+    // - not armed => Peek
+    // - armed => open（体感が良い）
+    if (armedIndex === index) openNow();
+    else arm();
+  };
+
+  const onClick = (e) => {
+    // desktop / fallback
+    if (performance.now() < ignoreClickUntilRef.current) return;
+    e.preventDefault();
+    if (armedIndex === index) openNow();
+    else arm();
+  };
+
+  const onDoubleClick = (e) => {
+    if (performance.now() < ignoreClickUntilRef.current) return;
+    e.preventDefault();
+    openNow();
   };
 
   useEffect(() => {
     return () => {
       window.clearTimeout(armTimerRef.current);
-      window.clearTimeout(liftTimer.current);
+      window.clearTimeout(liftTimerRef.current);
     };
   }, []);
 
-  const elevated = lift || press;
+  const elevated = lift;
 
   return (
     <div className="relative">
-      {/* aura */}
+      {/* aura (Peek/hover) */}
       <div
         className={`absolute -inset-1 rounded-3xl blur-2xl pointer-events-none transition-opacity duration-700
-          bg-[radial-gradient(circle_at_center,rgba(168,234,255,0.16),transparent_60%)]
+          bg-[radial-gradient(circle_at_center,rgba(168,234,255,0.16),transparent_62%)]
           ${isArmed ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
       />
 
       <button
         type="button"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={() => {
-          window.clearTimeout(liftTimer.current);
-          setPress(false);
-          setLift(false);
-        }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onClick={onClick}
+        onDoubleClick={onDoubleClick}
         className="relative w-full overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02]
           shadow-[0_22px_58px_-40px_rgba(0,0,0,0.9)]
           transition-[transform,box-shadow,border-color,background-color] duration-200
           will-change-transform"
         style={{
+          touchAction: "manipulation",
           transform: elevated ? "translate3d(0,-1px,0) scale(1.012)" : "translate3d(0,0,0) scale(1)",
           boxShadow: elevated
-            ? "0 34px 80px -54px rgba(0,0,0,0.95), 0 16px 34px -28px rgba(168,234,255,0.16)"
+            ? "0 34px 80px -54px rgba(0,0,0,0.95), 0 16px 34px -28px rgba(168,234,255,0.14)"
             : undefined,
           borderColor: isArmed ? "rgba(168,234,255,0.30)" : undefined,
         }}
         aria-label={`${item.title} preview`}
       >
-        {/* image (常に見える) */}
+        {/* image (常に見える / 覆わない) */}
         <div className="relative aspect-[4/3] bg-black">
-          {!loaded && (
-            <div className="absolute inset-0 bg-white/[0.03] animate-pulse" />
-          )}
+          {!loaded && <div className="absolute inset-0 bg-white/[0.03] animate-pulse" />}
 
           <img
             src={item.file}
@@ -2415,12 +2382,12 @@ function GalleryCard({
             onLoad={() => setLoaded(true)}
             className={`absolute inset-0 w-full h-full object-cover transition-[opacity,transform,filter] duration-700
               ${loaded ? "opacity-100" : "opacity-0"}
-              ${isArmed ? "scale-[1.06] saturate-[1.05]" : "scale-100"}
+              ${isArmed ? "scale-[1.08] saturate-[1.06] contrast-[1.02]" : "scale-[1.02] saturate-[1.00]"}
             `}
           />
 
-          {/* soft vignette (薄い、画像を潰さない) */}
-          <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+          {/* thin vignette */}
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/55 via-black/12 to-transparent" />
 
           {/* meta chip */}
           <div className="absolute top-3 left-3 px-3 py-1.5 rounded-full border border-white/10 bg-black/35 backdrop-blur-xl">
@@ -2429,23 +2396,15 @@ function GalleryCard({
             </span>
           </div>
 
-          {/* Peek glass (シングルタップ時にだけ、でも画像は見える) */}
-          <div
-            className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${
-              isArmed ? "opacity-100" : "opacity-0"
-            }`}
-          >
+          {/* Peek glass overlay (画像を殺さない薄さ) */}
+          <div className={`absolute inset-0 pointer-events-none transition-opacity duration-250 ${isArmed ? "opacity-100" : "opacity-0"}`}>
             <div className="absolute inset-0 bg-white/[0.02] backdrop-blur-[2px]" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
           </div>
 
-          {/* title (控えめ。グレー板で覆わない) */}
+          {/* title: 控えめ（グレー板で囲わない） */}
           <div className="absolute bottom-0 left-0 right-0 p-4">
-            <div
-              className={`flex items-end justify-between gap-3 transition-opacity duration-300 ${
-                isArmed ? "opacity-100" : isMobile ? "opacity-90" : "opacity-80"
-              }`}
-            >
+            <div className="flex items-end justify-between gap-3">
               <div className="min-w-0">
                 <div className="text-[12px] font-semibold tracking-wide text-white/90 truncate">
                   {item.title}
@@ -2455,15 +2414,10 @@ function GalleryCard({
                 </div>
               </div>
 
-              {/* tiny hint only when armed */}
-              <div
-                className={`shrink-0 transition-opacity duration-300 ${
-                  isArmed ? "opacity-100" : "opacity-0"
-                }`}
-              >
+              <div className={`shrink-0 transition-opacity duration-200 ${isArmed ? "opacity-100" : "opacity-0"}`}>
                 <div className="px-3 py-1.5 rounded-full border border-white/10 bg-black/35 backdrop-blur-xl">
                   <span className="text-[9px] font-mono tracking-[0.22em] text-white/65 uppercase">
-                    {isMobile ? "Tap again" : "Click again"}
+                    TAP AGAIN
                   </span>
                 </div>
               </div>
@@ -2478,30 +2432,23 @@ function GalleryCard({
   );
 }
 
-// ---------------------------------------------
-//  Modal (mobile: horizontal snap paging + swipe)
-//  ・×は固定（safe-area）で被らない
-//  ・タイトルは控えめ（fullUI=false ならさらに薄く）
-//  ・ダブルタップ = UIの出し入れ（フルプレビュー感）
-// ---------------------------------------------
-function GalleryModalSnap({
-  items,
-  index,
-  total,
-  onClose,
-  onPrev,
-  onNext,
-  onIndexChange,
-  isMobile,
-}) {
+// ----------------------------------------------------
+// Modal (premium horizontal snap)
+// - 横ページング scroll-snap（吸い付く）
+// - ダブルタップ：UI(chrome)表示切替（フルプレビュー感）
+// - タイトル：上部のガラスピル（おしゃれ寄せ）
+// - ×：safe-area + fixedで絶対被らない
+// ----------------------------------------------------
+function GalleryModalSnap({ items, index, onIndexChange, onClose, onPrev, onNext, isMobile }) {
   const scrollerRef = useRef(null);
   const programRef = useRef(false);
-  const [chrome, setChrome] = useState(true); // タイトル等の表示
+
+  const [chrome, setChrome] = useState(true); // title, bars
+  const lastTapRef = useRef({ x: 0, y: 0, t: 0 });
 
   useLockBodyScroll(true);
   usePrefetchAround(items, index, true);
 
-  // sync scroll position to index
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -2511,29 +2458,45 @@ function GalleryModalSnap({
     return () => window.clearTimeout(t);
   }, [index]);
 
-  const scrollIdx = useRafScrollIndex(scrollerRef);
+  // sync index from scroll (RAF)
   useEffect(() => {
-    if (programRef.current) return;
-    if (scrollIdx !== index) onIndexChange(scrollIdx);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scrollIdx]);
+    const el = scrollerRef.current;
+    if (!el) return;
+    let raf = 0;
 
-  const lastTapRef = useRef({ t: 0, x: 0, y: 0 });
-  const onTap = (e) => {
-    const now = performance.now();
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        if (programRef.current) return;
+        const w = el.clientWidth || 1;
+        const i = Math.round(el.scrollLeft / w);
+        if (i !== index) onIndexChange(i);
+      });
+    };
+
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(raf);
+    };
+  }, [index, onIndexChange]);
+
+  const onTapArea = (e) => {
+    const t = performance.now();
     const x = e.clientX ?? 0;
     const y = e.clientY ?? 0;
 
-    const dt = now - lastTapRef.current.t;
-    const dist = Math.hypot(x - lastTapRef.current.x, y - lastTapRef.current.y);
+    const dt = t - lastTapRef.current.t;
+    const dist = distance(lastTapRef.current, { x, y, t });
 
     if (dt > 0 && dt < 280 && dist < 18) {
       setChrome((v) => !v);
       hapticTiny();
-      lastTapRef.current = { t: 0, x: 0, y: 0 };
+      lastTapRef.current = { x: 0, y: 0, t: 0 };
       return;
     }
-    lastTapRef.current = { t: now, x, y };
+
+    lastTapRef.current = { x, y, t };
   };
 
   // keyboard for desktop
@@ -2548,6 +2511,7 @@ function GalleryModalSnap({
   }, [onClose, onPrev, onNext]);
 
   const active = items[index];
+  const counter = `${String(index + 1).padStart(2, "0")} / ${String(items.length).padStart(2, "0")}`;
 
   return (
     <div
@@ -2555,23 +2519,20 @@ function GalleryModalSnap({
       role="dialog"
       aria-modal="true"
       style={{ background: "rgba(0,0,0,0.92)" }}
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
-      onTouchStart={(e) => e.target === e.currentTarget && onClose()}
     >
       {/* ambient */}
       <div
         className="absolute inset-0 opacity-70 pointer-events-none"
         style={{
-          background:
-            "radial-gradient(circle at center, rgba(168,234,255,0.10) 0%, transparent 55%)",
+          background: "radial-gradient(circle at center, rgba(168,234,255,0.10) 0%, transparent 56%)",
         }}
       />
       <div className="absolute inset-0 gallery-grain opacity-[0.12] pointer-events-none" />
 
-      {/* close */}
+      {/* Close (safe-area / never overlap) */}
       <button
         onClick={onClose}
-        className="fixed z-[1001] w-11 h-11 rounded-2xl border border-white/10 bg-black/45 backdrop-blur-xl
+        className="fixed z-[1002] w-11 h-11 rounded-2xl border border-white/10 bg-black/45 backdrop-blur-xl
           hover:bg-black/60 transition flex items-center justify-center text-white/85"
         style={{
           top: "calc(env(safe-area-inset-top) + 12px)",
@@ -2582,24 +2543,34 @@ function GalleryModalSnap({
         <X size={16} />
       </button>
 
-      {/* subtle title (chrome) */}
+      {/* Title pill (stylish) */}
       <div
-        className={`fixed left-0 right-0 z-[1000] px-4 sm:px-6 transition-opacity duration-200 ${
+        className={`fixed left-0 right-0 z-[1001] transition-opacity duration-200 ${
           chrome ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
         style={{ top: "calc(env(safe-area-inset-top) + 12px)" }}
       >
-        <div className="mx-auto max-w-5xl pr-14">
-          <div className="text-[12px] font-semibold tracking-wide text-white/80 truncate">
-            {active?.title}
-          </div>
-          <div className="mt-1 text-[9px] font-mono tracking-[0.25em] uppercase text-[#a8eaff]/45">
-            {formatMeta(active)} • {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 pr-14">
+          <div
+            className="inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-black/35 backdrop-blur-xl
+              shadow-[0_22px_60px_-44px_rgba(0,0,0,0.85)] px-4 py-3"
+          >
+            <div className="min-w-0">
+              <div className="text-[12px] font-semibold tracking-wide text-white/85 truncate max-w-[62vw] sm:max-w-[520px]">
+                {active?.title}
+              </div>
+              <div className="mt-1 text-[9px] font-mono tracking-[0.25em] uppercase text-[#a8eaff]/45">
+                {formatMeta(active)}
+              </div>
+            </div>
+            <div className="ml-2 text-[9px] font-mono tracking-widest text-white/25">
+              {counter}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* pager */}
+      {/* Snap scroller */}
       <div
         ref={scrollerRef}
         className="absolute inset-0 overflow-x-auto overflow-y-hidden scrollbar-hide"
@@ -2617,13 +2588,13 @@ function GalleryModalSnap({
               key={it.id || it.file || i}
               className="w-full h-full flex-shrink-0 flex items-center justify-center"
               style={{ scrollSnapAlign: "center" }}
-              onPointerUp={onTap}
+              onPointerUp={onTapArea}
             >
               <div
                 className="relative w-full h-full flex items-center justify-center select-none"
                 style={{
-                  paddingTop: chrome ? "calc(env(safe-area-inset-top) + 72px)" : "0px",
-                  paddingBottom: chrome ? "calc(env(safe-area-inset-bottom) + 64px)" : "0px",
+                  paddingTop: chrome ? "calc(env(safe-area-inset-top) + 78px)" : "0px",
+                  paddingBottom: chrome ? "calc(env(safe-area-inset-bottom) + 70px)" : "0px",
                 }}
               >
                 <img
@@ -2631,14 +2602,11 @@ function GalleryModalSnap({
                   alt={it.title}
                   draggable={false}
                   className="w-full h-full object-contain"
-                  style={{
-                    // “吸い付き”の余白（UIありのときだけ）
-                    padding: chrome ? "16px" : "0px",
-                  }}
+                  style={{ padding: chrome ? "18px" : "0px" }}
                 />
 
-                {/* desktop arrows */}
-                {total > 1 && !isMobile && chrome && (
+                {/* desktop arrows (chrome中だけ出す) */}
+                {items.length > 1 && !isMobile && chrome && (
                   <>
                     <button
                       onClick={onPrev}
@@ -2666,9 +2634,9 @@ function GalleryModalSnap({
         </div>
       </div>
 
-      {/* bottom progress (chrome) */}
+      {/* bottom bar (minimal progress) */}
       <div
-        className={`fixed left-0 right-0 z-[1000] px-4 sm:px-6 transition-opacity duration-200 ${
+        className={`fixed left-0 right-0 z-[1001] px-4 sm:px-6 transition-opacity duration-200 ${
           chrome ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
@@ -2677,13 +2645,13 @@ function GalleryModalSnap({
           <div className="rounded-2xl border border-white/10 bg-black/25 backdrop-blur-xl px-4 py-3">
             <div className="flex items-center gap-3">
               <div className="text-[9px] font-mono text-white/25 tracking-widest">
-                {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+                {counter}
               </div>
               <div className="flex-1">
                 <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
                   <div
                     className="h-full rounded-full bg-white/60 transition-[width] duration-200"
-                    style={{ width: `${((index + 1) / Math.max(1, total)) * 100}%` }}
+                    style={{ width: `${((index + 1) / Math.max(1, items.length)) * 100}%` }}
                   />
                 </div>
               </div>
@@ -2694,6 +2662,14 @@ function GalleryModalSnap({
           </div>
         </div>
       </div>
+
+      {/* tap backdrop close (outside content) */}
+      <div
+        className="absolute inset-0"
+        onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+        onTouchStart={(e) => e.target === e.currentTarget && onClose()}
+        style={{ pointerEvents: "none" }}
+      />
     </div>
   );
 }
