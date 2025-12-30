@@ -842,7 +842,7 @@ const AudioEngine = {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = type;
-    osc.frequency.setValueAtTime(freq, t);
+    osc.frequency.se、tValueAtTime(freq, t);
     gain.gain.setValueAtTime(0, t);
     gain.gain.linearRampToValueAtTime(vol, t + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
@@ -1029,19 +1029,51 @@ const RabbitLogo = ({ className = "w-16 h-16", animate = false }) => (
 );
 
 const CustomCursor = () => {
-  const [pos, setPos] = useState({ x: -100, y: -100 });
-  const [clicked, setClicked] = useState(false);
   const isMobile = useIsMobile();
+
+  const posRef = useRef({ x: -100, y: -100 });
+  const clickedRef = useRef(false);
+
+  const ringRef = useRef(null);
+  const dotRef = useRef(null);
+
+  const rafRef = useRef(0);
 
   useEffect(() => {
     if (isMobile) return;
-    const move = (e) => setPos({ x: e.clientX, y: e.clientY });
-    const down = () => setClicked(true);
-    const up = () => setClicked(false);
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mousedown", down);
-    window.addEventListener("mouseup", up);
+
+    const render = () => {
+      const { x, y } = posRef.current;
+      const scale = clickedRef.current ? 0.8 : 1;
+
+      if (ringRef.current) {
+        ringRef.current.style.transform = `translate(${x - 16}px, ${y - 16}px) scale(${scale})`;
+      }
+      if (dotRef.current) {
+        dotRef.current.style.transform = `translate(${x - 4}px, ${y - 4}px)`;
+      }
+
+      rafRef.current = requestAnimationFrame(render);
+    };
+
+    const move = (e) => {
+      posRef.current = { x: e.clientX, y: e.clientY };
+    };
+    const down = () => {
+      clickedRef.current = true;
+    };
+    const up = () => {
+      clickedRef.current = false;
+    };
+
+    window.addEventListener("mousemove", move, { passive: true });
+    window.addEventListener("mousedown", down, { passive: true });
+    window.addEventListener("mouseup", up, { passive: true });
+
+    rafRef.current = requestAnimationFrame(render);
+
     return () => {
+      cancelAnimationFrame(rafRef.current);
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mousedown", down);
       window.removeEventListener("mouseup", up);
@@ -1053,16 +1085,12 @@ const CustomCursor = () => {
   return (
     <>
       <div
-        className="fixed top-0 left-0 w-8 h-8 rounded-full border border-white/40 pointer-events-none z-[9999] transition-transform duration-300 ease-out hidden md:block mix-blend-screen shadow-[0_0_15px_rgba(255,255,255,0.3)]"
-        style={{
-          transform: `translate(${pos.x - 16}px, ${pos.y - 16}px) scale(${
-            clicked ? 0.8 : 1
-          })`,
-        }}
+        ref={ringRef}
+        className="fixed top-0 left-0 w-8 h-8 rounded-full border border-white/40 pointer-events-none z-[9999] hidden md:block mix-blend-screen shadow-[0_0_15px_rgba(255,255,255,0.3)]"
       />
       <div
+        ref={dotRef}
         className="fixed top-0 left-0 w-2 h-2 rounded-full bg-gradient-to-br from-[#a8eaff] to-[#cbb8ff] pointer-events-none z-[9999] hidden md:block shadow-[0_0_10px_rgba(168,234,255,0.8)]"
-        style={{ transform: `translate(${pos.x - 4}px, ${pos.y - 4}px)` }}
       />
     </>
   );
@@ -1285,7 +1313,7 @@ const SystemApp = () => {
       setMemoryVisits((prev) => {
         const next = prev + 1;
 
-        // Emotion ON & 3回以上 → YOU解放
+        // Emotion ON & 3回以上 → 解放
         if (!memoryYouUnlocked && next >= 3 && emotionModule) {
           setMemoryYouUnlocked(true);
         }
