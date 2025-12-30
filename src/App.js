@@ -776,16 +776,41 @@ const GALLERY_ITEMS = FINDER_ITEMS.map((item) => ({
 
 // --- 2. ENGINE & UTILITIES ---
 
-const useIsMobile = () => {
+// ✅ ONE resize listener for the whole app
+const MobileContext = React.createContext(false);
+
+const MobileProvider = ({ children }) => {
   const [isMobile, setIsMobile] = useState(false);
+
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+    if (typeof window === "undefined") return;
+
+    // resizeより軽く、状態変化のときだけ発火する
+    const mq = window.matchMedia("(max-width: 767px)");
+
+    const onChange = (e) => setIsMobile(e.matches);
+
+    // 初期値を反映
+    setIsMobile(mq.matches);
+
+    // Safari古い版も対応
+    if (mq.addEventListener) mq.addEventListener("change", onChange);
+    else mq.addListener(onChange);
+
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", onChange);
+      else mq.removeListener(onChange);
+    };
   }, []);
-  return isMobile;
+
+  return (
+    <MobileContext.Provider value={isMobile}>
+      {children}
+    </MobileContext.Provider>
+  );
 };
+
+const useIsMobile = () => React.useContext(MobileContext);
 
 const useTime = () => {
   const [time, setTime] = useState(new Date());
@@ -3206,53 +3231,42 @@ const Desktop = ({ bgm }) => {
 
 // --- 6. ROOT ---
 
+const GLOBAL_CSS = `
+@keyframes fly-across {
+  0% { left: 110%; transform: translateY(0); }
+  25% { transform: translateY(-20px); }
+  50% { transform: translateY(0); }
+  75% { transform: translateY(20px); }
+  100% { left: -20%; transform: translateY(0); }
+}
+.animate-fly-across { animation: fly-across 30s linear infinite; }
+
+@keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.animate-spin-slow { animation: spin-slow 8s linear infinite; }
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.animate-fade-in { animation: fade-in 0.8s ease-out forwards; }
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* 100dvh support fallback */
+body { margin: 0; background: #000; overflow: hidden; height: 100vh; height: 100dvh; }
+`;
+
 export default function os_usagi_xxxx() {
   const [mode, setMode] = useState("power");
   const bgm = useBGM(PLAYLIST);
 
   return (
-    <div className="w-full h-screen bg-black text-white font-sans overflow-hidden">
-      {mode === "power" && <PowerScreen onPower={() => setMode("intro")} />}
-      {mode === "intro" && (
-        <IntroScreen onComplete={() => setMode("desktop")} />
-      )}
-      {mode === "desktop" && <Desktop bgm={bgm} />}
+    <MobileProvider>
+      <div className="w-full h-[100dvh] bg-black text-white font-sans overflow-hidden">
+        {mode === "power" && <PowerScreen onPower={() => setMode("intro")} />}
+        {mode === "intro" && <IntroScreen onComplete={() => setMode("desktop")} />}
+        {mode === "desktop" && <Desktop bgm={bgm} />}
 
-      <style>{`
-        @keyframes fly-across {
-          0% { left: 110%; transform: translateY(0); }
-          25% { transform: translateY(-20px); }
-          50% { transform: translateY(0); }
-          75% { transform: translateY(20px); }
-          100% { left: -20%; transform: translateY(0); }
-        }
-        .animate-fly-across {
-          animation: fly-across 30s linear infinite;
-        }
-        @keyframes spin-slow {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        .animate-spin-slow {
-          animation: spin-slow 8s linear infinite;
-        }
-        @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.8s ease-out forwards;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-            display: none;
-        }
-        .scrollbar-hide {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-        /* 100dvh support fallback */
-        body { margin: 0; background: #000; overflow: hidden; height: 100vh; height: 100dvh; }
-      `}</style>
-    </div>
+        <style>{GLOBAL_CSS}</style>
+      </div>
+    </MobileProvider>
   );
 }
