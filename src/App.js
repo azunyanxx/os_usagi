@@ -1831,8 +1831,29 @@ const FinderApp = () => {
   );
 };
 
-// -- GALLERY APP (UPGRADED: GLASS + SOFT GLOW + FULL PREVIEW) --
-const GalleryApp = () => {
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Layers,
+  Cpu,
+  AlertCircle,
+  Heart,
+  Coffee,
+  Wand2,
+  Key as KeyIcon,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  X,
+} from "lucide-react";
+
+/**
+ * ✅ Gallery App (Mobile-first / Sidebar always on)
+ * - Left sidebar is ALWAYS visible (mobile = icon rail)
+ * - Open preview: Mobile = double tap / Desktop = double click
+ * - Keep glass / glow / vignette / cinematic modal
+ */
+
+export const GalleryApp = () => {
   const isMobile = useIsMobile();
 
   const [filter, setFilter] = useState("all");
@@ -1853,16 +1874,17 @@ const GalleryApp = () => {
   );
 
   const filteredItems = useMemo(() => {
-    const items = GALLERY_ITEMS;
+    const items = GALLERY_ITEMS; // ← 既存の GALLERY_ITEMS を使用
     if (filter === "all") return items;
     return items.filter(
       (item) =>
-        item.folder === filter || (filter === "key" && item.title.endsWith(".key"))
+        item.folder === filter ||
+        (filter === "key" && String(item.title || "").endsWith(".key"))
     );
   }, [filter]);
 
-  // フィルター変えた時、モーダル開いてたら事故るので閉じる + index戻す
   useEffect(() => {
+    // フィルター切替時に事故るので閉じる
     setOpen(false);
     setActiveIndex(0);
   }, [filter]);
@@ -1882,7 +1904,7 @@ const GalleryApp = () => {
     setActiveIndex((i) => (i + 1) % filteredItems.length);
   }, [filteredItems.length]);
 
-  // keyboard controls (PC)
+  // keyboard controls (Desktop)
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e) => {
@@ -1894,97 +1916,142 @@ const GalleryApp = () => {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, closeModal, prev, next]);
 
+  const currentLabel = CATEGORIES.find((c) => c.id === filter)?.label ?? "Archive";
+
   return (
-    <div className="flex h-full">
-      {/* Left Sidebar */}
-{/* Left Sidebar */}
-<div className="w-16 sm:w-40 bg-[#0a0a0a] border-r border-white/5 p-2 sm:p-4 block shrink-0">
-  <p className="text-[10px] font-mono text-white/40 tracking-[0.3em] uppercase mb-4 sm:mb-6 hidden sm:block">
-    Archive
-  </p>
-
-  <div className="space-y-1">
-    {CATEGORIES.map((cat) => (
-      <button
-        key={cat.id}
-        type="button"
-        onClick={() => setFilter(cat.id)}
-        className={`group w-full flex items-center justify-center sm:justify-start gap-0 sm:gap-3
-          px-2 sm:px-3 py-3 rounded-md cursor-pointer transition-all duration-300
-          ${filter === cat.id
-            ? "bg-white/10 text-white"
-            : "text-white/30 hover:text-white hover:bg-white/5"
-          }`}
-        aria-label={cat.label}
-      >
-        <cat.icon
-          size={16}
-          className={filter === cat.id ? "text-[#a8eaff]" : "text-white/40 group-hover:text-white"}
+    <div className="w-full h-full flex bg-[#050505] text-white relative overflow-hidden">
+      {/* ambient backdrop (keep stylish) */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div
+          className="absolute -top-40 left-1/2 -translate-x-1/2 w-[920px] h-[520px] opacity-35 blur-3xl"
+          style={{
+            background:
+              "radial-gradient(circle at center, rgba(168,234,255,0.16) 0%, transparent 60%)",
+          }}
         />
+        <div
+          className="absolute -bottom-40 left-1/2 -translate-x-1/2 w-[920px] h-[520px] opacity-25 blur-3xl"
+          style={{
+            background:
+              "radial-gradient(circle at center, rgba(203,184,255,0.14) 0%, transparent 60%)",
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] via-transparent to-transparent" />
+      </div>
 
-        {/* ラベルはPCだけ表示 */}
-        <span className="text-xs hidden sm:block">{cat.label}</span>
-
-        {filter === cat.id && (
-          <div className="ml-auto w-1 h-1 rounded-full bg-[#a8eaff] animate-pulse hidden sm:block" />
-        )}
-      </button>
-    ))}
-  </div>
-
-  <div className="mt-6 sm:mt-10 text-[10px] text-white/20 font-mono tracking-widest text-center sm:text-left">
-    {filteredItems.length} ITEMS
-  </div>
-</div>
-
-
-      {/* Main */}
-      <div className="flex-1 p-6 sm:p-10 overflow-y-auto scrollbar-hide pb-24 sm:pb-10 relative">
-        {/* ambient glow */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div
-            className="absolute -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[500px] opacity-30 blur-3xl"
-            style={{
-              background:
-                "radial-gradient(circle at center, rgba(168,234,255,0.14) 0%, transparent 60%)",
-            }}
-          />
-          <div
-            className="absolute -bottom-40 left-1/2 -translate-x-1/2 w-[900px] h-[500px] opacity-25 blur-3xl"
-            style={{
-              background:
-                "radial-gradient(circle at center, rgba(203,184,255,0.12) 0%, transparent 60%)",
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] via-transparent to-transparent" />
+      {/* LEFT SIDEBAR (ALWAYS ON) */}
+      <aside
+        className="
+          relative z-20
+          w-16 sm:w-56
+          border-r border-white/10
+          bg-black/30 backdrop-blur-2xl
+          flex flex-col
+        "
+      >
+        {/* header */}
+        <div className="px-2 sm:px-4 py-4 border-b border-white/10">
+          <div className="text-[10px] font-mono tracking-[0.35em] text-[#a8eaff]/70 uppercase text-center sm:text-left">
+            Archive
+          </div>
+          <div className="mt-2 hidden sm:block">
+            <div className="text-xs text-white/80 tracking-wide font-light">
+              Fragment Index
+            </div>
+            <div className="text-[10px] text-white/30 font-mono tracking-widest mt-1">
+              curated memories
+            </div>
+          </div>
         </div>
 
-        {/* Header */}
-        <div className="flex items-end justify-between mb-8 relative z-10">
-          <div>
-            <h2 className="text-3xl sm:text-4xl font-thin tracking-tighter text-white/95 mb-1">
-              {CATEGORIES.find((c) => c.id === filter)?.label}
-            </h2>
-            <p className="text-[10px] font-mono text-[#cbb8ff] tracking-[0.2em] uppercase">
-              Fragmented Memories
-            </p>
-            <p className="mt-2 text-[10px] text-white/30 font-mono tracking-widest">
-              {isMobile ? "double tap to preview" : "double click to preview"}
-            </p>
-          </div>
+        {/* categories */}
+        <div className="p-2 sm:p-3 space-y-1">
+          {CATEGORIES.map((cat) => {
+            const active = filter === cat.id;
+            const Icon = cat.icon;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setFilter(cat.id)}
+                className={[
+                  "w-full rounded-xl transition-all duration-300",
+                  "flex items-center justify-center sm:justify-start",
+                  "gap-0 sm:gap-3 px-2 sm:px-3 py-3",
+                  active
+                    ? "bg-white/10 text-white border border-white/10 shadow-[0_0_30px_rgba(168,234,255,0.08)]"
+                    : "text-white/35 hover:text-white hover:bg-white/5 border border-transparent",
+                ].join(" ")}
+                aria-label={cat.label}
+              >
+                <Icon size={16} className={active ? "text-[#a8eaff]" : "text-white/35"} />
+                <span className="hidden sm:block text-xs">{cat.label}</span>
 
-          <div className="flex gap-2">
-            <button className="w-9 h-9 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors text-white/60">
-              <Search size={14} />
+                {/* active indicator (keep chic) */}
+                <span className="ml-auto hidden sm:flex items-center gap-2">
+                  {active && (
+                    <>
+                      <span className="text-[9px] font-mono tracking-[0.25em] text-[#a8eaff]/70">
+                        ON
+                      </span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_12px_rgba(168,234,255,0.6)] animate-pulse" />
+                    </>
+                  )}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* footer */}
+        <div className="mt-auto p-3 border-t border-white/10">
+          <div className="text-[9px] font-mono tracking-[0.3em] text-white/35 text-center sm:text-left">
+            {filteredItems.length} ITEMS
+          </div>
+          <div className="mt-2 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+          <div className="mt-2 text-[9px] font-mono tracking-widest text-white/20 text-center sm:text-left">
+            // double tap to preview
+          </div>
+        </div>
+      </aside>
+
+      {/* MAIN */}
+      <main className="relative z-10 flex-1 overflow-y-auto scrollbar-hide pb-24 sm:pb-10">
+        {/* Header */}
+        <div className="px-4 sm:px-10 pt-6 sm:pt-10">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <h2 className="text-3xl sm:text-4xl font-thin tracking-tighter text-white/95">
+                {currentLabel}
+              </h2>
+              <p className="text-[10px] font-mono text-[#cbb8ff] tracking-[0.2em] uppercase mt-1">
+                Fragmented Memories
+              </p>
+              <p className="mt-2 text-[10px] text-white/30 font-mono tracking-widest">
+                {isMobile ? "double tap to preview" : "double click to preview"}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors text-white/60"
+              aria-label="Search"
+              onClick={() => {
+                // ここは“雰囲気用”に残す（検索UIは後で足せる）
+              }}
+            >
+              <Search size={16} />
             </button>
           </div>
         </div>
 
         {/* Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pb-10 relative z-10">
-          {filteredItems.map((item, idx) => (
-            <GalleryCard key={item.id} item={item} index={idx} onOpen={openModal} />
-          ))}
+        <div className="px-4 sm:px-10 mt-6 sm:mt-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pb-10">
+            {filteredItems.map((item, idx) => (
+              <GalleryCard key={item.id} item={item} index={idx} onOpen={openModal} />
+            ))}
+          </div>
         </div>
 
         {/* Modal */}
@@ -1997,18 +2064,18 @@ const GalleryApp = () => {
             hasMany={filteredItems.length > 1}
           />
         )}
-      </div>
+      </main>
     </div>
   );
 };
 
-// --- Card: glass + edge glow + mouse-follow highlight + mobile double tap ---
+// --- Card: glass + edge glow + mobile double tap (single tap does nothing) ---
 function GalleryCard({ item, index, onOpen }) {
   const btnRef = useRef(null);
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef(null);
 
-  // マウス位置に追従する“ガラス反射”
+  // mouse-follow highlight (desktop)
   const onMouseMove = (e) => {
     const el = btnRef.current;
     if (!el) return;
@@ -2018,7 +2085,6 @@ function GalleryCard({ item, index, onOpen }) {
     el.style.setProperty("--mx", `${x}%`);
     el.style.setProperty("--my", `${y}%`);
   };
-
   const onMouseLeave = () => {
     const el = btnRef.current;
     if (!el) return;
@@ -2026,7 +2092,7 @@ function GalleryCard({ item, index, onOpen }) {
     el.style.removeProperty("--my");
   };
 
-  // モバイル：ダブルタップで開く（単タップは何もしない）
+  // ✅ Mobile: double tap to open (single tap = no open)
   const onTouchEnd = () => {
     const now = Date.now();
     const dt = now - lastTapRef.current;
@@ -2039,7 +2105,6 @@ function GalleryCard({ item, index, onOpen }) {
     }
 
     lastTapRef.current = now;
-    // “ダブル判定待ち”だけ（何もしない）
     tapTimerRef.current = setTimeout(() => {}, 280);
   };
 
@@ -2064,32 +2129,38 @@ function GalleryCard({ item, index, onOpen }) {
       <button
         ref={btnRef}
         type="button"
-        className="relative w-full aspect-[4/3] rounded-[28px] overflow-hidden border border-white/10
+        className="
+          relative w-full aspect-[4/3] rounded-[28px] overflow-hidden
+          border border-white/10
           bg-white/[0.02] backdrop-blur-xl text-left
-          shadow-[0_20px_50px_-20px_rgba(0,0,0,0.7)]
+          shadow-[0_20px_50px_-20px_rgba(0,0,0,0.75)]
           transition-all duration-700
           group-hover:border-[#a8eaff]/35 group-hover:shadow-[0_0_60px_rgba(168,234,255,0.10)]
-          active:scale-[0.98]"
-        onDoubleClick={() => onOpen(index)}
-        onTouchEnd={onTouchEnd}
+          active:scale-[0.98]
+        "
+        onDoubleClick={() => onOpen(index)} // Desktop
+        onTouchEnd={onTouchEnd} // Mobile
         onMouseMove={onMouseMove}
         onMouseLeave={onMouseLeave}
-        // 単クリックでは開かない（誤タップ防止）
-        onClick={(e) => e.preventDefault()}
+        onClick={(e) => e.preventDefault()} // single click = no open
         aria-label={`${item.title} preview`}
       >
         {/* image */}
         <div
-          className="absolute inset-0 bg-cover bg-center transition-transform duration-[1400ms] ease-out
-            scale-100 group-hover:scale-[1.06] opacity-85 group-hover:opacity-100
-            grayscale group-hover:grayscale-0"
+          className="
+            absolute inset-0 bg-cover bg-center
+            transition-transform duration-[1400ms] ease-out
+            scale-100 group-hover:scale-[1.06]
+            opacity-85 group-hover:opacity-100
+            grayscale group-hover:grayscale-0
+          "
           style={{ backgroundImage: `url(${item.file})` }}
         />
 
         {/* soft vignette */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/10" />
 
-        {/* mouse-follow highlight (glass reflection) */}
+        {/* glass reflection */}
         <div
           className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
           style={{
@@ -2108,7 +2179,6 @@ function GalleryCard({ item, index, onOpen }) {
               </span>
             </div>
 
-            {/* index chip */}
             <span className="shrink-0 text-[9px] font-mono text-white/30 tracking-[0.25em]">
               #{String(index + 1).padStart(2, "0")}
             </span>
@@ -2130,7 +2200,7 @@ function GalleryCard({ item, index, onOpen }) {
   );
 }
 
-// --- Modal: cinematic preview ---
+// --- Modal: cinematic preview (mobile-friendly) ---
 function GalleryModal({ item, onClose, onPrev, onNext, hasMany }) {
   return (
     <div
@@ -2141,7 +2211,7 @@ function GalleryModal({ item, onClose, onPrev, onNext, hasMany }) {
       onTouchStart={(e) => e.target === e.currentTarget && onClose()}
     >
       {/* backdrop */}
-      <div className="absolute inset-0 bg-black/75 backdrop-blur-md" />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
 
       {/* center glow */}
       <div
@@ -2195,18 +2265,23 @@ function GalleryModal({ item, onClose, onPrev, onNext, hasMany }) {
               <>
                 <button
                   onClick={onPrev}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
+                  className="
+                    absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
                     bg-black/35 hover:bg-black/55 border border-white/10
-                    flex items-center justify-center text-white/80 transition-all"
+                    flex items-center justify-center text-white/80 transition-all
+                  "
                   aria-label="Previous"
                 >
                   <ChevronLeft size={18} />
                 </button>
+
                 <button
                   onClick={onNext}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
+                  className="
+                    absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full
                     bg-black/35 hover:bg-black/55 border border-white/10
-                    flex items-center justify-center text-white/80 transition-all"
+                    flex items-center justify-center text-white/80 transition-all
+                  "
                   aria-label="Next"
                 >
                   <ChevronRight size={18} />
@@ -2218,7 +2293,7 @@ function GalleryModal({ item, onClose, onPrev, onNext, hasMany }) {
           {/* footer */}
           <div className="px-4 py-3 border-t border-white/10 bg-black/25">
             <div className="text-[10px] text-white/40 font-mono tracking-widest">
-              click/tap backdrop to close • Esc • ← →
+              tap backdrop to close • Esc • ← →
             </div>
           </div>
         </div>
@@ -2226,6 +2301,7 @@ function GalleryModal({ item, onClose, onPrev, onNext, hasMany }) {
     </div>
   );
 }
+
 
 
 
