@@ -1839,34 +1839,10 @@ const FinderApp = () => {
  *   const GALLERY_ITEMS = [{ id, title, file, folder/cat, meta, desc }, ...]
  * If you import it instead, replace below usage accordingly.
  */
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Search,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Layers,
-  Cpu,
-  AlertCircle,
-  Heart,
-  Coffee,
-  Wand2,
-} from "lucide-react";
+
 
 /* ========= helpers ========= */
 const clamp = (n, a, b) => Math.min(Math.max(n, a), b);
-
-function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 640px)");
-    const update = () => setIsMobile(mq.matches);
-    update();
-    mq.addEventListener?.("change", update);
-    return () => mq.removeEventListener?.("change", update);
-  }, []);
-  return isMobile;
-}
 
 function useLockBodyScroll(locked) {
   useEffect(() => {
