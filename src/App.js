@@ -1832,26 +1832,7 @@ const FinderApp = () => {
 };
 
 // -- GALLERY APP (JAPANESE EMOTION ARCHIVE) --
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useRef,
-  useCallback,
-} from "react";
-import {
-  Layers,
-  Cpu,
-  Key as KeyIcon,
-  AlertCircle,
-  Heart,
-  Coffee,
-  Wand2,
-  Search,
-  X,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+
 
 /* -----------------------------
   helpers
