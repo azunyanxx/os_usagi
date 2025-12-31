@@ -1834,661 +1834,287 @@ const FinderApp = () => {
 // -- GALLERY APP (JAPANESE EMOTION ARCHIVE) --
 
 
-/* -----------------------------
-  helpers
------------------------------- */
-
-const DOUBLE_TAP_MS = 320;
-const MOVE_PX = 12;
-
-const normalize = (s) => (s || "").toString().toLowerCase().trim();
-
-const isImageLike = (url = "", meta = "") => {
-  const u = (url || "").toLowerCase();
-  return (
-    u.endsWith(".png") ||
-    u.endsWith(".jpg") ||
-    u.endsWith(".jpeg") ||
-    u.endsWith(".webp") ||
-    u.endsWith(".gif") ||
-    meta === "IMG" ||
-    meta === "JPG"
-  );
-};
-
-const clampIndex = (i, len) => {
-  if (!len) return 0;
-  return (i % len + len) % len;
-};
-
-// カテゴリごとに光の色を変える
-const getPalette = (folder = "") => {
-  const f = (folder || "").toLowerCase();
-  if (f === "system") {
-    return {
-      aura1: "rgba(168,234,255,0.24)",
-      aura2: "rgba(120,214,255,0.22)",
-      dot: "rgba(168,234,255,1)",
-    };
-  }
-  if (f === "magic") {
-    return {
-      aura1: "rgba(203,184,255,0.26)",
-      aura2: "rgba(255,200,232,0.24)",
-      dot: "rgba(203,184,255,1)",
-    };
-  }
-  if (f === "emotion" || f === "heart") {
-    return {
-      aura1: "rgba(255,180,214,0.24)",
-      aura2: "rgba(255,220,220,0.24)",
-      dot: "rgba(255,180,214,1)",
-    };
-  }
-  if (f === "work") {
-    return {
-      aura1: "rgba(255,214,160,0.23)",
-      aura2: "rgba(255,194,140,0.20)",
-      dot: "rgba(255,214,160,1)",
-    };
-  }
-  return {
-    aura1: "rgba(168,234,255,0.22)",
-    aura2: "rgba(203,184,255,0.20)",
-    dot: "rgba(168,234,255,1)",
-  };
-};
-
-/* -----------------------------
-  mobile double tap
------------------------------- */
-
-function useMobileTap({ isMobile, onSingle, onDouble }) {
-  const lastTapAt = useRef(0);
-  const down = useRef({ x: 0, y: 0 });
-  const didMove = useRef(false);
-
-  const onPointerDown = useCallback(
-    (e) => {
-      if (!isMobile) return;
-      if (e.pointerType === "mouse") return;
-      down.current = { x: e.clientX, y: e.clientY };
-      didMove.current = false;
-    },
-    [isMobile]
-  );
-
-  const onPointerMove = useCallback(
-    (e) => {
-      if (!isMobile) return;
-      if (e.pointerType === "mouse") return;
-      const dx = Math.abs(e.clientX - down.current.x);
-      const dy = Math.abs(e.clientY - down.current.y);
-      if (dx > MOVE_PX || dy > MOVE_PX) didMove.current = true;
-    },
-    [isMobile]
-  );
-
-  const onPointerUp = useCallback(
-    (e) => {
-      if (!isMobile) return;
-      if (e.pointerType === "mouse") return;
-      if (didMove.current) return;
-
-      const now = Date.now();
-      const isDouble = now - lastTapAt.current < DOUBLE_TAP_MS;
-
-      if (isDouble) {
-        lastTapAt.current = 0;
-        e.preventDefault?.();
-        onDouble?.();
-        return;
-      }
-
-      lastTapAt.current = now;
-      onSingle?.();
-    },
-    [isMobile, onDouble, onSingle]
-  );
-
-  const onPointerCancel = useCallback(() => {
-    didMove.current = false;
-  }, []);
-
-  return { onPointerDown, onPointerMove, onPointerUp, onPointerCancel };
-}
-
-/* -----------------------------
-  Lightbox (フルプレビュー)
------------------------------- */
-
-function Lightbox({ open, items, index, onClose, onPrev, onNext }) {
-  const item = items?.[index];
-  const [drag, setDrag] = useState({ x: 0, y: 0 });
-  const [dragging, setDragging] = useState(false);
-  const start = useRef(null);
-
-  // キー操作
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose?.();
-      if (e.key === "ArrowLeft") onPrev?.();
-      if (e.key === "ArrowRight") onNext?.();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose, onPrev, onNext]);
-
-  // body スクロールロック
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
-
-  if (!open || !item) return null;
-
-  const handleTouchStart = (e) => {
-    const t = e.touches?.[0];
-    if (!t) return;
-    start.current = { x: t.clientX, y: t.clientY };
-    setDragging(true);
-  };
-
-  const handleTouchMove = (e) => {
-    if (!dragging || !start.current) return;
-    const t = e.touches?.[0];
-    if (!t) return;
-    const dx = t.clientX - start.current.x;
-    const dy = t.clientY - start.current.y;
-    setDrag({ x: dx, y: dy });
-  };
-
-  const handleTouchEnd = (e) => {
-    if (!start.current) {
-      setDragging(false);
-      setDrag({ x: 0, y: 0 });
-      return;
-    }
-    const t = e.changedTouches?.[0];
-    const dx = t.clientX - start.current.x;
-    const dy = t.clientY - start.current.y;
-    start.current = null;
-
-    const absX = Math.abs(dx);
-    const absY = Math.abs(dy);
-    const TH = 60;
-
-    if (absY > absX && dy > TH) {
-      onClose?.();
-    } else if (absX > absY && absX > TH) {
-      if (dx > 0) onPrev?.();
-      else onNext?.();
-    }
-
-    setDragging(false);
-    setDrag({ x: 0, y: 0 });
-  };
-
-  const dist = Math.sqrt(drag.x ** 2 + drag.y ** 2);
-  const ratio = Math.min(dist / 260, 1);
-
-  const overlayOpacity = 0.9 - ratio * 0.35;
-  const scale = 1 - ratio * 0.08;
-
-  return (
-    <div
-      className="fixed inset-0 z-[600] overflow-hidden"
-      style={{ WebkitTapHighlightColor: "transparent" }}
-    >
-      {/* 背景クリックレイヤー */}
-      <button
-        type="button"
-        aria-label="close"
-        onClick={onClose}
-        className="absolute inset-0 z-[610] w-full h-full"
-        style={{ backgroundColor: `rgba(0,0,0,${overlayOpacity})` }}
-      />
-
-      {/* 背景の光・ノイズ */}
-      <div className="absolute inset-0 z-[615] pointer-events-none backdrop-blur-[22px]" />
-      <div className="absolute inset-0 z-[615] pointer-events-none bg-[radial-gradient(900px_520px_at_50%_12%,rgba(168,234,255,0.17),transparent_62%)]" />
-      <div className="absolute inset-0 z-[615] pointer-events-none bg-[radial-gradient(900px_520px_at_50%_92%,rgba(255,200,232,0.17),transparent_60%)]" />
-      <div className="absolute inset-0 z-[615] pointer-events-none opacity-[0.09] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.07),transparent)] [background-size:100%_3px]" />
-
-      {/* コンテンツフレーム */}
-      <div
-        className="relative z-[620] w-full h-full grid place-items-center px-4 sm:px-10"
-        style={{
-          paddingTop: "calc(env(safe-area-inset-top,0px) + 20px)",
-          paddingBottom: "calc(env(safe-area-inset-bottom,0px) + 20px)",
-        }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        <div
-          className="relative w-full max-w-5xl"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* 外枠：ガラスっぽいフレーム */}
-          <div
-            className="relative rounded-[28px] overflow-hidden"
-            style={{
-              background:
-                "linear-gradient(145deg, rgba(255,255,255,0.04), rgba(0,0,0,0.75))",
-              boxShadow:
-                "0 0 0 1px rgba(255,255,255,0.06) inset, 0 70px 180px -90px rgba(0,0,0,0.95), 0 0 140px rgba(168,234,255,0.18)",
-            }}
-          >
-            {/* HUDテキスト */}
-            <div className="absolute left-6 top-5 z-[640] text-[10px] font-mono tracking-[0.32em] text-white/60 uppercase">
-              <div>/gallery</div>
-              <div className="mt-1">
-                {index + 1} / {items.length}
-              </div>
-            </div>
-
-            {/* 閉じるボタン */}
-            <button
-              type="button"
-              onClick={onClose}
-              className="absolute right-5 top-4 z-[640] w-11 h-11 rounded-full border border-white/55 bg-black/40 backdrop-blur-2xl shadow-[0_18px_60px_rgba(0,0,0,0.75)] flex items-center justify-center text-white/92 active:scale-[0.97]"
-              style={{
-                backgroundImage:
-                  "radial-gradient(circle at 30% 0%, rgba(168,234,255,0.25), transparent 55%)",
-              }}
-              aria-label="close"
-            >
-              <X size={18} />
-            </button>
-
-            {/* メディア + ステージ */}
-            <div className="relative w-full pt-16 pb-14 px-3 sm:px-10">
-              <div
-                className="relative w-full mx-auto flex items-center justify-center"
-                style={{
-                  transform: `translate3d(${drag.x}px, ${drag.y}px, 0) scale(${scale})`,
-                  transition: dragging
-                    ? "none"
-                    : "transform 340ms cubic-bezier(0.22,1,0.36,1)",
-                }}
-              >
-                {/* 画像 */}
-                {isImageLike(item.file, item.meta) ? (
-                  <img
-                    src={item.file}
-                    alt={item.title}
-                    className="max-h-[72vh] w-full object-contain"
-                    draggable={false}
-                  />
-                ) : (
-                  <div className="w-full h-[60vh] grid place-items-center text-white/35 font-mono">
-                    PREVIEW_UNAVAILABLE
-                  </div>
-                )}
-
-                {/* 足元のステージグロー（下グロー強め） */}
-                <div className="pointer-events-none absolute left-1/2 bottom-[10%] -translate-x-1/2 w-[60%] max-w-[520px] h-[32%]">
-                  <div
-                    className="w-full h-full rounded-[999px]"
-                    style={{
-                      backgroundImage: `
-                        radial-gradient(circle at 50% 10%, rgba(255,255,255,0.32), transparent 58%),
-                        radial-gradient(circle at 50% 40%, rgba(168,234,255,0.38), transparent 70%),
-                        radial-gradient(80% 120% at 50% 100%, rgba(255,200,232,0.32), transparent 80%)
-                      `,
-                      opacity: 0.9,
-                      filter: "blur(4px)",
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* ナビ矢印 */}
-              {items.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={onPrev}
-                    className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full border border-white/35 bg-black/45 backdrop-blur-2xl hover:bg-white/10 transition-colors flex items-center justify-center text-white/92"
-                    aria-label="prev"
-                  >
-                    <ChevronLeft size={18} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onNext}
-                    className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full border border-white/35 bg-black/45 backdrop-blur-2xl hover:bg-white/10 transition-colors flex items-center justify-center text-white/92"
-                    aria-label="next"
-                  >
-                    <ChevronRight size={18} />
-                  </button>
-                </>
-              )}
-
-              {/* 右下タイトルピル */}
-              {item.title && (
-                <div className="absolute right-5 bottom-5 z-[640]">
-                  <div className="px-4 py-2.5 rounded-full border border-white/45 bg-black/45 backdrop-blur-2xl shadow-[0_20px_80px_rgba(0,0,0,0.80)]">
-                    <div
-                      className="text-[15px] leading-none text-white/94 tracking-wide"
-                      style={{ fontFamily: `"Cormorant Garamond", serif` }}
-                    >
-                      {item.title}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* -----------------------------
-  Card
------------------------------- */
-
-function GalleryCard({
-  item,
-  idx,
-  isMobile,
-  selected,
-  onSelect,
-  onOpen,
-}) {
-  const tap = useMobileTap({
-    isMobile,
-    onSingle: () => onSelect(item.id),
-    onDouble: () => onOpen(idx),
-  });
-
-  const pal = getPalette(item.folder || item.cat);
-  const rawDesc = item.desc || "";
-  const isDefaultDesc = /^visual memory fragment\.?$/i.test(
-    rawDesc.trim()
-  );
-  const showDesc = rawDesc && !isDefaultDesc;
-
-  return (
-    <button
-      type="button"
-      className="relative text-left w-full"
-      onClick={
-        isMobile
-          ? (e) => {
-              e.preventDefault();
-            }
-          : () => onSelect(item.id)
-      }
-      onDoubleClick={isMobile ? undefined : () => onOpen(idx)}
-      onPointerDown={tap.onPointerDown}
-      onPointerMove={tap.onPointerMove}
-      onPointerUp={tap.onPointerUp}
-      onPointerCancel={tap.onPointerCancel}
-      style={{
-        WebkitTapHighlightColor: "transparent",
-        touchAction: isMobile ? "pan-y" : "auto",
-      }}
-      aria-selected={selected}
-    >
-      <div
-        className="relative overflow-hidden rounded-[26px] border bg-black/45 backdrop-blur-xl transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
-        style={{
-          borderColor: selected
-            ? "rgba(255,255,255,0.45)"
-            : "rgba(255,255,255,0.16)",
-          filter: selected
-            ? "brightness(1.04) saturate(1.06)"
-            : "brightness(0.78) saturate(0.94)",
-          opacity: selected ? 1 : 0.92,
-          transform: selected ? "translateY(-2px) scale(1.01)" : "none",
-          boxShadow: selected
-            ? "0 0 0 1px rgba(255,255,255,0.14) inset, 0 40px 140px -100px rgba(0,0,0,0.95), 0 0 110px rgba(168,234,255,0.30)"
-            : "0 0 0 1px rgba(255,255,255,0.06) inset, 0 40px 110px -105px rgba(0,0,0,0.90)",
-        }}
-      >
-        {/* 画像 */}
-        <div className="relative aspect-[4/3] bg-[#050609]">
-          {isImageLike(item.file, item.meta) ? (
-            <img
-              src={item.file}
-              alt={item.title}
-              loading="lazy"
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{
-                opacity: selected ? 0.98 : 0.84,
-                transition: "opacity 600ms ease",
-              }}
-            />
-          ) : (
-            <div className="absolute inset-0 grid place-items-center text-white/30 font-mono">
-              PREVIEW
-            </div>
-          )}
-
-          {/* カテゴリ別のオーラ */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              backgroundImage: `
-                radial-gradient(520px 320px at 30% 12%, ${pal.aura1}, transparent 60%),
-                radial-gradient(520px 320px at 80% 88%, ${pal.aura2}, transparent 62%)
-              `,
-            }}
-          />
-          {/* ビネット & 走査線 */}
-          <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
-          <div className="absolute inset-0 pointer-events-none opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.05),transparent)] [background-size:100%_4px]" />
-
-          {/* フォルダタグ */}
-          <div className="absolute top-2.5 left-2.5">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full border border-white/20 bg-black/45 backdrop-blur-2xl">
-              <span
-                className="w-1.5 h-1.5 rounded-full"
-                style={{
-                  backgroundColor: pal.dot,
-                  boxShadow:
-                    "0 0 12px rgba(255,255,255,0.55), 0 0 26px rgba(168,234,255,0.55)",
-                }}
-              />
-              <span className="text-[9px] tracking-[0.30em] text-white/90 font-mono uppercase">
-                {item.folder || item.cat}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* テキスト部分 */}
-        <div className="px-4 pt-3.5 pb-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div
-                className="text-[16px] sm:text-[17px] leading-snug text-white/94 truncate"
-                style={{ fontFamily: `"Cormorant Garamond", serif` }}
-              >
-                {item.title}
-              </div>
-            </div>
-            {/* 選択ドット（呼吸アニメ） */}
-            <div className="shrink-0 flex items-center">
-              <span
-                className="w-1.5 h-1.5 rounded-full"
-                style={
-                  selected
-                    ? {
-                        backgroundColor: pal.dot,
-                        boxShadow:
-                          "0 0 0 rgba(168,234,255,0.0)", // start; keyframesで上書き
-                        animation: "osb-pulse 3.4s ease-in-out infinite",
-                      }
-                    : {
-                        backgroundColor: "rgba(255,255,255,0.26)",
-                      }
-                }
-              />
-            </div>
-          </div>
-
-          {/* 説明テキスト（Visual memory fragment は出さない） */}
-          {showDesc && (
-            <div className="mt-2 text-[11px] leading-relaxed text-white/58">
-              {rawDesc}
-            </div>
-          )}
-        </div>
-      </div>
-    </button>
-  );
-}
-
-/* -----------------------------
-  メイン GalleryApp
------------------------------- */
-
-const GalleryApp = () => {
-  const isMobile = useIsMobile();
+/const GalleryApp = () => {
   const [filter, setFilter] = useState("all");
+  const [lightboxIndex, setLightboxIndex] = useState(null); // null = 閉じてる
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState(null);
-  const [lightboxIndex, setLightboxIndex] = useState(null);
   const [mounted, setMounted] = useState(false);
+  const [activeId, setActiveId] = useState(null);
+  const lastTapRef = useRef(null);
+  const lastTapIdRef = useRef(null);
+  const touchStartRef = useRef(null);
+  const isMobile = useIsMobile();
 
-  // フォント＆呼吸アニメの @keyframes 追加
-  useEffect(() => {
-    const id = "osbunny-gallery-styles-v2";
-    if (document.getElementById(id)) return;
-    const style = document.createElement("style");
-    style.id = id;
-    style.textContent = `
-      @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Manrope:wght@300;400;500;600&family=Noto+Sans+JP:wght@300;400;500&display=swap');
-      @keyframes osb-pulse {
-        0%, 100% {
-          transform: scale(1);
-          opacity: .65;
-          box-shadow: 0 0 0 rgba(168,234,255,0);
-        }
-        50% {
-          transform: scale(1.35);
-          opacity: 1;
-          box-shadow: 0 0 14px rgba(168,234,255,0.75);
-        }
-      }
-    `;
-    document.head.appendChild(style);
-  }, []);
-
+  // 初期マウント & keyframes 注入
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(id);
   }, []);
 
-  const CATEGORIES = useMemo(
-    () => [
-      { id: "all", label: "All", icon: Layers },
-      { id: "system", label: "System", icon: Cpu },
-      { id: "key", label: "Emotion Key", icon: KeyIcon },
-      { id: "emotion", label: "Heart Error", icon: AlertCircle },
-      { id: "life", label: "Life Log", icon: Heart },
-      { id: "work", label: "Work", icon: Coffee },
-      { id: "magic", label: "Magic", icon: Wand2 },
-    ],
-    []
-  );
+  useEffect(() => {
+    const id = "osbunny-gallery-style";
+    if (document.getElementById(id)) return;
+    const style = document.createElement("style");
+    style.id = id;
+    style.textContent = `
+      @keyframes osbunny-pulse {
+        0%, 100% { opacity: .45; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.45); }
+      }
+      @keyframes osbunny-scanline {
+        0% { transform: translateY(120%); opacity: 0; }
+        20% { opacity: .7; }
+        100% { transform: translateY(-120%); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }, []);
 
-  // フィルター + 検索
+  const CATEGORIES = [
+    { id: "all", label: "All", icon: Layers },
+    { id: "system", label: "System", icon: Cpu },
+    { id: "key", label: "Emotion Key", icon: KeyIcon },
+    { id: "emotion", label: "Heart Error", icon: AlertCircle },
+    { id: "life", label: "Life Log", icon: Heart },
+    { id: "work", label: "Work", icon: Coffee },
+    { id: "magic", label: "Magic", icon: Wand2 },
+  ];
+
+  // カテゴリごとの色パレット
+  const getPalette = (folder) => {
+    switch (folder) {
+      case "system":
+        return {
+          dot: "#a8eaff",
+          aura1: "rgba(168,234,255,0.30)",
+          aura2: "rgba(185,168,255,0.20)",
+        };
+      case "emotion":
+        return {
+          dot: "#ffc8e8",
+          aura1: "rgba(255,200,232,0.32)",
+          aura2: "rgba(203,184,255,0.24)",
+        };
+      case "magic":
+        return {
+          dot: "#cbb8ff",
+          aura1: "rgba(203,184,255,0.34)",
+          aura2: "rgba(168,234,255,0.22)",
+        };
+      case "work":
+        return {
+          dot: "#b6ffe4",
+          aura1: "rgba(182,255,228,0.30)",
+          aura2: "rgba(185,168,255,0.20)",
+        };
+      case "life":
+        return {
+          dot: "#bde0ff",
+          aura1: "rgba(189,224,255,0.30)",
+          aura2: "rgba(255,200,232,0.20)",
+        };
+      default:
+        return {
+          dot: "#a8eaff",
+          aura1: "rgba(168,234,255,0.28)",
+          aura2: "rgba(255,200,232,0.20)",
+        };
+    }
+  };
+
+  // ---- Filter + Search ----
   const filteredItems = useMemo(() => {
-    let items = GALLERY_ITEMS || [];
+    let items = GALLERY_ITEMS;
 
     if (filter === "key") {
-      items = items.filter((it) =>
-        (it.title || "").toLowerCase().endsWith(".key")
+      items = items.filter((item) =>
+        item.title?.toLowerCase().endsWith(".key")
       );
     } else if (filter !== "all") {
-      items = items.filter((it) => it.folder === filter);
+      items = items.filter((item) => item.folder === filter);
     }
 
-    const q = normalize(query);
-    if (q) {
-      items = items.filter((it) => {
-        const hay = normalize(
-          `${it.title || ""} ${it.desc || ""} ${it.meta || ""} ${
-            it.folder || ""
-          } ${it.cat || ""}`
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      items = items.filter((item) => {
+        const title = item.title?.toLowerCase() || "";
+        const desc = item.desc?.toLowerCase() || "";
+        const meta = item.meta?.toLowerCase() || "";
+        const folder = item.folder?.toLowerCase() || "";
+        const cat = item.cat?.toLowerCase() || "";
+        return (
+          title.includes(q) ||
+          desc.includes(q) ||
+          meta.includes(q) ||
+          folder.includes(q) ||
+          cat.includes(q)
         );
-        return hay.includes(q);
       });
     }
+
     return items;
   }, [filter, query]);
 
-  const openAt = useCallback(
-    (idx) => {
-      if (!filteredItems.length) return;
-      const clamped = clampIndex(idx, filteredItems.length);
-      setLightboxIndex(clamped);
-      setSelectedId(filteredItems[clamped]?.id ?? null);
+  const hasLightbox = lightboxIndex !== null;
+  const activeItem =
+    hasLightbox && filteredItems[lightboxIndex]
+      ? filteredItems[lightboxIndex]
+      : null;
+
+  // ---- Lightbox helpers ----
+  const openLightboxAt = useCallback(
+    (index) => {
+      if (!filteredItems[index]) return;
+      setLightboxIndex(index);
+      setActiveId(filteredItems[index].id);
+      setDragOffset({ x: 0, y: 0 });
+      setIsDragging(false);
     },
     [filteredItems]
   );
 
   const closeLightbox = useCallback(() => {
     setLightboxIndex(null);
+    setActiveId(null);
+    setDragOffset({ x: 0, y: 0 });
+    setIsDragging(false);
   }, []);
 
   const goNext = useCallback(() => {
+    if (!hasLightbox) return;
     setLightboxIndex((prev) => {
-      if (prev == null) return prev;
-      const next = clampIndex(prev + 1, filteredItems.length);
-      setSelectedId(filteredItems[next]?.id ?? null);
+      if (prev === null) return prev;
+      const next = (prev + 1) % filteredItems.length;
+      setActiveId(filteredItems[next].id);
       return next;
     });
-  }, [filteredItems]);
+    setDragOffset({ x: 0, y: 0 });
+    setIsDragging(false);
+  }, [hasLightbox, filteredItems]);
 
   const goPrev = useCallback(() => {
+    if (!hasLightbox) return;
     setLightboxIndex((prev) => {
-      if (prev == null) return prev;
-      const next = clampIndex(prev - 1, filteredItems.length);
-      setSelectedId(filteredItems[next]?.id ?? null);
+      if (prev === null) return prev;
+      const next = (prev - 1 + filteredItems.length) % filteredItems.length;
+      setActiveId(filteredItems[next].id);
       return next;
     });
-  }, [filteredItems]);
+    setDragOffset({ x: 0, y: 0 });
+    setIsDragging(false);
+  }, [hasLightbox, filteredItems]);
 
-  // フィルタ変更時に選択状態リセット
+  // ---- Keyboard shortcuts (Desktop) ----
   useEffect(() => {
-    if (!filteredItems.some((x) => x.id === selectedId)) {
-      setSelectedId(null);
+    if (!hasLightbox) return;
+
+    const handleKey = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeLightbox();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        goNext();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        goPrev();
+      }
+    };
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [hasLightbox, closeLightbox, goNext, goPrev]);
+
+  // ---- Double tap / double click ----
+  const TAP_DELAY = 260; // ms
+  const handleCardTap = (index, id) => {
+    const now = Date.now();
+    setActiveId(id); // シングルタップは「選択」だけ
+    if (
+      lastTapRef.current &&
+      now - lastTapRef.current < TAP_DELAY &&
+      lastTapIdRef.current === id
+    ) {
+      openLightboxAt(index);
     }
-    setLightboxIndex((i) =>
-      i == null ? i : clampIndex(i, filteredItems.length || 1)
-    );
-  }, [filteredItems, selectedId]);
+    lastTapRef.current = now;
+    lastTapIdRef.current = id;
+  };
+
+  // ---- Touch swipe for lightbox ----
+  const handleTouchStart = (e) => {
+    if (!hasLightbox) return;
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+    setIsDragging(true);
+    setDragOffset({ x: 0, y: 0 });
+  };
+
+  const handleTouchMove = (e) => {
+    if (!hasLightbox || !touchStartRef.current) return;
+    const t = e.touches[0];
+    const dx = t.clientX - touchStartRef.current.x;
+    const dy = t.clientY - touchStartRef.current.y;
+    setDragOffset({ x: dx, y: dy });
+  };
+
+  const handleTouchEnd = () => {
+    if (!hasLightbox || !touchStartRef.current) {
+      setIsDragging(false);
+      setDragOffset({ x: 0, y: 0 });
+      return;
+    }
+    const { x, y } = dragOffset;
+    const absX = Math.abs(x);
+    const absY = Math.abs(y);
+
+    const SWIPE_THRESHOLD = 54;
+
+    if (absY > absX && y > SWIPE_THRESHOLD) {
+      // 下スワイプ → 閉じる
+      closeLightbox();
+    } else if (absX > absY && absX > SWIPE_THRESHOLD) {
+      // 横スワイプ → 前後
+      if (x < 0) goNext();
+      else goPrev();
+    }
+
+    touchStartRef.current = null;
+    setIsDragging(false);
+    setDragOffset({ x: 0, y: 0 });
+  };
+
+  // ---- Swipe feel: opacity / scale / glow follow ----
+  const dragDistance = Math.sqrt(dragOffset.x ** 2 + dragOffset.y ** 2);
+  const dragRatio = Math.min(dragDistance / 260, 1);
+
+  const overlayOpacity = hasLightbox ? 0.94 - dragRatio * 0.32 : 0;
+
+  const imageTransform = hasLightbox
+    ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) scale(${
+        1 - dragRatio * 0.07
+      })`
+    : "translate3d(0,0,0) scale(1)";
+
+  const imageTransition = isDragging
+    ? "none"
+    : "transform 320ms cubic-bezier(0.22,1,0.36,1), opacity 320ms cubic-bezier(0.22,1,0.36,1)";
 
   return (
-    <div
-      className="flex h-full bg-[#020204] relative overflow-hidden"
-      style={{
-        fontFamily:
-          '"Manrope","Noto Sans JP",system-ui,-apple-system,BlinkMacSystemFont,sans-serif',
-      }}
-    >
-      {/* バックグラウンドライト */}
+    <div className="flex h-full bg-[#020204] relative overflow-hidden">
+      {/* Ambient background light */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-28 -left-24 w-[420px] h-[420px] rounded-full bg-[#a8eaff]/18 blur-[72px]" />
-        <div className="absolute top-1/3 -right-32 w-[480px] h-[480px] rounded-full bg-[#cbb8ff]/16 blur-[90px]" />
-        <div className="absolute -bottom-28 left-1/3 w-[520px] h-[520px] rounded-full bg-[#ffc8e8]/14 blur-[96px]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/40 to-black/80" />
+        <div className="absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full bg-[#a8eaff]/18 blur-[70px]" />
+        <div className="absolute top-1/3 -right-28 w-[460px] h-[460px] rounded-full bg-[#b9a8ff]/16 blur-[88px]" />
+        <div className="absolute -bottom-24 left-1/4 w-[520px] h-[520px] rounded-full bg-[#ffc8e8]/14 blur-[96px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/24 via-black/42 to-black/84" />
       </div>
 
-      {/* 左サイドバー（スマホはアイコンだけ） */}
-      <div className="relative z-10 w-14 sm:w-52 border-r border-white/10 bg-black/55 backdrop-blur-2xl flex flex-col">
+      {/* Left Sidebar（スマホは縦アイコンのみ） */}
+      <div className="relative z-10 w-14 sm:w-52 border-r border-white/10 bg-black/60 backdrop-blur-2xl flex flex-col">
+        {/* Sidebar Header */}
         <div className="hidden sm:flex items-center gap-2 px-4 py-4 border-b border-white/10">
           <div className="w-2 h-2 rounded-full bg-[#a8eaff] shadow-[0_0_18px_rgba(168,234,255,0.95)]" />
           <div className="flex flex-col">
@@ -2501,11 +2127,14 @@ const GalleryApp = () => {
           </div>
         </div>
 
+        {/* Category Chips */}
         <div className="flex-1 overflow-y-auto py-3 sm:py-5">
           <div className="flex flex-col gap-2 px-1 sm:px-3">
             {CATEGORIES.map((cat) => {
               const Icon = cat.icon;
               const active = filter === cat.id;
+              const pal = getPalette(cat.id);
+
               return (
                 <button
                   key={cat.id}
@@ -2514,23 +2143,30 @@ const GalleryApp = () => {
                     "group relative flex items-center justify-center sm:justify-start gap-2 rounded-2xl border",
                     "text-[11px] px-0 sm:px-3.5 py-1.5 sm:py-2 w-full transition-all duration-300",
                     active
-                      ? "border-[#a8eaff]/75 bg-[#061018]/85 shadow-[0_0_28px_rgba(168,234,255,0.32)]"
-                      : "border-white/14 bg-white/0 hover:bg-white/8 hover:border-white/26",
+                      ? "border-white/28 bg-[#050b11]/90 shadow-[0_0_32px_rgba(168,234,255,0.38)]"
+                      : "border-white/10 bg-white/0 hover:bg-white/5 hover:border-white/24",
                   ].join(" ")}
                 >
                   <Icon
                     size={16}
                     className={
                       active
-                        ? "text-[#a8eaff] drop-shadow-[0_0_12px_rgba(168,234,255,0.8)]"
-                        : "text-white/60 group-hover:text-white/92"
+                        ? "text-[#a8eaff] drop-shadow-[0_0_10px_rgba(168,234,255,0.9)]"
+                        : "text-white/58 group-hover:text-white/90"
                     }
                   />
                   <span className="hidden sm:inline tracking-wide truncate">
                     {cat.label}
                   </span>
                   {active && (
-                    <span className="hidden sm:block ml-auto w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_18px_rgba(168,234,255,0.9)]" />
+                    <span
+                      className="hidden sm:block ml-auto w-1.5 h-1.5 rounded-full"
+                      style={{
+                        background: pal.dot,
+                        boxShadow: `0 0 14px ${pal.dot}`,
+                        animation: "osbunny-pulse 3.6s ease-in-out infinite",
+                      }}
+                    />
                   )}
                 </button>
               );
@@ -2544,19 +2180,19 @@ const GalleryApp = () => {
         </div>
       </div>
 
-      {/* メインエリア */}
+      {/* Main */}
       <div className="relative z-10 flex-1 flex flex-col overflow-hidden">
-        {/* ヘッダー */}
+        {/* Header */}
         <div className="px-4 sm:px-6 pt-4 pb-3 border-b border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-black/25">
           <div className="flex items-center gap-2">
             <span className="w-1 h-1 rounded-full bg-[#a8eaff] shadow-[0_0_18px_rgba(168,234,255,0.95)]" />
             <span className="text-[10px] uppercase tracking-[0.34em] text-white/48">
-              /gallery
+              ・ /gallery
             </span>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 text-[11px] text-white/45 w-full sm:w-auto">
-            <div className="relative flex-1 min-w-[160px] max-w-[260px] sm:max-w-[320px]">
+            <div className="relative flex-1 min-w-[160px] max-w-[280px] sm:max-w-[320px]">
               <Search
                 size={12}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"
@@ -2565,67 +2201,253 @@ const GalleryApp = () => {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="search: title, tag, note"
-                className="w-full rounded-full pl-8 pr-3 py-2 text-[11px] text-white placeholder:text-white/30
-                  bg-black/40 border border-white/16 backdrop-blur-xl
-                  focus:outline-none focus:border-[#a8eaff]/80 focus:shadow-[0_0_24px_rgba(168,234,255,0.30)]
+                className="w-full rounded-full pl-8 pr-3 py-2 text-[11px] text-white placeholder:text-white/28
+                  bg-black/45 border border-white/14 backdrop-blur-xl
+                  focus:outline-none focus:border-[#a8eaff]/75 focus:shadow-[0_0_26px_rgba(168,234,255,0.25)]
                   transition-all"
               />
-              <div className="pointer-events-none absolute inset-0 rounded-full bg-[linear-gradient(90deg,rgba(168,234,255,0.08),rgba(203,184,255,0.06),rgba(255,200,232,0.08))] opacity-60" />
+              <div className="pointer-events-none absolute inset-0 rounded-full bg-[linear-gradient(90deg,rgba(168,234,255,0.14),rgba(185,168,255,0.12),rgba(255,200,232,0.14))] opacity-60" />
             </div>
 
             <div className="hidden sm:flex items-center gap-2 whitespace-nowrap">
-              <span className="w-1 h-1 rounded-full bg-white/70" />
-              <span>{filteredItems.length}</span>
+              <span className="text-[9px] uppercase tracking-[0.25em] text-white/40">
+                {filteredItems.length} items
+              </span>
             </div>
           </div>
         </div>
 
-        {/* グリッド */}
+        {/* Grid */}
         <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6">
           {filteredItems.length === 0 ? (
             <div className="h-full flex items-center justify-center text-xs text-white/40">
               no archive in this layer
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5 pb-12">
-              {filteredItems.map((item, idx) => (
-                <div
-                  key={item.id}
-                  className={`transition-opacity duration-500 ${
-                    mounted ? "opacity-100" : "opacity-0"
-                  }`}
-                  style={{
-                    transitionDelay: mounted ? `${idx * 26}ms` : "0ms",
-                  }}
-                >
-                  <GalleryCard
-                    item={item}
-                    idx={idx}
-                    isMobile={isMobile}
-                    selected={selectedId === item.id}
-                    onSelect={setSelectedId}
-                    onOpen={openAt}
-                  />
-                </div>
-              ))}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5 pb-16">
+              {filteredItems.map((item, idx) => {
+                const isActive = activeId === item.id;
+                const pal = getPalette(item.folder || item.cat);
+                const rawDesc = item.desc || "";
+                const trimmed = rawDesc.trim();
+                const isVisualFragment = /visual\s*memory\s*fragment/i.test(
+                  trimmed
+                );
+                const showDesc = !!rawDesc && !isVisualFragment;
+
+                return (
+                  <div
+                    key={item.id}
+                    className="group relative cursor-pointer"
+                    onClick={() => handleCardTap(idx, item.id)}
+                    onDoubleClick={() => openLightboxAt(idx)}
+                  >
+                    <div
+                      className={[
+                        "relative overflow-hidden rounded-2xl border bg-black/60 backdrop-blur-xl",
+                        isActive ? "border-white/30" : "border-white/10",
+                        "transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                        mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3",
+                      ].join(" ")}
+                      style={{
+                        boxShadow: isActive
+                          ? `0 0 0 1px rgba(255,255,255,0.12) inset,
+                             0 40px 120px -80px rgba(0,0,0,0.95),
+                             0 0 95px ${pal.aura1}`
+                          : "0 0 0 1px rgba(0,0,0,0.6) inset, 0 26px 80px -70px rgba(0,0,0,0.95)",
+                        filter: isActive ? "brightness(1.05)" : "brightness(0.78)",
+                        transform: isActive
+                          ? "translateY(-3px) scale(1.02)"
+                          : "translateY(0) scale(1)",
+                        transitionDelay: mounted ? `${idx * 34}ms` : "0ms",
+                      }}
+                    >
+                      <div className="aspect-[4/3] relative">
+                        <img
+                          src={item.file}
+                          alt={item.title}
+                          className="w-full h-full object-cover object-center transform group-hover:scale-[1.04] transition-transform duration-600 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                          loading="lazy"
+                          style={{
+                            opacity: isActive ? 0.98 : 0.82,
+                          }}
+                        />
+
+                        {/* ambient aura */}
+                        <div
+                          className="absolute inset-0 pointer-events-none"
+                          style={{
+                            backgroundImage: `
+                              radial-gradient(520px 360px at 30% 18%, ${pal.aura1}, transparent 60%),
+                              radial-gradient(520px 360px at 75% 88%, ${pal.aura2}, transparent 62%)
+                            `,
+                          }}
+                        />
+                        <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/72 via-black/20 to-transparent" />
+
+                        {/* scan line（常にほんのり流れる） */}
+                        <div
+                          className="absolute inset-x-4 h-[1px] bg-gradient-to-r from-transparent via-white/80 to-transparent pointer-events-none opacity-40"
+                          style={{
+                            animation: "osbunny-scanline 6.5s linear infinite",
+                          }}
+                        />
+
+                        {/* badge */}
+                        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur text-[9px] text-white/80 tracking-[0.22em] uppercase border border-white/14">
+                          <span
+                            className="w-1.5 h-1.5 rounded-full"
+                            style={{
+                              background: pal.dot,
+                              boxShadow: `0 0 12px ${pal.dot}`,
+                            }}
+                          />
+                          <span>{item.folder || item.cat}</span>
+                        </div>
+
+                        {/* active ring */}
+                        {isActive && (
+                          <div className="absolute inset-0 pointer-events-none">
+                            <div
+                              className="absolute inset-0"
+                              style={{
+                                boxShadow:
+                                  "inset 0 0 0 1px rgba(255,255,255,0.24), inset 0 -46px 90px rgba(0,0,0,0.92)",
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* text area */}
+                      <div className="px-3.5 py-3 flex flex-col gap-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-[11px] font-medium text-white/92 truncate">
+                            {item.title}
+                          </span>
+                          {/* 選択インジケータ：・が呼吸して光る */}
+                          <span
+                            className="text-[18px] leading-none"
+                            style={{
+                              color: isActive
+                                ? pal.dot
+                                : "rgba(255,255,255,0.26)",
+                              textShadow: isActive
+                                ? `0 0 12px ${pal.dot}`
+                                : "none",
+                              animation: isActive
+                                ? "osbunny-pulse 3.6s ease-in-out infinite"
+                                : "none",
+                            }}
+                          >
+                            ・
+                          </span>
+                        </div>
+
+                        {/* desc: "Visual memory fragment" 系は出さない */}
+                        {showDesc && (
+                          <div className="text-[10px] text-white/52 leading-relaxed line-clamp-2">
+                            {rawDesc}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       </div>
 
-      <Lightbox
-        open={lightboxIndex != null}
-        items={filteredItems}
-        index={lightboxIndex ?? 0}
-        onClose={closeLightbox}
-        onPrev={goPrev}
-        onNext={goNext}
-      />
+      {/* Lightbox Overlay */}
+      {hasLightbox && activeItem && (
+        <div
+          className="fixed inset-0 z-[999] flex items-center justify-center"
+          style={{
+            backgroundColor: `rgba(0,0,0,${overlayOpacity})`,
+          }}
+          onClick={closeLightbox}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          {/* 背景アート */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute inset-0 backdrop-blur-[20px]" />
+            <div className="absolute inset-0 bg-[radial-gradient(900px_520px_at_50%_8%,rgba(168,234,255,0.20),transparent_62%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(900px_520px_at_50%_96%,rgba(255,200,232,0.22),transparent_62%)]" />
+            <div className="absolute inset-0 opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.07),transparent)] [background-size:100%_4px]" />
+          </div>
+
+          {/* inner frame（白枠は細く＋ガラス感） */}
+          <div
+            className="relative max-w-[96vw] max-h-[90vh] w-full sm:w-auto px-4 sm:px-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              className="relative rounded-[28px] border border-white/12 bg-white/[0.03] backdrop-blur-3xl overflow-hidden"
+              style={{
+                boxShadow:
+                  "0 0 0 1px rgba(255,255,255,0.04) inset, 0 80px 220px -110px rgba(0,0,0,0.96), 0 0 160px rgba(168,234,255,0.20)",
+              }}
+            >
+              {/* 内側ソフトライン */}
+              <div className="pointer-events-none absolute inset-[1px] rounded-[26px] border border-white/10 opacity-70 mix-blend-soft-light" />
+
+              {/* close（丸＋ネオン） */}
+              <button
+                className="absolute z-[5] right-4 top-4 w-10 h-10 rounded-full border border-white/26 bg-black/60 backdrop-blur-2xl flex items-center justify-center text-white/92 active:scale-[0.96] shadow-[0_18px_60px_rgba(0,0,0,0.75)] transition-all"
+                onClick={closeLightbox}
+              >
+                <X size={18} />
+              </button>
+
+              {/* 右下タイトルピル */}
+              <div className="absolute z-[5] right-4 bottom-4">
+                <div className="px-4 py-2.5 rounded-full border border-white/20 bg-black/65 backdrop-blur-2xl shadow-[0_24px_90px_rgba(0,0,0,0.85)]">
+                  <div className="text-[13px] sm:text-[14px] text-white/94 tracking-wide">
+                    {activeItem.title}
+                  </div>
+                </div>
+              </div>
+
+              {/* HUDメタ（左上） */}
+              <div className="absolute z-[5] left-4 top-4 text-[9px] font-mono tracking-[0.28em] uppercase text-white/60">
+                <div>/gallery</div>
+                <div className="mt-1">
+                  {lightboxIndex + 1} / {filteredItems.length}
+                </div>
+              </div>
+
+              {/* image */}
+              <div className="relative w-full h-[70vh] sm:h-[78vh] flex items-center justify-center">
+                {/* ステージ用グロー（下を強め） */}
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute inset-0 bg-[radial-gradient(720px_420px_at_50%_42%,rgba(255,255,255,0.14),transparent_60%)]" />
+                  <div className="absolute inset-x-[10%] bottom-[-10%] h-[45%] bg-[radial-gradient(ellipse_at_center,rgba(168,234,255,0.55),transparent_70%)] opacity-85 mix-blend-screen" />
+                </div>
+
+                <img
+                  src={activeItem.file}
+                  alt={activeItem.title}
+                  className="max-h-full max-w-full object-contain"
+                  style={{
+                    transform: imageTransform,
+                    transition: imageTransition,
+                  }}
+                />
+              </div>
+
+              {/* 下辺の“呼吸グロー”（ステージ影を濃く） */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black via-black/55 to-transparent opacity-90" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-
-export default GalleryApp;
 
 
 
