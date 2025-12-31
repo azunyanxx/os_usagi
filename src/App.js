@@ -150,8 +150,8 @@ const APPS = [
     hex: "#93c5fd",
   },
   {
-    id: "gallery",
-    name: "Gallery",
+    id: "",
+    name: "",
     icon: ImageIcon,
     label: "Memories",
     color: "text-cyan-200",
@@ -767,8 +767,8 @@ const FINDER_ITEMS = [
   },
 ];
 
-// 2. GALLERY ITEMS (For Gallery App - Curated & Emotional)
-const GALLERY_ITEMS = FINDER_ITEMS.map((item) => ({
+// 2.  ITEMS (For  App - Curated & Emotional)
+const _ITEMS = FINDER_ITEMS.map((item) => ({
   ...item,
   cat: item.folder,
   desc: "Visual memory fragment.",
@@ -1837,7 +1837,7 @@ const FinderApp = () => {
 
 
 /**
- * GalleryApp (OS Bunny style)
+ * App (OS Bunny style)
  * - category filter (sidebar on desktop / chips on mobile)
  * - search
  * - lightbox modal (prev/next, ESC, arrow keys, swipe)
@@ -2064,7 +2064,7 @@ function Lightbox({ open, items, index, onClose, onPrev, onNext }) {
   Card
 ------------------------------ */
 
-function GalleryCard({
+function Card({
   item,
   idx,
   isMobile,
@@ -2212,7 +2212,7 @@ function GalleryCard({
   App
 ------------------------------ */
 
-export default function GalleryApp({
+export default function App({
   items = [],
   defaultFilter = "all",
   accentCyan = "#a8eaff",
@@ -2443,7 +2443,7 @@ export default function GalleryApp({
           ) : (
             <div className="grid gap-5 sm:gap-7 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {filteredItems.map((item, idx) => (
-                <GalleryCard
+                <Card
                   key={item.id}
                   item={item}
                   idx={idx}
@@ -3540,7 +3540,7 @@ const Window = ({ app, isActive, onClose, onFocus, bgm }) => {
       <div className="flex-1 bg-[#050505] relative overflow-hidden">
         {app.id === "music" && <MusicApp bgm={bgm} />}
         {app.id === "finder" && <FinderApp />}
-        {app.id === "gallery" && <GalleryApp />}
+        {app.id === "" && <App />}
         {app.id === "terminal" && <TerminalApp />}
         {app.id === "safari" && <SafariApp />}
         {app.id === "system" && <SystemApp />}
@@ -3817,7 +3817,16 @@ body { margin: 0; background: #000; overflow: hidden; height: 100vh; height: 100
 
 /* slightly nicer tap feel */
 button{ -webkit-tap-highlight-color: transparent; }
+
+/* subtle grain for premium feel */
+.gallery-grain {
+  background-image: url("https://grainy-gradients.vercel.app/noise.svg");
+  background-repeat: repeat;
+  background-size: 240px 240px;
+  mix-blend-mode: overlay;
+}
 `;
+
 
 function Scanlines({ opacity = 0.12 }) {
   return (
@@ -3833,18 +3842,12 @@ function Scanlines({ opacity = 0.12 }) {
   );
 }
 
-/* subtle grain for premium feel */
-.gallery-grain {
-  background-image: url("https://grainy-gradients.vercel.app/noise.svg");
-  background-repeat: repeat;
-  background-size: 240px 240px;
-  mix-blend-mode: overlay;
-}
+
 
 export default function AppRoot() {
   return (
     <MobileProvider>
-      <GalleryApp items={GALLERY_ITEMS} />
+      <App items={_ITEMS} />
     </MobileProvider>
   );
 }
