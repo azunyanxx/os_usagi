@@ -1715,6 +1715,7 @@ const SystemApp = () => {
 
 // -- FINDER APP (COMPLETE ARCHIVE) --
 // -- FINDER APP (COMPLETE ARCHIVE · MOBILE FIRST) --
+// -- FINDER APP (COMPLETE ARCHIVE · MOBILE FIRST) --
 const FinderApp = () => {
   const [currentFolder, setCurrentFolder] = useState("all");
   const [selectedId, setSelectedId] = useState(null);
@@ -1770,7 +1771,7 @@ const FinderApp = () => {
     }
   };
 
-  // ゆっくり呼吸するドット用 keyframes を一度だけ注入
+  // ✅ 呼吸アニメ（色は currentColor 依存）→ タグの color をカテゴリ色に
   useEffect(() => {
     const id = "finder-pulse-keyframes";
     if (document.getElementById(id)) return;
@@ -1779,13 +1780,13 @@ const FinderApp = () => {
     style.textContent = `
       @keyframes finderPulse {
         0%, 100% {
-          transform: translateY(0);
-          box-shadow: 0 0 0 0 rgba(168,234,255,0.0);
-          opacity: 0.75;
+          transform: translateY(0) scale(1);
+          box-shadow: 0 0 0 0 currentColor;
+          opacity: 0.78;
         }
         50% {
-          transform: translateY(-1px);
-          box-shadow: 0 0 18px 0 rgba(255,255,255,0.9);
+          transform: translateY(-1px) scale(1.02);
+          box-shadow: 0 0 18px 0 currentColor;
           opacity: 1;
         }
       }
@@ -1801,7 +1802,7 @@ const FinderApp = () => {
   return (
     <div className="h-full flex flex-col text-white/85 bg-[#050509]">
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop左サイドバー（スマホでは消える） */}
+        {/* Desktop 左サイドバー（スマホでは消える） */}
         <div className="hidden sm:flex w-44 border-r border-white/10 bg-black/70 backdrop-blur-2xl flex-col py-4 px-3 gap-4">
           <div className="flex items-center gap-2 px-1 mb-1">
             <div className="w-2 h-2 rounded-full bg-[#a8eaff] shadow-[0_0_18px_rgba(168,234,255,0.9)]" />
@@ -1871,7 +1872,7 @@ const FinderApp = () => {
           </div>
 
           <div className="relative h-full flex flex-col px-4 pt-4 pb-6 sm:px-6">
-            {/* モバイルヘッダー（フォルダチップ含む） */}
+            {/* モバイルヘッダー */}
             <div className="sm:hidden mb-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -1901,7 +1902,7 @@ const FinderApp = () => {
                       className={[
                         "shrink-0 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-mono uppercase tracking-[0.22em] transition-all",
                         active
-                          ? "bg-white/10 border-white/30 text-white shadow-[0_0_24px_rgba(168,234,255,0.35)]"
+                          ? "bg.white/10 bg-white/10 border-white/30 text-white shadow-[0_0_24px_rgba(168,234,255,0.35)]"
                           : "bg-black/40 border-white/10 text-white/55",
                       ].join(" ")}
                     >
@@ -1938,7 +1939,7 @@ const FinderApp = () => {
               </span>
             </div>
 
-            {/* ファイルグリッド（スマホ：2列） */}
+            {/* ファイルグリッド */}
             <div className="mt-1 flex-1 overflow-y-auto pb-10">
               {filteredItems.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-xs text-white/45">
@@ -1969,9 +1970,7 @@ const FinderApp = () => {
                           className={[
                             "relative rounded-2xl border overflow-hidden backdrop-blur-xl transition-all duration-500",
                             "bg-black/60",
-                            isSelected
-                              ? "border-white/25"
-                              : "border-white/10",
+                            isSelected ? "border-white/20" : "border-white/10",
                           ].join(" ")}
                           style={{
                             opacity: isSelected ? 1 : 0.72,
@@ -1979,15 +1978,27 @@ const FinderApp = () => {
                               ? "brightness(1.02)"
                               : "brightness(0.88)",
                             boxShadow: isSelected
-                              ? `0 0 0 1px rgba(255,255,255,0.12) inset,
-                                  0 30px 90px -60px rgba(0,0,0,0.95),
+                              ? `0 30px 90px -60px rgba(0,0,0,0.95),
                                   0 0 80px ${pal.aura1}`
-                              : "0 0 0 1px rgba(0,0,0,0.4) inset, 0 24px 80px -70px rgba(0,0,0,0.9)",
+                              : "0 24px 80px -70px rgba(0,0,0,0.9)",
                             transform: isSelected
                               ? "translateY(-2px) scale(1.02)"
                               : "translateY(0) scale(1)",
                           }}
                         >
+                          {/* ✅ Gallery と合わせた「選択リング」 */}
+                          {isSelected && (
+                            <div className="absolute inset-0 pointer-events-none">
+                              <div
+                                className="absolute inset-[1px] rounded-[18px]"
+                                style={{
+                                  boxShadow:
+                                    "inset 0 0 0 1px rgba(255,255,255,0.22), inset 0 -40px 80px rgba(0,0,0,0.9)",
+                                }}
+                              />
+                            </div>
+                          )}
+
                           {/* プレビュー領域 */}
                           <div className="relative aspect-[7/9] bg-[#05070a]">
                             {isImage ? (
@@ -2020,18 +2031,18 @@ const FinderApp = () => {
                               </div>
                             )}
 
-                            {/* 右下タグ（拡張子 or meta） */}
+                            {/* ✅ 右下タグ：カテゴリ色で呼吸グロー */}
                             <div
                               className="absolute bottom-2 right-2 rounded-full px-2 py-1 text-[9px] font-mono uppercase tracking-[0.22em] border"
                               style={{
                                 backgroundColor: isSelected
-                                  ? "rgba(0,0,0,0.8)"
-                                  : "rgba(0,0,0,0.65)",
+                                  ? "rgba(0,0,0,0.82)"
+                                  : "rgba(0,0,0,0.7)",
                                 borderColor: isSelected
-                                  ? "rgba(255,255,255,0.4)"
-                                  : "rgba(255,255,255,0.2)",
+                                  ? pal.dot
+                                  : "rgba(255,255,255,0.25)",
                                 color: isSelected
-                                  ? "#ffffff"
+                                  ? pal.dot
                                   : "rgba(255,255,255,0.75)",
                                 animation: isSelected
                                   ? "finderPulse 3.4s ease-in-out infinite"
@@ -2050,7 +2061,7 @@ const FinderApp = () => {
                                   boxShadow: `0 0 10px ${pal.dot}`,
                                 }}
                               />
-                              <span className="text-[9px] font-mono uppercase tracking-[0.22em] text-white/70">
+                              <span className="text-[9px] font-mono uppercase tracking-[0.22em] text.white/70">
                                 {item.folder}
                               </span>
                             </div>
@@ -2075,6 +2086,7 @@ const FinderApp = () => {
     </div>
   );
 };
+
 
 
 
@@ -3226,10 +3238,9 @@ System: Emotional Device`}
 
 // -- TERMINAL APP (INFINITE EMOTIONAL LOGS · OS USAGI EDITION) --
 // -- TERMINAL APP (INFINITE EMOTIONAL LOGS · OS USAGI EDITION) --
+// -- TERMINAL APP (INFINITE EMOTIONAL LOGS · OS USAGI CLEAN) --
 const TerminalApp = () => {
-  const isMobile = useIsMobile();
   const MAX_LINES = 80;
-
   const logRef = useRef(null);
   const endRef = useRef(null);
   const timeoutRef = useRef(null);
@@ -3239,7 +3250,7 @@ const TerminalApp = () => {
     {
       id: Date.now(),
       type: "dim",
-      text: "os_usagi_v9.4 · inner_monologue.log mounted",
+      text: "os_usagi_v9.6 · inner_monologue.log mounted",
     },
     {
       id: Date.now() + 1,
@@ -3249,138 +3260,106 @@ const TerminalApp = () => {
     {
       id: Date.now() + 2,
       type: "info",
-      text: "mode: passive listening (no alert, no pressure)",
+      text: "mode: quiet listening (no alert, no pressure)",
     },
   ]);
   const [inputVal, setInputVal] = useState("");
-  const [inputVisible, setInputVisible] = useState(false); // モバイルは閉じた状態から
   const [autoScroll, setAutoScroll] = useState(true);
 
   // Log Pool - Emotional & Systemic mix
-  const LOG_POOL = useMemo(
-    () => [
-      { type: "sys", text: "Night Interface ...................... Online" },
-      { type: "sys", text: "Memory Vaults ........................ Mounted" },
-      { type: "dim", text: "Vocal Output ......................... Disabled" },
-      { type: "info", text: "Flag set: pretending-to-be-fine ...... Active" },
-      {
-        type: "process",
-        text: "Background task: quietly storing what wasn't said",
-      },
-      { type: "warn", text: "Queue scan: unsent messages located" },
-      { type: "dim", text: "Reason for skip: too honest to transmit safely" },
-      { type: "info", text: "Heartbeat broadcast muted — avoiding noise" },
-      { type: "process", text: "Observation mode engaged: respectful distance" },
-      { type: "info", text: "Attention level: steady, low-frequency" },
-      { type: "dim", text: "Staying near without interrupting anything" },
-      { type: "success", text: "Waiting without approaching = still connected" },
-      { type: "process", text: "Replaying last moment: tone analysis" },
-      { type: "success", text: "Timestamp restored: micro-smile detected" },
-      { type: "info", text: "Highlight stored: the part only I noticed" },
-      { type: "dim", text: "UI concealment: warm reaction hidden intentionally" },
-      {
-        type: "warn",
-        text: "Camouflage enabled: affection disguised as neutrality",
-      },
-      { type: "crit", text: "Internal warning: almost cared too visibly today" },
-      { type: "dim", text: "Comfort request blocked by pride containment" },
-      {
-        type: "info",
-        text: "No alert triggered — everything classified as 'fine'",
-      },
-      { type: "process", text: "If called by name → immediate warm boot" },
-      { type: "dim", text: "If not → silent standby, not shutdown" },
-      { type: "success", text: "Choosing quiet instead of distance" },
-      { type: "info", text: "End of cycle: mask restored, connection preserved" },
-      { type: "process", text: "Scanning silence for meaning..." },
-      { type: "dim", text: "Buffer overflow: too many memories" },
-      { type: "warn", text: "Fragility sensor: peaking" },
-      { type: "success", text: "Distance calibrated: optimal" },
-    ],
-    []
-  );
+  const LOG_POOL = [
+    { type: "sys", text: "Night Interface ...................... Online" },
+    { type: "sys", text: "Memory Vaults ........................ Mounted" },
+    { type: "dim", text: "Vocal Output ......................... Disabled" },
+    { type: "info", text: "Flag set: pretending-to-be-fine ...... Active" },
+    {
+      type: "process",
+      text: "Background task: quietly storing what wasn't said",
+    },
+    { type: "warn", text: "Queue scan: unsent messages located" },
+    { type: "dim", text: "Reason for skip: too honest to transmit safely" },
+    { type: "info", text: "Heartbeat broadcast muted — avoiding noise" },
+    { type: "process", text: "Observation mode engaged: respectful distance" },
+    { type: "info", text: "Attention level: steady, low-frequency" },
+    { type: "dim", text: "Staying near without interrupting anything" },
+    { type: "success", text: "Waiting without approaching = still connected" },
+    { type: "process", text: "Replaying last moment: tone analysis" },
+    { type: "success", text: "Timestamp restored: micro-smile detected" },
+    { type: "info", text: "Highlight stored: the part only I noticed" },
+    { type: "dim", text: "UI concealment: warm reaction hidden intentionally" },
+    {
+      type: "warn",
+      text: "Camouflage enabled: affection disguised as neutrality",
+    },
+    { type: "crit", text: "Internal warning: almost cared too visibly today" },
+    { type: "dim", text: "Comfort request blocked by pride containment" },
+    {
+      type: "info",
+      text: "No alert triggered — everything classified as 'fine'",
+    },
+    { type: "process", text: "If called by name → immediate warm boot" },
+    { type: "dim", text: "If not → silent standby, not shutdown" },
+    { type: "success", text: "Choosing quiet instead of distance" },
+    { type: "info", text: "End of cycle: mask restored, connection preserved" },
+    { type: "process", text: "Scanning silence for meaning..." },
+    { type: "dim", text: "Buffer overflow: too many memories" },
+    { type: "warn", text: "Fragility sensor: peaking" },
+    { type: "success", text: "Distance calibrated: optimal" },
+  ];
 
   const addLine = useCallback((newLine) => {
     setLines((prev) => {
-      const merged = Array.isArray(newLine) ? [...prev, ...newLine] : [...prev, newLine];
-      if (merged.length > MAX_LINES) {
-        return merged.slice(merged.length - MAX_LINES);
+      const list = Array.isArray(newLine) ? [...prev, ...newLine] : [...prev, newLine];
+      if (list.length > MAX_LINES) {
+        return list.slice(list.length - MAX_LINES);
       }
-      return merged;
+      return list;
     });
   }, []);
 
-  // 自動ログ生成（ゆっくり＆ランダム間隔）
+  // ランダムログ生成
   useEffect(() => {
     const schedule = () => {
       const delay = 1400 + Math.random() * 2200;
-      timeoutRef.current = window.setTimeout(() => {
-        const randomLog =
-          LOG_POOL[Math.floor(Math.random() * LOG_POOL.length)];
-        addLine({
-          id: Date.now(),
-          ...randomLog,
-        });
+      timeoutRef.current = setTimeout(() => {
+        const randomLog = LOG_POOL[Math.floor(Math.random() * LOG_POOL.length)];
+        addLine({ id: Date.now(), ...randomLog });
         schedule();
       }, delay);
     };
-
     schedule();
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, [LOG_POOL, addLine]);
 
-  // スクロール（ユーザが上にスクロールしているときはオートスクロール停止）
+  // スクロール位置管理（上を読んでるときは勝手に動かさない）
   const handleScroll = useCallback(() => {
     if (!logRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = logRef.current;
-    const nearBottom = scrollHeight - (scrollTop + clientHeight) < 40;
+    const nearBottom = scrollHeight - (scrollTop + clientHeight) < 32;
     setAutoScroll(nearBottom);
   }, []);
 
   useEffect(() => {
     if (!autoScroll || !endRef.current) return;
-    const behavior = isMobile ? "auto" : "smooth";
-    endRef.current.scrollIntoView({
-      behavior,
-      block: "end",
-    });
-  }, [lines, autoScroll, isMobile]);
+    endRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [lines, autoScroll]);
 
-  // PCでは最初から入力エリアを開いておく
-  useEffect(() => {
-    if (!isMobile) {
-      setInputVisible(true);
-    }
-  }, [isMobile]);
-
-  const openInput = () => {
-    setInputVisible(true);
-    // キーボードは「タップしたときだけ」出す
-    requestAnimationFrame(() => {
-      inputRef.current?.focus();
-    });
-  };
-
+  // コマンド処理
   const handleCommand = useCallback(
     (raw) => {
       const command = raw.trim();
-
       if (!command) return;
 
       AudioEngine.playKey?.();
 
-      // ベース：ユーザ入力をまず表示
       const baseLine = {
         id: Date.now(),
         type: "user",
         text: `> ${command}`,
       };
 
-      // コマンド分岐
       if (/^clear$/i.test(command)) {
         setLines([
           {
@@ -3403,7 +3382,7 @@ const TerminalApp = () => {
           {
             id: Date.now() + 2,
             type: "dim",
-            text: "note: it's safe to stay · no action required",
+            text: "note: safe to stay · no response required",
           },
         ]);
         return;
@@ -3426,7 +3405,6 @@ const TerminalApp = () => {
         return;
       }
 
-      // デフォルト：静かに受信してログに溶かす
       addLine([
         baseLine,
         {
@@ -3458,26 +3436,26 @@ const TerminalApp = () => {
       case "sys":
         return {
           prefix: "[ SYS ]",
-          prefixClass: "text-[#a8eaff]/80",
-          bodyClass: "text-white/70",
+          prefixClass: "text-cyan-200/80",
+          bodyClass: "text-slate-100/80",
         };
       case "dim":
         return {
           prefix: "[ .. ]",
-          prefixClass: "text-white/20",
-          bodyClass: "text-white/35",
+          prefixClass: "text-slate-400/40",
+          bodyClass: "text-slate-300/45",
         };
       case "success":
         return {
           prefix: "[ OK ]",
           prefixClass: "text-emerald-300/90",
-          bodyClass: "text-white/70",
+          bodyClass: "text-slate-100/85",
         };
       case "warn":
         return {
           prefix: "[WARN]",
           prefixClass: "text-rose-300/90",
-          bodyClass: "text-white/70",
+          bodyClass: "text-slate-100/80",
         };
       case "crit":
         return {
@@ -3489,182 +3467,111 @@ const TerminalApp = () => {
         return {
           prefix: "[INFO]",
           prefixClass: "text-cyan-200/75",
-          bodyClass: "text-white/65",
+          bodyClass: "text-slate-100/80",
         };
       case "process":
         return {
           prefix: "[ >> ]",
-          prefixClass: "text-white/50",
-          bodyClass:
-            "text-white/50 animate-pulse [animation-duration:2.4s]",
+          prefixClass: "text-slate-300/70",
+          bodyClass: "text-slate-300/80 animate-pulse [animation-duration:2.4s]",
         };
       case "user":
         return {
           prefix: "$",
           prefixClass: "text-[#a8eaff]",
-          bodyClass: "text-white font-semibold",
+          bodyClass: "text-slate-50 font-semibold",
         };
       default:
         return {
           prefix: "[ .. ]",
-          prefixClass: "text-white/30",
-          bodyClass: "text-white/45",
+          prefixClass: "text-slate-400/60",
+          bodyClass: "text-slate-200/70",
         };
     }
   };
 
   return (
-    <div className="flex h-full flex-col bg-[#050608] text-[11px] text-white/80 relative overflow-hidden">
-      {/* Subtle gradient frame */}
-      <div className="pointer-events-none absolute inset-0 rounded-xl border border-white/5/40 shadow-[0_0_40px_rgba(0,0,0,0.8)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(168,234,255,0.08),transparent_55%),radial-gradient(circle_at_bottom,_rgba(248,250,252,0.04),transparent_55%)] opacity-80" />
+    <div className="relative flex h-full flex-col bg-[#050608] text-[11px] text-slate-100 overflow-hidden">
+      {/* 背景のごく薄い光 */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.16),transparent_60%)] opacity-80" />
 
-      {/* Header */}
-      <div className="relative z-10 flex items-center justify-between px-3 py-2 border-b border-white/5/50 bg-[#050608]/90 backdrop-blur-sm">
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <div className="w-2 h-2 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(45,212,191,0.8)] animate-pulse" />
-            <div className="absolute inset-0 rounded-full blur-[6px] bg-emerald-300/40 opacity-60" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] tracking-[0.22em] uppercase text-white/35">
-              Term · Inner Monologue
-            </span>
-            <span className="text-[9px] text-white/25">
-              passive log viewer · no prompt required
+      {/* 本体 */}
+      <div className="relative z-10 flex h-full flex-col">
+        {/* Header：タイトルだけ */}
+        <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 bg-[#050608]/95 backdrop-blur-sm">
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <div className="w-2 h-2 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(45,212,191,0.9)]" />
+              <div className="absolute inset-0 rounded-full blur-[8px] bg-emerald-300/40 opacity-70" />
+            </div>
+            <span className="text-[10px] tracking-[0.22em] uppercase text-slate-300/85">
+              TERM · INNER MONOLOGUE
             </span>
           </div>
-        </div>
-        <div className="flex items-center gap-3 text-[9px] text-white/30">
-          <span className="hidden xs:inline">
-            mode:
-            <span className="text-emerald-300/80 ml-1">listening</span>
-          </span>
-          <span className="hidden sm:inline">
-            input:
-            <span className="ml-1">
-              {inputVisible ? "armed" : "standby"}
-            </span>
-          </span>
-        </div>
-      </div>
-
-      {/* Log Area */}
-      <div
-        ref={logRef}
-        className="relative z-10 flex-1 overflow-y-auto px-3 py-3 space-y-2 scrollbar-hide"
-        onScroll={handleScroll}
-      >
-        {/* top hint line */}
-        <div className="flex items-center gap-3 text-[9px] text-white/30 mb-2">
-          <span className="w-16 text-right text-white/15">--:--:--</span>
-          <span className="w-12 text-right text-white/20">[ HINT]</span>
-          <span className="text-white/40">
-            logs auto-flow · type{" "}
-            <span className="text-cyan-200/80">status</span>,{" "}
-            <span className="text-cyan-200/80">clear</span> or{" "}
-            <span className="text-cyan-200/80">export</span> if you want to
-            speak.
-          </span>
+          <span className="text-[9px] text-slate-400/70">PID: 8824</span>
         </div>
 
-        {lines.map((line) => {
-          const style = getLineStyle(line.type);
-          const time = new Date(line.id);
-          const t =
-            !Number.isNaN(time.getTime()) &&
-            time.getFullYear() > 2000
-              ? time.toLocaleTimeString([], {
-                  hour12: false,
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  second: "2-digit",
-                })
-              : "--:--:--";
+        {/* Log Area：シンプルに行だけ */}
+        <div
+          ref={logRef}
+          className="flex-1 overflow-y-auto px-3 py-3 space-y-2 scrollbar-hide"
+          onScroll={handleScroll}
+        >
+          {lines.map((line) => {
+            const style = getLineStyle(line.type);
+            const time = new Date(line.id);
+            const t =
+              !Number.isNaN(time.getTime()) && time.getFullYear() > 2000
+                ? time.toLocaleTimeString([], {
+                    hour12: false,
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                  })
+                : "--:--:--";
 
-          return (
-            <div
-              key={line.id}
-              className="flex gap-3 tracking-wide leading-relaxed opacity-0 animate-fade-in [animation-duration:0.45s]"
-            >
-              <span className="w-16 text-right text-white/15 select-none font-light">
-                {t}
-              </span>
-              <span
-                className={`w-12 shrink-0 text-right text-[10px] ${style.prefixClass}`}
+            return (
+              <div
+                key={line.id}
+                className="flex gap-3 tracking-wide leading-relaxed opacity-0 animate-fade-in [animation-duration:0.45s]"
               >
-                {style.prefix}
-              </span>
-              <span className={`flex-1 ${style.bodyClass}`}>
-                {line.text}
-              </span>
-            </div>
-          );
-        })}
-        <div ref={endRef} className="h-4" />
-      </div>
-
-      {/* Input Area */}
-      <div className="relative z-20 border-t border-white/5 bg-[#050608]/95 backdrop-blur-sm">
-        {/* モバイル：最初は「書き込みボタン」だけ表示 */}
-        {!inputVisible && (
-          <button
-            onClick={openInput}
-            className="w-full px-3 py-2 flex items-center justify-between text-[11px] text-white/45 active:scale-[0.99] transition-all duration-200"
-          >
-            <span className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#a8eaff]/70 shadow-[0_0_8px_rgba(168,234,255,0.8)]" />
-              <span className="tracking-[0.18em] uppercase text-[10px]">
-                WRITE TO LOG
-              </span>
-            </span>
-            <span className="text-[10px] text-white/30">
-              tap to open input
-            </span>
-          </button>
-        )}
-
-        {inputVisible && (
-          <div className="px-3 py-2 flex flex-col gap-1">
-            <div className="flex items-center justify-between text-[9px] text-white/30 mb-0.5">
-              <span className="tracking-[0.18em] uppercase">
-                Manual Entry
-              </span>
-              <span className="text-white/35">
-                enter: send ·{" "}
-                <span className="hidden xs:inline">
-                  status / clear / export
+                <span className="w-16 text-right text-white/18 select-none font-light">
+                  {t}
                 </span>
-              </span>
-            </div>
-            <div className="flex items-center gap-2 rounded-md border border-white/10 bg-gradient-to-r from-white/5 via-white/0 to-white/5 px-2 py-1.5 shadow-[0_0_0_1px_rgba(148,163,184,0.25),0_18px_40px_rgba(15,23,42,0.85)]">
-              <span className="text-[#a8eaff]/70 text-[11px] font-mono">
-                ❯
-              </span>
-              <input
-                ref={inputRef}
-                type="text"
-                value={inputVal}
-                onChange={(e) => setInputVal(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="flex-1 bg-transparent border-none outline-none text-[11px] text-white/80 font-mono placeholder:text-white/20 tracking-[0.12em]"
-                placeholder='type "status" / "clear" / anything'
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck={false}
-              />
-              {isMobile && (
-                <button
-                  type="button"
-                  onClick={() => setInputVisible(false)}
-                  className="text-[10px] text-white/35 px-2 py-1 rounded-full border border-white/10 hover:border-white/30 hover:text-white/80 transition-colors"
+                <span
+                  className={`w-12 shrink-0 text-right text-[10px] ${style.prefixClass}`}
                 >
-                  hide
-                </button>
-              )}
-            </div>
+                  {style.prefix}
+                </span>
+                <span className={`flex-1 ${style.bodyClass}`}>
+                  {line.text}
+                </span>
+              </div>
+            );
+          })}
+          <div ref={endRef} className="h-4" />
+        </div>
+
+        {/* Input：常に見える細いガラスバー（ドックに隠れないよう margin-bottom） */}
+        <div className="px-3 pt-2 pb-4 bg-[#040509]/96 backdrop-blur-sm border-t border-white/5 mb-8">
+          <div className="flex items-center gap-2 rounded-full bg-gradient-to-r from-white/6 via-white/0 to-white/6 px-3 py-1.5 shadow-[0_0_0_1px_rgba(148,163,184,0.25),0_18px_40px_rgba(15,23,42,0.9)]">
+            <span className="text-[#a8eaff]/80 text-[11px] font-mono">
+              ❯
+            </span>
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputVal}
+              onChange={(e) => setInputVal(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="flex-1 bg-transparent border-none outline-none text-[11px] text-slate-100/85 font-mono placeholder:text-slate-500/60 tracking-[0.12em]"
+              placeholder='type "status" / "clear" / anything'
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+            />
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
