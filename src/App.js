@@ -1838,10 +1838,17 @@ const GalleryApp = () => {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [query, setQuery] = useState("");
+  const [mounted, setMounted] = useState(false);
   const lastTapRef = useRef(null);
   const lastTapIdRef = useRef(null);
   const touchStartRef = useRef(null);
   const isMobile = useIsMobile();
+
+  useEffect(() => {
+    // 初回マウント後にふわっと出す
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   const CATEGORIES = [
     { id: "all", label: "All", icon: Layers },
@@ -2015,7 +2022,7 @@ const GalleryApp = () => {
     setDragOffset({ x: 0, y: 0 });
   };
 
-  // 背景の暗さ＆画像のスケールをスワイプ量で変える
+  // 背景の暗さ＆画像のスケールをスワイプ量で変える + 光も少し追従
   const dragDistance = Math.sqrt(dragOffset.x ** 2 + dragOffset.y ** 2);
   const dragRatio = Math.min(dragDistance / 280, 1);
   const overlayOpacity = hasLightbox ? 0.92 - dragRatio * 0.35 : 0;
@@ -2115,7 +2122,7 @@ const GalleryApp = () => {
 
           {/* Search + count */}
           <div className="flex items-center gap-2 sm:gap-3 text-[11px] text-white/40">
-            <div className="relative flex-1 min-w-[140px] max-w-[220px]">
+            <div className="relative flex-1 min-w-[140px] max-w-[230px]">
               <Search
                 size={12}
                 className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"
@@ -2123,13 +2130,18 @@ const GalleryApp = () => {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="filter memories..."
-                className="w-full bg-white/0 border border-white/14 rounded-full pl-7 pr-3 py-1.5 text-[11px] text-white placeholder:text-white/28 focus:outline-none focus:border-[#a8eaff]/80 focus:bg-white/5 transition-all"
+                placeholder="search: title, tag, note"
+                className="w-full bg-gradient-to-r from-white/0 via-white/5 to-white/0 border border-white/14 rounded-full pl-7 pr-3 py-1.5 text-[11px] text-white placeholder:text-white/28 focus:outline-none focus:border-dashed focus:border-[#a8eaff]/80 focus:bg-white/5 transition-all"
               />
             </div>
-            <span className="hidden sm:inline-block whitespace-nowrap">
-              {filteredItems.length} items
-            </span>
+            <div className="hidden sm:flex items-center gap-2 whitespace-nowrap">
+              <span className="flex items-center gap-0.5">
+                <span className="w-1 h-1 rounded-full bg-white/70" />
+                <span className="w-1 h-1 rounded-full bg-white/40" />
+                <span className="w-1 h-1 rounded-full bg-white/20" />
+              </span>
+              <span>{filteredItems.length}</span>
+            </div>
           </div>
         </div>
 
@@ -2149,7 +2161,20 @@ const GalleryApp = () => {
                   onDoubleClick={() => openLightboxAt(idx)}
                 >
                   {/* Card background */}
-                  <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#05070a]/90 shadow-[0_0_0_rgba(0,0,0,0)] group-hover:shadow-[0_0_32px_rgba(168,234,255,0.28)] transition-all duration-250">
+                  <div
+                    className={[
+                      "relative overflow-hidden rounded-2xl border border-white/10 bg-[#05070a]/90",
+                      "shadow-[0_0_0_rgba(0,0,0,0)]",
+                      "transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                      mounted
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 translate-y-3",
+                      "group-hover:shadow-[0_0_32px_rgba(168,234,255,0.28)]",
+                    ].join(" ")}
+                    style={{
+                      transitionDelay: mounted ? `${idx * 35}ms` : "0ms",
+                    }}
+                  >
                     <div className="aspect-[4/3] relative">
                       <img
                         src={item.file}
@@ -2160,6 +2185,11 @@ const GalleryApp = () => {
 
                       {/* subtle gradient overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/48 via-black/10 to-transparent pointer-events-none" />
+
+                      {/* breathing glow sheet */}
+                      <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                        <div className="absolute -inset-[1px] bg-gradient-to-tr from-[#a8eaff]/10 via-transparent to-[#ffc8e8]/8 mix-blend-screen" />
+                      </div>
 
                       {/* small badge top-left */}
                       <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-md bg-black/65 backdrop-blur text-[9px] text-white/60 tracking-[0.18em] uppercase">
@@ -2184,9 +2214,9 @@ const GalleryApp = () => {
                         {/* dot indicator instead of eye icon */}
                         <span className="opacity-0 group-hover:opacity-100 transition-opacity">
                           <span className="inline-flex items-center gap-0.5">
-                            <span className="w-1 h-1 rounded-full bg-white/65" />
-                            <span className="w-1 h-1 rounded-full bg-white/40" />
-                            <span className="w-1 h-1 rounded-full bg-white/20" />
+                            <span className="w-1 h-1 rounded-full bg-white/70" />
+                            <span className="w-1 h-1 rounded-full bg-white/45" />
+                            <span className="w-1 h-1 rounded-full bg-white/25" />
                           </span>
                         </span>
                       </div>
@@ -2216,6 +2246,19 @@ const GalleryApp = () => {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
+          {/* 縦グラデの光の筋（スワイプに少し追従） */}
+          <div
+            className="pointer-events-none absolute inset-y-10 left-4 sm:left-12 w-[2px] sm:w-[3px] rounded-full bg-gradient-to-b from-[#a8eaff]/55 via-transparent to-[#ffc8e8]/55 opacity-80"
+            style={{
+              transform: hasLightbox
+                ? `translate3d(${dragOffset.x * 0.06}px, 0, 0)`
+                : "translate3d(0,0,0)",
+              transition: isDragging
+                ? "none"
+                : "transform 260ms cubic-bezier(0.22,1,0.36,1)",
+            }}
+          />
+
           {/* inner click-stop */}
           <div
             className="relative max-w-[96vw] max-h-[88vh] w-full sm:w-auto px-4 sm:px-0"
@@ -2233,11 +2276,16 @@ const GalleryApp = () => {
             </div>
 
             {/* glass frame */}
-            <div className="relative rounded-[28px] border border-white/16 bg-gradient-to-br from-white/5 via-white/3 to-white/5 bg-clip-padding backdrop-blur-3xl overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.95)]">
+            <div className="relative rounded-[28px] border border-white/16 bg-gradient-to-br from-white/6 via-white/3 to-white/7 bg-clip-padding backdrop-blur-3xl overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.95)]">
               {/* subtle inner glow */}
-              <div className="pointer-events-none absolute inset-px rounded-[26px] border border-white/6 opacity-40" />
+              <div className="pointer-events-none absolute inset-px rounded-[26px] border border-white/6 opacity-50" />
 
-              <div className="relative w-full h-[60vh] sm:h-[72vh] flex items-center justify-center">
+              <div
+                className="relative w-full flex items-center justify-center"
+                style={{
+                  height: isMobile ? "78vh" : "72vh",
+                }}
+              >
                 <img
                   src={activeItem.file}
                   alt={activeItem.title}
@@ -2298,14 +2346,13 @@ const GalleryApp = () => {
                 )}
               </div>
             </div>
-
-            {/* swipe hint は文言なし・モーションだけで伝える */}
           </div>
         </div>
       )}
     </div>
   );
 };
+
 
 
 
