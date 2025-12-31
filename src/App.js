@@ -1833,6 +1833,7 @@ const FinderApp = () => {
 
 // -- GALLERY APP (JAPANESE EMOTION ARCHIVE) --
 
+// -- GALLERY APP (JAPANESE EMOTION ARCHIVE) --
 const GalleryApp = () => {
   const [filter, setFilter] = useState("all");
   const [lightboxIndex, setLightboxIndex] = useState(null); // null = 閉じてる
@@ -1846,8 +1847,9 @@ const GalleryApp = () => {
   const touchStartRef = useRef(null);
   const isMobile = useIsMobile();
 
-  // ---------------- fonts + 自前CSS（pulse など） ----------------
+  // ---------------- fonts + 自前CSS（呼吸ドット） ----------------
   useEffect(() => {
+    if (typeof document === "undefined") return;
     const id = "osbunny-gallery-style";
     if (document.getElementById(id)) return;
 
@@ -1857,7 +1859,7 @@ const GalleryApp = () => {
       @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Manrope:wght@300;400;500;600&family=Noto+Sans+JP:wght@300;400;500&display=swap');
 
       @keyframes osbunny-pulse-dot {
-        0%, 100% { opacity: 0.40; transform: scale(1); }
+        0%, 100% { opacity: 0.30; transform: scale(1); }
         40%      { opacity: 1.00; transform: scale(1.45); }
       }
       .osbunny-pulse-dot {
@@ -1924,6 +1926,15 @@ const GalleryApp = () => {
     }
   };
 
+  // 画面全体のアクセント（/emotion フィルタ中はピンクに振れる）
+  const accentPalette =
+    filter === "all"
+      ? getPalette("system")
+      : filter === "key"
+      ? getPalette("emotion")
+      : getPalette(filter);
+  const accentDot = accentPalette.dot;
+
   // ---- Filter + Search ----
   const filteredItems = useMemo(() => {
     let items = GALLERY_ITEMS;
@@ -1962,6 +1973,9 @@ const GalleryApp = () => {
     hasLightbox && filteredItems[lightboxIndex]
       ? filteredItems[lightboxIndex]
       : null;
+  const activeLightboxPalette = activeItem
+    ? getPalette(activeItem.folder || activeItem.cat)
+    : accentPalette;
 
   // ---- Lightbox helpers ----
   const openLightboxAt = useCallback(
@@ -2031,7 +2045,8 @@ const GalleryApp = () => {
   const TAP_DELAY = 260; // ms
   const handleCardTap = (index, id) => {
     const now = Date.now();
-    setActiveId(id); // シングルタップは「選択」だけ
+    setActiveId(id); // シングルタップは「選択」だけ（プレビューは開かない）
+
     if (
       lastTapRef.current &&
       now - lastTapRef.current < TAP_DELAY &&
@@ -2039,6 +2054,7 @@ const GalleryApp = () => {
     ) {
       openLightboxAt(index);
     }
+
     lastTapRef.current = now;
     lastTapIdRef.current = id;
   };
@@ -2090,7 +2106,7 @@ const GalleryApp = () => {
   const dragDistance = Math.sqrt(dragOffset.x ** 2 + dragOffset.y ** 2);
   const dragRatio = Math.min(dragDistance / 260, 1);
 
-  const overlayOpacity = hasLightbox ? 0.96 - dragRatio * 0.32 : 0;
+  const overlayOpacity = hasLightbox ? 0.94 - dragRatio * 0.32 : 0;
 
   const imageTransform = hasLightbox
     ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) scale(${
@@ -2102,36 +2118,58 @@ const GalleryApp = () => {
     ? "none"
     : "transform 320ms cubic-bezier(0.22,1,0.36,1), opacity 320ms cubic-bezier(0.22,1,0.36,1)";
 
-  const activePalette = getPalette(
-    filter === "all" ? (filteredItems[0]?.folder || "system") : filter
-  );
+  // ---- desc 表示ルール ----
+  const shouldShowDesc = (raw) => {
+    if (!raw) return false;
+    const t = String(raw).trim();
+    if (!t) return false;
+    return !/^visual memory fragment\.?$/i.test(t);
+  };
 
   return (
-    <div className="flex h-full bg-[#020205] relative overflow-hidden">
+    <div className="flex h-full bg-[#020204] relative overflow-hidden">
       {/* Ambient background light */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full bg-[#a8eaff]/18 blur-[70px]" />
-        <div className="absolute top-1/3 -right-28 w-[460px] h-[460px] rounded-full bg-[#b9a8ff]/16 blur-[90px]" />
-        <div className="absolute -bottom-24 left-1/4 w-[520px] h-[520px] rounded-full bg-[#ffc8e8]/14 blur-[96px]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/40 to-black/85" />
+        <div className="absolute top-1/3 -right-28 w-[460px] h-[460px] rounded-full bg-[#b9a8ff]/14 blur-[86px]" />
+        <div className="absolute -bottom-24 left-1/4 w-[520px] h-[520px] rounded-full bg-[#ffc8e8]/12 blur-[92px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/80" />
       </div>
 
-      {/* Left Sidebar */}
-      <div className="relative z-10 w-14 sm:w-52 border-r border-white/10 bg-black/65 backdrop-blur-2xl flex flex-col">
+      {/* Left Sidebar（スマホは縦アイコンのみ） */}
+      <div
+        className="relative z-10 w-14 sm:w-52 border-r border-white/10 bg-black/70 backdrop-blur-2xl flex flex-col overflow-hidden"
+        style={{
+          boxShadow: `0 0 40px ${accentDot}44`,
+          backgroundImage: `linear-gradient(180deg, rgba(5,5,7,0.96), rgba(2,2,4,0.98)),
+            radial-gradient(520px 520px at 0% 0%, ${accentPalette.aura1}, transparent 70%)`,
+        }}
+      >
+        {/* アクセントの縦ライン */}
+        <div
+          className="absolute inset-y-0 left-0 w-[3px] rounded-r-full"
+          style={{
+            background: `linear-gradient(180deg, ${accentDot}, transparent)`,
+            boxShadow: `0 0 30px ${accentDot}`,
+          }}
+        />
+
         {/* Sidebar Header */}
-        <div className="hidden sm:flex items-center gap-2 px-4 py-4 border-b border-white/10">
+        <div className="hidden sm:flex items-center gap-2 px-5 py-4 border-b border-white/10">
           <div
             className="w-2 h-2 rounded-full osbunny-pulse-dot"
             style={{
-              background: activePalette.dot,
-              boxShadow: `0 0 18px ${activePalette.dot}`,
+              background: accentDot,
+              boxShadow: `0 0 18px ${accentDot}`,
             }}
           />
           <div className="flex flex-col">
-            <span className="text-[9px] uppercase tracking-[0.28em] text-white/48">
-              OS_USAGI
+            <span className="text-[9px] uppercase tracking-[0.28em] text-white/45">
+              RABBIT OS
             </span>
-            <span className="text-xs text-white/85 tracking-wide">sync gallery</span>
+            <span className="text-xs text-white/85 tracking-wide">
+              archive
+            </span>
           </div>
         </div>
 
@@ -2141,7 +2179,13 @@ const GalleryApp = () => {
             {CATEGORIES.map((cat) => {
               const Icon = cat.icon;
               const active = filter === cat.id;
-              const pal = getPalette(cat.id);
+              const pal = getPalette(
+                cat.id === "all"
+                  ? "system"
+                  : cat.id === "key"
+                  ? "emotion"
+                  : cat.id
+              );
 
               return (
                 <button
@@ -2151,48 +2195,44 @@ const GalleryApp = () => {
                     "group relative flex items-center justify-center sm:justify-start gap-2 rounded-2xl border",
                     "text-[11px] px-0 sm:px-3.5 py-1.5 sm:py-2 w-full transition-all duration-300",
                     active
-                      ? "border-white/25 bg-[#050b11]/90 shadow-[0_0_32px_rgba(0,0,0,0.95)]"
-                      : "border-white/12 bg-white/0 hover:bg-white/5 hover:border-white/24",
+                      ? "border-white/25 bg-[#050b11]/95 shadow-[0_0_30px_rgba(168,234,255,0.45)]"
+                      : "border-white/10 bg-white/0 hover:bg-white/5 hover:border-white/25",
                   ].join(" ")}
                   style={
                     active
                       ? {
-                          boxShadow: `0 0 0 1px rgba(255,255,255,0.12) inset,
-                                     0 20px 60px -40px rgba(0,0,0,0.90),
-                                     0 0 34px ${pal.aura1}`,
+                          boxShadow: `0 0 0 1px rgba(255,255,255,0.18) inset, 0 24px 80px -40px rgba(0,0,0,0.95), 0 0 40px ${pal.aura1}`,
                         }
                       : undefined
                   }
                 >
-                  <div className="relative flex items-center justify-center">
-                    <Icon
-                      size={18}
-                      className={
-                        active
-                          ? "text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.9)]"
-                          : "text-white/58 group-hover:text-white/92"
-                      }
-                    />
-                    {active && (
-                      <span
-                        className="absolute -right-1 -bottom-1 w-[6px] h-[6px] rounded-full osbunny-pulse-dot"
-                        style={{
-                          background: pal.dot,
-                          boxShadow: `0 0 12px ${pal.dot}`,
-                        }}
-                      />
-                    )}
-                  </div>
+                  <Icon
+                    size={16}
+                    className={
+                      active
+                        ? "text-[#a8eaff] drop-shadow-[0_0_12px_rgba(168,234,255,0.9)]"
+                        : "text-white/58 group-hover:text-white/90"
+                    }
+                  />
                   <span className="hidden sm:inline tracking-wide truncate">
                     {cat.label}
                   </span>
+                  {active && (
+                    <span
+                      className="hidden sm:block ml-auto w-1.5 h-1.5 rounded-full osbunny-pulse-dot"
+                      style={{
+                        background: pal.dot,
+                        boxShadow: `0 0 12px ${pal.dot}`,
+                      }}
+                    />
+                  )}
                 </button>
               );
             })}
           </div>
         </div>
 
-        <div className="hidden sm:flex flex-col gap-1 px-4 py-3 border-t border-white/10 text-[9px] text-white/38 tracking-[0.18em]">
+        <div className="hidden sm:flex flex-col gap-1 px-5 py-3 border-t border-white/10 text-[9px] text-white/38 tracking-[0.18em]">
           <span>/log: idle</span>
           <span>/signal: sync</span>
         </div>
@@ -2206,39 +2246,39 @@ const GalleryApp = () => {
             <span
               className="w-1 h-1 rounded-full osbunny-pulse-dot"
               style={{
-                background: activePalette.dot,
-                boxShadow: `0 0 14px ${activePalette.dot}`,
+                background: accentDot,
+                boxShadow: `0 0 18px ${accentDot}`,
               }}
             />
-            <span className="text-[10px] uppercase tracking-[0.34em] text-white/52">
-              /gallery
+            <span className="text-[10px] uppercase tracking-[0.34em] text-white/48">
+              ・ /gallery
             </span>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 text-[11px] text-white/45 w-full sm:w-auto">
-            <div className="relative flex-1 min-w-[170px] max-w-[290px] sm:max-w-[340px]">
-              {/* search icon */}
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-white/40 pointer-events-none">
-                <Search size={13} />
+            {/* Search bar：アイコン＋グラス感 */}
+            <div className="flex-1 min-w-[160px] max-w-[320px]">
+              <div className="flex items-center gap-2 rounded-full bg-black/50 border border-white/16 backdrop-blur-xl px-2 py-1.5 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_20px_60px_rgba(0,0,0,0.85)]">
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center border border-white/25 bg-gradient-to-br from-black/40 to-black/10"
+                  style={{
+                    boxShadow: `0 0 18px ${accentDot}44`,
+                  }}
+                >
+                  <Search size={13} className="text-white/70" />
+                </div>
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="search / title, tag, note"
+                  className="flex-1 bg-transparent text-[11px] text-white placeholder:text-white/30 focus:outline-none"
+                />
+                {!isMobile && (
+                  <span className="hidden sm:inline text-[9px] text-white/35 font-mono tracking-[0.18em] px-2 py-0.5 rounded-full border border-white/15">
+                    ⌘K
+                  </span>
+                )}
               </div>
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="search: title, tag, note"
-                className="w-full rounded-full pl-9 pr-3 py-2 text-[11px] text-white placeholder:text-white/30
-                  bg-black/50 border border-white/14 backdrop-blur-xl
-                  focus:outline-none focus:border-transparent
-                  focus:shadow-[0_0_0_1px_rgba(255,255,255,0.35),0_0_36px_rgba(168,234,255,0.45)]
-                  transition-all"
-              />
-              {/* glowing edge */}
-              <div className="pointer-events-none absolute inset-[1px] rounded-full opacity-70"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(90deg,rgba(168,234,255,0.30),rgba(203,184,255,0.28),rgba(255,200,232,0.30))",
-                  mixBlendMode: "screen",
-                }}
-              />
             </div>
 
             <div className="hidden sm:flex items-center gap-2 whitespace-nowrap">
@@ -2261,9 +2301,7 @@ const GalleryApp = () => {
                 const isActive = activeId === item.id;
                 const pal = getPalette(item.folder || item.cat);
                 const rawDesc = item.desc || "";
-                const showDesc =
-                  rawDesc &&
-                  !/^visual memory fragment\.?$/i.test(rawDesc.trim());
+                const showDesc = shouldShowDesc(rawDesc);
 
                 return (
                   <div
@@ -2275,22 +2313,25 @@ const GalleryApp = () => {
                     <div
                       className={[
                         "relative overflow-hidden rounded-2xl border bg-black/60 backdrop-blur-xl",
-                        isActive ? "border-white/30" : "border-white/10",
+                        isActive ? "border-white/30" : "border-white/12",
                         "transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                        mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3",
+                        mounted
+                          ? "opacity-100 translate-y-0"
+                          : "opacity-0 translate-y-3",
                       ].join(" ")}
                       style={{
                         boxShadow: isActive
-                          ? `0 0 0 1px rgba(255,255,255,0.16) inset,
-                             0 40px 120px -70px rgba(0,0,0,1),
+                          ? `0 0 0 1px rgba(255,255,255,0.18) inset,
+                             0 40px 120px -80px rgba(0,0,0,0.95),
                              0 0 90px ${pal.aura1}`
-                          : "0 0 0 1px rgba(0,0,0,0.4) inset, 0 32px 90px -80px rgba(0,0,0,0.9)",
-                        filter: isActive
-                          ? "brightness(1.04)"
-                          : "brightness(0.78) grayscale(0.06)",
+                          : "0 0 0 1px rgba(0,0,0,0.5) inset, 0 30px 90px -80px rgba(0,0,0,0.9)",
                         transform: isActive
-                          ? "translateY(-3px) scale(1.01)"
+                          ? "translateY(-2px) scale(1.01)"
                           : "translateY(0) scale(1)",
+                        filter: isActive
+                          ? "brightness(1) saturate(1)"
+                          : "brightness(0.72) saturate(0.9)",
+                        opacity: isActive ? 1 : 0.78,
                         transitionDelay: mounted ? `${idx * 32}ms` : "0ms",
                       }}
                     >
@@ -2312,15 +2353,15 @@ const GalleryApp = () => {
                             `,
                           }}
                         />
-                        <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/70 via-black/22 to-transparent" />
+                        <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
 
                         {/* scan line */}
-                        <div className="absolute inset-x-4 h-[1px] bg-gradient-to-r from-transparent via-white/85 to-transparent opacity-0 -translate-y-full group-hover:opacity-70 group-hover:translate-y-full transition-all duration-900 ease-[cubic-bezier(0.22,1,0.36,1)] pointer-events-none" />
+                        <div className="absolute inset-x-4 h-[1px] bg-gradient-to-r from-transparent via-white/70 to-transparent opacity-0 -translate-y-full group-hover:opacity-70 group-hover:translate-y-full transition-all duration-800 ease-[cubic-bezier(0.22,1,0.36,1)] pointer-events-none" />
 
                         {/* badge */}
-                        <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/65 backdrop-blur text-[9px] text-white/78 tracking-[0.22em] uppercase border border-white/16">
+                        <div className="absolute top-2 left-2 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur text-[9px] text-white/75 tracking-[0.22em] uppercase border border-white/14">
                           <span
-                            className="w-1.5 h-1.5 rounded-full osbunny-pulse-dot"
+                            className="w-1.5 h-1.5 rounded-full"
                             style={{
                               background: pal.dot,
                               boxShadow: `0 0 12px ${pal.dot}`,
@@ -2336,7 +2377,7 @@ const GalleryApp = () => {
                               className="absolute inset-0"
                               style={{
                                 boxShadow:
-                                  "inset 0 0 0 1px rgba(255,255,255,0.22), inset 0 -40px 80px rgba(0,0,0,0.9)",
+                                  "inset 0 0 0 1px rgba(255,255,255,0.24), inset 0 -40px 80px rgba(0,0,0,0.9)",
                               }}
                             />
                           </div>
@@ -2346,29 +2387,28 @@ const GalleryApp = () => {
                       {/* text area */}
                       <div className="px-3.5 py-3 flex flex-col gap-1.5">
                         <div className="flex items-start justify-between gap-2">
-                          <span className="text-[11px] font-medium text-white/94 truncate">
+                          <span className="text-[11px] font-medium text-white/92 truncate">
                             {item.title}
                           </span>
-
-                          {/* 選択インジケータ */}
-                          <span
-                            className="text-[18px] leading-none osbunny-pulse-dot"
+                          {/* 選択インジケータ：呼吸ドット */}
+                          <div
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              isActive ? "osbunny-pulse-dot" : ""
+                            }`}
                             style={{
-                              color: isActive
+                              background: isActive
                                 ? pal.dot
-                                : "rgba(255,255,255,0.18)",
-                              textShadow: isActive
-                                ? `0 0 14px ${pal.dot}`
+                                : "rgba(255,255,255,0.22)",
+                              boxShadow: isActive
+                                ? `0 0 12px ${pal.dot}`
                                 : "none",
                             }}
-                          >
-                            •
-                          </span>
+                          />
                         </div>
 
                         {/* desc: "Visual memory fragment" は出さない */}
                         {showDesc && (
-                          <div className="text-[10px] text-white/52 leading-relaxed line-clamp-2">
+                          <div className="text-[10px] text-white/50 leading-relaxed line-clamp-2">
                             {rawDesc}
                           </div>
                         )}
@@ -2396,10 +2436,10 @@ const GalleryApp = () => {
         >
           {/* 背景アート */}
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute inset-0 backdrop-blur-[22px]" />
-            <div className="absolute inset-0 bg-[radial-gradient(900px_520px_at_50%_6%,rgba(168,234,255,0.20),transparent_64%)]" />
-            <div className="absolute inset-0 bg-[radial-gradient(900px_520px_at_50%_94%,rgba(255,200,232,0.18),transparent_62%)]" />
-            <div className="absolute inset-0 opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.08),transparent)] [background-size:100%_4px]" />
+            <div className="absolute inset-0 backdrop-blur-[18px]" />
+            <div className="absolute inset-0 bg-[radial-gradient(900px_520px_at_50%_10%,rgba(168,234,255,0.18),transparent_62%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(900px_520px_at_50%_90%,rgba(255,200,232,0.16),transparent_60%)]" />
+            <div className="absolute inset-0 opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.06),transparent)] [background-size:100%_4px]" />
           </div>
 
           {/* inner frame */}
@@ -2408,53 +2448,54 @@ const GalleryApp = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div
-              className="relative rounded-[32px] overflow-hidden bg-white/[0.02] backdrop-blur-2xl"
+              className="relative rounded-[32px] border bg-white/[0.03] backdrop-blur-2xl overflow-hidden"
               style={{
-                boxShadow:
-                  "0 0 0 1px rgba(255,255,255,0.12) inset, 0 90px 220px -120px rgba(0,0,0,1), 0 0 160px rgba(168,234,255,0.30)",
+                borderColor: "rgba(255,255,255,0.22)",
+                boxShadow: `
+                  0 0 0 1px rgba(255,255,255,0.06) inset,
+                  0 80px 200px -100px rgba(0,0,0,0.95),
+                  0 0 140px ${activeLightboxPalette.aura1}
+                `,
               }}
             >
-              {/* フレームライン */}
-              <div className="pointer-events-none absolute inset-[1px] rounded-[30px] border border-white/14 opacity-80 mix-blend-soft-light" />
+              {/* 内側にうっすらライン */}
+              <div className="pointer-events-none absolute inset-0 rounded-[32px] border border-white/10 opacity-60 mix-blend-soft-light" />
 
-              {/* close ボタン（右上リング） */}
+              {/* close */}
               <button
-                className="absolute z-[5] right-5 top-4 w-11 h-11 rounded-full flex items-center justify-center active:scale-[0.95] transition-transform"
+                className="absolute z-[5] right-4 top-4 w-11 h-11 rounded-full flex items-center justify-center bg-black/55 border border-white/30 hover:border-white/70 backdrop-blur-2xl active:scale-[0.94] transition-all shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_18px_60px_rgba(0,0,0,0.9),0_0_40px_rgba(168,234,255,0.5)]"
                 onClick={closeLightbox}
-                aria-label="close"
               >
-                <div className="relative w-full h-full rounded-full bg-black/65 backdrop-blur-2xl border border-white/22 shadow-[0_16px_60px_rgba(0,0,0,0.9)]">
-                  <div className="absolute inset-[3px] rounded-full border border-white/20 opacity-70" />
-                  <div className="absolute inset-0 rounded-full"
-                    style={{
-                      backgroundImage:
-                        "conic-gradient(from 220deg,rgba(168,234,255,0.6),rgba(203,184,255,0.4),rgba(255,200,232,0.5),rgba(168,234,255,0.6))",
-                      mixBlendMode: "screen",
-                      opacity: 0.9,
-                    }}
-                  />
-                  <div className="absolute inset-[4px] rounded-full bg-black/85" />
-                  <X
-                    size={18}
-                    className="absolute inset-0 m-auto text-white/92"
-                  />
-                </div>
+                <X size={18} className="text-white/92" />
               </button>
 
-              {/* HUDメタ（左上） */}
-              <div className="absolute z-[5] left-5 top-4 text-[9px] font-mono tracking-[0.28em] uppercase text-white/58">
-                <div>/gallery</div>
-                <div className="mt-1">
-                  {lightboxIndex + 1} / {filteredItems.length}
+              {/* 右下タイトルピル */}
+              <div className="absolute z-[5] right-4 bottom-4">
+                <div
+                  className="px-4 py-2.5 rounded-full border bg-black/70 backdrop-blur-2xl shadow-[0_20px_80px_rgba(0,0,0,0.85)] flex items-center gap-2"
+                  style={{
+                    borderColor: activeLightboxPalette.dot,
+                    boxShadow: `0 0 40px ${activeLightboxPalette.aura1}`,
+                  }}
+                >
+                  <span
+                    className="w-1.5 h-1.5 rounded-full osbunny-pulse-dot"
+                    style={{
+                      background: activeLightboxPalette.dot,
+                      boxShadow: `0 0 14px ${activeLightboxPalette.dot}`,
+                    }}
+                  />
+                  <div className="text-[12px] sm:text-[13px] text-white/94 tracking-wide">
+                    {activeItem.title}
+                  </div>
                 </div>
               </div>
 
-              {/* 右下タイトルピル */}
-              <div className="absolute z-[5] right-5 bottom-5">
-                <div className="px-4 py-2.5 rounded-full border border-white/24 bg-black/70 backdrop-blur-2xl shadow-[0_26px_80px_rgba(0,0,0,0.85)]">
-                  <div className="text-[13px] sm:text-[14px] text-white/94 tracking-wide">
-                    {activeItem.title}
-                  </div>
+              {/* HUDメタ（左上） */}
+              <div className="absolute z-[5] left-4 top-4 text-[9px] font-mono tracking-[0.28em] uppercase text-white/55">
+                <div>/gallery</div>
+                <div className="mt-1">
+                  {lightboxIndex + 1} / {filteredItems.length}
                 </div>
               </div>
 
@@ -2462,9 +2503,9 @@ const GalleryApp = () => {
               <div className="relative w-full h-[70vh] sm:h-[78vh] flex items-center justify-center">
                 {/* ライトのオーラ */}
                 <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute inset-0 bg-[radial-gradient(720px_440px_at_50%_40%,rgba(255,255,255,0.16),transparent_62%)]" />
-                  <div className="absolute inset-0 bg-[radial-gradient(720px_440px_at_20%_0%,rgba(168,234,255,0.24),transparent_62%)] mix-blend-screen" />
-                  <div className="absolute inset-0 bg-[radial-gradient(720px_440px_at_80%_100%,rgba(203,184,255,0.24),transparent_62%)] mix-blend-screen" />
+                  <div className="absolute inset-0 bg-[radial-gradient(700px_420px_at_50%_40%,rgba(255,255,255,0.12),transparent_60%)]" />
+                  <div className="absolute inset-0 bg-[radial-gradient(700px_420px_at_20%_0%,rgba(168,234,255,0.20),transparent_60%)] mix-blend-screen" />
+                  <div className="absolute inset-0 bg-[radial-gradient(700px_420px_at_80%_100%,rgba(203,184,255,0.20),transparent_60%)] mix-blend-screen" />
                 </div>
 
                 <img
@@ -2478,8 +2519,8 @@ const GalleryApp = () => {
                 />
               </div>
 
-              {/* 下辺のグロー */}
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black via-black/60 to-transparent opacity-90" />
+              {/* 下辺の“呼吸グロー” */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black via-black/40 to-transparent opacity-90" />
             </div>
           </div>
         </div>
@@ -2487,6 +2528,7 @@ const GalleryApp = () => {
     </div>
   );
 };
+
 
 
 
