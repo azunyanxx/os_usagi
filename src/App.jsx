@@ -4607,7 +4607,7 @@ const Window = ({ app, isActive, onClose, onFocus, bgm }) => {
         {app.id === "safari" && <SafariApp />}
         {app.id === "system" && <SystemApp />}
         {app.id === "calendar" && <CalendarApp />}
-        {app.id === "photos" && <RhythmApp />}
+        {app.id === "photos" && <BeatSyncApp />}
       </div>
     </div>
   );
