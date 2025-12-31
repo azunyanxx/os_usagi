@@ -767,8 +767,8 @@ const FINDER_ITEMS = [
   },
 ];
 
-// 2.  ITEMS (For  App - Curated & Emotional)
-const _ITEMS = FINDER_ITEMS.map((item) => ({
+// 2. GALLERY ITEMS (For Gallery App - Curated & Emotional)
+const GALLERY_ITEMS = FINDER_ITEMS.map((item) => ({
   ...item,
   cat: item.folder,
   desc: "Visual memory fragment.",
@@ -1729,7 +1729,7 @@ const FinderApp = () => {
       : FINDER_ITEMS.filter((item) => item.folder === currentFolder);
 
   return (
-　   <div className="h-full flex flex-col text-white/80 relative">
+    <div className="h-full flex flex-col text-white/80">
       {/* Sidebar */}
       <div className="flex flex-1 overflow-hidden">
         <div className="w-40 border-r border-white/5 bg-[#080808] p-3 flex flex-col gap-4 hidden sm:flex">
@@ -1831,656 +1831,134 @@ const FinderApp = () => {
   );
 };
 
+// -- GALLERY APP (JAPANESE EMOTION ARCHIVE) --
+const GalleryApp = () => {
+  const [filter, setFilter] = useState("all");
 
+  const CATEGORIES = [
+    { id: "all", label: "All", icon: Layers },
+    { id: "system", label: "System", icon: Cpu },
+    { id: "key", label: "Emotion Key", icon: KeyIcon },
+    { id: "emotion", label: "Heart Error", icon: AlertCircle },
+    { id: "life", label: "Life Log", icon: Heart },
+    { id: "work", label: "Work", icon: Coffee },
+    { id: "magic", label: "Magic", icon: Wand2 },
+  ];
 
-
-
-
-/**
- * App (OS Bunny style)
- * - category filter (sidebar on desktop / chips on mobile)
- * - search
- * - lightbox modal (prev/next, ESC, arrow keys, swipe)
- * - same aesthetic as your snippet: dark + glass + cyan/lavender
- *
- * expected item shape:
- * { id, folder, title, file, meta, desc? }
- */
-
-
-/* -----------------------------
-  helpers
------------------------------- */
-
-const normalize = (s) => (s || "").toString().toLowerCase().trim();
-
-const isImageLike = (file = "", meta = "") => {
-  const f = String(file).toLowerCase();
-  const m = String(meta).toLowerCase();
-  return (
-    f.endsWith(".png") ||
-    f.endsWith(".jpg") ||
-    f.endsWith(".jpeg") ||
-    f.endsWith(".webp") ||
-    f.endsWith(".gif") ||
-    ["img", "jpg", "png", "gif", "webp"].includes(m)
-  );
-};
-
-const clampIndex = (i, len) => {
-  if (!len) return 0;
-  return (i % len + len) % len;
-};
-
-
-/* -----------------------------
-  double tap (mobile)
------------------------------- */
-
-const DOUBLE_TAP_MS = 260;
-const MOVE_PX = 10;
-
-function useTouchDoubleTap({ onDouble, onSingle }) {
-  const last = useRef(0);
-  const down = useRef({ x: 0, y: 0 });
-
-  const onPointerDown = useCallback((e) => {
-    if (e.pointerType !== "touch") return;
-    down.current = { x: e.clientX, y: e.clientY };
-  }, []);
-
-  const onPointerUp = useCallback(
-    (e) => {
-      if (e.pointerType !== "touch") return;
-
-      const dx = Math.abs(e.clientX - down.current.x);
-      const dy = Math.abs(e.clientY - down.current.y);
-      if (dx > MOVE_PX || dy > MOVE_PX) return; // scroll gesture
-
-      const now = Date.now();
-      const isDouble = now - last.current < DOUBLE_TAP_MS;
-
-      if (!isDouble) {
-        last.current = now;
-        onSingle?.();
-        return;
-      }
-
-      last.current = 0;
-      // try reduce double-tap zoom (best effort)
-      e.preventDefault?.();
-      onDouble?.();
-    },
-    [onDouble, onSingle]
-  );
-
-  return { onPointerDown, onPointerUp };
-}
-
-/* -----------------------------
-  Lightbox (title bottom-right only)
------------------------------- */
-
-function Lightbox({ open, items, index, onClose, onPrev, onNext }) {
-  const startX = useRef(null);
-  const startY = useRef(null);
-  const item = items?.[index];
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose?.();
-      if (e.key === "ArrowLeft") onPrev?.();
-      if (e.key === "ArrowRight") onNext?.();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose, onPrev, onNext]);
-
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
-
-  if (!open || !item) return null;
-
-  const onTouchStart = (e) => {
-    const t = e.touches?.[0];
-    if (!t) return;
-    startX.current = t.clientX;
-    startY.current = t.clientY;
+  const getGalleryItems = () => {
+    let items = GALLERY_ITEMS;
+    if (filter === "all") return items;
+    return items.filter(
+      (item) =>
+        item.folder === filter ||
+        (filter === "key" && item.title.endsWith(".key"))
+    );
   };
 
-  const onTouchEnd = (e) => {
-    const t = e.changedTouches?.[0];
-    if (!t) return;
-    const dx = t.clientX - (startX.current ?? t.clientX);
-    const dy = t.clientY - (startY.current ?? t.clientY);
-    startX.current = null;
-    startY.current = null;
-
-    if (Math.abs(dx) > 45 && Math.abs(dy) < 40) {
-      if (dx > 0) onPrev?.();
-      else onNext?.();
-    }
-  };
+  const filteredItems = getGalleryItems();
 
   return (
-    <div
-      className="fixed inset-0 z-[300] overflow-hidden"
-      style={{
-        WebkitTapHighlightColor: "transparent",
-        overscrollBehavior: "contain",
-      }}
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose?.();
-      }}
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
-    >
-      {/* cinematic backdrop */}
-      <div className="absolute inset-0 bg-black/85 backdrop-blur-[18px]" />
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(900px_520px_at_50%_15%,rgba(168,234,255,0.16),transparent_62%)]" />
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(900px_520px_at_50%_85%,rgba(203,184,255,0.14),transparent_62%)]" />
-      <div className="absolute inset-0 pointer-events-none opacity-[0.09] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.06),transparent)] [background-size:100%_3px]" />
-
-      {/* Close (safe-area) */}
-      <button
-        onClick={onClose}
-        className="fixed z-[999] right-[calc(env(safe-area-inset-right,0px)+14px)] top-[calc(env(safe-area-inset-top,0px)+14px)] w-12 h-12 rounded-full border border-white/15 bg-white/10 backdrop-blur-2xl shadow-[0_18px_60px_rgba(0,0,0,0.65)] flex items-center justify-center text-white/90 active:scale-[0.98]"
-        aria-label="close"
-      >
-        <X size={18} />
-      </button>
-
-      {/* Title pill (bottom-right only) */}
-      <div className="fixed z-[999] right-[calc(env(safe-area-inset-right,0px)+14px)] bottom-[calc(env(safe-area-inset-bottom,0px)+14px)]">
-        <div className="px-4 py-2.5 rounded-full border border-white/15 bg-white/10 backdrop-blur-2xl shadow-[0_20px_80px_rgba(0,0,0,0.70)]">
+    <div className="flex h-full bg-[#050505]">
+      {/* Left Sidebar */}
+      <div className="w-14 sm:w-48 border-r border-white/5 flex flex-col items-center sm:items-stretch py-6 gap-2 bg-[#080808] z-20">
+        <div className="text-[9px] font-mono text-white/30 mb-4 px-4 tracking-widest hidden sm:block">
+          Archive
+        </div>
+        {CATEGORIES.map((cat) => (
           <div
-            className="text-[16px] leading-none text-white/92 tracking-wide"
-            style={{ fontFamily: `"Cormorant Garamond", serif` }}
+            key={cat.id}
+            onClick={() => setFilter(cat.id)}
+            className={`group flex items-center gap-3 px-3 py-3 rounded-md cursor-pointer transition-all duration-300 ${
+              filter === cat.id
+                ? "bg-white/10 text-white"
+                : "text-white/30 hover:text-white hover:bg-white/5"
+            } `}
           >
-            {item.title}
-          </div>
-        </div>
-      </div>
-
-      {/* Stage */}
-      <div
-        className="relative z-[310] w-full h-full grid place-items-center px-4 sm:px-10"
-        style={{
-          paddingTop: "calc(env(safe-area-inset-top,0px) + 78px)",
-          paddingBottom: "calc(env(safe-area-inset-bottom,0px) + 92px)",
-        }}
-      >
-        <div className="relative w-full max-w-6xl">
-          {isImageLike(item.file, item.meta) ? (
-            <img
-              src={item.file}
-              alt={item.title}
-              className="w-full max-h-[72vh] object-contain rounded-[28px] border border-white/12"
-              style={{
-                boxShadow:
-                  "0 0 0 1px rgba(255,255,255,0.08) inset, 0 70px 180px -90px rgba(0,0,0,0.92), 0 0 140px rgba(168,234,255,0.14)",
-              }}
-              loading="eager"
-              draggable={false}
+            <cat.icon
+              size={16}
+              className={filter === cat.id ? "text-[#a8eaff]" : ""}
             />
-          ) : (
-            <div className="w-full h-[60vh] rounded-[28px] border border-white/12 bg-white/[0.04] grid place-items-center text-white/35 font-mono">
-              <div className="flex flex-col items-center">
-                <Maximize2 className="opacity-50 mb-3" />
-                PREVIEW_UNAVAILABLE
-              </div>
-            </div>
-          )}
-
-          {/* Nav (bigger targets) */}
-          <button
-            onClick={onPrev}
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full border border-white/15 bg-black/30 backdrop-blur-2xl hover:bg-white/10 transition-colors flex items-center justify-center text-white/90"
-            aria-label="prev"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <button
-            onClick={onNext}
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full border border-white/15 bg-black/30 backdrop-blur-2xl hover:bg-white/10 transition-colors flex items-center justify-center text-white/90"
-            aria-label="next"
-          >
-            <ChevronRight size={20} />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* -----------------------------
-  Card
------------------------------- */
-
-function Card({
-  item,
-  idx,
-  isMobile,
-  selected,
-  setSelectedId,
-  openAt,
-  accentCyan,
-}) {
-  const ignoreClickRef = useRef(false);
-
-  const touch = useTouchDoubleTap({
-    onSingle: () => {
-      ignoreClickRef.current = true;
-      setSelectedId(item.id);
-    },
-    onDouble: () => {
-      ignoreClickRef.current = true;
-      openAt(idx);
-    },
-  });
-
-  const handleClick = useCallback(() => {
-    // touch由来のclickは二重発火防止
-    if (ignoreClickRef.current) {
-      ignoreClickRef.current = false;
-      return;
-    }
-    setSelectedId(item.id);
-  }, [item.id, setSelectedId]);
-
-  const img = isImageLike(item.file, item.meta);
-  const title = item.title || "untitled";
-  const meta = item.meta || "";
-  const folder = item.folder || "";
-
-  return (
-    <button
-      type="button"
-      className="relative text-left w-full group"
-      onClick={handleClick}
-      onDoubleClick={isMobile ? undefined : () => openAt(idx)}
-      onPointerDown={touch.onPointerDown}
-      onPointerUp={touch.onPointerUp}
-      style={{ WebkitTapHighlightColor: "transparent", touchAction: "pan-y" }}
-      aria-selected={selected}
-    >
-      <div
-        className={`relative rounded-[22px] border backdrop-blur-2xl transition-all overflow-hidden
-          ${
-            selected
-              ? "border-white/28 bg-white/[0.08] shadow-[0_0_0_1px_rgba(255,255,255,0.08)_inset,0_30px_110px_-60px_rgba(168,234,255,0.30)]"
-              : "border-white/10 bg-white/[0.04] hover:bg-white/[0.06] hover:border-white/16"
-          }`}
-      >
-        {/* glow */}
-        <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="absolute inset-0 bg-[radial-gradient(650px_240px_at_20%_0%,rgba(168,234,255,0.14),transparent_60%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(650px_240px_at_90%_100%,rgba(203,184,255,0.12),transparent_62%)]" />
-        </div>
-
-        {/* preview */}
-        <div className="relative aspect-[16/11] w-full overflow-hidden">
-          {img ? (
-            <img
-              src={item.file}
-              alt={title}
-              loading="lazy"
-              draggable={false}
-              className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
-              style={{ filter: selected ? "none" : "saturate(0.95) contrast(1.05)" }}
-            />
-          ) : (
-            <div className="w-full h-full grid place-items-center bg-white/[0.02]">
-              <div className="flex flex-col items-center gap-2 text-white/35 font-mono text-[10px]">
-                <Maximize2 className="opacity-50" />
-                PREVIEW_UNAVAILABLE
-              </div>
-            </div>
-          )}
-
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.00),rgba(0,0,0,0.35))]" />
-
-          <div className="absolute left-3 top-3 flex items-center gap-2">
-            <div
-              className="px-2.5 py-1 rounded-full border border-white/15 bg-black/30 backdrop-blur-xl text-[9px] font-mono tracking-[0.22em] uppercase text-white/70"
-              style={{
-                boxShadow:
-                  "0 0 0 1px rgba(255,255,255,0.05) inset, 0 18px 60px rgba(0,0,0,0.35)",
-              }}
-            >
-              {folder}
-            </div>
-
-            {meta && (
-              <div className="px-2 py-1 rounded-full border border-white/12 bg-white/10 backdrop-blur-xl text-[9px] font-mono tracking-[0.22em] uppercase text-white/70">
-                {meta}
-              </div>
+            <span className="hidden sm:block text-xs tracking-wide">
+              {cat.label}
+            </span>
+            {filter === cat.id && (
+              <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_8px_#a8eaff] hidden sm:block"></div>
             )}
           </div>
-
-          {selected && (
-            <div
-              className="pointer-events-none absolute inset-0 rounded-[22px]"
-              style={{
-                boxShadow:
-                  "0 0 0 1px rgba(255,255,255,0.10) inset, 0 0 0 1px rgba(168,234,255,0.18), 0 0 70px rgba(168,234,255,0.10)",
-              }}
-            />
-          )}
-        </div>
-
-        {/* meta text */}
-        <div className="px-5 py-4">
-          <div
-            className="text-[18px] leading-[1.15] text-white/92 tracking-tight"
-            style={{ fontFamily: `"Cormorant Garamond", serif` }}
-          >
-            {title}
-          </div>
-
-          <div className="mt-1 text-[11px] text-white/45 tracking-wide line-clamp-2">
-            {item.desc || "Visual memory fragment."}
-          </div>
-
-          <div className="mt-3 flex items-center justify-between">
-            <div className="text-[9px] font-mono tracking-[0.28em] uppercase text-white/30">
-              tap: select{isMobile ? " / double tap: open" : " / double click: open"}
-            </div>
-            <div
-              className="w-7 h-[2px] rounded-full opacity-70"
-              style={{
-                background: accentCyan,
-                boxShadow: "0 0 18px rgba(168,234,255,0.55)",
-              }}
-            />
+        ))}
+        <div className="mt-auto px-4 hidden sm:block">
+          <div className="text-[9px] font-mono text-white/20 border-t border-white/5 pt-4">
+            {filteredItems.length} ITEMS
           </div>
         </div>
       </div>
-    </button>
-  );
-}
 
+      {/* Main Gallery Area */}
+      <div className="flex-1 p-6 sm:p-10 overflow-y-auto scrollbar-hide pb-24 sm:pb-10 relative">
+        <div className="absolute inset-0 bg-gradient-to-b from-[#a8eaff]/5 via-transparent to-transparent pointer-events-none"></div>
 
-/* -----------------------------
-  App
------------------------------- */
-
-export function GalleryApp({
-  items = _ITEMS,
-  defaultFilter = "all",
-  accentCyan = "#a8eaff",
-  accentLav = "#cbb8ff",
-}) {
-  const isMobile = useIsMobile();
-
-  // fonts
-  useEffect(() => {
-    const id = "osbunny-fonts-aww2";
-    if (document.getElementById(id)) return;
-    const style = document.createElement("style");
-    style.id = id;
-    style.textContent = `
-      @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Manrope:wght@300;400;500;600&family=Noto+Sans+JP:wght@300;400;500&display=swap');
-    `;
-    document.head.appendChild(style);
-  }, []);
-
-  const CATEGORIES = useMemo(
-    () => [
-      { id: "all", label: "All", icon: Layers },
-      { id: "system", label: "System", icon: Cpu },
-      { id: "key", label: "Emotion Key", icon: KeyIcon },
-      { id: "emotion", label: "Heart Error", icon: AlertCircle },
-      { id: "life", label: "Life Log", icon: Heart },
-      { id: "work", label: "Work", icon: Coffee },
-      { id: "magic", label: "Magic", icon: Wand2 },
-    ],
-    []
-  );
-
-  const [filter, setFilter] = useState(defaultFilter);
-  const [q, setQ] = useState("");
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [selectedId, setSelectedId] = useState(null);
-
-  const filteredItems = useMemo(() => {
-    const query = normalize(q);
-    const byFilter = (it) => {
-      if (filter === "all") return true;
-      if (filter === "key") return (it.title || "").endsWith(".key");
-      return it.folder === filter;
-    };
-    const byQuery = (it) => {
-      if (!query) return true;
-      const hay = normalize(
-        `${it.title || ""} ${it.meta || ""} ${it.folder || ""} ${it.desc || ""}`
-      );
-      return hay.includes(query);
-    };
-    return (items || []).filter((it) => byFilter(it) && byQuery(it));
-  }, [items, filter, q]);
-
-  const openAt = useCallback(
-    (i) => {
-      if (!filteredItems.length) return;
-      setActiveIndex(clampIndex(i, filteredItems.length));
-      setLightboxOpen(true);
-    },
-    [filteredItems.length]
-  );
-
-  const next = useCallback(() => {
-    setActiveIndex((prev) => clampIndex(prev + 1, filteredItems.length));
-  }, [filteredItems.length]);
-
-  const prev = useCallback(() => {
-    setActiveIndex((prev) => clampIndex(prev - 1, filteredItems.length));
-  }, [filteredItems.length]);
-
-  // sync selection / index (依存関係 正しく)
-  useEffect(() => {
-    setActiveIndex((i) => clampIndex(i, filteredItems.length || 1));
-
-    if (selectedId && !filteredItems.some((x) => x.id === selectedId)) {
-      setSelectedId(null);
-    }
-  }, [filteredItems.length, selectedId]);
-
-  return (
-    <div
-      className="w-full h-full min-h-[100dvh] overflow-x-hidden"
-      style={{
-        fontFamily: `"Manrope","Noto Sans JP",system-ui,-apple-system,sans-serif`,
-        background: "#040507",
-      }}
-    >
-      <div className="relative h-full overflow-x-hidden">
-        {/* background */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_560px_at_22%_-12%,rgba(168,234,255,0.16),transparent_60%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_620px_at_82%_112%,rgba(203,184,255,0.13),transparent_62%)]" />
-        <div className="pointer-events-none absolute inset-0 opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.05),transparent)] [background-size:100%_4px]" />
-
-        {/* Header */}
-        <div className="sticky top-0 z-20 backdrop-blur-2xl bg-black/20 border-b border-white/5">
-          <div className="px-5 sm:px-10 pt-6 pb-5">
-            <div className="flex items-end justify-between gap-4">
-              <div className="min-w-0">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-2 h-2 rounded-full"
-                    style={{
-                      background: accentCyan,
-                      boxShadow: "0 0 18px rgba(168,234,255,0.65)",
-                    }}
-                  />
-                  <div className="text-[10px] tracking-[0.32em] uppercase text-white/45 font-mono">
-                    OS_USAGI · SYNC
-                  </div>
-                </div>
-
-                <div className="mt-2">
-                  <h2
-                    className="text-[42px] sm:text-[60px] leading-[1.00] text-white/95 font-medium tracking-tight"
-                    style={{ fontFamily: `"Cormorant Garamond", serif` }}
-                  >
-                    {CATEGORIES.find((c) => c.id === filter)?.label}
-                  </h2>
-                  <div className="mt-1 text-[11px] text-white/52 tracking-wide">
-                    Fragmented memories, rendered softly.
-                  </div>
-                </div>
-              </div>
-
-              {/* Search (desktop) */}
-              <div className="w-[44%] sm:w-[360px] max-w-[420px] hidden sm:block">
-                <div className="relative">
-                  <Search
-                    size={14}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"
-                  />
-                  <input
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    placeholder="search…"
-                    className="w-full bg-white/5 border border-white/10 rounded-full py-2.5 pl-9 pr-3 text-[12px] text-white/80 placeholder:text-white/25 focus:outline-none focus:border-white/20 focus:bg-white/10 transition-all"
-                    style={{ WebkitTapHighlightColor: "transparent" }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Mobile search + chips */}
-            <div className="mt-4 sm:hidden">
-              <div className="relative">
-                <Search
-                  size={14}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"
-                />
-                <input
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="search…"
-                  className="w-full bg-white/5 border border-white/10 rounded-full py-2.5 pl-9 pr-3 text-[12px] text-white/80 placeholder:text-white/25 focus:outline-none focus:border-white/20 focus:bg-white/10 transition-all"
-                  style={{ WebkitTapHighlightColor: "transparent" }}
-                />
-              </div>
-
-              <div className="mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                {CATEGORIES.map((cat) => {
-                  const active = filter === cat.id;
-                  return (
-                    <button
-                      key={cat.id}
-                      onClick={() => setFilter(cat.id)}
-                      className={`shrink-0 px-3.5 py-2 rounded-full border text-[10px] tracking-[0.22em] uppercase font-mono transition-all ${
-                        active
-                          ? "border-white/25 bg-white/10 text-white"
-                          : "border-white/10 bg-white/[0.04] text-white/45"
-                      }`}
-                      style={{
-                        boxShadow: active
-                          ? "0 0 0 1px rgba(255,255,255,0.08) inset, 0 0 44px rgba(168,234,255,0.08)"
-                          : "0 0 0 1px rgba(255,255,255,0.04) inset",
-                      }}
-                    >
-                      {cat.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Desktop categories */}
-            <div className="hidden sm:flex mt-5 gap-2 flex-wrap">
-              {CATEGORIES.map((cat) => {
-                const active = filter === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setFilter(cat.id)}
-                    className={`px-4 py-2 rounded-full border text-[10px] tracking-[0.26em] uppercase font-mono transition-all ${
-                      active
-                        ? "border-white/25 bg-white/10 text-white"
-                        : "border-white/10 bg-white/[0.03] text-white/45 hover:bg-white/[0.06]"
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                );
-              })}
-              <div className="ml-auto text-[10px] tracking-[0.28em] uppercase text-white/25 font-mono self-center">
-                {filteredItems.length} ITEMS
-              </div>
-            </div>
+        <div className="flex items-end justify-between mb-8">
+          <div>
+            <h2 className="text-3xl sm:text-4xl font-thin tracking-tighter text-white/95 mb-1 animate-fade-in">
+              {CATEGORIES.find((c) => c.id === filter)?.label}
+            </h2>
+            <p className="text-[10px] font-mono text-[#cbb8ff] tracking-[0.2em] uppercase animate-fade-in">
+              Fragmented Memories
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors">
+              <Search size={14} />
+            </button>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="px-5 sm:px-10 pt-7 pb-32 sm:pb-16 overflow-x-hidden">
-          {filteredItems.length === 0 ? (
-            <div className="mt-10 border border-white/10 rounded-3xl p-10 bg-white/[0.03] text-center">
-              <div className="text-[10px] font-mono tracking-[0.34em] text-white/30 uppercase">
-                NO_MATCH
-              </div>
-              <div className="mt-3 text-sm text-white/55">
-                それっぽい記憶、見つからなかった
-              </div>
-              <button
-                onClick={() => setQ("")}
-                className="mt-6 px-4 py-2 rounded-full border border-white/12 text-[10px] font-mono tracking-[0.26em] uppercase text-white/55 hover:bg-white/[0.06] hover:text-white transition-colors"
-              >
-                CLEAR
-              </button>
-            </div>
-          ) : (
-            <div className="grid gap-5 sm:gap-7 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredItems.map((item, idx) => (
-                <Card
-                  key={item.id}
-                  item={item}
-                  idx={idx}
-                  isMobile={isMobile}
-                  selected={selectedId === item.id}
-                  setSelectedId={setSelectedId}
-                  openAt={openAt}
-                  accentCyan={accentCyan}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pb-10">
+          {filteredItems.map((item, idx) => (
+            <div
+              key={item.id}
+              className={`group relative cursor-pointer perspective-1000 animate-fade-in ${
+                item.span || "aspect-[4/3]"
+              }`}
+              style={{ animationDelay: `${idx * 50}ms` }}
+            >
+              {/* Card Container - White Glass Feel */}
+              <div className="absolute inset-0 bg-[#111] border border-white/10 rounded-lg overflow-hidden transition-all duration-700 group-hover:border-[#a8eaff]/50 group-hover:shadow-[0_0_40px_rgba(168,234,255,0.1)] group-hover:scale-[1.01]">
+                {/* Image */}
+                <div
+                  className="absolute inset-0 bg-cover bg-center transition-all duration-[1.5s] ease-out scale-100 group-hover:scale-105 opacity-80 group-hover:opacity-100 grayscale group-hover:grayscale-0"
+                  style={{ backgroundImage: `url(${item.file})` }}
+                ></div>
 
-        <Lightbox
-          open={lightboxOpen}
-          items={filteredItems}
-          index={activeIndex}
-          onClose={() => setLightboxOpen(false)}
-          onPrev={prev}
-          onNext={next}
-        />
+                {/* Overlay Gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90"></div>
+
+                {/* Content */}
+                <div className="absolute bottom-0 left-0 right-0 p-6 flex flex-col items-start gap-1 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+                  <div className="flex items-center gap-2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">
+                    <div className="w-1 h-1 rounded-full bg-[#a8eaff]"></div>
+                    <span className="text-[9px] font-mono text-[#a8eaff] tracking-widest">
+                      {item.meta}
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-bold tracking-[0.1em] text-white">
+                    {item.title}
+                  </h3>
+                  <p className="text-[10px] text-white/50 font-light tracking-wide max-w-[90%] hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity delay-200">
+                    {item.desc || "No description."}
+                  </p>
+                </div>
+
+                {/* Hover Glow Edge */}
+                <div className="absolute inset-0 border border-white/0 group-hover:border-white/20 rounded-lg transition-all duration-500 pointer-events-none"></div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
-}
-
-
-
-
-
-
-
-
-
-
-
+};
 
 // -- MUSIC APP (REDESIGNED WITH HEADPHONE RABBIT) --
 const MusicApp = ({ bgm }) => {
@@ -3540,7 +3018,7 @@ const Window = ({ app, isActive, onClose, onFocus, bgm }) => {
       <div className="flex-1 bg-[#050505] relative overflow-hidden">
         {app.id === "music" && <MusicApp bgm={bgm} />}
         {app.id === "finder" && <FinderApp />}
-        {app.id === "" && <App />}
+        {app.id === "gallery" && <GalleryApp />}
         {app.id === "terminal" && <TerminalApp />}
         {app.id === "safari" && <SafariApp />}
         {app.id === "system" && <SystemApp />}
@@ -3806,95 +3284,20 @@ const GLOBAL_CSS = `
 
 /* 100dvh support fallback */
 body { margin: 0; background: #000; overflow: hidden; height: 100vh; height: 100dvh; }
-
-/* line-clamp helper */
-.line-clamp-2{
-  display:-webkit-box;
-  -webkit-line-clamp:2;
-  -webkit-box-orient:vertical;
-  overflow:hidden;
-}
-
-/* slightly nicer tap feel */
-button{ -webkit-tap-highlight-color: transparent; }
-
-/* subtle grain for premium feel */
-.gallery-grain {
-  background-image: url("https://grainy-gradients.vercel.app/noise.svg");
-  background-repeat: repeat;
-  background-size: 240px 240px;
-  mix-blend-mode: overlay;
-}
 `;
-
-
-function Scanlines({ opacity = 0.12 }) {
-  return (
-    <div
-      className="pointer-events-none fixed inset-0 z-[9999]"
-      style={{
-        backgroundImage:
-          "repeating-linear-gradient(to bottom, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, rgba(0,0,0,0) 3px, rgba(0,0,0,0) 6px)",
-        opacity,
-        mixBlendMode: "overlay",
-      }}
-    />
-  );
-}
-
-
-
-export function AppRoot() {
-  return (
-    <MobileProvider>
-      <App items={_ITEMS} />
-    </MobileProvider>
-  );
-}
-
 
 export default function os_usagi_xxxx() {
   const [mode, setMode] = useState("power");
   const bgm = useBGM(PLAYLIST);
 
-  // ✅ Rootが全体設定を持つ（SystemAppからここを書き換える）
-  const [settings, setSettings] = useState({
-    scanline: false,
-    brightness: 1.0, // 0.7〜1.2くらいで使うのが綺麗
-    volume: 0.7,     // 0〜1
-  });
-
-  // ✅ BGMに音量反映（useBGM側にメソッドがある前提で分岐）
-  useEffect(() => {
-    if (!bgm) return;
-    if (typeof bgm.setMasterVolume === "function") bgm.setMasterVolume(settings.volume);
-    else if (typeof bgm.setVolume === "function") bgm.setVolume(settings.volume);
-    // どっちも無いなら、useBGMの戻り値に音量setterを足すのが正解
-  }, [bgm, settings.volume]);
-
   return (
     <MobileProvider>
-      <div className="w-full h-[100dvh] bg-black text-white font-sans overflow-hidden relative">
+      <div className="w-full h-[100dvh] bg-black text-white font-sans overflow-hidden">
+        {mode === "power" && <PowerScreen onPower={() => setMode("intro")} />}
+        {mode === "intro" && <IntroScreen onComplete={() => setMode("desktop")} />}
+        {mode === "desktop" && <Desktop bgm={bgm} />}
+
         <style>{GLOBAL_CSS}</style>
-
-        {/* ✅ scanline overlay（brightnessの影響を受けない位置に置く） */}
-        {settings.scanline && <Scanlines />}
-
-        {/* ✅ brightness は「中身」だけにかける */}
-        <div
-          className="absolute inset-0"
-          style={{ filter: `brightness(${settings.brightness})` }}
-        >
-          {mode === "power" && <PowerScreen onPower={() => setMode("intro")} />}
-          {mode === "intro" && <IntroScreen onComplete={() => setMode("desktop")} />}
-          {mode === "desktop" && (
-            <Desktop
-              bgm={bgm}
-              settings={settings}
-              onSettingsChange={setSettings}
-            />
-          )}
-        </div>
       </div>
     </MobileProvider>
   );
