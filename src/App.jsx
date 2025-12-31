@@ -4852,7 +4852,7 @@ const Desktop = ({ bgm }) => {
    ここから下を、app (7).js の「TerminalApp」など他アプリ定義の近くにコピペ追加してOK
 -------------------------------------------------------------------------- */
 
-/const BeatSyncApp = () => {
+const BeatSyncApp = () => {
   // ---- Assets (catbox) ----
   const ASSET = React.useMemo(
     () => ({
