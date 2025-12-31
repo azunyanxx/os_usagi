@@ -4784,7 +4784,7 @@ const Window = ({ app, isActive, onClose, onFocus, bgm }) => {
         {app.id === "finder" && <FinderApp />}
         {app.id === "gallery" && <GalleryApp />}
         {app.id === "terminal" && <TerminalApp />}
-        {app.id === "safari" && <SafariApp onOpenApp={toggleApp} /> />}
+        {app.id === "safari" && <SafariApp onOpenApp={toggleApp} />}
         {app.id === "system" && <SystemApp />}
         {app.id === "calendar" && <CalendarApp />}
         {app.id === "photos" && <BeatSyncApp />}
