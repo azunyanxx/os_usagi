@@ -1966,9 +1966,9 @@ const GalleryApp = () => {
 
   // ---- Double tap / double click ----
   const TAP_DELAY = 260; // ms
-
   const handleCardTap = (index, id) => {
     const now = Date.now();
+    setActiveId(id); // ワンタップは選択だけ（自然）
     if (
       lastTapRef.current &&
       now - lastTapRef.current < TAP_DELAY &&
@@ -2007,16 +2007,13 @@ const GalleryApp = () => {
     const absX = Math.abs(x);
     const absY = Math.abs(y);
 
-    const SWIPE_THRESHOLD = 56;
+    const SWIPE_THRESHOLD = 54;
 
     if (absY > absX && y > SWIPE_THRESHOLD) {
       closeLightbox();
     } else if (absX > absY && absX > SWIPE_THRESHOLD) {
-      if (x < 0) {
-        goNext();
-      } else {
-        goPrev();
-      }
+      if (x < 0) goNext();
+      else goPrev();
     }
 
     touchStartRef.current = null;
@@ -2024,39 +2021,46 @@ const GalleryApp = () => {
     setDragOffset({ x: 0, y: 0 });
   };
 
-  // 背景の暗さ＆画像のスケールをスワイプ量で変える
+  // ---- Swipe feel: opacity / scale / glow follow ----
   const dragDistance = Math.sqrt(dragOffset.x ** 2 + dragOffset.y ** 2);
-  const dragRatio = Math.min(dragDistance / 280, 1);
-  const overlayOpacity = hasLightbox ? 0.9 - dragRatio * 0.3 : 0;
+  const dragRatio = Math.min(dragDistance / 260, 1);
+
+  const overlayOpacity = hasLightbox ? 0.94 - dragRatio * 0.32 : 0;
 
   const imageTransform = hasLightbox
     ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) scale(${
-        1 - dragRatio * 0.08
+        1 - dragRatio * 0.07
       })`
     : "translate3d(0,0,0) scale(1)";
 
   const imageTransition = isDragging
     ? "none"
-    : "transform 260ms cubic-bezier(0.22,1,0.36,1), opacity 260ms cubic-bezier(0.22,1,0.36,1)";
+    : "transform 320ms cubic-bezier(0.22,1,0.36,1), opacity 320ms cubic-bezier(0.22,1,0.36,1)";
 
   return (
-    <div className="flex h-full bg-[#020204]">
+    <div className="flex h-full bg-[#020204] relative overflow-hidden">
+      {/* Ambient background light */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full bg-[#a8eaff]/18 blur-[70px]" />
+        <div className="absolute top-1/3 -right-28 w-[460px] h-[460px] rounded-full bg-[#b9a8ff]/14 blur-[86px]" />
+        <div className="absolute -bottom-24 left-1/4 w-[520px] h-[520px] rounded-full bg-[#ffc8e8]/12 blur-[92px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/35 to-black/70" />
+      </div>
+
       {/* Left Sidebar */}
-      <div className="w-14 sm:w-52 border-r border-white/5 bg-black/75 backdrop-blur-xl flex flex-col">
+      <div className="relative z-10 w-14 sm:w-52 border-r border-white/6 bg-black/55 backdrop-blur-2xl flex flex-col">
         {/* Sidebar Header */}
-        <div className="hidden sm:flex items-center gap-2 px-4 py-4 border-b border-white/5">
-          <div className="w-2 h-2 rounded-full bg-[#a8eaff] shadow-[0_0_10px_#a8eaff]" />
+        <div className="hidden sm:flex items-center gap-2 px-4 py-4 border-b border-white/6">
+          <div className="w-2 h-2 rounded-full bg-[#a8eaff] shadow-[0_0_18px_rgba(168,234,255,0.95)]" />
           <div className="flex flex-col">
-            <span className="text-[9px] uppercase tracking-[0.28em] text-white/40">
+            <span className="text-[9px] uppercase tracking-[0.28em] text-white/45">
               RABBIT OS
             </span>
-            <span className="text-xs text-white/80 tracking-wide">
-              archive
-            </span>
+            <span className="text-xs text-white/85 tracking-wide">archive</span>
           </div>
         </div>
 
-        {/* Category Chips */}
+        {/* Category Chips (MOBILE: 縦固定) */}
         <div className="flex-1 overflow-y-auto py-3 sm:py-5">
           <div className="flex flex-col gap-2 px-1 sm:px-3">
             {CATEGORIES.map((cat) => {
@@ -2067,26 +2071,26 @@ const GalleryApp = () => {
                   key={cat.id}
                   onClick={() => setFilter(cat.id)}
                   className={[
-                    "group relative flex items-center justify-center sm:justify-start gap-2 rounded-2xl border text-[11px] px-0 sm:px-3.5 py-1.5 sm:py-2 transition-all duration-250",
-                    "w-full",
+                    "group relative flex items-center justify-center sm:justify-start gap-2 rounded-2xl border",
+                    "text-[11px] px-0 sm:px-3.5 py-1.5 sm:py-2 w-full transition-all duration-300",
                     active
-                      ? "border-[#a8eaff]/70 bg-[#071119]/95 shadow-[0_0_22px_rgba(168,234,255,0.24)]"
-                      : "border-white/10 bg-black/10 hover:bg-white/5 hover:border-white/25",
+                      ? "border-[#a8eaff]/65 bg-[#061018]/85 shadow-[0_0_28px_rgba(168,234,255,0.28)]"
+                      : "border-white/12 bg-white/0 hover:bg-white/6 hover:border-white/26",
                   ].join(" ")}
                 >
                   <Icon
                     size={16}
                     className={
                       active
-                        ? "text-[#a8eaff]"
-                        : "text-white/55 group-hover:text-white/85"
+                        ? "text-[#a8eaff] drop-shadow-[0_0_10px_rgba(168,234,255,0.7)]"
+                        : "text-white/58 group-hover:text-white/90"
                     }
                   />
                   <span className="hidden sm:inline tracking-wide truncate">
                     {cat.label}
                   </span>
                   {active && (
-                    <span className="hidden sm:block ml-auto w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_10px_#a8eaff]" />
+                    <span className="hidden sm:block ml-auto w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_16px_rgba(168,234,255,0.9)]" />
                   )}
                 </button>
               );
@@ -2094,40 +2098,41 @@ const GalleryApp = () => {
           </div>
         </div>
 
-        {/* Sidebar Footer = ログだけ */}
-        <div className="hidden sm:flex flex-col gap-1 px-4 py-3 border-t border-white/5 text-[9px] text-white/35 tracking-[0.18em]">
+        <div className="hidden sm:flex flex-col gap-1 px-4 py-3 border-t border-white/6 text-[9px] text-white/38 tracking-[0.18em]">
           <span>/log: idle</span>
-          <span>/signal: faint</span>
+          <span>/signal: sync</span>
         </div>
       </div>
 
-      {/* Main Grid */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Main */}
+      <div className="relative z-10 flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="px-4 sm:px-6 pt-4 pb-3 border-b border-white/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <span className="w-1 h-1 rounded-full bg-[#a8eaff] shadow-[0_0_10px_#a8eaff]" />
-              <span className="text-[10px] uppercase tracking-[0.32em] text-white/40">
-                /gallery
-              </span>
-            </div>
+        <div className="px-4 sm:px-6 pt-4 pb-3 border-b border-white/6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-black/10">
+          <div className="flex items-center gap-2">
+            <span className="w-1 h-1 rounded-full bg-[#a8eaff] shadow-[0_0_18px_rgba(168,234,255,0.95)]" />
+            <span className="text-[10px] uppercase tracking-[0.34em] text-white/48">
+              /gallery
+            </span>
           </div>
 
-          {/* Search + count */}
-          <div className="flex items-center gap-2 sm:gap-3 text-[11px] text-white/40">
-            <div className="relative flex-1 min-w-[140px] max-w-[230px]">
+          <div className="flex items-center gap-2 sm:gap-3 text-[11px] text-white/45">
+            <div className="relative flex-1 min-w-[160px] max-w-[260px]">
               <Search
                 size={12}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"
               />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="search: title, tag, note"
-                className="w-full bg-gradient-to-r from-white/0 via-white/5 to-white/0 border border-white/14 rounded-full pl-7 pr-3 py-1.5 text-[11px] text-white placeholder:text-white/28 focus:outline-none focus:border-dashed focus:border-[#a8eaff]/80 focus:bg-white/5 transition-all"
+                className="w-full rounded-full pl-8 pr-3 py-2 text-[11px] text-white placeholder:text-white/28
+                  bg-black/30 border border-white/14 backdrop-blur-xl
+                  focus:outline-none focus:border-[#a8eaff]/75 focus:shadow-[0_0_24px_rgba(168,234,255,0.25)]
+                  transition-all"
               />
+              <div className="pointer-events-none absolute inset-0 rounded-full bg-[linear-gradient(90deg,rgba(168,234,255,0.06),rgba(185,168,255,0.05),rgba(255,200,232,0.06))] opacity-70" />
             </div>
+
             <div className="hidden sm:flex items-center gap-2 whitespace-nowrap">
               <span className="w-1 h-1 rounded-full bg-white/70" />
               <span>{filteredItems.length}</span>
@@ -2145,12 +2150,6 @@ const GalleryApp = () => {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5 pb-12">
               {filteredItems.map((item, idx) => {
                 const isActive = activeId === item.id;
-                const dotClass = [
-                  "w-1.5 h-1.5 rounded-full transition-all duration-200",
-                  isActive
-                    ? "bg-[#a8eaff] shadow-[0_0_10px_#a8eaff]"
-                    : "bg-white/25 group-hover:bg-white/70",
-                ].join(" ");
 
                 return (
                   <div
@@ -2159,182 +2158,41 @@ const GalleryApp = () => {
                     onClick={() => handleCardTap(idx, item.id)}
                     onDoubleClick={() => openLightboxAt(idx)}
                   >
-                    {/* Card background */}
                     <div
                       className={[
-                        "relative overflow-hidden rounded-2xl border border-white/10 bg-[#05070a]/90",
-                        "shadow-[0_0_0_rgba(0,0,0,0)]",
+                        "relative overflow-hidden rounded-2xl border",
+                        isActive ? "border-white/26" : "border-white/12",
+                        "bg-black/35 backdrop-blur-xl",
                         "transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                        mounted
-                          ? "opacity-100 translate-y-0"
-                          : "opacity-0 translate-y-3",
-                        "group-hover:shadow-[0_0_32px_rgba(168,234,255,0.28)]",
+                        mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3",
                       ].join(" ")}
-                      style={{
-                        transitionDelay: mounted ? `${idx * 35}ms` : "0ms",
-                      }}
+                      style={{ transitionDelay: mounted ? `${idx * 28}ms` : "0ms" }}
                     >
                       <div className="aspect-[4/3] relative">
                         <img
                           src={item.file}
                           alt={item.title}
-                          className="w-full h-full object-cover object-center transform group-hover:scale-[1.02] transition-transform duration-320 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                          className="w-full h-full object-cover object-center transform group-hover:scale-[1.025] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
                           loading="lazy"
                         />
 
-                        {/* subtle gradient overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/48 via-black/10 to-transparent pointer-events-none" />
+                        {/* ambient overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/12 to-transparent pointer-events-none" />
+                        <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                          <div className="absolute -inset-[1px] bg-gradient-to-tr from-[#a8eaff]/18 via-[#b9a8ff]/10 to-[#ffc8e8]/12 mix-blend-screen" />
+                        </div>
 
-                        {/* small badge top-left */}
-                        <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-md bg-black/65 backdrop-blur text-[9px] text-white/60 tracking-[0.18em] uppercase">
+                        {/* badge */}
+                        <div className="absolute top-2 left-2 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/50 backdrop-blur text-[9px] text-white/70 tracking-[0.2em] uppercase border border-white/10">
                           <span>{item.folder || item.cat}</span>
                         </div>
-                      </div>
 
-                      {/* meta area */}
-                      <div className="px-2.5 sm:px-3 py-2.5 flex flex-col gap-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[11px] font-medium text-white/92 truncate">
-                            {item.title}
-                          </span>
-                          <span className="text-[9px] text-white/40 uppercase tracking-[0.18em]">
-                            {item.meta || "img"}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between gap-2 text-[9px] text-white/40">
-                          <span className="truncate">
-                            {item.desc || ""}
-                          </span>
-                          <span className="flex items-center justify-end w-4">
-                            <span className={dotClass} />
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                        {/* active glow sheet */}
+                        {isActive && (
+                          <div className="pointer-events-none absolute inset-0">
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(168,234,255,0.22),transparent_55%),radial-gradient(circle_at_70%_80%,rgba(255,200,232,0.16),transparent_60%)]" />
+                            <div className="absolute inset-0 ring-1
 
-                    {/* hover outline */}
-                    <div className="pointer-events-none absolute inset-0 rounded-2xl border border-transparent group-hover:border-[#a8eaff]/55 group-hover:shadow-[0_0_40px_rgba(168,234,255,0.3)] transition-all duration-250" />
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Lightbox Overlay */}
-      {hasLightbox && activeItem && (
-        <div
-          className="fixed inset-0 z-[999] flex items-center justify-center"
-          style={{
-            background:
-              "radial-gradient(circle at 20% -10%, rgba(130,180,220,0.25), transparent 45%)",
-            backgroundColor: `rgba(1,2,6,${overlayOpacity})`,
-          }}
-          onClick={closeLightbox}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          {/* inner click-stop */}
-          <div
-            className="relative max-w-[96vw] max-h-[88vh] w-full sm:w-auto px-4 sm:px-0 flex items-center justify-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* glass frame */}
-            <div className="relative w-full sm:w-auto rounded-[30px] border border-white/16 bg-black/72 bg-clip-padding backdrop-blur-3xl overflow-hidden shadow-[0_26px_80px_rgba(0,0,0,0.95)]">
-              {/* subtle edge glow */}
-              <div className="pointer-events-none absolute inset-px rounded-[26px] border border-white/10 opacity-50" />
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(168,234,255,0.16),transparent_55%),radial-gradient(circle_at_bottom,_rgba(255,200,232,0.12),transparent_60%)] mix-blend-screen opacity-70" />
-
-              {/* top mini bar */}
-              <div className="relative flex items-center justify-between px-5 pt-4 pb-2 text-[10px] text-white/60 uppercase tracking-[0.25em]">
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_10px_#a8eaff]" />
-                  <span>/gallery.full</span>
-                </div>
-                <span className="hidden sm:inline">
-                  {lightboxIndex + 1} / {filteredItems.length}
-                </span>
-              </div>
-
-              {/* image area */}
-              <div
-                className="relative w-full flex items-center justify-center px-4 pb-4 sm:px-6 sm:pb-5"
-                style={{
-                  height: isMobile ? "75vh" : "70vh",
-                }}
-              >
-                <img
-                  src={activeItem.file}
-                  alt={activeItem.title}
-                  className="max-h-full max-w-full object-contain"
-                  style={{
-                    transform: imageTransform,
-                    transition: imageTransition,
-                  }}
-                />
-                {/* soft vignette */}
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_38%,rgba(0,0,0,0.9)_100%)]" />
-              </div>
-
-              {/* caption bar */}
-              <div className="relative px-5 py-3 border-t border-white/14 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between text-[11px] text-white/80 bg-black/40">
-                <div className="flex flex-col max-w-[70%] gap-0.5">
-                  <span className="font-medium text-white/92 truncate">
-                    {activeItem.title}
-                  </span>
-                  {activeItem.desc && (
-                    <span className="text-white/50 truncate">
-                      {activeItem.desc}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-4 justify-between sm:justify-end text-[10px] text-white/50 uppercase tracking-[0.18em]">
-                  <span className="hidden sm:inline">
-                    {activeItem.folder || activeItem.cat}
-                  </span>
-                  <span>
-                    {lightboxIndex + 1} / {filteredItems.length}
-                  </span>
-                  <button
-                    className="p-1.5 rounded-full bg-black/70 border border-white/20 hover:border-white/60 hover:bg-black/90 transition-colors"
-                    onClick={closeLightbox}
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              </div>
-
-              {/* OSのささやきログ */}
-              <div className="border-t border-white/10 px-5 py-2 text-[9px] text-white/40 tracking-[0.22em] uppercase bg-black/55">
-                <span>/log: heartbeat · stable</span>
-              </div>
-
-              {/* arrows（desktopのみ） */}
-              {!isMobile && filteredItems.length > 1 && (
-                <>
-                  <button
-                    className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/70 border border-white/20 hover:border-white/60 hover:bg-black/90 items-center justify-center transition-colors"
-                    onClick={goPrev}
-                  >
-                    <ChevronLeft size={18} />
-                  </button>
-                  <button
-                    className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/70 border border-white/20 hover:border-white/60 hover:bg-black/90 items-center justify-center transition-colors"
-                    onClick={goNext}
-                  >
-                    <ChevronRight size={18} />
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 
 
