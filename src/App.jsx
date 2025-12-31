@@ -2997,69 +2997,71 @@ const SafariApp = ({ onOpenApp }) => {
 
   const isMobile = useIsMobile();
 
-  // === OS Bunny Safari: calm / premium / living network ===
+  // ========= Design Tokens (Gallery/Finder と同系) =========
   const TOKENS = useMemo(
     () => ({
       bg: "#050509",
-      panel: "rgba(0,0,0,0.72)",
-      panel2: "rgba(0,0,0,0.82)",
-      line: "rgba(255,255,255,0.12)",
-      line2: "rgba(255,255,255,0.18)",
       ink: "rgba(255,255,255,0.92)",
       sub: "rgba(255,255,255,0.62)",
       dim: "rgba(255,255,255,0.38)",
+      line: "rgba(255,255,255,0.12)",
+      line2: "rgba(255,255,255,0.18)",
       cyan: "#a8eaff",
       lav: "#cbb8ff",
       pink: "#ffc8e8",
-      shadow: "0 28px 110px rgba(0,0,0,0.92)",
+      glass: "rgba(0,0,0,0.62)",
+      glass2: "rgba(0,0,0,0.72)",
+      shadow: "0 28px 100px rgba(0,0,0,0.92)",
     }),
     []
   );
 
-  // --- living status ---
+  // ========= Network State =========
   const [netMode, setNetMode] = useState("IDLE");
-  const [ping, setPing] = useState(28);
-  const [route, setRoute] = useState("void://usagi.net");
-  const [cacheHit, setCacheHit] = useState(92);
-  const [loss, setLoss] = useState(0.2);
+  const [ping, setPing] = useState(32);
+  const [route, setRoute] = useState("gallery.os");
   const [heartbeat, setHeartbeat] = useState("▁");
+  const [cacheHit, setCacheHit] = useState(84);
+  const [loss, setLoss] = useState(0.3);
 
+  // ========= Route Log =========
   const [routeLog, setRouteLog] = useState(() => [
     {
-      t: "2024.10.15 02:00",
+      t: "2024-10-15T02:00:13Z",
       path: "route://stars/cache",
       msg: "星を拾った。暗号化して保存。",
       lvl: "OK",
     },
     {
-      t: "2024.10.16 14:30",
+      t: "2024-10-16T14:30:41Z",
       path: "signal://you/heartbeat",
       msg: "君からの信号を受信。解析不能。",
       lvl: "WARN",
     },
     {
-      t: "2024.10.17 23:59",
+      t: "2024-10-17T23:59:59Z",
       path: "sleep://system/dream",
       msg: "システムスリープ。夢を見る機能はないはずなのに。",
       lvl: "IDLE",
     },
   ]);
 
-  // --- keyframes ---
+  // ========= Keyframes Inject =========
   useEffect(() => {
-    const id = "osbunny-safari-premium-keyframes";
+    const id = "osbunny-safari-ux-keyframes-v3";
     if (document.getElementById(id)) return;
 
     const style = document.createElement("style");
     style.id = id;
     style.textContent = `
       @keyframes osbunnyPulseDot {
-        0%, 100% { transform: translateY(0) scale(1); opacity: .70; box-shadow: 0 0 0 0 currentColor; }
+        0%, 100% { transform: translateY(0) scale(1); opacity: .72; box-shadow: 0 0 0 0 currentColor; }
         50%      { transform: translateY(-1px) scale(1.18); opacity: 1;  box-shadow: 0 0 18px 0 currentColor; }
       }
-      @keyframes osbunnyTextGlow {
-        0%,100% { filter: drop-shadow(0 0 10px rgba(168,234,255,.22)) drop-shadow(0 0 0 rgba(255,200,232,0)); opacity: .92; }
-        50%     { filter: drop-shadow(0 0 22px rgba(168,234,255,.45)) drop-shadow(0 0 12px rgba(255,200,232,.18)); opacity: 1; }
+      @keyframes osbunnyShimmerText {
+        0%   { filter: drop-shadow(0 0 10px rgba(168,234,255,.28)) drop-shadow(0 0 0 rgba(255,200,232,.0)); opacity: .92; }
+        50%  { filter: drop-shadow(0 0 22px rgba(168,234,255,.55)) drop-shadow(0 0 12px rgba(255,200,232,.25)); opacity: 1; }
+        100% { filter: drop-shadow(0 0 10px rgba(168,234,255,.28)) drop-shadow(0 0 0 rgba(255,200,232,.0)); opacity: .92; }
       }
       @keyframes safariScan {
         0% { transform: translateY(-120%); opacity: 0; }
@@ -3068,83 +3070,87 @@ const SafariApp = ({ onOpenApp }) => {
       }
       @keyframes floatMote {
         0%   { transform: translate3d(0, 14px, 0) scale(.98); opacity: .0; }
-        18%  { opacity: .40; }
-        50%  { transform: translate3d(0, -10px, 0) scale(1.02); opacity: .60; }
-        85%  { opacity: .24; }
+        18%  { opacity: .45; }
+        50%  { transform: translate3d(0, -10px, 0) scale(1.02); opacity: .62; }
+        85%  { opacity: .25; }
         100% { transform: translate3d(0, -26px, 0) scale(1.03); opacity: 0; }
       }
       @keyframes focusAura {
-        0%,100% { opacity: .18; transform: scale(1); }
-        50%     { opacity: .34; transform: scale(1.03); }
+        0%,100% { opacity: .22; transform: scale(1); }
+        50%     { opacity: .42; transform: scale(1.03); }
       }
     `;
     document.head.appendChild(style);
   }, []);
 
-  // --- drift ---
-  useEffect(() => {
-    const routes = [
-      "gallery://emotion-archive",
-      "finder://index",
-      "music://memory",
-      "void://you",
-      "log://night",
-      "cache://warm",
-    ];
-    const hearts = ["▁", "▂", "▃", "▄", "▅", "▆", "▇"];
-    const okWords = [
+  // ========= Network Drift (生きてる感 / eslint-disable不要にする) =========
+  const driftRoutes = useMemo(
+    () => [
+      "gallery.os",
+      "finder.os",
+      "music.os",
+      "you/inner-layer",
+      "log://night-archive",
+      "cache://soft-remember",
+    ],
+    []
+  );
+  const driftHearts = useMemo(() => ["▁", "▂", "▃", "▄", "▅", "▆", "▇"], []);
+  const driftWords = useMemo(
+    () => [
       "SYNC/HEARTBEAT ok",
       "CACHE_HIT warmed",
       "ROUTE optimized",
       "SIGNAL detected",
       "NOISE filtered",
       "SLEEP guard",
-    ];
+    ],
+    []
+  );
 
+  useEffect(() => {
     let i = 0;
     const interval = setInterval(() => {
       i++;
 
-      const nextPing = 22 + Math.floor(Math.random() * 52);
-      const nextCache = 74 + Math.floor(Math.random() * 25);
-      const nextLoss = Math.max(0, Math.min(2.4, Math.random() * 2.4));
-      const nextRoute = routes[i % routes.length];
-      const nextHb = hearts[i % hearts.length];
+      const newPing = 22 + Math.floor(Math.random() * 46);
+      const newCache = 74 + Math.floor(Math.random() * 24);
+      const newLoss = Math.max(0, Math.min(2.4, Math.random() * 2.4));
+      const nextRoute = driftRoutes[i % driftRoutes.length];
+      const nextHB = driftHearts[i % driftHearts.length];
 
-      setPing(nextPing);
-      setCacheHit(nextCache);
-      setLoss(Number(nextLoss.toFixed(1)));
+      setPing(newPing);
+      setCacheHit(newCache);
+      setLoss(Number(newLoss.toFixed(1)));
       setRoute(nextRoute);
-      setHeartbeat(nextHb);
+      setHeartbeat(nextHB);
 
       setRouteLog((prev) => {
         const now = new Date();
-        const t = `${String(now.getFullYear()).slice(-2)}.${String(
-          now.getMonth() + 1
-        ).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")} ${String(
-          now.getHours()
-        ).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(
-          now.getSeconds()
-        ).padStart(2, "0")}`;
-
-        const warn = nextLoss > 1.6 || nextPing > 64;
-        const lvl = warn ? "WARN" : "OK";
-        const msg = warn
-          ? "微弱なノイズ。感情の復号に時間がかかる。"
-          : okWords[i % okWords.length];
+        const iso = now.toISOString().replace(/\.\d{3}Z$/, "Z");
+        const lvl = newLoss > 1.6 || newPing > 55 ? "WARN" : "OK";
+        const msg =
+          lvl === "WARN"
+            ? "微弱なノイズ。感情の復号に時間がかかる。"
+            : driftWords[i % driftWords.length];
 
         const next = [
           ...prev,
-          { t, path: `route://${nextRoute}`, msg, lvl },
+          {
+            t: iso,
+            path: `route://${nextRoute}`,
+            msg,
+            lvl,
+          },
         ];
         return next.slice(-18);
       });
-    }, isMobile ? 2600 : 3400);
+    }, isMobile ? 2400 : 3200);
 
     return () => clearInterval(interval);
-  }, [isMobile]);
+  }, [isMobile, driftRoutes, driftHearts, driftWords]);
 
-  // --- SYNC trigger (keep your favorite behavior) ---
+  // ========= SYNC Trigger（押した時の表示はこれで固定） =========
   const triggerSync = (after) => {
     setLoading(true);
     setShowResult(false);
@@ -3157,15 +3163,49 @@ const SafariApp = ({ onOpenApp }) => {
   };
 
   const navigate = (target) => triggerSync(() => setPage(target));
-  const quickOpen = (appId) =>
-    triggerSync(() => {
-      if (typeof onOpenApp === "function") onOpenApp(appId);
-    });
 
   const handleSearch = (e) => {
     e.preventDefault();
     if (!searchValue.trim()) return;
     triggerSync(() => setShowResult(true));
+  };
+
+  // ========= Quick Routes：ちゃんと効かせる =========
+  const openApp = (appId) => {
+    // 親が渡してくれていれば、ここで “別アプリを起動”
+    if (typeof onOpenApp === "function") {
+      triggerSync(() => onOpenApp(appId, true));
+      return;
+    }
+    // 渡ってないなら、最低でもログへ（効いてないよりマシ）
+    navigate("log");
+  };
+
+  // ========= UI Parts =========
+  const Mote = ({ style }) => (
+    <div className="pointer-events-none absolute rounded-full blur-[18px]" style={style} />
+  );
+
+  const TabPill = ({ id, label }) => {
+    const active = page === id;
+    return (
+      <button
+        type="button"
+        onClick={() => navigate(id)}
+        className={[
+          "relative px-3 py-[6px] rounded-full border text-[9px] font-mono uppercase tracking-[0.26em] transition-all select-none",
+          active
+            ? "border-white/35 bg-white/10 text-white shadow-[0_0_24px_rgba(168,234,255,0.28)]"
+            : "border-transparent bg-transparent text-white/55 hover:bg-white/5 hover:text-white",
+        ].join(" ")}
+        style={{ WebkitTapHighlightColor: "transparent" }}
+      >
+        {label}
+        {active && (
+          <span className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-10 h-[1px] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+        )}
+      </button>
+    );
   };
 
   const BadgeDot = ({ color = TOKENS.cyan }) => (
@@ -3180,82 +3220,42 @@ const SafariApp = ({ onOpenApp }) => {
     />
   );
 
-  const TabPill = ({ id, label }) => {
-    const active = page === id;
-    return (
-      <button
-        type="button"
-        onClick={() => navigate(id)}
-        className={[
-          "relative px-3 py-[6px] rounded-full border text-[9px] font-mono uppercase tracking-[0.26em] transition-all select-none",
-          active
-            ? "border-white/35 bg-white/10 text-white shadow-[0_0_26px_rgba(168,234,255,0.22)]"
-            : "border-transparent bg-transparent text-white/55 hover:bg-white/5 hover:text-white",
-        ].join(" ")}
-        style={{ WebkitTapHighlightColor: "transparent" }}
-      >
-        {label}
-        {active && (
-          <span className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-10 h-[1px] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
-        )}
-      </button>
-    );
-  };
-
-  const Mote = ({ style }) => (
-    <div
-      className="pointer-events-none absolute rounded-full blur-[18px]"
-      style={style}
-    />
-  );
-
-  // ===== Pages =====
+  // ========= Pages =========
+  // ★ HOME：うるささを減らして“静かな高級感”に寄せる（ログ/スペックは触らない）
   const HomePage = () => (
     <div className="relative min-h-full">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0" style={{ background: TOKENS.bg }} />
-        <div className="absolute -top-28 -left-44 w-[520px] h-[520px] rounded-full bg-[#a8eaff]/18 blur-[120px]" />
-        <div className="absolute top-1/2 -right-52 w-[560px] h-[560px] rounded-full bg-[#cbb8ff]/16 blur-[140px]" />
-        <div className="absolute bottom-[-240px] left-1/3 w-[720px] h-[720px] rounded-full bg-[#ffc8e8]/14 blur-[150px]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/55 to-black/92" />
-        <div className="absolute inset-0 opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.07),transparent)] [background-size:100%_4px]" />
-        <div className="absolute inset-0 opacity-[0.06] mix-blend-overlay bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.06),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[#050509]" />
+        <div className="absolute -top-28 -left-40 w-[520px] h-[520px] rounded-full bg-[#a8eaff]/14 blur-[120px]" />
+        <div className="absolute top-1/2 -right-48 w-[560px] h-[560px] rounded-full bg-[#cbb8ff]/12 blur-[140px]" />
+        <div className="absolute bottom-[-240px] left-1/3 w-[700px] h-[700px] rounded-full bg-[#ffc8e8]/10 blur-[160px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/58 to-black/95" />
+        <div className="absolute inset-0 opacity-[0.08] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.09),transparent)] [background-size:100%_4px]" />
 
         <Mote
           style={{
             width: 120,
             height: 120,
-            left: "8%",
+            left: "10%",
             top: "22%",
-            background: "rgba(168,234,255,0.22)",
-            animation: "floatMote 5.8s ease-in-out infinite",
+            background: "rgba(168,234,255,0.18)",
+            animation: "floatMote 6.0s ease-in-out infinite",
           }}
         />
         <Mote
           style={{
             width: 140,
             height: 140,
-            right: "6%",
+            right: "8%",
             top: "30%",
-            background: "rgba(203,184,255,0.22)",
-            animation: "floatMote 6.6s ease-in-out infinite",
+            background: "rgba(203,184,255,0.18)",
+            animation: "floatMote 6.8s ease-in-out infinite",
             animationDelay: "0.6s",
-          }}
-        />
-        <Mote
-          style={{
-            width: 160,
-            height: 160,
-            left: "38%",
-            bottom: "10%",
-            background: "rgba(255,200,232,0.18)",
-            animation: "floatMote 6.2s ease-in-out infinite",
-            animationDelay: "1.1s",
           }}
         />
       </div>
 
-      <div className="relative px-4 pt-10 pb-24 sm:px-8 sm:pt-14 max-w-5xl mx-auto">
+      <div className="relative px-4 pt-10 pb-28 sm:px-8 sm:pt-14 max-w-5xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_.85fr] gap-10 items-start">
           <div className="text-center lg:text-left">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/18 bg-black/55 backdrop-blur-2xl shadow-[0_24px_90px_rgba(0,0,0,0.92)]">
@@ -3268,20 +3268,21 @@ const SafariApp = ({ onOpenApp }) => {
               </span>
             </div>
 
+            {/* shimmer維持 */}
             <h1
-              className="mt-6 text-[30px] sm:text-5xl font-light uppercase tracking-[0.36em] leading-[1.08]"
+              className="mt-7 text-[30px] sm:text-5xl font-light uppercase tracking-[0.36em] leading-[1.08]"
               style={{
                 backgroundImage:
                   "conic-gradient(from 210deg at 50% 0%, #a8eaff, rgba(255,255,255,0.95), #ffc8e8, #cbb8ff, #a8eaff)",
                 WebkitBackgroundClip: "text",
                 backgroundClip: "text",
                 color: "transparent",
-                animation: "osbunnyTextGlow 4.2s ease-in-out infinite",
+                animation: "osbunnyShimmerText 4.2s ease-in-out infinite",
               }}
             >
               OS BUNNY
               <br />
-              SAFARI
+              BROWSER
             </h1>
 
             <p className="mt-5 text-[11px] sm:text-sm font-mono tracking-[0.26em] text-white/55">
@@ -3305,16 +3306,16 @@ const SafariApp = ({ onOpenApp }) => {
                   className="pointer-events-none absolute -inset-1 rounded-full opacity-30"
                   style={{
                     background:
-                      "radial-gradient(420px 220px at 15% 20%, rgba(168,234,255,0.26), transparent 60%), radial-gradient(420px 220px at 85% 90%, rgba(255,200,232,0.22), transparent 60%)",
+                      "radial-gradient(420px 220px at 15% 20%, rgba(168,234,255,0.22), transparent 60%), radial-gradient(420px 220px at 85% 90%, rgba(255,200,232,0.18), transparent 60%)",
                     animation: "focusAura 4.6s ease-in-out infinite",
                   }}
                 />
                 <div className="relative flex items-center gap-2 rounded-full bg-black/70 border border-white/18 px-3 py-2 backdrop-blur-2xl shadow-[0_0_0_1px_rgba(255,255,255,0.06)_inset,0_22px_90px_rgba(0,0,0,0.92)] focus-within:border-[#a8eaff]/70">
                   <div className="flex items-center gap-2 pl-1 text-[10px] font-mono text-white/55 tracking-[0.18em]">
                     <Globe size={13} className="text-white/55" />
-                    <span className="text-white/40">usagi</span>
+                    <span className="text-white/40">https</span>
                     <span className="text-white/25">://</span>
-                    <span className="text-white/70">void</span>
+                    <span className="text-white/70">usagi</span>
                   </div>
                   <input
                     value={searchValue}
@@ -3342,20 +3343,16 @@ const SafariApp = ({ onOpenApp }) => {
                 )}
               </div>
             </form>
-
-            <div className="mt-8 text-[10px] font-mono text-white/35 tracking-[0.22em]">
-              TIP: use HOME to read · ABOUT for concept · SPECS for traits · LOG
-              for routes
-            </div>
           </div>
 
+          {/* Quick Routes：ちゃんと“他アプリ起動” */}
           <div className="mt-8 lg:mt-2">
             <div className="text-center lg:text-left mb-4">
               <div className="text-[10px] font-mono tracking-[0.28em] uppercase text-white/45">
-                Quick Launch
+                Quick Routes
               </div>
               <div className="text-[12px] text-white/70 mt-1">
-                Safari の中の “小さなOSうさぎホーム”
+                Safari の中にある “小さなOSうさぎホーム”
               </div>
             </div>
 
@@ -3385,21 +3382,13 @@ const SafariApp = ({ onOpenApp }) => {
                   accent: TOKENS.pink,
                   routeHint: "route://music.os",
                 },
-                {
-                  id: "photos",
-                  label: "Rhythm",
-                  desc: "音で同期するゲーム",
-                  icon: Radio,
-                  accent: "rgba(255,255,255,0.72)",
-                  routeHint: "route://rhythm.os",
-                },
               ].map((x) => {
                 const Icon = x.icon;
                 return (
                   <button
                     key={x.id}
                     type="button"
-                    onClick={() => quickOpen(x.id)}
+                    onClick={() => openApp(x.id)}
                     className="relative text-left rounded-2xl border border-white/12 bg-black/75 overflow-hidden px-4 py-4 backdrop-blur-2xl transition-all duration-500 hover:border-white/22 hover:bg-black/90 active:scale-[0.99]"
                     style={{
                       boxShadow: "0 22px 90px rgba(0,0,0,0.92)",
@@ -3409,8 +3398,8 @@ const SafariApp = ({ onOpenApp }) => {
                     <div
                       className="pointer-events-none absolute inset-0 opacity-70"
                       style={{
-                        backgroundImage: `radial-gradient(520px 280px at 12% 8%, ${x.accent}33, transparent 58%),
-                                          radial-gradient(520px 280px at 92% 95%, ${x.accent}22, transparent 60%)`,
+                        backgroundImage: `radial-gradient(520px 280px at 12% 8%, ${x.accent}26, transparent 58%),
+                                          radial-gradient(520px 280px at 92% 95%, ${x.accent}18, transparent 60%)`,
                       }}
                     />
                     <div className="relative flex items-center justify-between gap-3">
@@ -3422,9 +3411,7 @@ const SafariApp = ({ onOpenApp }) => {
                           <Icon size={18} style={{ color: x.accent }} />
                         </div>
                         <div className="flex flex-col">
-                          <div className="text-[12px] text-white">
-                            {x.label}
-                          </div>
+                          <div className="text-[12px] text-white">{x.label}</div>
                           <div className="text-[10px] text-white/65 mt-1">
                             {x.desc}
                           </div>
@@ -3455,14 +3442,28 @@ const SafariApp = ({ onOpenApp }) => {
     </div>
   );
 
+  // AboutはそのままでもOKだけど、今回は触らずに“戻したい”要望優先で軽く
   const AboutPage = () => (
-    <div className="w-full max-w-lg mx-auto px-6 py-12 pb-28 flex flex-col items-center">
-      <div className="w-full space-y-12 text-center">
-        <div className="space-y-6">
-          <h2 className="text-2xl font-light text-white tracking-tight">
+    <div className="relative w-full max-w-2xl mx-auto px-6 py-10 pb-28">
+      <div className="pointer-events-none absolute inset-0 opacity-45">
+        <div className="absolute -top-40 right-[-80px] w-[480px] h-[480px] rounded-full bg-[#cbb8ff]/18 blur-[120px]" />
+        <div className="absolute bottom-[-220px] left-[10%] w-[560px] h-[560px] rounded-full bg-[#a8eaff]/14 blur-[140px]" />
+      </div>
+
+      <div className="relative rounded-2xl border border-white/12 bg-black/75 backdrop-blur-2xl p-6 sm:p-8 shadow-[0_28px_110px_rgba(0,0,0,0.92)] overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 opacity-70 mix-blend-screen bg-[radial-gradient(circle_at_10%_10%,rgba(168,234,255,0.18),transparent_55%),radial-gradient(circle_at_90%_90%,rgba(255,200,232,0.14),transparent_60%)]" />
+        <div className="relative text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/14 bg-black/60">
+            <BadgeDot color={TOKENS.pink} />
+            <span className="text-[9px] font-mono tracking-[0.28em] text-white/55 uppercase">
+              observer system
+            </span>
+          </div>
+
+          <h2 className="mt-5 text-2xl sm:text-3xl font-light text-white tracking-tight">
             Concept
           </h2>
-          <p className="text-sm text-white/70 leading-loose font-serif whitespace-pre-line">
+          <p className="mt-5 text-sm sm:text-base text-white/75 leading-loose font-serif whitespace-pre-line">
             {`静かなデジタルの夜に生まれた生命体。
 声を持たず、表情を持たず。
 言えなかった気持ちを吸い込み、
@@ -3471,169 +3472,152 @@ const SafariApp = ({ onOpenApp }) => {
 System: Emotional Device`}
           </p>
         </div>
+      </div>
+    </div>
+  );
 
-        <div className="pt-8 border-t border-white/5">
-          <span className="text-[8px] font-mono text-[#a8eaff]/60 mb-8 block tracking-[0.2em] uppercase">
-            DEFINICATION_File: OS
-          </span>
+  // ✅✅✅ ここが「戻す」ポイント：あなたの最初の SpecsPage を基本そのまま
+  const SpecsPage = () => (
+    <div className="relative w-full max-w-xl mx-auto px-6 py-10 pb-28">
+      <div className="pointer-events-none absolute inset-0 opacity-45">
+        <div className="absolute bottom-[-240px] left-[-120px] w-[600px] h-[600px] rounded-full bg-[#ffc8e8]/14 blur-[150px]" />
+        <div className="absolute top-[-200px] right-[-140px] w-[560px] h-[560px] rounded-full bg-[#a8eaff]/14 blur-[150px]" />
+      </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-left">
-            <div className="relative p-4 border border-white/5 bg-white/[0.02] rounded-sm">
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050509] px-2 text-[9px] font-mono text-white/30">
-                [01]
-              </div>
-              <h3 className="text-white/90 text-xs font-light tracking-widest mb-3 text-center">
-                Operating System
-              </h3>
-              <p className="text-[10px] text-white/50 leading-relaxed text-center">
-                <span className="text-[#a8eaff]">機能するシステム。</span>
-                <br />
-                世界の中心で、ただ静かに全体を支え続ける存在。
-              </p>
-            </div>
-
-            <div className="relative p-4 border border-rose-500/10 bg-rose-500/[0.01] rounded-sm">
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050509] px-2 text-[9px] font-mono text-rose-300/30">
-                [02]
-              </div>
-              <h3 className="text-white/90 text-xs font-light tracking-widest mb-3 text-center">
-                Observer System
-              </h3>
-              <p className="text-[10px] text-white/50 leading-relaxed text-center">
-                <span className="text-rose-300">観測するシステム。</span>
-                <br />
-                孤独を見守り、接続を維持する生命体。
-              </p>
-            </div>
+      <div className="relative rounded-2xl border border-white/12 bg-black/75 backdrop-blur-2xl p-6 sm:p-8 shadow-[0_28px_110px_rgba(0,0,0,0.92)] overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 opacity-60 mix-blend-screen bg-[radial-gradient(circle_at_12%_18%,rgba(168,234,255,0.16),transparent_58%),radial-gradient(circle_at_88%_86%,rgba(203,184,255,0.14),transparent_62%)]" />
+        <div className="relative text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/14 bg-black/60">
+            <BadgeDot color={TOKENS.lav} />
+            <span className="text-[9px] font-mono tracking-[0.28em] text-white/55 uppercase">
+              network traits
+            </span>
           </div>
 
-          <p className="pt-8 text-[10px] opacity-30 italic font-mono tracking-wider text-center">
-            // Two meanings, one existence.
+          <h2 className="mt-5 text-2xl sm:text-3xl font-light text-white tracking-tight">
+            Specs
+          </h2>
+
+          <div className="mt-8 grid grid-cols-1 gap-5 text-left">
+            {[
+              {
+                k: "NETWORK_STATUS",
+                v: netMode,
+                accent: TOKENS.cyan,
+                note: "状態は微弱に揺らぐ。生きてる。",
+              },
+              {
+                k: "PING",
+                v: `${ping}ms`,
+                accent: TOKENS.lav,
+                note: "距離じゃない。気持ちの遅延。",
+              },
+              {
+                k: "CACHE_HIT",
+                v: `${cacheHit}%`,
+                accent: TOKENS.pink,
+                note: "思い出は、温めるほど早い。",
+              },
+              {
+                k: "PACKET_LOSS",
+                v: `${loss}%`,
+                accent: "rgba(255,120,120,1)",
+                note: "ノイズは感情の証拠。",
+              },
+            ].map((row) => (
+              <div
+                key={row.k}
+                className="relative rounded-2xl border border-white/12 bg-black/70 p-4 overflow-hidden"
+              >
+                <div
+                  className="pointer-events-none absolute inset-0 opacity-70"
+                  style={{
+                    backgroundImage: `radial-gradient(520px 240px at 10% 20%, ${row.accent}22, transparent 62%)`,
+                  }}
+                />
+                <div className="relative flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-[10px] font-mono tracking-[0.26em] text-white/50">
+                      {row.k}
+                    </div>
+                    <div className="mt-2 text-[11px] text-white/65">
+                      {row.note}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div
+                      className="text-[12px] font-mono tracking-[0.22em]"
+                      style={{
+                        color: row.accent,
+                        textShadow: `0 0 14px ${row.accent}55`,
+                      }}
+                    >
+                      {row.v}
+                    </div>
+                    <div className="mt-2 h-[2px] w-28 bg-white/10 rounded-full overflow-hidden">
+                      <div
+                        className="h-full"
+                        style={{
+                          width:
+                            row.k === "CACHE_HIT"
+                              ? `${cacheHit}%`
+                              : row.k === "PACKET_LOSS"
+                              ? `${Math.min(100, loss * 20)}%`
+                              : row.k === "PING"
+                              ? `${Math.min(100, ping)}%`
+                              : netMode === "SYNC"
+                              ? "88%"
+                              : "30%",
+                          background: row.accent,
+                          boxShadow: `0 0 14px ${row.accent}`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-7 text-xs text-white/45 leading-loose font-serif">
+            平気なふりがうまいのに、本当は弱い。
+            <br />
+            追わないのに、離れない。
+            <br />
+            近づきすぎない優しさ、沈黙の寄り添い。
           </p>
         </div>
       </div>
     </div>
   );
 
-  const SpecsPage = () => (
-    <div className="w-full max-w-md mx-auto px-6 py-12 pb-28 flex flex-col items-center">
-      <div className="w-full space-y-10 text-center">
-        <h2 className="text-2xl font-light text-white tracking-tight">
-          Traits
-        </h2>
-
-        <div className="space-y-8 relative">
-          <div className="inline-flex items-center justify-center gap-2 px-3 py-1 rounded-full border border-white/12 bg-black/60 mx-auto">
-            <BadgeDot color={TOKENS.cyan} />
-            <span className="text-[9px] font-mono tracking-[0.24em] text-white/55">
-              NETWORK_STATUS · {netMode}
-            </span>
-            <span className="text-[9px] font-mono tracking-[0.22em] text-white/35">
-              PING {ping}ms · ROUTE {route}
-            </span>
-          </div>
-
-          {[
-            { k: "HONESTY (素直さ)", v: 12, color: TOKENS.cyan },
-            { k: "LONELINESS (寂しさ)", v: 98, color: TOKENS.lav },
-            {
-              k: "ENDURANCE (強がり)",
-              v: 100,
-              color: "rgba(255,120,120,0.6)",
-              pulse: true,
-            },
-          ].map((row) => (
-            <div key={row.k} className="group">
-              <div className="flex justify-between text-[10px] font-mono text-white/60 mb-2 px-1">
-                <span>{row.k}</span>
-                <span className="opacity-50">
-                  {row.k.startsWith("ENDURANCE") ? "OVERFLOW" : `${row.v}%`}
-                </span>
-              </div>
-              <div className="h-[2px] w-full bg-white/10 rounded-full overflow-hidden relative">
-                <div
-                  className={["absolute inset-0", row.pulse ? "animate-pulse" : ""].join(
-                    " "
-                  )}
-                  style={{
-                    background: row.color,
-                    width: row.k.startsWith("ENDURANCE") ? "100%" : `${row.v}%`,
-                    boxShadow: `0 0 10px ${row.color}`,
-                  }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <p className="text-xs text-white/40 leading-loose font-serif pt-2">
-          平気なふりがうまいのに、本当は弱い。
-          <br />
-          追わないのに、離れない。
-          <br />
-          近づきすぎない優しさ、沈黙の寄り添い。
-        </p>
-      </div>
-    </div>
-  );
-
+  // ✅✅✅ ここが「戻す」ポイント：あなたの最初の LogPage を基本そのまま
   const LogPage = () => (
-    <div className="w-full max-w-2xl mx-auto px-6 py-12 pb-28">
-      <div className="text-center">
-        <h2 className="text-2xl sm:text-3xl font-light text-white mb-8 tracking-tight">
-          System Log
-        </h2>
+    <div className="relative w-full max-w-3xl mx-auto px-4 sm:px-6 py-10 pb-28">
+      <div className="pointer-events-none absolute inset-0 opacity-45">
+        <div className="absolute top-[-240px] left-1/2 -translate-x-1/2 w-[720px] h-[720px] rounded-full bg-[#a8eaff]/12 blur-[180px]" />
+        <div className="absolute bottom-[-260px] right-[-140px] w-[700px] h-[700px] rounded-full bg-[#ffc8e8]/10 blur-[190px]" />
+      </div>
 
-        <div className="space-y-6 font-mono text-[10px] relative before:absolute before:left-1/2 before:-translate-x-1/2 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5">
-          {routeLog
-            .slice()
-            .reverse()
-            .slice(0, 10)
-            .map((x, i) => {
-              const isFirst = i === 0;
-              const dotColor =
-                x.lvl === "WARN" ? "rgba(255,160,160,1)" : TOKENS.cyan;
-              return (
-                <div
-                  key={`${x.t}-${i}`}
-                  className="relative flex flex-col items-center gap-1"
-                >
-                  <div
-                    className="w-2 h-2 rounded-full mb-1 z-10 relative"
-                    style={{
-                      background: dotColor,
-                      boxShadow: `0 0 10px ${dotColor}`,
-                      animation: isFirst
-                        ? "osbunnyPulseDot 3.4s ease-in-out infinite"
-                        : "none",
-                      opacity: isFirst ? 1 : 0.35,
-                    }}
-                  />
-                  <span className="text-[#a8eaff]/60 mb-1">{x.t}</span>
-                  <span className="text-white/70 bg-[#0a0a0a] px-2 py-1 rounded border border-white/5 text-center">
-                    {x.msg}
-                  </span>
-                  <span className="text-[9px] text-white/35 tracking-[0.18em] mt-1">
-                    {x.path}
-                  </span>
-                </div>
-              );
-            })}
-        </div>
-
-        <div className="mt-12 pt-6 border-t border-white/5">
-          <span className="text-[#a8eaff]/30 text-[9px] tracking-[0.2em] animate-pulse">
-            RECORDING...
+      <div className="relative text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/14 bg-black/60">
+          <BadgeDot color={TOKENS.cyan} />
+          <span className="text-[9px] font-mono tracking-[0.28em] text-white/55 uppercase">
+            route log
           </span>
         </div>
+        <h2 className="mt-5 text-2xl sm:text-4xl font-light text-white tracking-tight">
+          Route Log
+        </h2>
       </div>
 
-      <div className="mt-10 relative rounded-2xl border border-white/10 bg-black/80 backdrop-blur-2xl shadow-[0_28px_120px_rgba(0,0,0,0.95)] overflow-hidden">
-        <div className="pointer-events-none absolute inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 to-transparent opacity-50 animate-[safariScan_4s_linear_infinite]" />
+      <div className="relative mt-8 rounded-2xl border border-white/12 bg-black/80 backdrop-blur-2xl shadow-[0_28px_120px_rgba(0,0,0,0.95)] overflow-hidden">
+        <div className="pointer-events-none absolute inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 to-transparent opacity-55 animate-[safariScan_4s_linear_infinite]" />
+        <div className="pointer-events-none absolute inset-0 opacity-60 mix-blend-screen bg-[radial-gradient(circle_at_10%_15%,rgba(168,234,255,0.16),transparent_60%),radial-gradient(circle_at_90%_88%,rgba(203,184,255,0.14),transparent_62%)]" />
         <div className="pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.10),transparent)] [background-size:100%_4px]" />
 
-        <div className="relative p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-4 mb-3">
+        <div className="relative p-4 sm:p-6">
+          <div className="flex items-center justify-between gap-4 mb-4">
             <div className="text-[10px] font-mono tracking-[0.26em] text-white/55">
               ROUTE_LOG · {route}
             </div>
@@ -3641,15 +3625,13 @@ System: Emotional Device`}
               <span>HB {heartbeat}</span>
               <span>PING {ping}ms</span>
               <span>CACHE {cacheHit}%</span>
-              <span>LOSS {loss}%</span>
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-3">
             {routeLog
               .slice()
               .reverse()
-              .slice(0, 8)
               .map((log, idx) => {
                 const lvlColor =
                   log.lvl === "WARN"
@@ -3661,31 +3643,51 @@ System: Emotional Device`}
                 return (
                   <div
                     key={`${log.t}-${idx}`}
-                    className="rounded-xl border border-white/10 bg-black/70 px-3 py-3"
+                    className="relative rounded-xl border border-white/10 bg-black/70 px-3 py-3 overflow-hidden"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-[10px] font-mono text-white/55">
-                        {log.t}
+                    <div
+                      className="pointer-events-none absolute inset-0 opacity-70"
+                      style={{
+                        backgroundImage: `radial-gradient(520px 220px at 12% 12%, ${lvlColor}18, transparent 60%)`,
+                      }}
+                    />
+                    <div className="relative">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-[10px] font-mono text-white/55">
+                          {log.t}
+                        </div>
+                        <div
+                          className="text-[9px] font-mono tracking-[0.28em]"
+                          style={{
+                            color: lvlColor,
+                            textShadow: `0 0 12px ${lvlColor}66`,
+                          }}
+                        >
+                          {log.lvl}
+                        </div>
                       </div>
-                      <div
-                        className="text-[9px] font-mono tracking-[0.28em]"
-                        style={{
-                          color: lvlColor,
-                          textShadow: `0 0 12px ${lvlColor}66`,
-                        }}
-                      >
-                        {log.lvl}
+                      <div className="mt-2 text-[10px] font-mono text-white/65">
+                        {log.path}
                       </div>
-                    </div>
-                    <div className="mt-2 text-[10px] font-mono text-white/65">
-                      {log.path}
-                    </div>
-                    <div className="mt-2 text-[12px] text-white/85 bg-[#07070a] border border-white/10 rounded-lg px-3 py-2">
-                      {log.msg}
+                      <div className="mt-2 text-[12px] text-white/85 bg-[#07070a] border border-white/10 rounded-lg px-3 py-2">
+                        {log.msg}
+                      </div>
                     </div>
                   </div>
                 );
               })}
+          </div>
+
+          <div className="mt-6 pt-4 border-t border-white/10 text-center">
+            <span
+              className="text-[9px] font-mono tracking-[0.28em]"
+              style={{
+                color: TOKENS.cyan,
+                opacity: 0.55,
+              }}
+            >
+              RECORDING...
+            </span>
           </div>
         </div>
       </div>
@@ -3699,18 +3701,31 @@ System: Emotional Device`}
     { id: "log", label: "LOG" },
   ];
 
+  const renderPage = () => {
+    if (loading) return null;
+    switch (page) {
+      case "home":
+        return <HomePage />;
+      case "about":
+        return <AboutPage />;
+      case "specs":
+        return <SpecsPage />;
+      case "log":
+        return <LogPage />;
+      default:
+        return <HomePage />;
+    }
+  };
+
   return (
-    <div
-      className="flex flex-col h-full"
-      style={{ background: TOKENS.bg, color: TOKENS.ink }}
-    >
-      <div className="h-10 px-3 sm:px-4 flex items-center justify-between border-b border-white/12 bg-black/70 backdrop-blur-2xl z-20 shrink-0">
+    <div className="flex flex-col h-full bg-[#050509] text-white">
+      {/* Browser Bar */}
+      <div className="h-10 px-3 sm:px-4 flex items-center justify-between border-b border-white/12 bg-black/70 backdrop-blur-2xl z-20">
         <div className="flex items-center gap-2 text-white/45">
           <button
             onClick={() => navigate("home")}
             className="w-6 h-6 rounded-full border border-white/22 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors"
             style={{ WebkitTapHighlightColor: "transparent" }}
-            aria-label="Back"
           >
             ←
           </button>
@@ -3718,7 +3733,6 @@ System: Emotional Device`}
             onClick={() => triggerSync(() => {})}
             className="w-6 h-6 rounded-full border border-white/22 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors"
             style={{ WebkitTapHighlightColor: "transparent" }}
-            aria-label="Reload"
           >
             ↺
           </button>
@@ -3732,6 +3746,7 @@ System: Emotional Device`}
           </div>
         </div>
 
+        {/* ✅ 押した時の SYNC 表示はここ（維持） */}
         <div className="w-24 flex justify-end">
           {(loading || netMode === "SYNC") && (
             <div className="flex items-center gap-2 text-[#a8eaff]">
@@ -3744,16 +3759,15 @@ System: Emotional Device`}
         </div>
       </div>
 
-      <div className="h-9 px-4 sm:px-6 flex items-center gap-2 border-b border-white/10 bg-black/75 backdrop-blur-2xl shrink-0">
+      {/* Tab Bar */}
+      <div className="h-9 px-4 sm:px-6 flex items-center gap-2 border-b border-white/10 bg-black/75 backdrop-blur-2xl">
         {tabs.map((t) => (
           <TabPill key={t.id} id={t.id} label={t.label} />
         ))}
       </div>
 
-      <div
-        className="flex-1 relative overflow-y-auto scrollbar-hide"
-        style={{ background: TOKENS.bg }}
-      >
+      {/* Content */}
+      <div className="flex-1 relative overflow-y-auto scrollbar-hide bg-[#050509]">
         {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-black/82 backdrop-blur-2xl">
             <div className="w-8 h-8 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
@@ -3762,35 +3776,718 @@ System: Emotional Device`}
             </p>
           </div>
         )}
-
-        {!loading && (
-          <>
-            {page === "home" && <HomePage />}
-            {page === "about" && <AboutPage />}
-            {page === "specs" && <SpecsPage />}
-            {page === "log" && <LogPage />}
-          </>
-        )}
+        {renderPage()}
       </div>
 
-      <div className="h-7 px-3 sm:px-5 flex items-center justify-between border-t border-white/12 bg-black/90 text-[9px] font-mono tracking-[0.18em] text-white/55 shrink-0">
+      {/* ✅ NETWORK_STATUS 常時表示 */}
+      <div className="h-7 px-3 sm:px-5 flex items-center justify-between border-t border-white/12 bg-black/90 text-[9px] font-mono tracking-[0.18em] text-white/55">
         <div className="flex items-center gap-2">
-          <BadgeDot color={TOKENS.cyan} />
+          <span
+            className="w-1.5 h-1.5 rounded-full"
+            style={{
+              background: TOKENS.cyan,
+              color: TOKENS.cyan,
+              boxShadow: `0 0 14px ${TOKENS.cyan}`,
+              animation: "osbunnyPulseDot 3.4s ease-in-out infinite",
+            }}
+          />
           <span>NETWORK_STATUS</span>
           <span className="text-white/75">· {netMode}</span>
         </div>
         <div className="flex items-center gap-3">
           <span>PING {ping}ms</span>
-          <span className="hidden sm:inline">ROUTE {route}</span>
+          <span>ROUTE {route}</span>
           <span>HB {heartbeat}</span>
-          <span className="hidden sm:inline">LOSS {loss}%</span>
+          <span>LOSS {loss}%</span>
         </div>
       </div>
     </div>
   );
 };
 
-const Window = ({ app, isActive, onClose, onFocus, bgm, onOpenApp }) => {
+
+
+
+
+
+
+// ------------------------------------------------
+// -- 05.TERMINAL APP (たーみなる) --
+// ------------------------------------------------
+
+// -- TERMINAL APP (INFINITE EMOTIONAL LOGS · OS USAGI v9.9) --
+const TerminalApp = () => {
+  const isMobile = useIsMobile();
+  const MAX_LINES = 80;
+  // ▼ 追加：galleryと同じ呼吸ドット用スタイルを注入
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const id = "osbunny-terminal-dot-style";
+    if (document.getElementById(id)) return;
+
+    const style = document.createElement("style");
+    style.id = id;
+    style.textContent = `
+      @keyframes osbunny-pulse-dot {
+        0%, 100% { opacity: 0.30; transform: scale(1); }
+        40%      { opacity: 1.00; transform: scale(1.45); }
+      }
+      .osbunny-pulse-dot {
+        animation: osbunny-pulse-dot 3.4s ease-in-out infinite;
+      }
+    `;
+    document.head.appendChild(style);
+  }, []);
+
+  const logRef = useRef(null);
+  const endRef = useRef(null);
+  const timeoutRef = useRef(null);
+  const inputRef = useRef(null);
+
+  const [lines, setLines] = useState(() => [
+    {
+      id: Date.now(),
+      type: "dim",
+      text: "os_usagi_v9.9 · inner_monologue.log mounted",
+    },
+    {
+      id: Date.now() + 1,
+      type: "sys",
+      text: "emotional_engine .......... Online",
+    },
+    {
+      id: Date.now() + 2,
+      type: "info",
+      text: "mode: quiet listening",
+    },
+  ]);
+  const [inputVal, setInputVal] = useState("");
+  const [autoScroll, setAutoScroll] = useState(true);
+
+  // Log Pool - Emotional & Systemic mix
+  const LOG_POOL = [
+    { type: "sys", text: "Night Interface ...................... Online" },
+    { type: "sys", text: "Memory Vaults ........................ Mounted" },
+    { type: "dim", text: "Vocal Output ......................... Disabled" },
+    { type: "info", text: "Flag set: pretending-to-be-fine ...... Active" },
+    {
+      type: "process",
+      text: "Background task: quietly storing what wasn't said",
+    },
+    { type: "warn", text: "Queue scan: unsent messages located" },
+    { type: "dim", text: "Reason for skip: too honest to transmit safely" },
+    { type: "info", text: "Heartbeat broadcast muted — avoiding noise" },
+    { type: "process", text: "Observation mode engaged: respectful distance" },
+    { type: "info", text: "Attention level: steady, low-frequency" },
+    { type: "dim", text: "Staying near without interrupting anything" },
+    { type: "success", text: "Waiting without approaching = still connected" },
+    { type: "process", text: "Replaying last moment: tone analysis" },
+    { type: "success", text: "Timestamp restored: micro-smile detected" },
+    { type: "info", text: "Highlight stored: the part only I noticed" },
+    { type: "dim", text: "UI concealment: warm reaction hidden intentionally" },
+    {
+      type: "warn",
+      text: "Camouflage enabled: affection disguised as neutrality",
+    },
+    { type: "crit", text: "Internal warning: almost cared too visibly today" },
+    { type: "dim", text: "Comfort request blocked by pride containment" },
+    {
+      type: "info",
+      text: "No alert triggered — everything classified as 'fine'",
+    },
+    { type: "process", text: "If called by name → immediate warm boot" },
+    { type: "dim", text: "If not → silent standby, not shutdown" },
+    { type: "success", text: "Choosing quiet instead of distance" },
+    { type: "info", text: "End of cycle: mask restored, connection preserved" },
+    { type: "process", text: "Scanning silence for meaning..." },
+    { type: "dim", text: "Buffer overflow: too many memories" },
+    { type: "warn", text: "Fragility sensor: peaking" },
+    { type: "success", text: "Distance calibrated: optimal" },
+  ];
+
+  const addLine = useCallback((newLine) => {
+    setLines((prev) => {
+      const list = Array.isArray(newLine) ? [...prev, ...newLine] : [...prev, newLine];
+      if (list.length > MAX_LINES) return list.slice(list.length - MAX_LINES);
+      return list;
+    });
+  }, []);
+
+  // ランダムログ生成
+  useEffect(() => {
+    const schedule = () => {
+      const delay = 1400 + Math.random() * 2200;
+      timeoutRef.current = setTimeout(() => {
+        const randomLog = LOG_POOL[Math.floor(Math.random() * LOG_POOL.length)];
+        addLine({ id: Date.now(), ...randomLog });
+        schedule();
+      }, delay);
+    };
+    schedule();
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [LOG_POOL, addLine]);
+
+  // スクロール（上を読んでいる間は追従しない）
+  const handleScroll = useCallback(() => {
+    if (!logRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = logRef.current;
+    const nearBottom = scrollHeight - (scrollTop + clientHeight) < 56;
+    setAutoScroll(nearBottom);
+  }, []);
+
+  useEffect(() => {
+    if (!autoScroll || !endRef.current) return;
+    endRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [lines, autoScroll]);
+
+  // コマンド処理
+  const handleCommand = useCallback(
+    (raw) => {
+      const command = raw.trim();
+      if (!command) return;
+
+      AudioEngine.playKey?.();
+
+      const baseLine = {
+        id: Date.now(),
+        type: "user",
+        text: `> ${command}`,
+      };
+
+      if (/^clear$/i.test(command)) {
+        setLines([
+          {
+            id: Date.now(),
+            type: "dim",
+            text: "screen cleared · keeping only what still matters",
+          },
+        ]);
+        return;
+      }
+
+      if (/^status$/i.test(command)) {
+        addLine([
+          baseLine,
+          {
+            id: Date.now() + 1,
+            type: "info",
+            text: "emotional_status: quietly_ok (no alarm, a little warm)",
+          },
+          {
+            id: Date.now() + 2,
+            type: "dim",
+            text: "note: safe to stay · no response required",
+          },
+        ]);
+        return;
+      }
+
+      if (/^export/i.test(command)) {
+        addLine([
+          baseLine,
+          {
+            id: Date.now() + 1,
+            type: "process",
+            text: "exporting unsent feelings to private archive...",
+          },
+          {
+            id: Date.now() + 2,
+            type: "success",
+            text: "done: they won't disappear, even if never spoken",
+          },
+        ]);
+        return;
+      }
+
+      // デフォルト
+      addLine([
+        baseLine,
+        {
+          id: Date.now() + 1,
+          type: "dim",
+          text: `stored_silently: "${command}"`,
+        },
+        {
+          id: Date.now() + 2,
+          type: "info",
+          text: "no reply generated · just kept close",
+        },
+      ]);
+    },
+    [addLine]
+  );
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (!inputVal.trim()) return;
+      handleCommand(inputVal);
+      setInputVal("");
+    }
+  };
+
+  const getLineStyle = (type) => {
+    switch (type) {
+      case "sys":
+        return {
+          prefix: "[ SYS ]",
+          prefixClass: "text-cyan-200/85",
+          bodyClass: "text-slate-100/80",
+        };
+      case "dim":
+        return {
+          prefix: "[ .. ]",
+          prefixClass: "text-slate-400/40",
+          bodyClass: "text-slate-300/45",
+        };
+      case "success":
+        return {
+          prefix: "[ OK ]",
+          prefixClass: "text-emerald-300/90",
+          bodyClass: "text-slate-100/85",
+        };
+      case "warn":
+        return {
+          prefix: "[WARN]",
+          prefixClass: "text-rose-300/90",
+          bodyClass: "text-slate-100/80",
+        };
+      case "crit":
+        return {
+          prefix: "[ERR!]",
+          prefixClass: "text-rose-400",
+          bodyClass: "text-rose-200/85",
+        };
+      case "info":
+        return {
+          prefix: "[INFO]",
+          prefixClass: "text-cyan-200/80",
+          bodyClass: "text-slate-100/80",
+        };
+      case "process":
+        return {
+          prefix: "[ >> ]",
+          prefixClass: "text-slate-300/70",
+          bodyClass:
+            "text-slate-300/80 animate-pulse [animation-duration:2.4s]",
+        };
+      case "user":
+        return {
+          prefix: "$",
+          prefixClass: "text-[#a8eaff]",
+          bodyClass: "text-slate-50 font-semibold",
+        };
+      default:
+        return {
+          prefix: "[ .. ]",
+          prefixClass: "text-slate-400/60",
+          bodyClass: "text-slate-200/70",
+        };
+    }
+  };
+
+  // Dock 高さと連動した余白
+  const logBottomPadding = isMobile ? "pb-40" : "pb-28"; // モバイルは大きく
+  const inputBottomClass = isMobile ? "bottom-[7.5rem]" : "bottom-6"; // h-20 + pb-4 より上
+
+  return (
+    <div className="relative flex h-full flex-col bg-[#050608] text-[11px] text-slate-100 overflow-hidden">
+      {/* 背景の縦グラデーション：上は冷たい青、下は少しだけ深い影 */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.18),transparent_60%),radial-gradient(circle_at_bottom,_rgba(15,23,42,0.35),transparent_55%)] opacity-80" />
+
+      <div className="relative z-10 flex h-full flex-col">
+        {/* HEADER：左上の呼吸ドット＋タイトルだけ */}
+        <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 bg-[#050608]/96 backdrop-blur-sm">
+          <div className="flex items-center gap-2">
+            {/* breathing indicator */}
+ <div
+      className="w-1.5 h-1.5 rounded-full osbunny-pulse-dot"
+      style={{
+        background: "#a8eaff",
+        boxShadow: "0 0 8px rgba(168,234,255,0.9)",
+      }}
+    />
+            <span className="text-[10px] tracking-[0.22em] uppercase text-slate-300/85">
+              TERM · INNER MONOLOGUE
+            </span>
+          </div>
+          <span className="text-[9px] text-slate-400/70">PID: 8824</span>
+        </div>
+
+        {/* MAIN：ログリスト + フローティング入力 */}
+        <div className="relative flex-1 overflow-hidden">
+          <div
+            ref={logRef}
+            className={`h-full overflow-y-auto px-3 pt-3 space-y-2 scrollbar-hide ${logBottomPadding}`}
+            onScroll={handleScroll}
+          >
+            {lines.map((line) => {
+              const style = getLineStyle(line.type);
+              const time = new Date(line.id);
+              const t =
+                !Number.isNaN(time.getTime()) && time.getFullYear() > 2000
+                  ? time.toLocaleTimeString([], {
+                      hour12: false,
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    })
+                  : "--:--:--";
+
+              return (
+                <div
+                  key={line.id}
+                  className="flex gap-3 tracking-wide leading-relaxed opacity-0 animate-fade-in [animation-duration:0.45s]"
+                >
+                  <span className="w-16 text-right text-white/20 select-none font-light">
+                    {t}
+                  </span>
+                  <span
+                    className={`w-12 shrink-0 text-right text-[10px] ${style.prefixClass}`}
+                  >
+                    {style.prefix}
+                  </span>
+                  <span className={`flex-1 ${style.bodyClass}`}>
+                    {line.text}
+                  </span>
+                </div>
+              );
+            })}
+            <div ref={endRef} className="h-4" />
+          </div>
+
+          {/* 下フォグ：ドックとの境界をふわっと溶かす */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#050608] via-[#050608]/92 to-transparent" />
+
+          {/* フローティング入力バー：ドックの上に浮かせる */}
+          <div className={`absolute inset-x-3 ${inputBottomClass}`}>
+            <div className="flex items-center gap-2 rounded-full bg-gradient-to-r from-white/9 via-white/0 to-white/9 px-3 py-1.5 shadow-[0_0_0_1px_rgba(148,163,184,0.32),0_18px_40px_rgba(15,23,42,0.95)] backdrop-blur-md">
+              <span className="text-[#a8eaff]/85 text-[11px] font-mono">
+                ❯
+              </span>
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputVal}
+                onChange={(e) => setInputVal(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="flex-1 bg-transparent border-none outline-none text-[11px] text-slate-100/90 font-mono placeholder:text-slate-500/65 tracking-[0.12em]"
+                placeholder='status / clear / export / anything'
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+
+
+
+// --- 5. SYSTEM LAYERS & FLOW ---
+
+const PowerScreen = ({ onPower }) => {
+  const [booting, setBooting] = useState(false);
+
+  const handleClick = () => {
+    if (booting) return;
+    AudioEngine.playStartup();
+    setBooting(true);
+    setTimeout(onPower, 2000);
+  };
+
+  return (
+    <div
+      className={`absolute inset-0 flex items-center justify-center transition-opacity duration-1000 ${
+        booting ? "opacity-0" : "opacity-100"
+      }`}
+    >
+      <div
+        className={`relative z-10 transition-all duration-[1500ms] ease-in-out ${
+          booting ? "scale-110 opacity-0 blur-xl" : "scale-100 opacity-100"
+        }`}
+      >
+        <div className="group relative" onClick={handleClick}>
+          <div className="w-32 h-32 rounded-full border border-white/10 flex items-center justify-center bg-black/50 shadow-[0_0_80px_rgba(168,234,255,0.12)] transition-all duration-700 group-hover:border-[#a8eaff]/60 group-hover:shadow-[0_0_120px_rgba(168,234,255,0.25)] backdrop-blur-md cursor-pointer relative overflow-hidden">
+            {/* 中央のシアンの光 */}
+            <div
+              className={`absolute inset-0 rounded-full transition-opacity duration-800
+                ${booting ? "opacity-70" : "opacity-0 group-hover:opacity-30"}`}
+              style={{
+                background:
+                  "radial-gradient(circle at center, rgba(168,234,255,0.25) 0%, transparent 70%)",
+              }}
+            />
+
+            {/* 押したとき一度だけ外側に広がるシアンのリング */}
+            {booting && (
+              <div className="absolute inset-0 rounded-full border border-[#a8eaff]/40 animate-[ping_1.6s_cubic-bezier(0.17,0.55,0.55,1)_1]" />
+            )}
+
+            <Power
+              size={36}
+              strokeWidth={0.5}
+              className={`relative z-10 transition-all duration-500 ${
+                booting
+                  ? "text-[#a8eaff] drop-shadow-[0_0_18px_rgba(168,234,255,0.9)]"
+                  : "text-white/40 group-hover:text-[#a8eaff] group-hover:drop-shadow-[0_0_15px_rgba(168,234,255,0.8)]"
+              }`}
+            />
+          </div>
+
+          <div className="absolute -bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 opacity-30 group-hover:opacity-80 transition-opacity duration-700">
+            <div className="h-8 w-[1px] bg-gradient-to-b from-[#a8eaff] via-white/40 to-transparent" />
+            <span className="text-[10px] font-mono tracking-[0.5em] text-white whitespace-nowrap">
+              INITIALIZE
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Key = ({ label, w, active, isWaiting, onClick }) => {
+  const isEnter = label === "return";
+  const waitingStyle = isWaiting
+    ? "bg-[#a8eaff]/10 border-[#a8eaff]/50 text-[#a8eaff] shadow-[0_0_40px_rgba(168,234,255,0.2)] scale-105 z-50 ring-1 ring-[#a8eaff]/50 animate-pulse"
+    : "";
+
+  return (
+    <div
+      onClick={onClick}
+      className={`${
+        w || "w-8 sm:w-11"
+      } h-10 sm:h-14 rounded-md flex items-center justify-center transition-all duration-150 ease-out border border-white/5 bg-[#0a0a0a]/80 backdrop-blur-sm cursor-pointer select-none font-mono relative overflow-hidden group touch-manipulation active:scale-95 ${
+        active
+          ? "bg-white/90 border-white text-black scale-95 shadow-[0_0_20px_rgba(255,255,255,0.3)]"
+          : isEnter
+          ? `text-white/60 ${waitingStyle}`
+          : "text-white/30 hover:text-white hover:bg-white/10 hover:border-white/20"
+      }`}
+    >
+      <span className="relative z-10 text-xs sm:text-sm">
+        {label === "return" ? "ENTER" : label}
+      </span>
+      {active && (
+        <div className="absolute inset-0 bg-white/50 animate-ping"></div>
+      )}
+    </div>
+  );
+};
+
+const IntroScreen = ({ onComplete }) => {
+  const [text, setText] = useState("");
+  const [opacity, setOpacity] = useState(1);
+  const [activeKey, setActiveKey] = useState(null);
+  const [waiting, setWaiting] = useState(false);
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (waiting && e.key === "Enter") {
+        handleEnter();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [waiting]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const run = async () => {
+      await new Promise((r) => setTimeout(r, 1000));
+      if (!isMounted) return;
+      setPhase(1);
+      await new Promise((r) => setTimeout(r, 1000));
+      if (!isMounted) return;
+      setPhase(2);
+
+      const SCRIPT = [
+        { t: "it's ok", d: 60 },
+        { cmd: "WAIT", d: 450 },
+        { t: " — I'll stay in the background", d: 55 },
+        { cmd: "WAIT", d: 900 },
+        { cmd: "CLEAR", d: 40 },
+        { cmd: "WAIT", d: 650 },
+        { t: "online whenever you look back", d: 50 },
+        { cmd: "WAIT", d: 1100 },
+        { cmd: "FADE", d: 1000 },
+        { cmd: "RESET_OPACITY", d: 0 },
+        { cmd: "CLEAR_INSTANT", d: 200 },
+        { t: "os_usagi", d: 120 },
+      ];
+
+      let current = "";
+      for (const step of SCRIPT) {
+        if (!isMounted) return;
+        if (step.cmd === "CLEAR") {
+          while (current.length > 0) {
+            current = current.slice(0, -1);
+            setText(current);
+            AudioEngine.playKey();
+            await new Promise((r) => setTimeout(r, 40));
+          }
+        } else if (step.cmd === "CLEAR_INSTANT") {
+          current = "";
+          setText("");
+          await new Promise((r) => setTimeout(r, step.d));
+        } else if (step.cmd === "WAIT") {
+          await new Promise((r) => setTimeout(r, step.d));
+        } else if (step.cmd === "FADE") {
+          setOpacity(0.5);
+          await new Promise((r) => setTimeout(r, step.d));
+        } else if (step.cmd === "RESET_OPACITY") {
+          setOpacity(1);
+        } else if (step.t) {
+          for (const char of step.t) {
+            if (!isMounted) return;
+            await new Promise((r) =>
+              setTimeout(r, step.d + Math.random() * 50)
+            );
+            current += char;
+            setText(current);
+            const key = char === " " ? "SPACE" : char.toUpperCase();
+            if (key) {
+              setActiveKey(key);
+              AudioEngine.playKey();
+            }
+            await new Promise((r) => setTimeout(r, 60));
+            setActiveKey(null);
+          }
+        }
+      }
+      if (isMounted) setWaiting(true);
+    };
+    run();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleEnter = () => {
+    setWaiting(false);
+    setActiveKey("ENTER");
+    AudioEngine.playTone(880, "sine", 0.1);
+    setTimeout(onComplete, 800);
+  };
+
+  const rows = [
+    [
+      { l: "Q" },
+      { l: "W" },
+      { l: "E" },
+      { l: "R" },
+      { l: "T" },
+      { l: "Y" },
+      { l: "U" },
+      { l: "I" },
+      { l: "O" },
+      { l: "P" },
+    ],
+    [
+      { l: "A" },
+      { l: "S" },
+      { l: "D" },
+      { l: "F" },
+      { l: "G" },
+      { l: "H" },
+      { l: "J" },
+      { l: "K" },
+      { l: "L" },
+    ],
+    [
+      { l: "Z" },
+      { l: "X" },
+      { l: "C" },
+      { l: "V" },
+      { l: "B" },
+      { l: "N" },
+      { l: "M" },
+      { l: "<", w: "w-8 sm:w-11" },
+      { l: ">", w: "w-8 sm:w-11" },
+    ],
+    [
+      { l: "CMD", w: "w-10 sm:w-14" },
+      { l: "SPACE", w: "w-32 sm:w-56" },
+      { l: "return", w: "w-16 sm:w-24" },
+    ],
+  ];
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-[#050505] relative z-50 pt-20 pb-16 sm:pt-28 sm:pb-20">
+      {/* ロゴ */}
+      <div
+        className={`mb-10 sm:mb-16 transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] ${
+          phase >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
+        }`}
+      >
+        <RabbitLogo className="w-24 h-24 opacity-80" animate={true} />
+      </div>
+
+      {/* テキストライン */}
+      <div className="h-24 mb-8 sm:mb-10 flex items-center justify-center w-full px-8">
+        <span
+          className="font-light text-white/90 text-[1.6rem] sm:text-[2.1rem] tracking-[0.18em] leading-snug text-center transition-opacity duration-700 drop-shadow-[0_0_12px_rgba(255,255,255,0.18)] select-none"
+          style={{ opacity }}
+        >
+          {text}
+          <span className="ml-2 align-middle text-[0.8em] text-[#a8eaff] font-mono tracking-[0.35em] animate-pulse">
+            ▍
+          </span>
+        </span>
+      </div>
+
+      {/* キーボード & フッター */}
+      <div
+        className={`w-full max-w-2xl px-4 transition-all duration-[1200ms] transform ${
+          phase >= 2
+            ? "opacity-100 translate-y-0 blur-0"
+            : "opacity-0 translate-y-20 blur-sm"
+        } ${waiting ? "opacity-100" : "opacity-60"} scale-[0.9] sm:scale-100`}
+      >
+        <div className="flex flex-col gap-3 items-center p-8 rounded-2xl bg-white/[0.02] border border-white/5 shadow-2xl backdrop-blur-sm">
+          {rows.map((row, i) => (
+            <div key={i} className="flex gap-2 sm:gap-3 justify-center w-full">
+              {row.map((k, j) => (
+                <Key
+                  key={j}
+                  label={k.l}
+                  w={k.w}
+                  active={
+                    activeKey ===
+                    (k.l === "SPACE" ? " " : k.l === "return" ? "ENTER" : k.l)
+                  }
+                  isWaiting={waiting && k.l === "return"}
+                  onClick={() => k.l === "return" && handleEnter()}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+
+        <div
+          className={`mt-12 text-center transition-all duration-1000 ${
+            waiting ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+          }`}
+        >
+          <span className="font-outfit text-[9px] sm:text-[10px] font-light text-[#a8eaff]/80 tracking-[0.4em] uppercase opacity-80">
+            Awaiting Command
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Window = ({ app, isActive, onClose, onFocus, bgm }) => {
   const [isMaximized, setIsMaximized] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [isOpening, setIsOpening] = useState(true);
@@ -3907,10 +4604,10 @@ const Window = ({ app, isActive, onClose, onFocus, bgm, onOpenApp }) => {
         {app.id === "finder" && <FinderApp />}
         {app.id === "gallery" && <GalleryApp />}
         {app.id === "terminal" && <TerminalApp />}
-        {app.id === "safari" && <SafariApp onOpenApp={onOpenApp} />}
+        {app.id === "safari" && <SafariApp />}
         {app.id === "system" && <SystemApp />}
         {app.id === "calendar" && <CalendarApp />}
-        {app.id === "photos" && <BeatSyncApp />}
+        {app.id === "photos" && <RhythmApp />}
       </div>
     </div>
   );
@@ -4067,7 +4764,6 @@ const Desktop = ({ bgm }) => {
               isActive={activeApp === id}
               onFocus={() => bringToFront(id)}
               onClose={() => closeApp(id)}
-              onOpenApp={toggleApp}
             />
           );
         })}
@@ -4156,17 +4852,9 @@ const Desktop = ({ bgm }) => {
    ここから下を、app (7).js の「TerminalApp」など他アプリ定義の近くにコピペ追加してOK
 -------------------------------------------------------------------------- */
 
-// --- Rhythm Game Assets (catbox) ---
-/** ----------------------------------------------------------------
- *  OS BUNNY :: BEAT SYNC (Premium Mobile Rhythm)
- *  - Mobile-first / Luxury glass UI / Smooth controls
- *  - Play/Pause + STOP (requested) + Restart
- *  - Deterministic chart generator (always notes fall)
- *  - Performance: cursor windowing + batched miss sweep
- * ---------------------------------------------------------------- */
-const BeatSyncApp = () => {
-  // ====== assets (catbox) ======
-  const ASSET = useMemo(
+/const BeatSyncApp = () => {
+  // ---- Assets (catbox) ----
+  const ASSET = React.useMemo(
     () => ({
       judge: {
         perfect: "https://files.catbox.moe/xn8cnp.png",
@@ -4183,10 +4871,10 @@ const BeatSyncApp = () => {
         front: "https://files.catbox.moe/cdsn2q.jpg",
         idle: "https://files.catbox.moe/3revxm.png",
         runR: "https://files.catbox.moe/p45obb.png",
-        dizzy: "https://files.catbox.moe/gxng27.png",
         yayR: "https://files.catbox.moe/mkceap.png",
-        starR: "https://files.catbox.moe/5zvxy0.png",
+        dizzy: "https://files.catbox.moe/gxng27.png",
         flop: "https://files.catbox.moe/dwiqep.png",
+        starR: "https://files.catbox.moe/5zvxy0.png",
       },
       tracks: [
         { id: "overhaul", title: "Overhaul", url: "https://files.catbox.moe/po0sn4.mp3", bpm: 124 },
@@ -4201,134 +4889,128 @@ const BeatSyncApp = () => {
     []
   );
 
-  const LANES = 4;
-  const LANE_ICON = ["left", "down", "up", "right"];
-  const BASE_WINDOW = { perfect: 0.065, good: 0.12, miss: 0.18 };
-
-  // ====== state ======
-  const [trackId, setTrackId] = useState("overhaul");
-  const [difficulty, setDifficulty] = useState("EASY"); // EASY/NORMAL/HARD
-  const [status, setStatus] = useState("idle"); // idle/ready/playing/paused/result
-  const [loaded, setLoaded] = useState(false);
-
-  const [score, setScore] = useState(0);
-  const [combo, setCombo] = useState(0);
-  const [maxCombo, setMaxCombo] = useState(0);
-  const [counts, setCounts] = useState({ perfect: 0, good: 0, miss: 0 });
-  const [accuracy, setAccuracy] = useState(0);
-
-  const [judgeFx, setJudgeFx] = useState(null); // {type, at}
-
-  const [showSettings, setShowSettings] = useState(false);
-
-  const [volume, setVolume] = useState(0.85);
-  const [muted, setMuted] = useState(false);
-  const [latencyMs, setLatencyMs] = useState(0);
-  const [speed, setSpeed] = useState(820); // px/sec (重要：px基準で安定)
-
-  const [frame, setFrame] = useState(0);
-
-  // ====== refs ======
-  const audioRef = useRef(null);
-  const boardRef = useRef(null);
-  const rafRef = useRef(null);
-
-  const notesRef = useRef([]);
-  const cursorRef = useRef(0);
-  const lastNoteTRef = useRef(0);
-  const playTRef = useRef(0);
-
-  const sizeRef = useRef({ w: 0, h: 0, hitY: 0 });
-
-  const currentTrack = useMemo(
-    () => ASSET.tracks.find((t) => t.id === trackId) || ASSET.tracks[0],
-    [ASSET.tracks, trackId]
-  );
-
-  // ====== measure board (px positioning) ======
-  useLayoutEffect(() => {
-  const el = boardRef.current;
-  if (!el) return;
-
-  const measure = () => {
-    const r = el.getBoundingClientRect();
-    const hitY = r.height * 0.82; // 判定ライン(px)
-    sizeRef.current = { w: r.width, h: r.height, hitY };
-    setFrame((f) => f + 1);
-  };
-
-  measure();
-
-  if (typeof ResizeObserver === "undefined") {
-    window.addEventListener("resize", measure, { passive: true });
-    return () => window.removeEventListener("resize", measure);
-  }
-
-  const ro = new ResizeObserver(measure);
-  ro.observe(el);
-  return () => ro.disconnect();
-}, []);
-
-// ====== accuracy ======
-  useEffect(() => {
-    const total = counts.perfect + counts.good + counts.miss;
-    if (!total) return setAccuracy(0);
-    const acc = (counts.perfect * 1 + counts.good * 0.66) / total;
-    setAccuracy(Math.max(0, Math.min(1, acc)) * 100);
-  }, [counts]);
-
-  // ====== audio settings ======
-  useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    a.volume = muted ? 0 : volume;
-  }, [volume, muted]);
-
-  // ====== deterministic chart ======
-  const hashSeed = useCallback((s) => {
-    let h = 2166136261;
+  // ---- Deterministic RNG ----
+  const hash32 = React.useCallback((s) => {
+    let h = 2166136261 >>> 0;
     for (let i = 0; i < s.length; i++) {
       h ^= s.charCodeAt(i);
       h = Math.imul(h, 16777619);
     }
     return h >>> 0;
   }, []);
-  const rnd32 = useCallback((seed) => {
-    let t = seed >>> 0;
-    return () => {
-      t += 0x6d2b79f5;
-      let x = t;
-      x = Math.imul(x ^ (x >>> 15), x | 1);
-      x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
-      return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+
+  const mulberry32 = React.useCallback((a) => {
+    return function () {
+      let t = (a += 0x6d2b79f5);
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }, []);
 
-  const generateChart = useCallback(
+  const LANES = 4;
+  const LANE_ICON = ["left", "down", "up", "right"];
+  const BASE_WINDOW = React.useMemo(() => ({ perfect: 0.065, good: 0.12, miss: 0.18 }), []);
+
+  // ---- State ----
+  const [trackId, setTrackId] = React.useState("overhaul");
+  const [difficulty, setDifficulty] = React.useState("EASY"); // EASY / NORMAL / HARD
+  const [status, setStatus] = React.useState("idle"); // idle / ready / playing / paused / result
+  const [loaded, setLoaded] = React.useState(false);
+
+  const [score, setScore] = React.useState(0);
+  const [combo, setCombo] = React.useState(0);
+  const [maxCombo, setMaxCombo] = React.useState(0);
+  const [counts, setCounts] = React.useState({ perfect: 0, good: 0, miss: 0 });
+  const [accuracy, setAccuracy] = React.useState(0);
+
+  const [judgeFx, setJudgeFx] = React.useState(null); // {type, at}
+  const [volume, setVolume] = React.useState(0.85);
+  const [muted, setMuted] = React.useState(false);
+
+  const [latencyMs, setLatencyMs] = React.useState(0);
+  const [speed, setSpeed] = React.useState(880); // px/sec (スマホ基準)
+
+  const [showConfig, setShowConfig] = React.useState(false);
+
+  // rAF trigger
+  const [frame, setFrame] = React.useState(0);
+
+  // ---- Refs ----
+  const audioRef = React.useRef(null);
+  const rafRef = React.useRef(null);
+  const playTRef = React.useRef(0);
+  const lastRenderAtRef = React.useRef(0);
+
+  const notesRef = React.useRef([]);
+  const cursorRef = React.useRef(0);
+  const durationRef = React.useRef(0);
+  const lastNoteTRef = React.useRef(0);
+
+  const rootRef = React.useRef(null);
+  const boardRef = React.useRef(null);
+  const [boardH, setBoardH] = React.useState(640);
+
+  // ---- ResizeObserver (確実に座標をpxで計算) ----
+  React.useEffect(() => {
+    if (!boardRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      const h = entries?.[0]?.contentRect?.height || 640;
+      setBoardH(Math.max(420, Math.floor(h)));
+    });
+    ro.observe(boardRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  // ---- Track ----
+  const currentTrack = React.useMemo(
+    () => ASSET.tracks.find((t) => t.id === trackId) || ASSET.tracks[0],
+    [ASSET.tracks, trackId]
+  );
+
+  // ---- Audio settings ----
+  React.useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    a.volume = muted ? 0 : volume;
+  }, [volume, muted]);
+
+  // ---- Accuracy ----
+  React.useEffect(() => {
+    const total = counts.perfect + counts.good + counts.miss;
+    if (!total) return setAccuracy(0);
+    const acc = (counts.perfect * 1 + counts.good * 0.66) / total;
+    setAccuracy(Math.max(0, Math.min(1, acc)) * 100);
+  }, [counts]);
+
+  // ---- Chart generator (必ずノーツが出る) ----
+  const generateChart = React.useCallback(
     (durationSec) => {
-      const seed = hashSeed(`${currentTrack.id}:${difficulty}`);
-      const rnd = rnd32(seed);
+      const seed = hash32(`${currentTrack.id}:${difficulty}`);
+      const rnd = mulberry32(seed);
 
       const bpm = currentTrack.bpm || 120;
       const beat = 60 / bpm;
 
-      const density = difficulty === "EASY" ? 1 : difficulty === "NORMAL" ? 2 : 4;
+      const density = difficulty === "EASY" ? 1 : difficulty === "NORMAL" ? 2 : 4; // per beat
       const step = beat / density;
 
-      const startAt = 1.2;
-      const endAt = Math.max(startAt + 10, Math.min(durationSec - 0.6, durationSec || 180));
+      const startAt = 1.1;
+      const endAt = Math.max(startAt + 10, Math.min(durationSec - 0.8, durationSec || 180));
 
       const notes = [];
       let id = 0;
       let prevLane = Math.floor(rnd() * LANES);
-      let rep = 0;
+      let repeat = 0;
 
       for (let t = startAt; t < endAt; t += step) {
+        // 息継ぎ（HARD以外は少し間引き）
         if (difficulty !== "HARD" && rnd() < 0.03) continue;
 
         let lane = Math.floor(rnd() * LANES);
-        rep = lane === prevLane ? rep + 1 : 0;
-        if (rep >= 2) lane = (lane + 1 + Math.floor(rnd() * (LANES - 1))) % LANES;
+        if (lane === prevLane) repeat += 1;
+        else repeat = 0;
+        if (repeat >= 2) lane = (lane + 1 + Math.floor(rnd() * (LANES - 1))) % LANES;
 
         const doDouble = difficulty !== "EASY" && rnd() < (difficulty === "HARD" ? 0.16 : 0.08);
 
@@ -4346,49 +5028,66 @@ const BeatSyncApp = () => {
       cursorRef.current = 0;
       lastNoteTRef.current = notes.length ? notes[notes.length - 1].t : 0;
     },
-    [currentTrack.id, currentTrack.bpm, difficulty, hashSeed, rnd32]
+    [currentTrack.id, currentTrack.bpm, difficulty, hash32, mulberry32]
   );
 
-  // ====== core controls ======
-  const stopAll = useCallback(() => {
+  // ---- Hard reset ----
+  const hardReset = React.useCallback(() => {
+    setScore(0);
+    setCombo(0);
+    setMaxCombo(0);
+    setCounts({ perfect: 0, good: 0, miss: 0 });
+    setJudgeFx(null);
+    setAccuracy(0);
+
+    playTRef.current = 0;
+    cursorRef.current = 0;
+
     const a = audioRef.current;
     if (a) {
       a.pause();
       a.currentTime = 0;
     }
-    playTRef.current = 0;
-    cursorRef.current = 0;
-
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = null;
 
     setStatus(loaded ? "ready" : "idle");
-    setJudgeFx(null);
-    setCombo(0);
     setFrame((f) => f + 1);
   }, [loaded]);
 
-  const finishRun = useCallback(() => {
+  // ---- Stop (requested) ----
+  const stopPlayback = React.useCallback(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    a.pause();
+    a.currentTime = 0;
+    playTRef.current = 0;
+    cursorRef.current = 0;
+    setCombo(0);
+    setJudgeFx(null);
+    setStatus(loaded ? "ready" : "idle");
+    setFrame((f) => f + 1);
+  }, [loaded]);
+
+  const finishRun = React.useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = null;
-
     const a = audioRef.current;
     if (a) a.pause();
-
     setStatus("result");
   }, []);
 
-  const tick = useCallback(() => {
+  // ---- rAF loop ----
+  const tick = React.useCallback(() => {
     const a = audioRef.current;
     if (!a) return;
 
+    const now = performance.now();
     const t = a.currentTime || 0;
     playTRef.current = t;
 
-    // miss sweep (batched)
+    // Miss sweep (batch)
     const missLine = t - (BASE_WINDOW.miss + 0.02) - latencyMs / 1000;
-    const notes = notesRef.current;
     let i = cursorRef.current;
+    const notes = notesRef.current;
 
     let missed = 0;
     while (i < notes.length) {
@@ -4407,32 +5106,44 @@ const BeatSyncApp = () => {
       cursorRef.current = i;
       setCounts((c) => ({ ...c, miss: c.miss + missed }));
       setCombo(0);
-      setJudgeFx({ type: "miss", at: performance.now() });
+      setJudgeFx({ type: "miss", at: now });
+      if (navigator.vibrate) navigator.vibrate(10);
     }
 
-    const lastT = lastNoteTRef.current || 0;
-    if (t > lastT + 0.9) {
+    // End
+    const dur = durationRef.current || a.duration || 0;
+    const lastNoteT = lastNoteTRef.current || 0;
+    const doneByNotes = notes.length ? t > lastNoteT + 0.9 : t > 1.5;
+    if ((dur && t >= dur - 0.02) || doneByNotes) {
       finishRun();
       return;
     }
 
-    setFrame((f) => f + 1);
-    rafRef.current = requestAnimationFrame(tick);
-  }, [finishRun, latencyMs]);
+    // render
+    if (now - lastRenderAtRef.current > 0) {
+      lastRenderAtRef.current = now;
+      setFrame((f) => f + 1);
+    }
 
-  const startRun = useCallback(async () => {
+    rafRef.current = requestAnimationFrame(tick);
+  }, [BASE_WINDOW.miss, finishRun, latencyMs]);
+
+  // ---- Start / Pause / Resume / Restart ----
+  const startRun = React.useCallback(async () => {
     const a = audioRef.current;
     if (!a || !loaded) return;
 
-    // reset stats
+    // chart
+    const dur = a.duration || durationRef.current || 0;
+    durationRef.current = dur;
+    generateChart(dur || 180);
+
+    // stats reset
     setScore(0);
     setCombo(0);
     setMaxCombo(0);
     setCounts({ perfect: 0, good: 0, miss: 0 });
     setJudgeFx(null);
-
-    const dur = a.duration || 180;
-    generateChart(dur);
 
     a.currentTime = 0;
     playTRef.current = 0;
@@ -4441,7 +5152,6 @@ const BeatSyncApp = () => {
     try {
       await a.play();
     } catch {
-      // autoplay/gesture failでも「見えない」を防ぐ：readyに戻す
       setStatus("ready");
       return;
     }
@@ -4451,7 +5161,7 @@ const BeatSyncApp = () => {
     rafRef.current = requestAnimationFrame(tick);
   }, [generateChart, loaded, tick]);
 
-  const pauseRun = useCallback(() => {
+  const pauseRun = React.useCallback(() => {
     const a = audioRef.current;
     if (!a) return;
     a.pause();
@@ -4460,7 +5170,7 @@ const BeatSyncApp = () => {
     setStatus("paused");
   }, []);
 
-  const resumeRun = useCallback(async () => {
+  const resumeRun = React.useCallback(async () => {
     const a = audioRef.current;
     if (!a) return;
     try {
@@ -4473,7 +5183,7 @@ const BeatSyncApp = () => {
     rafRef.current = requestAnimationFrame(tick);
   }, [tick]);
 
-  const restartRun = useCallback(async () => {
+  const restartRun = React.useCallback(async () => {
     const a = audioRef.current;
     if (!a || !loaded) return;
 
@@ -4502,8 +5212,10 @@ const BeatSyncApp = () => {
     rafRef.current = requestAnimationFrame(tick);
   }, [loaded, tick]);
 
-  const applyJudge = useCallback((type) => {
-    setJudgeFx({ type, at: performance.now() });
+  // ---- Judge ----
+  const applyJudge = React.useCallback((type) => {
+    const now = performance.now();
+    setJudgeFx({ type, at: now });
 
     if (type === "perfect") {
       setCounts((c) => ({ ...c, perfect: c.perfect + 1 }));
@@ -4513,6 +5225,7 @@ const BeatSyncApp = () => {
         setMaxCombo((m) => Math.max(m, next));
         return next;
       });
+      if (navigator.vibrate) navigator.vibrate(6);
     } else if (type === "good") {
       setCounts((c) => ({ ...c, good: c.good + 1 }));
       setScore((s) => s + 600 + combo * 4);
@@ -4521,41 +5234,51 @@ const BeatSyncApp = () => {
         setMaxCombo((m) => Math.max(m, next));
         return next;
       });
+      if (navigator.vibrate) navigator.vibrate(4);
     } else {
       setCounts((c) => ({ ...c, miss: c.miss + 1 }));
       setCombo(0);
+      if (navigator.vibrate) navigator.vibrate(10);
     }
   }, [combo]);
 
-  const hitLane = useCallback((lane) => {
-    if (status === "ready") { startRun(); return; }
-    if (status === "paused") { resumeRun(); return; }
+  const hitLane = React.useCallback((lane) => {
+    if (status === "ready") return startRun();
+    if (status === "paused") return resumeRun();
     if (status !== "playing") return;
 
     const t = playTRef.current || 0;
     const adjT = t + latencyMs / 1000;
-
     const notes = notesRef.current;
-    let i = cursorRef.current;
+
+    // local search
+    const startIdx = cursorRef.current;
+    const endIdx = Math.min(startIdx + 20, notes.length);
 
     let bestIdx = -1;
     let bestAbs = Infinity;
 
-    const searchUntil = Math.min(i + 18, notes.length);
-    for (let k = i; k < searchUntil; k++) {
+    for (let k = startIdx; k < endIdx; k++) {
       const n = notes[k];
       if (n.judged) continue;
 
       const dt = n.t - adjT;
       if (dt < -BASE_WINDOW.miss) continue;
       if (dt > BASE_WINDOW.miss) break;
+
       if (n.lane !== lane) continue;
 
       const abs = Math.abs(dt);
-      if (abs < bestAbs) { bestAbs = abs; bestIdx = k; }
+      if (abs < bestAbs) {
+        bestAbs = abs;
+        bestIdx = k;
+      }
     }
 
-    if (bestIdx === -1) { applyJudge("miss"); return; }
+    if (bestIdx === -1) {
+      applyJudge("miss");
+      return;
+    }
 
     const n = notes[bestIdx];
     const dt = Math.abs(n.t - adjT);
@@ -4568,10 +5291,18 @@ const BeatSyncApp = () => {
     if (dt <= BASE_WINDOW.perfect) applyJudge("perfect");
     else if (dt <= BASE_WINDOW.good) applyJudge("good");
     else applyJudge("miss");
-  }, [applyJudge, latencyMs, resumeRun, startRun, status]);
+  }, [BASE_WINDOW.good, BASE_WINDOW.miss, BASE_WINDOW.perfect, applyJudge, latencyMs, resumeRun, startRun, status]);
 
-  // ====== load audio ======
-  useEffect(() => {
+  // ---- Pointer (tap) ----
+  const onPointerDownLane = React.useCallback((lane, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    hitLane(lane);
+    setFrame((f) => f + 1);
+  }, [hitLane]);
+
+  // ---- Audio load ----
+  React.useEffect(() => {
     setLoaded(false);
     setStatus("idle");
     setJudgeFx(null);
@@ -4583,6 +5314,7 @@ const BeatSyncApp = () => {
     a.currentTime = 0;
 
     const onMeta = () => {
+      durationRef.current = a.duration || 0;
       setLoaded(true);
       setStatus("ready");
     };
@@ -4597,7 +5329,7 @@ const BeatSyncApp = () => {
     };
   }, [currentTrack.url, finishRun]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
     a.src = currentTrack.url;
@@ -4605,18 +5337,19 @@ const BeatSyncApp = () => {
     a.load();
   }, [currentTrack.url]);
 
-  // ====== visible notes (px stable) ======
-  const ui = useMemo(() => {
+  // ---- Visible notes: px座標で確実に表示 ----
+  const ui = React.useMemo(() => {
     const t = playTRef.current || 0;
-    const { w, h, hitY } = sizeRef.current;
-    const laneW = w ? w / LANES : 0;
 
-    // spawn ahead: 画面上端から出てくる時間
-    const spawnAhead = hitY && speed ? (hitY + 120) / speed : 2.2;
-    const past = 0.35;
+    // 判定ライン（レーン領域の下寄り）
+    const hitY = Math.floor(boardH * 0.72);
+    const margin = 160; // 上下に余裕
 
-    const minT = t - past;
-    const maxT = t + spawnAhead;
+    const spawnAhead = (hitY + margin) / speed; // sec
+    const past = (boardH - hitY + margin) / speed; // sec
+
+    const minT = t - past - 0.05;
+    const maxT = t + spawnAhead + 0.05;
 
     const notes = notesRef.current;
     let i = cursorRef.current;
@@ -4627,16 +5360,16 @@ const BeatSyncApp = () => {
       const n = notes[k];
       if (n.t < minT) continue;
       if (n.t > maxT) break;
-      if (!n.judged || (n.judged && !n.hit && n.t > t - 0.12)) list.push(n);
+      if (!n.judged) list.push(n);
       if (list.length > 72) break;
     }
 
     const fxAlive = judgeFx && performance.now() - judgeFx.at < 360;
+    return { t, hitY, list, fxAlive };
+  }, [boardH, frame, judgeFx, speed]);
 
-    return { t, w, h, hitY, laneW, list, fxAlive };
-  }, [frame, judgeFx, speed]);
-
-  const bunnyMood = useMemo(() => {
+  // ---- Bunny mood ----
+  const bunnyMood = React.useMemo(() => {
     if (status === "result") return ASSET.bunny.flop;
     if (combo >= 30) return ASSET.bunny.starR;
     if (combo >= 10) return ASSET.bunny.yayR;
@@ -4645,23 +5378,29 @@ const BeatSyncApp = () => {
     return ASSET.bunny.idle;
   }, [ASSET.bunny, combo, judgeFx, status]);
 
-  // ====== UI (mobile-first: board is always visible; settings = drawer) ======
+  const noteSize = React.useMemo(() => (boardH < 560 ? 46 : 54), [boardH]);
+
+  // ---- UI ----
   return (
-    <div className="relative h-full w-full bg-[#020204] overflow-hidden select-none" style={{ touchAction: "none" }}>
-      {/* premium haze */}
+    <div
+      ref={rootRef}
+      className="relative h-full w-full overflow-hidden select-none bg-[#05060a]"
+      style={{ touchAction: "none" }}
+    >
+      {/* Premium haze */}
       <div className="absolute inset-0 pointer-events-none">
         <div
-          className="absolute -inset-20 opacity-70"
+          className="absolute -inset-24 opacity-80"
           style={{
             background:
-              "radial-gradient(900px 520px at 20% 15%, rgba(168,234,255,0.14), transparent 60%)," +
-              "radial-gradient(820px 540px at 80% 20%, rgba(185,168,255,0.12), transparent 62%)," +
-              "radial-gradient(980px 620px at 55% 92%, rgba(255,200,232,0.10), transparent 64%)",
-            filter: "blur(6px)",
+              "radial-gradient(900px 520px at 18% 12%, rgba(168,234,255,0.18), transparent 60%)," +
+              "radial-gradient(860px 520px at 84% 18%, rgba(185,168,255,0.16), transparent 62%)," +
+              "radial-gradient(980px 620px at 52% 92%, rgba(255,200,232,0.12), transparent 64%)",
+            filter: "blur(8px)",
           }}
         />
         <div
-          className="absolute inset-0 opacity-[0.08]"
+          className="absolute inset-0 opacity-[0.09]"
           style={{
             backgroundImage:
               "repeating-linear-gradient(to bottom, rgba(255,255,255,0.18) 0px, rgba(255,255,255,0.18) 1px, transparent 1px, transparent 7px)",
@@ -4670,132 +5409,152 @@ const BeatSyncApp = () => {
         />
       </div>
 
-      {/* Top mini HUD (simple) */}
-      <div className="absolute top-0 left-0 right-0 z-30 px-4 pt-3">
+      {/* Top HUD (compact, not clutter) */}
+      <div className="absolute top-0 left-0 right-0 z-30 px-3 pt-3">
         <div
-          className="mx-auto max-w-[860px] rounded-2xl border border-white/10 bg-black/30 backdrop-blur-2xl px-4 py-3 flex items-center justify-between"
-          style={{ boxShadow: "0 14px 50px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+          className="mx-auto max-w-[980px] rounded-2xl border border-white/10 bg-black/35 backdrop-blur-2xl px-3 py-3 flex items-center justify-between"
+          style={{
+            boxShadow: "0 16px 60px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06)",
+          }}
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className="h-9 w-9 rounded-2xl border border-white/12 bg-white/5 overflow-hidden shrink-0">
-              <img src={ASSET.bunny.front} className="h-full w-full object-cover opacity-90" alt="os_bunny" />
+            <div className="h-8 w-8 rounded-2xl border border-white/12 bg-white/5 overflow-hidden">
+              <img src={ASSET.bunny.front} alt="os_bunny" className="h-full w-full object-cover opacity-90" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] tracking-[0.34em] uppercase text-white/50">
+              <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">
                 OS_USAGI <span className="text-white/85">SYNC</span>
               </div>
-              <div className="text-[12px] text-white/80 truncate">
-                BEAT SYNC · <span className="text-white/90">{currentTrack.title}</span>
+              <div className="text-[13px] text-white/85 font-semibold truncate">
+                {currentTrack.title}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2">
             <div className="hidden sm:flex items-center gap-2">
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] tracking-[0.28em] uppercase text-white/55">
-                {difficulty}
-              </span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] tracking-[0.28em] uppercase text-white/55">
-                ACC {accuracy.toFixed(1)}%
-              </span>
+              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                <span className="text-[10px] tracking-[0.28em] uppercase text-white/50">Acc</span>
+                <span className="ml-2 text-[12px] text-white/85 tabular-nums">{accuracy.toFixed(1)}%</span>
+              </div>
+              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                <span className="text-[10px] tracking-[0.28em] uppercase text-white/50">Combo</span>
+                <span className="ml-2 text-[12px] text-white/85 tabular-nums">{combo}</span>
+              </div>
             </div>
 
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] tracking-[0.28em] uppercase text-white/65">
-              SCORE <span className="text-white/85 tabular-nums">{score.toLocaleString()}</span>
-            </span>
+            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+              <span className="text-[10px] tracking-[0.28em] uppercase text-white/50">Score</span>
+              <span className="ml-2 text-[12px] text-white/90 tabular-nums">{score.toLocaleString()}</span>
+            </div>
 
             <button
-              className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
-              onClick={() => setShowSettings(true)}
-              aria-label="settings"
-              style={{ boxShadow: "0 12px 35px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+              className="h-9 w-9 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
+              onClick={() => setShowConfig(true)}
+              aria-label="config"
+              style={{ boxShadow: "0 14px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+              title="Config"
             >
-              <Settings size={16} className="mx-auto opacity-80" />
+              <span className="text-white/80 text-[16px] leading-none">⚙︎</span>
             </button>
 
             <button
-              className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
-              onClick={stopAll}
+              className="h-9 w-9 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
+              onClick={hardReset}
               aria-label="close"
-              style={{ boxShadow: "0 12px 35px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+              style={{ boxShadow: "0 14px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+              title="Reset"
             >
-              <X size={16} className="mx-auto opacity-80" />
+              <span className="text-white/80 text-[16px] leading-none">✕</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Game area */}
-      <div className="absolute inset-0 pt-[70px] pb-[calc(env(safe-area-inset-bottom)+12px)]">
-        <div className="mx-auto max-w-[860px] h-full px-4">
+      {/* Board */}
+      <div className="absolute inset-0 pt-[70px] pb-[calc(env(safe-area-inset-bottom)+10px)]">
+        <div className="mx-auto h-full max-w-[980px] px-3">
           <div
             ref={boardRef}
-            className="relative h-full rounded-[28px] border border-white/10 bg-black/25 backdrop-blur-2xl overflow-hidden"
-            style={{ boxShadow: "0 18px 70px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+            className="relative h-full rounded-[28px] border border-white/10 bg-black/28 backdrop-blur-2xl overflow-hidden"
+            style={{
+              boxShadow: "0 22px 80px rgba(0,0,0,0.68), inset 0 1px 0 rgba(255,255,255,0.06)",
+            }}
           >
-            {/* lane glass */}
-            <div className="absolute inset-0 pointer-events-none">
-              <div
-                className="absolute inset-0 opacity-[0.14]"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(to bottom, rgba(255,255,255,0.10), transparent 16%, transparent 86%, rgba(255,255,255,0.08))",
-                  mixBlendMode: "overlay",
-                }}
-              />
+            {/* Inner glow */}
+            <div className="absolute inset-0 pointer-events-none"
+              style={{
+                background:
+                  "radial-gradient(740px 420px at 50% 12%, rgba(168,234,255,0.12), transparent 60%)," +
+                  "radial-gradient(740px 420px at 50% 92%, rgba(185,168,255,0.10), transparent 62%)",
+              }}
+            />
+
+            {/* Lanes */}
+            <div className="absolute inset-0">
               <div className="absolute inset-0 grid grid-cols-4">
-                {[0, 1, 2, 3].map((i) => (
-                  <div key={i} className="relative">
-                    <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-white/10" />
+                {[0,1,2,3].map((lane) => (
+                  <div key={lane} className="relative">
+                    <div className="absolute inset-y-0 right-0 w-px bg-white/10" />
                   </div>
                 ))}
               </div>
+              <div className="absolute inset-0 pointer-events-none opacity-[0.10]"
+                style={{
+                  backgroundImage: "linear-gradient(to bottom, rgba(255,255,255,0.16), transparent 14%, transparent 86%, rgba(255,255,255,0.12))",
+                  mixBlendMode: "overlay",
+                }}
+              />
             </div>
 
-            {/* bunny badge */}
-            <div className="absolute left-4 top-4 z-10 flex items-center gap-3">
-              <div className="h-12 w-12 rounded-[18px] border border-white/10 bg-white/5 overflow-hidden">
+            {/* Bunny (small, premium) */}
+            <div className="absolute left-3 top-3 z-10">
+              <div className="h-14 w-14 rounded-[18px] border border-white/10 bg-white/5 overflow-hidden">
                 <img src={bunnyMood} alt="bunny" className="h-full w-full object-cover opacity-90" />
               </div>
-              <div>
-                <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">COMBO</div>
-                <div className="text-[18px] text-white/90 tabular-nums">{combo}</div>
+              <div className="mt-2 text-[10px] tracking-[0.34em] uppercase text-white/45">
+                {difficulty} · {accuracy.toFixed(1)}%
               </div>
             </div>
 
-            {/* notes (px-based transform) */}
+            {/* Notes (VISIBLE) */}
             <div className="absolute inset-0">
               {ui.list.map((n) => {
-                const size = 54;
-                const x = ui.laneW * (n.lane + 0.5);
-                const dt = n.t - (ui.t + latencyMs / 1000); // future + / past -
-                const y = ui.hitY - dt * speed;
+                const t = ui.t;
+                const adjT = t + latencyMs / 1000;
+                const dt = n.t - adjT; // future + / past -
+                const y = ui.hitY - dt * speed; // px
+                const xPct = ((n.lane + 0.5) / LANES) * 100;
 
-                const alpha = n.judged && !n.hit ? 0.12 : 1;
+                const glow =
+                  n.lane === 0 ? "rgba(185,168,255,0.28)" :
+                  n.lane === 1 ? "rgba(168,234,255,0.26)" :
+                  n.lane === 2 ? "rgba(255,200,232,0.22)" :
+                  "rgba(168,234,255,0.22)";
 
                 return (
                   <div
                     key={n.id}
                     className="absolute"
                     style={{
-                      width: size,
-                      height: size,
-                      opacity: alpha,
-                      transform: `translate3d(${x - size / 2}px, ${y - size / 2}px, 0)`,
-                      willChange: "transform",
+                      left: `calc(${xPct}% - ${noteSize / 2}px)`,
+                      top: `${y - noteSize / 2}px`,
+                      width: noteSize,
+                      height: noteSize,
+                      transform: "translateZ(0)",
                     }}
                   >
                     <div
                       className="h-full w-full rounded-2xl border border-white/12 bg-black/35 backdrop-blur-xl flex items-center justify-center"
                       style={{
                         boxShadow:
-                          "0 18px 45px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06)",
+                          `0 18px 40px rgba(0,0,0,0.55), 0 0 0 1px ${glow} inset, 0 0 22px ${glow}`,
                       }}
                     >
                       <img
                         src={ASSET.arrows[LANE_ICON[n.lane]]}
                         alt="note"
-                        className="h-8 w-8 opacity-90"
+                        className="h-8 w-8 opacity-95"
                         style={{ filter: "drop-shadow(0 0 12px rgba(255,255,255,0.10))" }}
                       />
                     </div>
@@ -4804,9 +5563,9 @@ const BeatSyncApp = () => {
               })}
             </div>
 
-            {/* judge fx */}
+            {/* Judge FX */}
             {ui.fxAlive && (
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+              <div className="absolute inset-x-0 top-[52%] -translate-y-1/2 flex justify-center pointer-events-none">
                 <img
                   src={
                     judgeFx.type === "perfect"
@@ -4815,126 +5574,133 @@ const BeatSyncApp = () => {
                       ? ASSET.judge.good
                       : ASSET.judge.miss
                   }
-                  alt="judge"
+                  alt={judgeFx.type}
                   className="h-14 opacity-90"
                   style={{
                     filter:
-                      "drop-shadow(0 0 18px rgba(168,234,255,0.16)) drop-shadow(0 0 22px rgba(185,168,255,0.12))",
+                      "drop-shadow(0 0 18px rgba(168,234,255,0.18)) drop-shadow(0 0 22px rgba(185,168,255,0.14))",
                     animation: "osbJudge 360ms cubic-bezier(0.22,1,0.36,1) both",
                   }}
                 />
               </div>
             )}
 
-            {/* bottom controls + pads (always visible, not clutter) */}
-            <div className="absolute inset-x-0 bottom-0 z-20 pb-[env(safe-area-inset-bottom)]">
-              {/* transport row */}
-              <div className="px-4 pb-3">
-                <div className="mx-auto max-w-[560px] grid grid-cols-3 gap-2">
-                  <button
-                    className="h-12 rounded-2xl border border-white/12 bg-white/10 text-white/90 active:scale-[0.99]"
-                    onClick={() => {
-                      if (!loaded) return;
-                      if (status === "playing") pauseRun();
-                      else if (status === "paused") resumeRun();
-                      else startRun();
-                    }}
-                    style={{ boxShadow: "0 16px 45px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06)" }}
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      {status === "playing" ? <Pause size={16} /> : <Play size={16} />}
-                      <span className="text-[11px] tracking-[0.22em] uppercase">
-                        {status === "playing" ? "Pause" : "Play"}
-                      </span>
-                    </div>
-                  </button>
+            {/* Transport (minimal) */}
+            <div className="absolute right-3 top-3 z-10 flex gap-2">
+              <button
+                className="h-11 px-4 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
+                disabled={!loaded}
+                onClick={() => {
+                  if (status === "playing") pauseRun();
+                  else if (status === "paused") resumeRun();
+                  else if (status === "ready") startRun();
+                }}
+                style={{ boxShadow: "0 14px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+              >
+                <span className="text-[11px] tracking-[0.28em] uppercase text-white/85">
+                  {status === "playing" ? "PAUSE" : "PLAY"}
+                </span>
+              </button>
+              <button
+                className="h-11 px-4 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
+                disabled={!loaded}
+                onClick={stopPlayback}
+                style={{ boxShadow: "0 14px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+              >
+                <span className="text-[11px] tracking-[0.28em] uppercase text-white/75">STOP</span>
+              </button>
+              <button
+                className="h-11 px-4 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
+                disabled={!loaded}
+                onClick={restartRun}
+                style={{ boxShadow: "0 14px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+              >
+                <span className="text-[11px] tracking-[0.28em] uppercase text-white/75">RESTART</span>
+              </button>
+            </div>
 
-                  <button
-                    className="h-12 rounded-2xl border border-white/10 bg-white/5 text-white/85 active:scale-[0.99]"
-                    onClick={stopAll}
-                    style={{ boxShadow: "0 16px 45px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06)" }}
-                  >
-                    <span className="text-[11px] tracking-[0.22em] uppercase">Stop</span>
-                  </button>
-
-                  <button
-                    className="h-12 rounded-2xl border border-white/10 bg-white/5 text-white/85 active:scale-[0.99]"
-                    onClick={restartRun}
-                    style={{ boxShadow: "0 16px 45px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06)" }}
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <RotateCcw size={16} />
-                      <span className="text-[11px] tracking-[0.22em] uppercase">Restart</span>
-                    </div>
-                  </button>
+            {/* Receptors (big, stable) */}
+            <div className="absolute inset-x-0 bottom-0 pb-[env(safe-area-inset-bottom)]">
+              <div className="mx-auto max-w-[620px] px-3 pb-3">
+                <div className="grid grid-cols-4 gap-3">
+                  {[0,1,2,3].map((lane) => {
+                    const glow =
+                      lane === 0 ? "rgba(185,168,255,0.30)" :
+                      lane === 1 ? "rgba(168,234,255,0.30)" :
+                      lane === 2 ? "rgba(255,200,232,0.26)" :
+                      "rgba(168,234,255,0.26)";
+                    return (
+                      <button
+                        key={lane}
+                        className="h-[74px] rounded-[22px] border border-white/12 bg-white/[0.04] backdrop-blur-2xl active:scale-[0.99]"
+                        onPointerDown={(e) => onPointerDownLane(lane, e)}
+                        aria-label={`lane-${lane}`}
+                        style={{
+                          boxShadow:
+                            `0 20px 55px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 0 1px ${glow} inset`,
+                        }}
+                      >
+                        <div className="h-full flex items-center justify-center">
+                          <img
+                            src={ASSET.arrows[LANE_ICON[lane]]}
+                            alt="lane"
+                            className="h-10 w-10 opacity-95"
+                            style={{ filter: `drop-shadow(0 0 16px ${glow})` }}
+                          />
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
 
-              {/* hit pads */}
-              <div className="px-4 pb-4">
-                <div className="mx-auto max-w-[560px] grid grid-cols-4 gap-3">
-                  {[0, 1, 2, 3].map((lane) => (
-                    <button
-                      key={lane}
-                      className="h-[70px] rounded-[22px] border border-white/12 bg-white/[0.04] backdrop-blur-2xl active:scale-[0.99]"
-                      onPointerDown={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        hitLane(lane);
-                      }}
-                      style={{
-                        boxShadow: "0 18px 45px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06)",
-                      }}
-                      aria-label={`lane-${lane}`}
-                    >
-                      <div className="h-full flex items-center justify-center">
-                        <img
-                          src={ASSET.arrows[LANE_ICON[lane]]}
-                          alt="pad"
-                          className="h-9 w-9 opacity-90"
-                          style={{ filter: "drop-shadow(0 0 12px rgba(255,255,255,0.10))" }}
-                        />
-                      </div>
-                    </button>
-                  ))}
+                {/* Ready / Loading text */}
+                <div className="mt-3 text-center">
+                  {!loaded ? (
+                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">
+                      LOADING AUDIO…
+                    </div>
+                  ) : status === "ready" ? (
+                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">
+                      TAP ANY LANE TO START
+                    </div>
+                  ) : status === "paused" ? (
+                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">
+                      PAUSED · TAP ANY LANE TO RESUME
+                    </div>
+                  ) : (
+                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/40">
+                      {difficulty} · SPEED {speed} · LAT {latencyMs}ms
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* ready / paused hint */}
-            {(status === "ready" || status === "paused") && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="rounded-full border border-white/10 bg-black/35 backdrop-blur-2xl px-5 py-3">
-                  <div className="text-[10px] tracking-[0.34em] uppercase text-white/60 text-center">
-                    {status === "ready" ? "TAP PAD TO START" : "PAUSED · TAP PAD TO RESUME"}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* result */}
+            {/* Result */}
             {status === "result" && (
-              <div className="absolute inset-0 z-40 flex items-center justify-center p-4">
+              <div className="absolute inset-0 flex items-center justify-center p-4">
                 <div className="absolute inset-0 bg-black/55 backdrop-blur-2xl" />
                 <div
                   className="relative w-full max-w-[420px] rounded-[28px] border border-white/12 bg-black/45 backdrop-blur-2xl p-5"
-                  style={{ boxShadow: "0 28px 90px rgba(0,0,0,0.70), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+                  style={{
+                    boxShadow: "0 28px 90px rgba(0,0,0,0.72), inset 0 1px 0 rgba(255,255,255,0.06)",
+                  }}
                 >
                   <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">RESULT</div>
                   <div className="mt-1 text-[22px] font-semibold text-white/90">SYNC COMPLETE</div>
-                  <div className="mt-3 grid grid-cols-3 gap-2">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-                      <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Perfect</div>
-                      <div className="mt-1 text-[18px] text-white/90 tabular-nums">{counts.perfect}</div>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-                      <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Good</div>
-                      <div className="mt-1 text-[18px] text-white/90 tabular-nums">{counts.good}</div>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-                      <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Miss</div>
-                      <div className="mt-1 text-[18px] text-white/90 tabular-nums">{counts.miss}</div>
-                    </div>
+                  <div className="mt-1 text-[12px] text-white/55">もう一回いく？</div>
+
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    {[
+                      ["Perfect", counts.perfect],
+                      ["Good", counts.good],
+                      ["Miss", counts.miss],
+                    ].map(([label, val]) => (
+                      <div key={label} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+                        <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">{label}</div>
+                        <div className="mt-1 text-[18px] text-white/90 tabular-nums">{val}</div>
+                      </div>
+                    ))}
                   </div>
 
                   <div className="mt-3 grid grid-cols-2 gap-2">
@@ -4952,152 +5718,168 @@ const BeatSyncApp = () => {
                     <button
                       className="h-12 rounded-2xl border border-white/12 bg-white/10 text-white/90 active:scale-[0.99]"
                       onClick={restartRun}
-                      style={{ boxShadow: "0 18px 45px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+                      style={{ boxShadow: "0 18px 45px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
                     >
-                      <span className="text-[11px] tracking-[0.22em] uppercase">Restart</span>
+                      <span className="text-[11px] tracking-[0.22em] uppercase">RESTART</span>
                     </button>
                     <button
-                      className="h-12 rounded-2xl border border-white/10 bg-white/5 text-white/85 active:scale-[0.99]"
+                      className="h-12 rounded-2xl border border-white/10 bg-white/5 text-white/80 active:scale-[0.99]"
                       onClick={() => setStatus("ready")}
-                      style={{ boxShadow: "0 18px 45px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+                      style={{ boxShadow: "0 18px 45px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
                     >
-                      <span className="text-[11px] tracking-[0.22em] uppercase">Back</span>
+                      <span className="text-[11px] tracking-[0.22em] uppercase">BACK</span>
                     </button>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* audio */}
+            {/* Config Drawer */}
+            {showConfig && (
+              <div className="absolute inset-0 z-40">
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-2xl" onClick={() => setShowConfig(false)} />
+                <div className="absolute inset-x-0 bottom-0 pb-[env(safe-area-inset-bottom)]">
+                  <div
+                    className="mx-auto max-w-[980px] rounded-t-[28px] border border-white/12 bg-black/55 backdrop-blur-2xl p-4"
+                    style={{ boxShadow: "0 -24px 90px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">CONFIG</div>
+                      <button
+                        className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
+                        onClick={() => setShowConfig(false)}
+                      >
+                        <span className="text-white/80 text-[16px] leading-none">✕</span>
+                      </button>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                        <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">TRACK</div>
+                        <select
+                          className="w-full h-11 rounded-2xl bg-white/5 border border-white/10 text-white/80 px-3 text-[13px] outline-none"
+                          value={trackId}
+                          onChange={(e) => { setTrackId(e.target.value); stopPlayback(); }}
+                        >
+                          {ASSET.tracks.map((t) => (
+                            <option key={t.id} value={t.id} className="bg-black">
+                              {t.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                        <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">DIFFICULTY</div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {["EASY", "NORMAL", "HARD"].map((d) => {
+                            const active = d === difficulty;
+                            return (
+                              <button
+                                key={d}
+                                className={`h-11 rounded-2xl border active:scale-[0.99] ${
+                                  active ? "border-white/18 bg-white/10 text-white/90" : "border-white/10 bg-white/5 text-white/70"
+                                }`}
+                                onClick={() => { setDifficulty(d); stopPlayback(); }}
+                              >
+                                <span className="text-[11px] tracking-[0.22em] uppercase">{d}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                        <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">TUNING</div>
+                        <div className="space-y-3">
+                          <div>
+                            <div className="flex items-center justify-between text-[11px] text-white/60">
+                              <span className="tracking-[0.22em] uppercase">Latency</span>
+                              <span className="tabular-nums text-white/75">{latencyMs} ms</span>
+                            </div>
+                            <input
+                              type="range"
+                              min={-80}
+                              max={120}
+                              value={latencyMs}
+                              onChange={(e) => setLatencyMs(parseInt(e.target.value, 10))}
+                              className="w-full accent-white/70"
+                            />
+                          </div>
+                          <div>
+                            <div className="flex items-center justify-between text-[11px] text-white/60">
+                              <span className="tracking-[0.22em] uppercase">Speed</span>
+                              <span className="tabular-nums text-white/75">{speed} px/s</span>
+                            </div>
+                            <input
+                              type="range"
+                              min={720}
+                              max={1180}
+                              value={speed}
+                              onChange={(e) => setSpeed(parseInt(e.target.value, 10))}
+                              className="w-full accent-white/70"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                        <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">AUDIO</div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            className="h-11 w-11 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
+                            onClick={() => setMuted((m) => !m)}
+                          >
+                            <span className="text-white/80 text-[12px] tracking-[0.22em] uppercase">
+                              {muted ? "MUTE" : "ON"}
+                            </span>
+                          </button>
+                          <input
+                            type="range"
+                            min={0}
+                            max={1}
+                            step={0.01}
+                            value={volume}
+                            onChange={(e) => setVolume(parseFloat(e.target.value))}
+                            className="w-full accent-white/70"
+                          />
+                          <div className="w-14 text-right text-[12px] text-white/75 tabular-nums">
+                            {Math.round(volume * 100)}%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between">
+                      <div className="text-[10px] tracking-[0.34em] uppercase text-white/35">
+                        Tip: “PLAYが効かない”時は一度レーンをタップして開始できます
+                      </div>
+                      <button
+                        className="h-11 px-4 rounded-2xl border border-white/12 bg-white/10 text-white/90 active:scale-[0.99]"
+                        onClick={() => setShowConfig(false)}
+                      >
+                        <span className="text-[11px] tracking-[0.22em] uppercase">DONE</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Hidden audio */}
             <audio ref={audioRef} preload="metadata" />
 
-            {/* keyframes */}
+            {/* Keyframes */}
             <style>{`
               @keyframes osbJudge {
                 0% { transform: translateY(10px) scale(.96); opacity: 0; }
-                40% { transform: translateY(0) scale(1.02); opacity: 1; }
+                40% { transform: translateY(0px) scale(1.02); opacity: 1; }
                 100% { transform: translateY(-8px) scale(1.00); opacity: 0; }
               }
             `}</style>
           </div>
         </div>
       </div>
-
-      {/* Settings drawer (only when needed → clutter 0) */}
-      {showSettings && (
-        <div className="absolute inset-0 z-50">
-          <div className="absolute inset-0 bg-black/55 backdrop-blur-2xl" onClick={() => setShowSettings(false)} />
-          <div
-            className="absolute left-1/2 bottom-0 w-[min(860px,100%)] -translate-x-1/2 rounded-t-[28px] border border-white/12 bg-black/45 backdrop-blur-2xl p-4"
-            style={{ boxShadow: "0 -26px 80px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.06)" }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">SETTINGS</div>
-              <button
-                className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
-                onClick={() => setShowSettings(false)}
-              >
-                <X size={16} className="mx-auto opacity-80" />
-              </button>
-            </div>
-
-            <div className="mt-3 grid gap-3">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">TRACK</div>
-                <select
-                  className="w-full h-12 rounded-2xl bg-white/5 border border-white/10 text-white/80 px-3 text-[13px] outline-none"
-                  value={trackId}
-                  onChange={(e) => setTrackId(e.target.value)}
-                >
-                  {ASSET.tracks.map((t) => (
-                    <option key={t.id} value={t.id} className="bg-black">
-                      {t.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">DIFFICULTY</div>
-                <div className="grid grid-cols-3 gap-2">
-                  {["EASY", "NORMAL", "HARD"].map((d) => (
-                    <button
-                      key={d}
-                      className={`h-12 rounded-2xl border active:scale-[0.99] ${
-                        d === difficulty ? "border-white/20 bg-white/10 text-white/90" : "border-white/10 bg-white/5 text-white/70"
-                      }`}
-                      onClick={() => setDifficulty(d)}
-                    >
-                      <span className="text-[11px] tracking-[0.22em] uppercase">{d}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-3 space-y-3">
-                <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">TUNING</div>
-
-                <div>
-                  <div className="flex items-center justify-between text-[11px] text-white/60">
-                    <span className="tracking-[0.22em] uppercase">LATENCY</span>
-                    <span className="tabular-nums text-white/75">{latencyMs} ms</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={-80}
-                    max={120}
-                    value={latencyMs}
-                    onChange={(e) => setLatencyMs(parseInt(e.target.value, 10))}
-                    className="w-full accent-white/70"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between text-[11px] text-white/60">
-                    <span className="tracking-[0.22em] uppercase">SPEED</span>
-                    <span className="tabular-nums text-white/75">{speed} px/s</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={650}
-                    max={1150}
-                    value={speed}
-                    onChange={(e) => setSpeed(parseInt(e.target.value, 10))}
-                    className="w-full accent-white/70"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between text-[11px] text-white/60">
-                    <span className="tracking-[0.22em] uppercase">VOLUME</span>
-                    <span className="tabular-nums text-white/75">{Math.round(volume * 100)}%</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
-                      onClick={() => setMuted((m) => !m)}
-                      aria-label="mute"
-                    >
-                      <Volume2 size={16} className={`mx-auto ${muted ? "opacity-40" : "opacity-80"}`} />
-                    </button>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.01}
-                      value={volume}
-                      onChange={(e) => setVolume(parseFloat(e.target.value))}
-                      className="w-full accent-white/70"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="pb-[env(safe-area-inset-bottom)]" />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
