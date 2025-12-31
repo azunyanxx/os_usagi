@@ -1834,6 +1834,13 @@ const FinderApp = () => {
 // -- GALLERY APP (JAPANESE EMOTION ARCHIVE) --
 const GalleryApp = () => {
   const [filter, setFilter] = useState("all");
+  const [lightboxIndex, setLightboxIndex] = useState(null); // null = 閉じてる
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const lastTapRef = useRef(null);
+  const lastTapIdRef = useRef(null);
+  const touchStartRef = useRef(null);
+  const isMobile = useIsMobile();
 
   const CATEGORIES = [
     { id: "all", label: "All", icon: Layers },
@@ -1845,120 +1852,422 @@ const GalleryApp = () => {
     { id: "magic", label: "Magic", icon: Wand2 },
   ];
 
-  const getGalleryItems = () => {
-    let items = GALLERY_ITEMS;
-    if (filter === "all") return items;
-    return items.filter(
-      (item) =>
-        item.folder === filter ||
-        (filter === "key" && item.title.endsWith(".key"))
-    );
+  // ---- Filtered Items ----
+  const filteredItems = useMemo(() => {
+    if (filter === "all") return GALLERY_ITEMS;
+    if (filter === "key") {
+      return GALLERY_ITEMS.filter((item) =>
+        item.title?.toLowerCase().endsWith(".key")
+      );
+    }
+    return GALLERY_ITEMS.filter((item) => item.folder === filter);
+  }, [filter]);
+
+  const hasLightbox = lightboxIndex !== null;
+  const activeItem =
+    hasLightbox && filteredItems[lightboxIndex] ? filteredItems[lightboxIndex] : null;
+
+  // ---- Lightbox helpers ----
+  const openLightboxAt = useCallback(
+    (index) => {
+      if (!filteredItems[index]) return;
+      setLightboxIndex(index);
+      setDragOffset({ x: 0, y: 0 });
+      setIsDragging(false);
+    },
+    [filteredItems]
+  );
+
+  const closeLightbox = useCallback(() => {
+    setLightboxIndex(null);
+    setDragOffset({ x: 0, y: 0 });
+    setIsDragging(false);
+  }, []);
+
+  const goNext = useCallback(() => {
+    if (!hasLightbox) return;
+    setLightboxIndex((prev) => {
+      if (prev === null) return prev;
+      const next = (prev + 1) % filteredItems.length;
+      return next;
+    });
+    setDragOffset({ x: 0, y: 0 });
+    setIsDragging(false);
+  }, [hasLightbox, filteredItems.length]);
+
+  const goPrev = useCallback(() => {
+    if (!hasLightbox) return;
+    setLightboxIndex((prev) => {
+      if (prev === null) return prev;
+      const next =
+        (prev - 1 + filteredItems.length) % filteredItems.length;
+      return next;
+    });
+    setDragOffset({ x: 0, y: 0 });
+    setIsDragging(false);
+  }, [hasLightbox, filteredItems.length]);
+
+  // ---- Keyboard shortcuts (Desktop) ----
+  useEffect(() => {
+    if (!hasLightbox) return;
+
+    const handleKey = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeLightbox();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        goNext();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        goPrev();
+      }
+    };
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [hasLightbox, closeLightbox, goNext, goPrev]);
+
+  // ---- Double tap / double click ----
+  const TAP_DELAY = 260; // ms
+
+  const handleCardTap = (index, id) => {
+    const now = Date.now();
+    if (
+      lastTapRef.current &&
+      now - lastTapRef.current < TAP_DELAY &&
+      lastTapIdRef.current === id
+    ) {
+      // double tap
+      openLightboxAt(index);
+    }
+    lastTapRef.current = now;
+    lastTapIdRef.current = id;
   };
 
-  const filteredItems = getGalleryItems();
+  // ---- Touch swipe for lightbox ----
+  const handleTouchStart = (e) => {
+    if (!hasLightbox) return;
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+    setIsDragging(true);
+    setDragOffset({ x: 0, y: 0 });
+  };
+
+  const handleTouchMove = (e) => {
+    if (!hasLightbox || !touchStartRef.current) return;
+    const t = e.touches[0];
+    const dx = t.clientX - touchStartRef.current.x;
+    const dy = t.clientY - touchStartRef.current.y;
+    setDragOffset({ x: dx, y: dy });
+  };
+
+  const handleTouchEnd = () => {
+    if (!hasLightbox || !touchStartRef.current) {
+      setIsDragging(false);
+      setDragOffset({ x: 0, y: 0 });
+      return;
+    }
+    const { x, y } = dragOffset;
+    const absX = Math.abs(x);
+    const absY = Math.abs(y);
+
+    const SWIPE_THRESHOLD = 60;
+
+    if (absY > absX && y > SWIPE_THRESHOLD) {
+      // swipe down → close
+      closeLightbox();
+    } else if (absX > absY && absX > SWIPE_THRESHOLD) {
+      if (x < 0) {
+        goNext();
+      } else {
+        goPrev();
+      }
+    }
+
+    touchStartRef.current = null;
+    setIsDragging(false);
+    setDragOffset({ x: 0, y: 0 });
+  };
+
+  // 背景の暗さをスワイプ量で少し変える
+  const dragIntensity = Math.min(Math.abs(dragOffset.y) / 300, 0.7);
+  const overlayOpacity = hasLightbox
+    ? 0.85 - dragIntensity * 0.4
+    : 0;
+
+  // 画像の位置
+  const imageTransform = hasLightbox
+    ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)`
+    : "translate3d(0,0,0)";
+
+  const imageTransition = isDragging
+    ? "none"
+    : "transform 180ms ease-out, opacity 180ms ease-out";
 
   return (
     <div className="flex h-full bg-[#050505]">
       {/* Left Sidebar */}
-      <div className="w-14 sm:w-48 border-r border-white/5 flex flex-col items-center sm:items-stretch py-6 gap-2 bg-[#080808] z-20">
-        <div className="text-[9px] font-mono text-white/30 mb-4 px-4 tracking-widest hidden sm:block">
-          Archive
-        </div>
-        {CATEGORIES.map((cat) => (
-          <div
-            key={cat.id}
-            onClick={() => setFilter(cat.id)}
-            className={`group flex items-center gap-3 px-3 py-3 rounded-md cursor-pointer transition-all duration-300 ${
-              filter === cat.id
-                ? "bg-white/10 text-white"
-                : "text-white/30 hover:text-white hover:bg-white/5"
-            } `}
-          >
-            <cat.icon
-              size={16}
-              className={filter === cat.id ? "text-[#a8eaff]" : ""}
-            />
-            <span className="hidden sm:block text-xs tracking-wide">
-              {cat.label}
+      <div className="w-14 sm:w-48 border-r border-white/5 bg-black/60 backdrop-blur-md flex flex-col">
+        {/* Sidebar Header */}
+        <div className="hidden sm:flex items-center gap-2 px-4 py-4 border-b border-white/5">
+          <div className="w-2 h-2 rounded-full bg-[#a8eaff] shadow-[0_0_8px_#a8eaff]" />
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase tracking-[0.25em] text-white/40">
+              Emotion Archive
             </span>
-            {filter === cat.id && (
-              <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_8px_#a8eaff] hidden sm:block"></div>
-            )}
+            <span className="text-xs text-white/70">Gallery</span>
           </div>
-        ))}
-        <div className="mt-auto px-4 hidden sm:block">
-          <div className="text-[9px] font-mono text-white/20 border-t border-white/5 pt-4">
-            {filteredItems.length} ITEMS
+        </div>
+
+        {/* Category Chips */}
+        <div className="flex-1 overflow-y-auto py-2 sm:py-4">
+          <div className="flex sm:flex-col gap-2 px-1 sm:px-2">
+            {CATEGORIES.map((cat) => {
+              const Icon = cat.icon;
+              const active = filter === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setFilter(cat.id)}
+                  className={[
+                    "group relative flex items-center gap-2 rounded-full sm:rounded-xl border text-xs sm:text-[11px] px-3 sm:px-3.5 py-1.5 sm:py-2 w-auto sm:w-full transition-all duration-200",
+                    active
+                      ? "border-[#a8eaff]/80 bg-[#0b1720]/90 shadow-[0_0_24px_rgba(168,234,255,0.35)]"
+                      : "border-white/5 bg-white/0 hover:bg-white/5 hover:border-white/20",
+                  ].join(" ")}
+                >
+                  <Icon
+                    size={14}
+                    className={
+                      active
+                        ? "text-[#a8eaff]"
+                        : "text-white/50 group-hover:text-white/80"
+                    }
+                  />
+                  <span className="hidden sm:inline-block tracking-wide">
+                    {cat.label}
+                  </span>
+                  {active && (
+                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_12px_#a8eaff] hidden sm:block" />
+                  )}
+                </button>
+              );
+            })}
           </div>
+        </div>
+
+        {/* Sidebar Footer (Hint) */}
+        <div className="hidden sm:flex flex-col gap-1 px-4 py-3 border-t border-white/5 text-[10px] text-white/40">
+          <span className="uppercase tracking-[0.2em]">Tips</span>
+          <span>Double tap card to enter full view.</span>
+          <span>Swipe left/right to browse, down to close.</span>
         </div>
       </div>
 
-      {/* Main Gallery Area */}
-      <div className="flex-1 p-6 sm:p-10 overflow-y-auto scrollbar-hide pb-24 sm:pb-10 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#a8eaff]/5 via-transparent to-transparent pointer-events-none"></div>
-
-        <div className="flex items-end justify-between mb-8">
+      {/* Main Grid */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="px-4 sm:px-6 pt-4 pb-3 border-b border-white/5 flex items-center justify-between">
           <div>
-            <h2 className="text-3xl sm:text-4xl font-thin tracking-tighter text-white/95 mb-1 animate-fade-in">
-              {CATEGORIES.find((c) => c.id === filter)?.label}
+            <div className="flex items-center gap-2">
+              <span className="w-1 h-1 rounded-full bg-[#a8eaff] shadow-[0_0_12px_#a8eaff]" />
+              <span className="text-[10px] uppercase tracking-[0.3em] text-white/40">
+                Japanese Emotion Archive
+              </span>
+            </div>
+            <h2 className="text-base sm:text-lg font-medium text-white/90 mt-1">
+              Gallery
+              {filter !== "all" && (
+                <span className="ml-2 text-xs text-white/40 uppercase tracking-[0.2em]">
+                  / {filter}
+                </span>
+              )}
             </h2>
-            <p className="text-[10px] font-mono text-[#cbb8ff] tracking-[0.2em] uppercase animate-fade-in">
-              Fragmented Memories
-            </p>
           </div>
-          <div className="flex gap-2">
-            <button className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors">
-              <Search size={14} />
-            </button>
+
+          <div className="hidden sm:flex items-center gap-3 text-[11px] text-white/40">
+            <span>{filteredItems.length} items</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pb-10">
-          {filteredItems.map((item, idx) => (
-            <div
-              key={item.id}
-              className={`group relative cursor-pointer perspective-1000 animate-fade-in ${
-                item.span || "aspect-[4/3]"
-              }`}
-              style={{ animationDelay: `${idx * 50}ms` }}
-            >
-              {/* Card Container - White Glass Feel */}
-              <div className="absolute inset-0 bg-[#111] border border-white/10 rounded-lg overflow-hidden transition-all duration-700 group-hover:border-[#a8eaff]/50 group-hover:shadow-[0_0_40px_rgba(168,234,255,0.1)] group-hover:scale-[1.01]">
-                {/* Image */}
+        {/* Grid */}
+        <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6">
+          {filteredItems.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-xs text-white/40">
+              No items in this category yet.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5 pb-12">
+              {filteredItems.map((item, idx) => (
                 <div
-                  className="absolute inset-0 bg-cover bg-center transition-all duration-[1.5s] ease-out scale-100 group-hover:scale-105 opacity-80 group-hover:opacity-100 grayscale group-hover:grayscale-0"
-                  style={{ backgroundImage: `url(${item.file})` }}
-                ></div>
+                  key={item.id}
+                  className="group relative cursor-pointer"
+                  onClick={() => handleCardTap(idx, item.id)}
+                  onDoubleClick={() => openLightboxAt(idx)}
+                >
+                  {/* Card background */}
+                  <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#05070a]/80 shadow-[0_0_0_rgba(0,0,0,0)] group-hover:shadow-[0_0_32px_rgba(168,234,255,0.35)] transition-all duration-200">
+                    <div className="aspect-[4/3] relative">
+                      <img
+                        src={item.file}
+                        alt={item.title}
+                        className="w-full h-full object-cover object-center transform group-hover:scale-[1.03] transition-transform duration-300"
+                        loading="lazy"
+                      />
 
-                {/* Overlay Gradient */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90"></div>
+                      {/* subtle gradient overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent pointer-events-none" />
 
-                {/* Content */}
-                <div className="absolute bottom-0 left-0 right-0 p-6 flex flex-col items-start gap-1 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-                  <div className="flex items-center gap-2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">
-                    <div className="w-1 h-1 rounded-full bg-[#a8eaff]"></div>
-                    <span className="text-[9px] font-mono text-[#a8eaff] tracking-widest">
-                      {item.meta}
-                    </span>
+                      {/* small badge top-left */}
+                      <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-full bg-black/60 backdrop-blur text-[9px] text-white/60">
+                        <span className="uppercase tracking-[0.2em]">
+                          {item.folder || item.cat}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* meta area */}
+                    <div className="px-2.5 sm:px-3 py-2.5 flex flex-col gap-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-medium text-white/90 truncate">
+                          {item.title}
+                        </span>
+                        <span className="text-[9px] text-white/40 uppercase tracking-[0.18em]">
+                          {item.meta || "IMG"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 text-[9px] text-white/40">
+                        <span className="truncate">
+                          {item.desc || "Visual memory fragment"}
+                        </span>
+                        <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="inline-flex items-center gap-1">
+                            <Eye size={11} className="text-[#a8eaff]" />
+                            <span>View</span>
+                          </span>
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <h3 className="text-sm font-bold tracking-[0.1em] text-white">
-                    {item.title}
-                  </h3>
-                  <p className="text-[10px] text-white/50 font-light tracking-wide max-w-[90%] hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity delay-200">
-                    {item.desc || "No description."}
-                  </p>
-                </div>
 
-                {/* Hover Glow Edge */}
-                <div className="absolute inset-0 border border-white/0 group-hover:border-white/20 rounded-lg transition-all duration-500 pointer-events-none"></div>
+                  {/* hover outline */}
+                  <div className="pointer-events-none absolute inset-0 rounded-2xl border border-transparent group-hover:border-[#a8eaff]/60 group-hover:shadow-[0_0_40px_rgba(168,234,255,0.3)] transition-all duration-200" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Lightbox Overlay */}
+      {hasLightbox && activeItem && (
+        <div
+          className="fixed inset-0 z-[999] flex items-center justify-center"
+          style={{
+            background: "radial-gradient(circle at top, rgba(20,30,50,0.9), #020308 70%)",
+            backgroundColor: `rgba(0,0,0,${overlayOpacity})`,
+          }}
+          onClick={closeLightbox}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          {/* inner click-stop */}
+          <div
+            className="relative max-w-[96vw] max-h-[88vh] w-full sm:w-auto px-4 sm:px-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* top bar */}
+            <div className="flex items-center justify-between mb-3 sm:mb-4 text-[11px] text-white/60">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#a8eaff] shadow-[0_0_12px_#a8eaff]" />
+                <span className="uppercase tracking-[0.25em]">
+                  FULL VIEW
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="hidden sm:inline-block">
+                  {lightboxIndex + 1} / {filteredItems.length}
+                </span>
+                <button
+                  className="p-1.5 rounded-full bg-black/70 border border-white/10 hover:border-white/40 hover:bg-black/80 transition-colors"
+                  onClick={closeLightbox}
+                >
+                  <X size={14} />
+                </button>
               </div>
             </div>
-          ))}
+
+            {/* image frame */}
+            <div className="relative rounded-3xl border border-white/12 bg-black/70 backdrop-blur-xl overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.8)]">
+              <div className="relative w-full h-[60vh] sm:h-[72vh] flex items-center justify-center">
+                <img
+                  src={activeItem.file}
+                  alt={activeItem.title}
+                  className="max-h-full max-w-full object-contain"
+                  style={{
+                    transform: imageTransform,
+                    transition: imageTransition,
+                  }}
+                />
+              </div>
+
+              {/* gradient edges */}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20" />
+
+              {/* caption bar */}
+              <div className="relative px-4 sm:px-6 py-3 sm:py-4 border-t border-white/10 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between text-[11px] text-white/70">
+                <div className="flex flex-col gap-0.5 max-w-[70%]">
+                  <span className="font-medium text-white/90 truncate">
+                    {activeItem.title}
+                  </span>
+                  <span className="text-white/40 truncate">
+                    {activeItem.desc || "Visual memory fragment from OS Bunny."}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 sm:gap-4 justify-between sm:justify-end">
+                  <span className="text-white/40 uppercase tracking-[0.2em] text-[10px] hidden sm:inline-block">
+                    {activeItem.folder || activeItem.cat}
+                  </span>
+                  <span className="text-white/40 text-[10px]">
+                    {lightboxIndex + 1} / {filteredItems.length}
+                  </span>
+                </div>
+              </div>
+
+              {/* arrows (desktop or wide) */}
+              {!isMobile && filteredItems.length > 1 && (
+                <>
+                  <button
+                    className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/70 border border-white/10 hover:border-white/40 hover:bg-black/90 items-center justify-center transition-colors"
+                    onClick={goPrev}
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <button
+                    className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/70 border border-white/10 hover:border-white/40 hover:bg-black/90 items-center justify-center transition-colors"
+                    onClick={goNext}
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* swipe hints (mobile) */}
+            {isMobile && (
+              <div className="mt-3 text-center text-[10px] text-white/40">
+                Swipe left / right to browse, down to close.
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
+
 
 // -- MUSIC APP (REDESIGNED WITH HEADPHONE RABBIT) --
 const MusicApp = ({ bgm }) => {
