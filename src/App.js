@@ -1716,83 +1716,61 @@ const SystemApp = () => {
 // -- FINDER APP (COMPLETE ARCHIVE) --
 // -- FINDER APP (COMPLETE ARCHIVE · MOBILE FIRST) --
 // -- FINDER APP (COMPLETE ARCHIVE · MOBILE FIRST) --
+// -- FINDER APP (COMPLETE ARCHIVE) --
 const FinderApp = () => {
   const [currentFolder, setCurrentFolder] = useState("all");
-  const [selectedId, setSelectedId] = useState(null);
+  const [activeId, setActiveId] = useState(null); // ← どのファイルが選択されてるか
 
   const FOLDERS = [
-    { id: "all", label: "All Memories", icon: HardDrive },
-    { id: "system", label: "System", icon: Cpu },
-    { id: "emotion", label: "Emotion", icon: Heart },
-    { id: "life", label: "Life Log", icon: Coffee },
-    { id: "magic", label: "Magic", icon: Wand2 },
-    { id: "work", label: "Work", icon: FileText },
+    { id: "all",     label: "System Root", icon: HardDrive },
+    { id: "system",  label: "System",      icon: Cpu },
+    { id: "emotion", label: "Emotions",    icon: Heart },
+    { id: "life",    label: "Life Logs",   icon: Coffee },
+    { id: "magic",   label: "Magic",       icon: Wand2 },
+    { id: "work",    label: "Work Tasks",  icon: FileText },
   ];
 
-  // カテゴリごとの光り方
+  // Gallery と同じ系統のパレット
   const getPalette = (folder) => {
     switch (folder) {
       case "system":
         return {
           dot: "#a8eaff",
-          aura1: "rgba(168,234,255,0.30)",
-          aura2: "rgba(185,168,255,0.18)",
+          tagBg: "rgba(168,234,255,0.18)",
+          glow: "rgba(168,234,255,0.55)",
         };
       case "emotion":
         return {
           dot: "#ffc8e8",
-          aura1: "rgba(255,200,232,0.34)",
-          aura2: "rgba(203,184,255,0.22)",
+          tagBg: "rgba(255,200,232,0.24)",
+          glow: "rgba(255,200,232,0.55)",
         };
       case "magic":
         return {
           dot: "#cbb8ff",
-          aura1: "rgba(203,184,255,0.34)",
-          aura2: "rgba(168,234,255,0.20)",
+          tagBg: "rgba(203,184,255,0.24)",
+          glow: "rgba(203,184,255,0.55)",
         };
       case "work":
         return {
           dot: "#b6ffe4",
-          aura1: "rgba(182,255,228,0.30)",
-          aura2: "rgba(185,168,255,0.18)",
+          tagBg: "rgba(182,255,228,0.22)",
+          glow: "rgba(182,255,228,0.55)",
         };
       case "life":
         return {
           dot: "#bde0ff",
-          aura1: "rgba(189,224,255,0.30)",
-          aura2: "rgba(255,200,232,0.20)",
+          tagBg: "rgba(189,224,255,0.22)",
+          glow: "rgba(189,224,255,0.55)",
         };
       default:
         return {
           dot: "#a8eaff",
-          aura1: "rgba(168,234,255,0.26)",
-          aura2: "rgba(255,200,232,0.20)",
+          tagBg: "rgba(168,234,255,0.20)",
+          glow: "rgba(168,234,255,0.45)",
         };
     }
   };
-
-  // ✅ 呼吸アニメ（色は currentColor 依存）→ タグの color をカテゴリ色に
-  useEffect(() => {
-    const id = "finder-pulse-keyframes";
-    if (document.getElementById(id)) return;
-    const style = document.createElement("style");
-    style.id = id;
-    style.textContent = `
-      @keyframes finderPulse {
-        0%, 100% {
-          transform: translateY(0) scale(1);
-          box-shadow: 0 0 0 0 currentColor;
-          opacity: 0.78;
-        }
-        50% {
-          transform: translateY(-1px) scale(1.02);
-          box-shadow: 0 0 18px 0 currentColor;
-          opacity: 1;
-        }
-      }
-    `;
-    document.head.appendChild(style);
-  }, []);
 
   const filteredItems =
     currentFolder === "all"
@@ -1800,287 +1778,156 @@ const FinderApp = () => {
       : FINDER_ITEMS.filter((item) => item.folder === currentFolder);
 
   return (
-    <div className="h-full flex flex-col text-white/85 bg-[#050509]">
+    <div className="h-full flex flex-col text-white/80">
+      {/* Sidebar + Main */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop 左サイドバー（スマホでは消える） */}
-        <div className="hidden sm:flex w-44 border-r border-white/10 bg-black/70 backdrop-blur-2xl flex-col py-4 px-3 gap-4">
-          <div className="flex items-center gap-2 px-1 mb-1">
-            <div className="w-2 h-2 rounded-full bg-[#a8eaff] shadow-[0_0_18px_rgba(168,234,255,0.9)]" />
-            <div className="flex flex-col">
-              <span className="text-[9px] uppercase tracking-[0.28em] text-white/45">
-                RABBIT OS
+        {/* Sidebar（PCだけ） */}
+        <div className="w-40 border-r border-white/5 bg-[#080808] p-3 flex flex-col gap-4 hidden sm:flex">
+          <div>
+            <div className="text-[9px] text-white/30 font-mono mb-2 uppercase tracking-widest px-2">
+              Locations
+            </div>
+            {FOLDERS.map((f) => (
+              <div
+                key={f.id}
+                onClick={() => setCurrentFolder(f.id)}
+                className={`flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer text-xs transition-colors ${
+                  currentFolder === f.id
+                    ? "bg-white/10 text-white"
+                    : "text-white/60 hover:bg-white/5 hover:text-blue-200"
+                }`}
+              >
+                <f.icon
+                  size={12}
+                  className={
+                    currentFolder === f.id
+                      ? "text-blue-400"
+                      : "text-blue-400/70"
+                  }
+                />
+                {f.label}
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <div className="text-[9px] text-white/30 font-mono mb-2 uppercase tracking-widest px-2">
+              Favorites
+            </div>
+            {["Desktop", "Downloads", "Recycle Bin"].map((i) => (
+              <div
+                key={i}
+                className="px-3 py-2 rounded-md cursor-pointer text-xs text-white/40 hover:text-white/80 hover:bg-white/5 flex items-center gap-3"
+              >
+                <Folder size={12} className="text-white/20" /> {i}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 bg-[#050505] p-6 overflow-auto relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-900/5 to-transparent pointer-events-none" />
+
+          {/* Header：左上呼吸ドット + /finder + breadcrumbs */}
+          <div className="sticky top-0 z-30 bg-[#050505]/90 backdrop-blur-md pb-3 mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#a8eaff] os-breath-dot" />
+              <span className="text-[10px] uppercase tracking-[0.34em] text-white/48">
+                /finder
               </span>
-              <span className="text-xs text-white/80 tracking-wide">
-                finder
-              </span>
+            </div>
+            <div className="flex items-center gap-2 text-[10px] font-mono text-white/40 border-t border-white/5 pt-2">
+              <span>root</span>
+              <span>/</span>
+              <span className="text-blue-300">{currentFolder}</span>
             </div>
           </div>
 
-          <div className="text-[9px] text-white/30 font-mono mb-1 uppercase tracking-[0.26em] px-1">
-            LOCATIONS
-          </div>
+          {/* Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 relative z-10 pb-10">
+            {filteredItems.map((item) => {
+              const pal = getPalette(item.folder);
+              const isActive = activeId === item.id;
 
-          <div className="flex flex-col gap-1">
-            {FOLDERS.map((f) => {
-              const Icon = f.icon;
-              const active = currentFolder === f.id;
-              const pal = getPalette(f.id);
               return (
-                <button
-                  key={f.id}
-                  onClick={() => setCurrentFolder(f.id)}
-                  className={[
-                    "flex items-center gap-3 px-3 py-1.5 rounded-xl text-xs transition-all",
-                    active
-                      ? "bg-white/10 text-white border border-white/25 shadow-[0_0_24px_rgba(168,234,255,0.35)]"
-                      : "bg-transparent text-white/60 border border-transparent hover:bg-white/5 hover:text-white",
-                  ].join(" ")}
+                <div
+                  key={item.id}
+                  className="group flex flex-col items-center gap-3 cursor-pointer p-4 rounded-lg transition-colors border border-transparent hover:border-white/5"
+                  onClick={() => setActiveId(item.id)}
                 >
-                  <Icon
-                    size={14}
-                    className={
-                      active
-                        ? "text-[#a8eaff] drop-shadow-[0_0_10px_rgba(168,234,255,0.9)]"
-                        : "text-white/50"
-                    }
-                  />
-                  <span className="truncate">{f.label}</span>
-                  {active && (
-                    <span
-                      className="ml-auto w-1.5 h-1.5 rounded-full"
+                  {/* ファイルの小さいウィンドウ */}
+                  <div
+                    className="w-16 h-20 bg-[#111] rounded-[14px] overflow-hidden relative shadow-lg transition-all duration-300"
+                    style={{
+                      border: isActive
+                        ? "1px solid rgba(255,255,255,0.28)"
+                        : "1px solid rgba(255,255,255,0.14)",
+                      boxShadow: isActive
+                        ? `0 0 0 1px rgba(0,0,0,0.8) inset,
+                           0 24px 60px -32px rgba(0,0,0,0.95),
+                           0 0 42px ${pal.glow}`
+                        : "0 24px 60px -32px rgba(0,0,0,0.9)",
+                      transform: isActive ? "translateY(-1px) scale(1.02)" : "none",
+                    }}
+                  >
+                    {/* File Icon / Preview */}
+                    {item.file.endsWith(".png") || item.file.endsWith(".jpg") ? (
+                      <div
+                        className="w-full h-full bg-cover bg-center opacity-70 group-hover:opacity-100 transition-all grayscale-[40%] group-hover:grayscale-0"
+                        style={{ backgroundImage: `url(${item.file})` }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-blue-900/20">
+                        <FileText
+                          size={24}
+                          className="text-blue-400/50 group-hover:text-blue-400 transition-colors"
+                        />
+                      </div>
+                    )}
+
+                    {/* 右下タグ（フォルダ色で光る） */}
+                    <div
+                      className="absolute bottom-1 right-1 px-1.5 py-[2px] rounded-full text-[8px] font-mono leading-none backdrop-blur-md border border-white/25"
                       style={{
-                        background: pal.dot,
-                        boxShadow: `0 0 10px ${pal.dot}`,
+                        backgroundColor: pal.tagBg,
+                        color: pal.dot,
+                        boxShadow: `0 0 12px ${pal.dot}`,
                       }}
-                    />
-                  )}
-                </button>
+                    >
+                      {item.meta}
+                    </div>
+                  </div>
+
+                  {/* 下の横線（選択時だけ Gallery ぽく光る） */}
+                  <div
+                    className="w-full h-[1.5px] rounded-full bg-gradient-to-r from-transparent via-white/80 to-transparent mt-1 transition-opacity duration-300"
+                    style={{
+                      opacity: isActive ? 0.9 : 0,
+                      boxShadow: isActive ? `0 0 14px ${pal.glow}` : "none",
+                    }}
+                  />
+
+                  {/* ファイル名 */}
+                  <div className="flex flex-col items-center gap-1 w-full">
+                    <span className="text-[10px] font-mono text-white/60 group-hover:text-white truncate w-full text-center tracking-tight">
+                      {item.title}
+                    </span>
+                  </div>
+                </div>
               );
             })}
           </div>
         </div>
+      </div>
 
-        {/* メイン（スマホ優先） */}
-        <div className="flex-1 relative overflow-hidden">
-          {/* 背景の光 */}
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute -top-32 -left-32 w-[380px] h-[380px] rounded-full bg-[#a8eaff]/18 blur-[70px]" />
-            <div className="absolute top-1/2 -right-40 w-[460px] h-[460px] rounded-full bg-[#cbb8ff]/14 blur-[90px]" />
-            <div className="absolute bottom-[-120px] left-1/3 w-[520px] h-[520px] rounded-full bg-[#ffc8e8]/16 blur-[100px]" />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/40 to-black/85" />
-            <div className="absolute inset-0 opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.06),transparent)] [background-size:100%_4px]" />
-          </div>
-
-          <div className="relative h-full flex flex-col px-4 pt-4 pb-6 sm:px-6">
-            {/* モバイルヘッダー */}
-            <div className="sm:hidden mb-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_16px_rgba(168,234,255,0.9)]" />
-                  <span className="text-[10px] font-mono uppercase tracking-[0.32em] text-white/50">
-                    /finder
-                  </span>
-                </div>
-                <div className="text-[10px] font-mono text-white/40">
-                  {filteredItems.length} items
-                </div>
-              </div>
-
-              <div className="text-[11px] text-white/55 mb-2">
-                {FOLDERS.find((f) => f.id === currentFolder)?.label}
-              </div>
-
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
-                {FOLDERS.map((f) => {
-                  const Icon = f.icon;
-                  const active = currentFolder === f.id;
-                  const pal = getPalette(f.id);
-                  return (
-                    <button
-                      key={f.id}
-                      onClick={() => setCurrentFolder(f.id)}
-                      className={[
-                        "shrink-0 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-mono uppercase tracking-[0.22em] transition-all",
-                        active
-                          ? "bg.white/10 bg-white/10 border-white/30 text-white shadow-[0_0_24px_rgba(168,234,255,0.35)]"
-                          : "bg-black/40 border-white/10 text-white/55",
-                      ].join(" ")}
-                    >
-                      <Icon
-                        size={13}
-                        className={
-                          active
-                            ? "text-[#a8eaff]"
-                            : "text-white/55"
-                        }
-                      />
-                      <span className="truncate">{f.label}</span>
-                      {active && (
-                        <span
-                          className="w-1.5 h-1.5 rounded-full"
-                          style={{
-                            background: pal.dot,
-                            boxShadow: `0 0 10px ${pal.dot}`,
-                          }}
-                        />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* デスクトップのパンくず */}
-            <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono text-white/40 mb-3">
-              <span>root</span>
-              <span>/</span>
-              <span className="text-white/70">
-                {currentFolder}
-              </span>
-            </div>
-
-            {/* ファイルグリッド */}
-            <div className="mt-1 flex-1 overflow-y-auto pb-10">
-              {filteredItems.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-xs text-white/45">
-                  no files in this folder
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {filteredItems.map((item) => {
-                    const isSelected = selectedId === item.id;
-                    const pal = getPalette(item.folder);
-                    const isImage =
-                      item.file?.endsWith(".png") ||
-                      item.file?.endsWith(".jpg") ||
-                      item.file?.endsWith(".jpeg") ||
-                      item.file?.endsWith(".webp");
-
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => setSelectedId(item.id)}
-                        className="relative text-left group"
-                        style={{
-                          WebkitTapHighlightColor: "transparent",
-                        }}
-                      >
-                        <div
-                          className={[
-                            "relative rounded-2xl border overflow-hidden backdrop-blur-xl transition-all duration-500",
-                            "bg-black/60",
-                            isSelected ? "border-white/20" : "border-white/10",
-                          ].join(" ")}
-                          style={{
-                            opacity: isSelected ? 1 : 0.72,
-                            filter: isSelected
-                              ? "brightness(1.02)"
-                              : "brightness(0.88)",
-                            boxShadow: isSelected
-                              ? `0 30px 90px -60px rgba(0,0,0,0.95),
-                                  0 0 80px ${pal.aura1}`
-                              : "0 24px 80px -70px rgba(0,0,0,0.9)",
-                            transform: isSelected
-                              ? "translateY(-2px) scale(1.02)"
-                              : "translateY(0) scale(1)",
-                          }}
-                        >
-                          {/* ✅ Gallery と合わせた「選択リング」 */}
-                          {isSelected && (
-                            <div className="absolute inset-0 pointer-events-none">
-                              <div
-                                className="absolute inset-[1px] rounded-[18px]"
-                                style={{
-                                  boxShadow:
-                                    "inset 0 0 0 1px rgba(255,255,255,0.22), inset 0 -40px 80px rgba(0,0,0,0.9)",
-                                }}
-                              />
-                            </div>
-                          )}
-
-                          {/* プレビュー領域 */}
-                          <div className="relative aspect-[7/9] bg-[#05070a]">
-                            {isImage ? (
-                              <div className="absolute inset-0">
-                                <img
-                                  src={item.file}
-                                  alt={item.title}
-                                  className="w-full h-full object-cover object-center transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-active:scale-[1.02] group-hover:scale-[1.03]"
-                                  loading="lazy"
-                                  draggable={false}
-                                />
-                                {/* カテゴリオーラ */}
-                                <div
-                                  className="absolute inset-0 pointer-events-none"
-                                  style={{
-                                    backgroundImage: `
-                                      radial-gradient(520px 360px at 30% 12%, ${pal.aura1}, transparent 60%),
-                                      radial-gradient(520px 360px at 80% 95%, ${pal.aura2}, transparent 62%)
-                                    `,
-                                  }}
-                                />
-                                <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-                              </div>
-                            ) : (
-                              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#10141f] to-[#05070b]">
-                                <FileText
-                                  size={26}
-                                  className="text-white/45"
-                                />
-                              </div>
-                            )}
-
-                            {/* ✅ 右下タグ：カテゴリ色で呼吸グロー */}
-                            <div
-                              className="absolute bottom-2 right-2 rounded-full px-2 py-1 text-[9px] font-mono uppercase tracking-[0.22em] border"
-                              style={{
-                                backgroundColor: isSelected
-                                  ? "rgba(0,0,0,0.82)"
-                                  : "rgba(0,0,0,0.7)",
-                                borderColor: isSelected
-                                  ? pal.dot
-                                  : "rgba(255,255,255,0.25)",
-                                color: isSelected
-                                  ? pal.dot
-                                  : "rgba(255,255,255,0.75)",
-                                animation: isSelected
-                                  ? "finderPulse 3.4s ease-in-out infinite"
-                                  : "none",
-                              }}
-                            >
-                              {item.meta || "FILE"}
-                            </div>
-
-                            {/* 左上フォルダドット */}
-                            <div className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-black/65 border border-white/15">
-                              <span
-                                className="w-1.5 h-1.5 rounded-full"
-                                style={{
-                                  background: pal.dot,
-                                  boxShadow: `0 0 10px ${pal.dot}`,
-                                }}
-                              />
-                              <span className="text-[9px] font-mono uppercase tracking-[0.22em] text.white/70">
-                                {item.folder}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* ファイル名 */}
-                          <div className="px-2.5 py-2.5">
-                            <div className="text-[11px] text-white/90 truncate">
-                              {item.title}
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
+      {/* Footer Status Bar（PCのみ） */}
+      <div className="h-6 bg-[#0a0a0a] border-t border-white/5 absolute bottom-0 left-40 right-0 hidden sm:flex items-center px-4 justify-between">
+        <div className="text-[9px] text-white/30 font-mono">
+          {filteredItems.length} items
+        </div>
+        <div className="text-[9px] text-white/30 font-mono">
+          12.4 GB available
         </div>
       </div>
     </div>
@@ -2093,8 +1940,11 @@ const FinderApp = () => {
 
 
 
-// --ーーーーーーーーーーーーーー
+
+// ------------------------------------------------
 // -- GALLERY APP (JAPANESE EMOTION ARCHIVE) --
+//------------------------------------------------
+
 const GalleryApp = () => {
   const [filter, setFilter] = useState("all");
   const [lightboxIndex, setLightboxIndex] = useState(null); // null = 閉じてる
@@ -3239,8 +3089,10 @@ System: Emotional Device`}
 // -- TERMINAL APP (INFINITE EMOTIONAL LOGS · OS USAGI EDITION) --
 // -- TERMINAL APP (INFINITE EMOTIONAL LOGS · OS USAGI EDITION) --
 // -- TERMINAL APP (INFINITE EMOTIONAL LOGS · OS USAGI CLEAN) --
+// -- TERMINAL APP (INFINITE EMOTIONAL LOGS · OS USAGI FINAL) --
 const TerminalApp = () => {
   const MAX_LINES = 80;
+
   const logRef = useRef(null);
   const endRef = useRef(null);
   const timeoutRef = useRef(null);
@@ -3250,7 +3102,7 @@ const TerminalApp = () => {
     {
       id: Date.now(),
       type: "dim",
-      text: "os_usagi_v9.6 · inner_monologue.log mounted",
+      text: "os_usagi_v9.7 · inner_monologue.log mounted",
     },
     {
       id: Date.now() + 1,
@@ -3260,7 +3112,7 @@ const TerminalApp = () => {
     {
       id: Date.now() + 2,
       type: "info",
-      text: "mode: quiet listening (no alert, no pressure)",
+      text: "mode: quiet listening",
     },
   ]);
   const [inputVal, setInputVal] = useState("");
@@ -3317,7 +3169,7 @@ const TerminalApp = () => {
     });
   }, []);
 
-  // ランダムログ生成
+  // ランダムログ生成（ゆるい間隔で流れ続ける）
   useEffect(() => {
     const schedule = () => {
       const delay = 1400 + Math.random() * 2200;
@@ -3333,11 +3185,11 @@ const TerminalApp = () => {
     };
   }, [LOG_POOL, addLine]);
 
-  // スクロール位置管理（上を読んでるときは勝手に動かさない）
+  // スクロール（手でさかのぼってる時は追従しない）
   const handleScroll = useCallback(() => {
     if (!logRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = logRef.current;
-    const nearBottom = scrollHeight - (scrollTop + clientHeight) < 32;
+    const nearBottom = scrollHeight - (scrollTop + clientHeight) < 40;
     setAutoScroll(nearBottom);
   }, []);
 
@@ -3405,6 +3257,7 @@ const TerminalApp = () => {
         return;
       }
 
+      // デフォ
       addLine([
         baseLine,
         {
@@ -3473,7 +3326,8 @@ const TerminalApp = () => {
         return {
           prefix: "[ >> ]",
           prefixClass: "text-slate-300/70",
-          bodyClass: "text-slate-300/80 animate-pulse [animation-duration:2.4s]",
+          bodyClass:
+            "text-slate-300/80 animate-pulse [animation-duration:2.4s]",
         };
       case "user":
         return {
@@ -3492,17 +3346,18 @@ const TerminalApp = () => {
 
   return (
     <div className="relative flex h-full flex-col bg-[#050608] text-[11px] text-slate-100 overflow-hidden">
-      {/* 背景のごく薄い光 */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.16),transparent_60%)] opacity-80" />
+      {/* 背景のほんのりした光 */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.18),transparent_60%)] opacity-80" />
 
-      {/* 本体 */}
       <div className="relative z-10 flex h-full flex-col">
-        {/* Header：タイトルだけ */}
+        {/* HEADER：左上呼吸ドット＋タイトルだけ */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 bg-[#050608]/95 backdrop-blur-sm">
           <div className="flex items-center gap-2">
             <div className="relative">
-              <div className="w-2 h-2 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(45,212,191,0.9)]" />
-              <div className="absolute inset-0 rounded-full blur-[8px] bg-emerald-300/40 opacity-70" />
+              {/* outer breathing glow */}
+              <div className="absolute inset-0 rounded-full bg-emerald-300/30 blur-[10px] opacity-70 animate-pulse [animation-duration:3.2s]" />
+              {/* core */}
+              <div className="relative w-2 h-2 rounded-full bg-emerald-300 shadow-[0_0_14px_rgba(45,212,191,0.95)]" />
             </div>
             <span className="text-[10px] tracking-[0.22em] uppercase text-slate-300/85">
               TERM · INNER MONOLOGUE
@@ -3511,65 +3366,71 @@ const TerminalApp = () => {
           <span className="text-[9px] text-slate-400/70">PID: 8824</span>
         </div>
 
-        {/* Log Area：シンプルに行だけ */}
-        <div
-          ref={logRef}
-          className="flex-1 overflow-y-auto px-3 py-3 space-y-2 scrollbar-hide"
-          onScroll={handleScroll}
-        >
-          {lines.map((line) => {
-            const style = getLineStyle(line.type);
-            const time = new Date(line.id);
-            const t =
-              !Number.isNaN(time.getTime()) && time.getFullYear() > 2000
-                ? time.toLocaleTimeString([], {
-                    hour12: false,
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    second: "2-digit",
-                  })
-                : "--:--:--";
+        {/* MAIN：ログ＋フローティング入力バー */}
+        <div className="relative flex-1 overflow-hidden">
+          {/* log list */}
+          <div
+            ref={logRef}
+            className="h-full overflow-y-auto px-3 pt-3 pb-24 space-y-2 scrollbar-hide"
+            onScroll={handleScroll}
+          >
+            {lines.map((line) => {
+              const style = getLineStyle(line.type);
+              const time = new Date(line.id);
+              const t =
+                !Number.isNaN(time.getTime()) && time.getFullYear() > 2000
+                  ? time.toLocaleTimeString([], {
+                      hour12: false,
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    })
+                  : "--:--:--";
 
-            return (
-              <div
-                key={line.id}
-                className="flex gap-3 tracking-wide leading-relaxed opacity-0 animate-fade-in [animation-duration:0.45s]"
-              >
-                <span className="w-16 text-right text-white/18 select-none font-light">
-                  {t}
-                </span>
-                <span
-                  className={`w-12 shrink-0 text-right text-[10px] ${style.prefixClass}`}
+              return (
+                <div
+                  key={line.id}
+                  className="flex gap-3 tracking-wide leading-relaxed opacity-0 animate-fade-in [animation-duration:0.45s]"
                 >
-                  {style.prefix}
-                </span>
-                <span className={`flex-1 ${style.bodyClass}`}>
-                  {line.text}
-                </span>
-              </div>
-            );
-          })}
-          <div ref={endRef} className="h-4" />
-        </div>
+                  <span className="w-16 text-right text-white/18 select-none font-light">
+                    {t}
+                  </span>
+                  <span
+                    className={`w-12 shrink-0 text-right text-[10px] ${style.prefixClass}`}
+                  >
+                    {style.prefix}
+                  </span>
+                  <span className={`flex-1 ${style.bodyClass}`}>
+                    {line.text}
+                  </span>
+                </div>
+              );
+            })}
+            <div ref={endRef} className="h-4" />
+          </div>
 
-        {/* Input：常に見える細いガラスバー（ドックに隠れないよう margin-bottom） */}
-        <div className="px-3 pt-2 pb-4 bg-[#040509]/96 backdrop-blur-sm border-t border-white/5 mb-8">
-          <div className="flex items-center gap-2 rounded-full bg-gradient-to-r from-white/6 via-white/0 to-white/6 px-3 py-1.5 shadow-[0_0_0_1px_rgba(148,163,184,0.25),0_18px_40px_rgba(15,23,42,0.9)]">
-            <span className="text-[#a8eaff]/80 text-[11px] font-mono">
-              ❯
-            </span>
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputVal}
-              onChange={(e) => setInputVal(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="flex-1 bg-transparent border-none outline-none text-[11px] text-slate-100/85 font-mono placeholder:text-slate-500/60 tracking-[0.12em]"
-              placeholder='type "status" / "clear" / anything'
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-            />
+          {/* bottom fog → ドックとの境界をふわっと */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#050608] via-[#050608]/85 to-transparent" />
+
+          {/* FLOATING INPUT：ドックの“上”に浮かせる */}
+          <div className="absolute inset-x-3 bottom-16">
+            <div className="flex items-center gap-2 rounded-full bg-gradient-to-r from-white/8 via-white/0 to-white/8 px-3 py-1.5 shadow-[0_0_0_1px_rgba(148,163,184,0.3),0_18px_40px_rgba(15,23,42,0.95)] backdrop-blur-md">
+              <span className="text-[#a8eaff]/85 text-[11px] font-mono">
+                ❯
+              </span>
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputVal}
+                onChange={(e) => setInputVal(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="flex-1 bg-transparent border-none outline-none text-[11px] text-slate-100/90 font-mono placeholder:text-slate-500/65 tracking-[0.12em]"
+                placeholder='status / clear / export / anything'
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+            </div>
           </div>
         </div>
       </div>
