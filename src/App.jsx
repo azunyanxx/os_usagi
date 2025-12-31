@@ -3141,7 +3141,7 @@ const SafariApp = () => {
     }, isMobile ? 2400 : 3200);
 
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line 
   }, [isMobile]);
 
   // ========= SYNC Trigger（押した時の表示はこれで固定） =========
