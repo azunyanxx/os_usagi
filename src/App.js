@@ -1847,21 +1847,6 @@ const FinderApp = () => {
  * { id, folder, title, file, meta, desc? }
  */
 
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import {
-  Layers,
-  Cpu,
-  Key as KeyIcon,
-  AlertCircle,
-  Heart,
-  Coffee,
-  Wand2,
-  Search,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Maximize2,
-} from "lucide-react";
 
 /* -----------------------------
   helpers
