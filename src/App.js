@@ -2112,14 +2112,6 @@ const GalleryApp = () => {
                 /gallery
               </span>
             </div>
-            <h2 className="text-base sm:text-lg font-medium text-white/90">
-              emotion archive
-              {filter !== "all" && (
-                <span className="ml-2 text-xs text-white/45 uppercase tracking-[0.2em]">
-                  · {filter}
-                </span>
-              )}
-            </h2>
           </div>
 
           {/* Search + count */}
@@ -2250,9 +2242,9 @@ const GalleryApp = () => {
             onClick={(e) => e.stopPropagation()}
           >
             {/* glass frame */}
-            <div className="relative w-full sm:w-auto rounded-[30px] border border-white/16 bg-black/70 bg-clip-padding backdrop-blur-3xl overflow-hidden shadow-[0_26px_80px_rgba(0,0,0,0.95)]">
+            <div className="relative w-full sm:w-auto rounded-[30px] border border-white/16 bg-black/72 bg-clip-padding backdrop-blur-3xl overflow-hidden shadow-[0_26px_80px_rgba(0,0,0,0.95)]">
               {/* subtle edge glow */}
-              <div className="pointer-events-none absolute inset-px rounded-[26px] border border-white/8 opacity-50" />
+              <div className="pointer-events-none absolute inset-px rounded-[26px] border border-white/10 opacity-50" />
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(168,234,255,0.16),transparent_55%),radial-gradient(circle_at_bottom,_rgba(255,200,232,0.12),transparent_60%)] mix-blend-screen opacity-70" />
 
               {/* top mini bar */}
@@ -2287,7 +2279,7 @@ const GalleryApp = () => {
               </div>
 
               {/* caption bar */}
-              <div className="relative px-5 py-4 border-t border-white/14 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between text-[11px] text-white/80 bg-black/40">
+              <div className="relative px-5 py-3 border-t border-white/14 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between text-[11px] text-white/80 bg-black/40">
                 <div className="flex flex-col max-w-[70%] gap-0.5">
                   <span className="font-medium text-white/92 truncate">
                     {activeItem.title}
@@ -2312,25 +2304,30 @@ const GalleryApp = () => {
                     <X size={14} />
                   </button>
                 </div>
-
-                {/* arrows（desktopのみ） */}
-                {!isMobile && filteredItems.length > 1 && (
-                  <>
-                    <button
-                      className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/70 border border-white/20 hover:border-white/60 hover:bg-black/90 items-center justify-center transition-colors"
-                      onClick={goPrev}
-                    >
-                      <ChevronLeft size={18} />
-                    </button>
-                    <button
-                      className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/70 border border-white/20 hover:border-white/60 hover:bg-black/90 items-center justify-center transition-colors"
-                      onClick={goNext}
-                    >
-                      <ChevronRight size={18} />
-                    </button>
-                  </>
-                )}
               </div>
+
+              {/* OSのささやきログ */}
+              <div className="border-t border-white/10 px-5 py-2 text-[9px] text-white/40 tracking-[0.22em] uppercase bg-black/55">
+                <span>/log: heartbeat · stable</span>
+              </div>
+
+              {/* arrows（desktopのみ） */}
+              {!isMobile && filteredItems.length > 1 && (
+                <>
+                  <button
+                    className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/70 border border-white/20 hover:border-white/60 hover:bg-black/90 items-center justify-center transition-colors"
+                    onClick={goPrev}
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <button
+                    className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/70 border border-white/20 hover:border-white/60 hover:bg-black/90 items-center justify-center transition-colors"
+                    onClick={goNext}
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
