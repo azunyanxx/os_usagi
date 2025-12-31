@@ -150,8 +150,8 @@ const APPS = [
     hex: "#93c5fd",
   },
   {
-    id: "",
-    name: "",
+    id: "gallery",
+    name: "Gallery",
     icon: ImageIcon,
     label: "Memories",
     color: "text-cyan-200",
@@ -1729,7 +1729,7 @@ const FinderApp = () => {
       : FINDER_ITEMS.filter((item) => item.folder === currentFolder);
 
   return (
-    <div className="h-full flex flex-col text-white/80">
+　   <div className="h-full flex flex-col text-white/80 relative">
       {/* Sidebar */}
       <div className="flex flex-1 overflow-hidden">
         <div className="w-40 border-r border-white/5 bg-[#080808] p-3 flex flex-col gap-4 hidden sm:flex">
@@ -2212,8 +2212,8 @@ function Card({
   App
 ------------------------------ */
 
-export function App({
-  items = [],
+export function GalleryApp({
+  items = _ITEMS,
   defaultFilter = "all",
   accentCyan = "#a8eaff",
   accentLav = "#cbb8ff",
@@ -2292,7 +2292,7 @@ export function App({
     if (selectedId && !filteredItems.some((x) => x.id === selectedId)) {
       setSelectedId(null);
     }
-  }, [filteredItems.length, selectedId, filteredItems]);
+  }, [filteredItems.length, selectedId]);
 
   return (
     <div
