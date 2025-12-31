@@ -1839,13 +1839,13 @@ const GalleryApp = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [query, setQuery] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [activeId, setActiveId] = useState(null);
   const lastTapRef = useRef(null);
   const lastTapIdRef = useRef(null);
   const touchStartRef = useRef(null);
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    // 初回マウント後にふわっと出す
     const id = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(id);
   }, []);
@@ -1904,6 +1904,7 @@ const GalleryApp = () => {
     (index) => {
       if (!filteredItems[index]) return;
       setLightboxIndex(index);
+      setActiveId(filteredItems[index].id);
       setDragOffset({ x: 0, y: 0 });
       setIsDragging(false);
     },
@@ -1912,6 +1913,7 @@ const GalleryApp = () => {
 
   const closeLightbox = useCallback(() => {
     setLightboxIndex(null);
+    setActiveId(null);
     setDragOffset({ x: 0, y: 0 });
     setIsDragging(false);
   }, []);
@@ -1921,11 +1923,12 @@ const GalleryApp = () => {
     setLightboxIndex((prev) => {
       if (prev === null) return prev;
       const next = (prev + 1) % filteredItems.length;
+      setActiveId(filteredItems[next].id);
       return next;
     });
     setDragOffset({ x: 0, y: 0 });
     setIsDragging(false);
-  }, [hasLightbox, filteredItems.length]);
+  }, [hasLightbox, filteredItems]);
 
   const goPrev = useCallback(() => {
     if (!hasLightbox) return;
@@ -1933,11 +1936,12 @@ const GalleryApp = () => {
       if (prev === null) return prev;
       const next =
         (prev - 1 + filteredItems.length) % filteredItems.length;
+      setActiveId(filteredItems[next].id);
       return next;
     });
     setDragOffset({ x: 0, y: 0 });
     setIsDragging(false);
-  }, [hasLightbox, filteredItems.length]);
+  }, [hasLightbox, filteredItems]);
 
   // ---- Keyboard shortcuts (Desktop) ----
   useEffect(() => {
@@ -1970,7 +1974,6 @@ const GalleryApp = () => {
       now - lastTapRef.current < TAP_DELAY &&
       lastTapIdRef.current === id
     ) {
-      // double tap → full view
       openLightboxAt(index);
     }
     lastTapRef.current = now;
@@ -2007,7 +2010,6 @@ const GalleryApp = () => {
     const SWIPE_THRESHOLD = 56;
 
     if (absY > absX && y > SWIPE_THRESHOLD) {
-      // swipe down → close
       closeLightbox();
     } else if (absX > absY && absX > SWIPE_THRESHOLD) {
       if (x < 0) {
@@ -2022,10 +2024,10 @@ const GalleryApp = () => {
     setDragOffset({ x: 0, y: 0 });
   };
 
-  // 背景の暗さ＆画像のスケールをスワイプ量で変える + 光も少し追従
+  // 背景の暗さ＆画像のスケールをスワイプ量で変える
   const dragDistance = Math.sqrt(dragOffset.x ** 2 + dragOffset.y ** 2);
   const dragRatio = Math.min(dragDistance / 280, 1);
-  const overlayOpacity = hasLightbox ? 0.92 - dragRatio * 0.35 : 0;
+  const overlayOpacity = hasLightbox ? 0.9 - dragRatio * 0.3 : 0;
 
   const imageTransform = hasLightbox
     ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) scale(${
@@ -2056,7 +2058,7 @@ const GalleryApp = () => {
 
         {/* Category Chips */}
         <div className="flex-1 overflow-y-auto py-3 sm:py-5">
-          <div className="flex sm:flex-col gap-2 px-1 sm:px-3">
+          <div className="flex flex-col gap-2 px-1 sm:px-3">
             {CATEGORIES.map((cat) => {
               const Icon = cat.icon;
               const active = filter === cat.id;
@@ -2066,7 +2068,7 @@ const GalleryApp = () => {
                   onClick={() => setFilter(cat.id)}
                   className={[
                     "group relative flex items-center justify-center sm:justify-start gap-2 rounded-2xl border text-[11px] px-0 sm:px-3.5 py-1.5 sm:py-2 transition-all duration-250",
-                    "w-10 sm:w-full",
+                    "w-full",
                     active
                       ? "border-[#a8eaff]/70 bg-[#071119]/95 shadow-[0_0_22px_rgba(168,234,255,0.24)]"
                       : "border-white/10 bg-black/10 hover:bg-white/5 hover:border-white/25",
@@ -2135,11 +2137,7 @@ const GalleryApp = () => {
               />
             </div>
             <div className="hidden sm:flex items-center gap-2 whitespace-nowrap">
-              <span className="flex items-center gap-0.5">
-                <span className="w-1 h-1 rounded-full bg-white/70" />
-                <span className="w-1 h-1 rounded-full bg-white/40" />
-                <span className="w-1 h-1 rounded-full bg-white/20" />
-              </span>
+              <span className="w-1 h-1 rounded-full bg-white/70" />
               <span>{filteredItems.length}</span>
             </div>
           </div>
@@ -2153,80 +2151,80 @@ const GalleryApp = () => {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5 pb-12">
-              {filteredItems.map((item, idx) => (
-                <div
-                  key={item.id}
-                  className="group relative cursor-pointer"
-                  onClick={() => handleCardTap(idx, item.id)}
-                  onDoubleClick={() => openLightboxAt(idx)}
-                >
-                  {/* Card background */}
+              {filteredItems.map((item, idx) => {
+                const isActive = activeId === item.id;
+                const dotClass = [
+                  "w-1.5 h-1.5 rounded-full transition-all duration-200",
+                  isActive
+                    ? "bg-[#a8eaff] shadow-[0_0_10px_#a8eaff]"
+                    : "bg-white/25 group-hover:bg-white/70",
+                ].join(" ");
+
+                return (
                   <div
-                    className={[
-                      "relative overflow-hidden rounded-2xl border border-white/10 bg-[#05070a]/90",
-                      "shadow-[0_0_0_rgba(0,0,0,0)]",
-                      "transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                      mounted
-                        ? "opacity-100 translate-y-0"
-                        : "opacity-0 translate-y-3",
-                      "group-hover:shadow-[0_0_32px_rgba(168,234,255,0.28)]",
-                    ].join(" ")}
-                    style={{
-                      transitionDelay: mounted ? `${idx * 35}ms` : "0ms",
-                    }}
+                    key={item.id}
+                    className="group relative cursor-pointer"
+                    onClick={() => handleCardTap(idx, item.id)}
+                    onDoubleClick={() => openLightboxAt(idx)}
                   >
-                    <div className="aspect-[4/3] relative">
-                      <img
-                        src={item.file}
-                        alt={item.title}
-                        className="w-full h-full object-cover object-center transform group-hover:scale-[1.02] transition-transform duration-320 ease-[cubic-bezier(0.22,1,0.36,1)]"
-                        loading="lazy"
-                      />
+                    {/* Card background */}
+                    <div
+                      className={[
+                        "relative overflow-hidden rounded-2xl border border-white/10 bg-[#05070a]/90",
+                        "shadow-[0_0_0_rgba(0,0,0,0)]",
+                        "transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                        mounted
+                          ? "opacity-100 translate-y-0"
+                          : "opacity-0 translate-y-3",
+                        "group-hover:shadow-[0_0_32px_rgba(168,234,255,0.28)]",
+                      ].join(" ")}
+                      style={{
+                        transitionDelay: mounted ? `${idx * 35}ms` : "0ms",
+                      }}
+                    >
+                      <div className="aspect-[4/3] relative">
+                        <img
+                          src={item.file}
+                          alt={item.title}
+                          className="w-full h-full object-cover object-center transform group-hover:scale-[1.02] transition-transform duration-320 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                          loading="lazy"
+                        />
 
-                      {/* subtle gradient overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/48 via-black/10 to-transparent pointer-events-none" />
+                        {/* subtle gradient overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/48 via-black/10 to-transparent pointer-events-none" />
 
-                      {/* breathing glow sheet */}
-                      <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                        <div className="absolute -inset-[1px] bg-gradient-to-tr from-[#a8eaff]/10 via-transparent to-[#ffc8e8]/8 mix-blend-screen" />
+                        {/* small badge top-left */}
+                        <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-md bg-black/65 backdrop-blur text-[9px] text-white/60 tracking-[0.18em] uppercase">
+                          <span>{item.folder || item.cat}</span>
+                        </div>
                       </div>
 
-                      {/* small badge top-left */}
-                      <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-md bg-black/65 backdrop-blur text-[9px] text-white/60 tracking-[0.18em] uppercase">
-                        <span>{item.folder || item.cat}</span>
-                      </div>
-                    </div>
-
-                    {/* meta area */}
-                    <div className="px-2.5 sm:px-3 py-2.5 flex flex-col gap-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-medium text-white/92 truncate">
-                          {item.title}
-                        </span>
-                        <span className="text-[9px] text-white/40 uppercase tracking-[0.18em]">
-                          {item.meta || "img"}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between gap-2 text-[9px] text-white/40">
-                        <span className="truncate">
-                          {item.desc || ""}
-                        </span>
-                        {/* dot indicator instead of eye icon */}
-                        <span className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <span className="inline-flex items-center gap-0.5">
-                            <span className="w-1 h-1 rounded-full bg-white/70" />
-                            <span className="w-1 h-1 rounded-full bg-white/45" />
-                            <span className="w-1 h-1 rounded-full bg-white/25" />
+                      {/* meta area */}
+                      <div className="px-2.5 sm:px-3 py-2.5 flex flex-col gap-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] font-medium text-white/92 truncate">
+                            {item.title}
                           </span>
-                        </span>
+                          <span className="text-[9px] text-white/40 uppercase tracking-[0.18em]">
+                            {item.meta || "img"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2 text-[9px] text-white/40">
+                          <span className="truncate">
+                            {item.desc || ""}
+                          </span>
+                          <span className="flex items-center justify-end w-4">
+                            <span className={dotClass} />
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* hover outline */}
-                  <div className="pointer-events-none absolute inset-0 rounded-2xl border border-transparent group-hover:border-[#a8eaff]/55 group-hover:shadow-[0_0_40px_rgba(168,234,255,0.3)] transition-all duration-250" />
-                </div>
-              ))}
+                    {/* hover outline */}
+                    <div className="pointer-events-none absolute inset-0 rounded-2xl border border-transparent group-hover:border-[#a8eaff]/55 group-hover:shadow-[0_0_40px_rgba(168,234,255,0.3)] transition-all duration-250" />
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -2238,7 +2236,7 @@ const GalleryApp = () => {
           className="fixed inset-0 z-[999] flex items-center justify-center"
           style={{
             background:
-              "radial-gradient(circle at 20% -10%, rgba(130,180,220,0.32), transparent 45%)",
+              "radial-gradient(circle at 20% -10%, rgba(130,180,220,0.25), transparent 45%)",
             backgroundColor: `rgba(1,2,6,${overlayOpacity})`,
           }}
           onClick={closeLightbox}
@@ -2246,44 +2244,33 @@ const GalleryApp = () => {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          {/* 縦グラデの光の筋（スワイプに少し追従） */}
-          <div
-            className="pointer-events-none absolute inset-y-10 left-4 sm:left-12 w-[2px] sm:w-[3px] rounded-full bg-gradient-to-b from-[#a8eaff]/55 via-transparent to-[#ffc8e8]/55 opacity-80"
-            style={{
-              transform: hasLightbox
-                ? `translate3d(${dragOffset.x * 0.06}px, 0, 0)`
-                : "translate3d(0,0,0)",
-              transition: isDragging
-                ? "none"
-                : "transform 260ms cubic-bezier(0.22,1,0.36,1)",
-            }}
-          />
-
           {/* inner click-stop */}
           <div
-            className="relative max-w-[96vw] max-h-[88vh] w-full sm:w-auto px-4 sm:px-0"
+            className="relative max-w-[96vw] max-h-[88vh] w-full sm:w-auto px-4 sm:px-0 flex items-center justify-center"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* top bar（小さく・静かに） */}
-            <div className="flex items-center justify-between mb-3 sm:mb-4 text-[10px] text-white/55 tracking-[0.25em] uppercase">
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_10px_#a8eaff]" />
-                <span>/gallery.lightbox</span>
-              </div>
-              <span className="hidden sm:inline">
-                {lightboxIndex + 1} / {filteredItems.length}
-              </span>
-            </div>
-
             {/* glass frame */}
-            <div className="relative rounded-[28px] border border-white/16 bg-gradient-to-br from-white/6 via-white/3 to-white/7 bg-clip-padding backdrop-blur-3xl overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.95)]">
-              {/* subtle inner glow */}
-              <div className="pointer-events-none absolute inset-px rounded-[26px] border border-white/6 opacity-50" />
+            <div className="relative w-full sm:w-auto rounded-[30px] border border-white/16 bg-black/70 bg-clip-padding backdrop-blur-3xl overflow-hidden shadow-[0_26px_80px_rgba(0,0,0,0.95)]">
+              {/* subtle edge glow */}
+              <div className="pointer-events-none absolute inset-px rounded-[26px] border border-white/8 opacity-50" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(168,234,255,0.16),transparent_55%),radial-gradient(circle_at_bottom,_rgba(255,200,232,0.12),transparent_60%)] mix-blend-screen opacity-70" />
 
+              {/* top mini bar */}
+              <div className="relative flex items-center justify-between px-5 pt-4 pb-2 text-[10px] text-white/60 uppercase tracking-[0.25em]">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_10px_#a8eaff]" />
+                  <span>/gallery.full</span>
+                </div>
+                <span className="hidden sm:inline">
+                  {lightboxIndex + 1} / {filteredItems.length}
+                </span>
+              </div>
+
+              {/* image area */}
               <div
-                className="relative w-full flex items-center justify-center"
+                className="relative w-full flex items-center justify-center px-4 pb-4 sm:px-6 sm:pb-5"
                 style={{
-                  height: isMobile ? "78vh" : "72vh",
+                  height: isMobile ? "75vh" : "70vh",
                 }}
               >
                 <img
@@ -2295,13 +2282,12 @@ const GalleryApp = () => {
                     transition: imageTransition,
                   }}
                 />
+                {/* soft vignette */}
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_38%,rgba(0,0,0,0.9)_100%)]" />
               </div>
 
-              {/* vignette */}
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_40%,rgba(0,0,0,0.85)_100%)]" />
-
               {/* caption bar */}
-              <div className="relative px-5 py-4 border-t border-white/14 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between text-[11px] text-white/80 bg-black/30">
+              <div className="relative px-5 py-4 border-t border-white/14 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between text-[11px] text-white/80 bg-black/40">
                 <div className="flex flex-col max-w-[70%] gap-0.5">
                   <span className="font-medium text-white/92 truncate">
                     {activeItem.title}
@@ -2320,7 +2306,7 @@ const GalleryApp = () => {
                     {lightboxIndex + 1} / {filteredItems.length}
                   </span>
                   <button
-                    className="p-1.5 rounded-full bg-black/70 border border-white/18 hover:border-white/60 hover:bg-black/90 transition-colors"
+                    className="p-1.5 rounded-full bg-black/70 border border-white/20 hover:border-white/60 hover:bg-black/90 transition-colors"
                     onClick={closeLightbox}
                   >
                     <X size={14} />
@@ -2331,13 +2317,13 @@ const GalleryApp = () => {
                 {!isMobile && filteredItems.length > 1 && (
                   <>
                     <button
-                      className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/70 border border-white/18 hover:border-white/60 hover:bg-black/90 items-center justify-center transition-colors"
+                      className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/70 border border-white/20 hover:border-white/60 hover:bg-black/90 items-center justify-center transition-colors"
                       onClick={goPrev}
                     >
                       <ChevronLeft size={18} />
                     </button>
                     <button
-                      className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/70 border border-white/18 hover:border-white/60 hover:bg-black/90 items-center justify-center transition-colors"
+                      className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-black/70 border border-white/20 hover:border-white/60 hover:bg-black/90 items-center justify-center transition-colors"
                       onClick={goNext}
                     >
                       <ChevronRight size={18} />
@@ -2352,6 +2338,7 @@ const GalleryApp = () => {
     </div>
   );
 };
+
 
 
 
