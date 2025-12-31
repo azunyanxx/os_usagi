@@ -1873,17 +1873,16 @@ const FinderApp = () => {
           </div>
 
           <div className="relative h-full flex flex-col px-4 pt-4 pb-6 sm:px-6">
-            {/* モバイルヘッダー */}
 {/* モバイルヘッダー */}
 <div className="sm:hidden mb-4">
   <div className="flex items-center justify-between mb-3">
     <div className="flex items-center gap-2">
-      {/* 呼吸するドット */}
-      <span
-        className="w-1.5 h-1.5 rounded-full shadow-[0_0_12px_rgba(168,234,255,0.9)]"
+<span
+        className="w-1.5 h-1.5 rounded-full"
         style={{
           background: "#a8eaff",
-          color: "#a8eaff",                  // finderPulse 用
+          boxShadow: "0 0 16px rgba(168,234,255,0.9)",
+          color: "#a8eaff",
           animation: "finderPulse 3.4s ease-in-out infinite",
         }}
       />
@@ -2660,7 +2659,7 @@ const GalleryApp = () => {
 
                       {/* text area */}
                       <div className="px-3.5 py-3 flex flex-col gap-1.5">
-                        <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center justify-between gap-2">
                           <span className="text-[11px] font-medium text-white/92 truncate">
                             {item.title}
                           </span>
