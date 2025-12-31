@@ -2395,6 +2395,7 @@ const GalleryApp = () => {
 
 
 
+
 // -- MUSIC APP (REDESIGNED WITH HEADPHONE RABBIT) --
 const MusicApp = ({ bgm }) => {
   return (
