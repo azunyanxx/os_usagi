@@ -3807,14 +3807,6 @@ const GLOBAL_CSS = `
 /* 100dvh support fallback */
 body { margin: 0; background: #000; overflow: hidden; height: 100vh; height: 100dvh; }
 
-/* --- Gallery micro-grain (premium texture) --- */
-.gallery-grain{
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
-  background-size: 140px 140px;
-  mix-blend-mode: overlay;
-}
-
 /* line-clamp helper */
 .line-clamp-2{
   display:-webkit-box;
