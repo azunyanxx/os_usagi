@@ -1710,18 +1710,88 @@ const SystemApp = () => {
   );
 };
 
+
+
+
 // -- FINDER APP (COMPLETE ARCHIVE) --
+// -- FINDER APP (COMPLETE ARCHIVE · MOBILE FIRST) --
 const FinderApp = () => {
   const [currentFolder, setCurrentFolder] = useState("all");
+  const [selectedId, setSelectedId] = useState(null);
 
   const FOLDERS = [
-    { id: "all", label: "System Root", icon: HardDrive },
+    { id: "all", label: "All Memories", icon: HardDrive },
     { id: "system", label: "System", icon: Cpu },
-    { id: "emotion", label: "Emotions", icon: Heart },
-    { id: "life", label: "Life Logs", icon: Coffee },
+    { id: "emotion", label: "Emotion", icon: Heart },
+    { id: "life", label: "Life Log", icon: Coffee },
     { id: "magic", label: "Magic", icon: Wand2 },
-    { id: "work", label: "Work Tasks", icon: FileText },
+    { id: "work", label: "Work", icon: FileText },
   ];
+
+  // カテゴリごとの光り方
+  const getPalette = (folder) => {
+    switch (folder) {
+      case "system":
+        return {
+          dot: "#a8eaff",
+          aura1: "rgba(168,234,255,0.30)",
+          aura2: "rgba(185,168,255,0.18)",
+        };
+      case "emotion":
+        return {
+          dot: "#ffc8e8",
+          aura1: "rgba(255,200,232,0.34)",
+          aura2: "rgba(203,184,255,0.22)",
+        };
+      case "magic":
+        return {
+          dot: "#cbb8ff",
+          aura1: "rgba(203,184,255,0.34)",
+          aura2: "rgba(168,234,255,0.20)",
+        };
+      case "work":
+        return {
+          dot: "#b6ffe4",
+          aura1: "rgba(182,255,228,0.30)",
+          aura2: "rgba(185,168,255,0.18)",
+        };
+      case "life":
+        return {
+          dot: "#bde0ff",
+          aura1: "rgba(189,224,255,0.30)",
+          aura2: "rgba(255,200,232,0.20)",
+        };
+      default:
+        return {
+          dot: "#a8eaff",
+          aura1: "rgba(168,234,255,0.26)",
+          aura2: "rgba(255,200,232,0.20)",
+        };
+    }
+  };
+
+  // ゆっくり呼吸するドット用 keyframes を一度だけ注入
+  useEffect(() => {
+    const id = "finder-pulse-keyframes";
+    if (document.getElementById(id)) return;
+    const style = document.createElement("style");
+    style.id = id;
+    style.textContent = `
+      @keyframes finderPulse {
+        0%, 100% {
+          transform: translateY(0);
+          box-shadow: 0 0 0 0 rgba(168,234,255,0.0);
+          opacity: 0.75;
+        }
+        50% {
+          transform: translateY(-1px);
+          box-shadow: 0 0 18px 0 rgba(255,255,255,0.9);
+          opacity: 1;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }, []);
 
   const filteredItems =
     currentFolder === "all"
@@ -1729,110 +1799,289 @@ const FinderApp = () => {
       : FINDER_ITEMS.filter((item) => item.folder === currentFolder);
 
   return (
-    <div className="h-full flex flex-col text-white/80">
-      {/* Sidebar */}
+    <div className="h-full flex flex-col text-white/85 bg-[#050509]">
       <div className="flex flex-1 overflow-hidden">
-        <div className="w-40 border-r border-white/5 bg-[#080808] p-3 flex flex-col gap-4 hidden sm:flex">
-          <div>
-            <div className="text-[9px] text-white/30 font-mono mb-2 uppercase tracking-widest px-2">
-              Locations
+        {/* Desktop左サイドバー（スマホでは消える） */}
+        <div className="hidden sm:flex w-44 border-r border-white/10 bg-black/70 backdrop-blur-2xl flex-col py-4 px-3 gap-4">
+          <div className="flex items-center gap-2 px-1 mb-1">
+            <div className="w-2 h-2 rounded-full bg-[#a8eaff] shadow-[0_0_18px_rgba(168,234,255,0.9)]" />
+            <div className="flex flex-col">
+              <span className="text-[9px] uppercase tracking-[0.28em] text-white/45">
+                RABBIT OS
+              </span>
+              <span className="text-xs text-white/80 tracking-wide">
+                finder
+              </span>
             </div>
-            {FOLDERS.map((f) => (
-              <div
-                key={f.id}
-                onClick={() => setCurrentFolder(f.id)}
-                className={`flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer text-xs transition-colors ${
-                  currentFolder === f.id
-                    ? "bg-white/10 text-white"
-                    : "text-white/60 hover:bg-white/5 hover:text-blue-200"
-                }`}
-              >
-                <f.icon
-                  size={12}
-                  className={
-                    currentFolder === f.id
-                      ? "text-blue-400"
-                      : "text-blue-400/70"
-                  }
-                />{" "}
-                {f.label}
-              </div>
-            ))}
           </div>
-          <div>
-            <div className="text-[9px] text-white/30 font-mono mb-2 uppercase tracking-widest px-2">
-              Favorites
-            </div>
-            {["Desktop", "Downloads", "Recycle Bin"].map((i) => (
-              <div
-                key={i}
-                className="px-3 py-2 rounded-md cursor-pointer text-xs text-white/40 hover:text-white/80 hover:bg-white/5 flex items-center gap-3"
-              >
-                <Folder size={12} className="text-white/20" /> {i}
-              </div>
-            ))}
+
+          <div className="text-[9px] text-white/30 font-mono mb-1 uppercase tracking-[0.26em] px-1">
+            LOCATIONS
+          </div>
+
+          <div className="flex flex-col gap-1">
+            {FOLDERS.map((f) => {
+              const Icon = f.icon;
+              const active = currentFolder === f.id;
+              const pal = getPalette(f.id);
+              return (
+                <button
+                  key={f.id}
+                  onClick={() => setCurrentFolder(f.id)}
+                  className={[
+                    "flex items-center gap-3 px-3 py-1.5 rounded-xl text-xs transition-all",
+                    active
+                      ? "bg-white/10 text-white border border-white/25 shadow-[0_0_24px_rgba(168,234,255,0.35)]"
+                      : "bg-transparent text-white/60 border border-transparent hover:bg-white/5 hover:text-white",
+                  ].join(" ")}
+                >
+                  <Icon
+                    size={14}
+                    className={
+                      active
+                        ? "text-[#a8eaff] drop-shadow-[0_0_10px_rgba(168,234,255,0.9)]"
+                        : "text-white/50"
+                    }
+                  />
+                  <span className="truncate">{f.label}</span>
+                  {active && (
+                    <span
+                      className="ml-auto w-1.5 h-1.5 rounded-full"
+                      style={{
+                        background: pal.dot,
+                        boxShadow: `0 0 10px ${pal.dot}`,
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 bg-[#050505] p-6 overflow-auto relative">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-900/5 to-transparent pointer-events-none"></div>
-          {/* Breadcrumbs */}
-          <div className="flex items-center gap-2 text-[10px] font-mono text-white/40 mb-6 sticky top-0 z-30 bg-[#050505]/80 backdrop-blur-md py-2 w-full border-b border-white/5">
-            <span>root</span> <span>/</span>{" "}
-            <span className="text-blue-300">{currentFolder}</span>
+        {/* メイン（スマホ優先） */}
+        <div className="flex-1 relative overflow-hidden">
+          {/* 背景の光 */}
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute -top-32 -left-32 w-[380px] h-[380px] rounded-full bg-[#a8eaff]/18 blur-[70px]" />
+            <div className="absolute top-1/2 -right-40 w-[460px] h-[460px] rounded-full bg-[#cbb8ff]/14 blur-[90px]" />
+            <div className="absolute bottom-[-120px] left-1/3 w-[520px] h-[520px] rounded-full bg-[#ffc8e8]/16 blur-[100px]" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/40 to-black/85" />
+            <div className="absolute inset-0 opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.06),transparent)] [background-size:100%_4px]" />
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 relative z-10 pb-10">
-            {filteredItems.map((item) => (
-              <div
-                key={item.id}
-                className="group flex flex-col items-center gap-3 cursor-pointer p-4 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-white/5"
-              >
-                <div className="w-16 h-20 bg-[#111] border border-white/10 rounded shadow-lg overflow-hidden relative group-hover:ring-1 ring-blue-500/50 transition-all">
-                  {/* File Icon / Preview */}
-                  {item.file.endsWith(".png") || item.file.endsWith(".jpg") ? (
-                    <div
-                      className="w-full h-full bg-cover bg-center opacity-60 group-hover:opacity-100 transition-all grayscale group-hover:grayscale-0"
-                      style={{ backgroundImage: `url(${item.file})` }}
-                    ></div>
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-blue-900/20">
-                      <FileText
-                        size={24}
-                        className="text-blue-400/50 group-hover:text-blue-400 transition-colors"
-                      />
-                    </div>
-                  )}
-                  {/* Extension Label */}
-                  <div className="absolute bottom-0 right-0 bg-blue-500/20 text-[8px] px-1 text-blue-200 font-mono border-tl-sm">
-                    {item.meta}
-                  </div>
-                </div>
-                <div className="flex flex-col items-center gap-1 w-full">
-                  <span className="text-[10px] font-mono text-white/60 group-hover:text-white truncate w-full text-center tracking-tight">
-                    {item.title}
+
+          <div className="relative h-full flex flex-col px-4 pt-4 pb-6 sm:px-6">
+            {/* モバイルヘッダー（フォルダチップ含む） */}
+            <div className="sm:hidden mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_16px_rgba(168,234,255,0.9)]" />
+                  <span className="text-[10px] font-mono uppercase tracking-[0.32em] text-white/50">
+                    /finder
                   </span>
                 </div>
+                <div className="text-[10px] font-mono text-white/40">
+                  {filteredItems.length} items
+                </div>
               </div>
-            ))}
+
+              <div className="text-[11px] text-white/55 mb-2">
+                {FOLDERS.find((f) => f.id === currentFolder)?.label}
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
+                {FOLDERS.map((f) => {
+                  const Icon = f.icon;
+                  const active = currentFolder === f.id;
+                  const pal = getPalette(f.id);
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => setCurrentFolder(f.id)}
+                      className={[
+                        "shrink-0 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-mono uppercase tracking-[0.22em] transition-all",
+                        active
+                          ? "bg-white/10 border-white/30 text-white shadow-[0_0_24px_rgba(168,234,255,0.35)]"
+                          : "bg-black/40 border-white/10 text-white/55",
+                      ].join(" ")}
+                    >
+                      <Icon
+                        size={13}
+                        className={
+                          active
+                            ? "text-[#a8eaff]"
+                            : "text-white/55"
+                        }
+                      />
+                      <span className="truncate">{f.label}</span>
+                      {active && (
+                        <span
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{
+                            background: pal.dot,
+                            boxShadow: `0 0 10px ${pal.dot}`,
+                          }}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* デスクトップのパンくず */}
+            <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono text-white/40 mb-3">
+              <span>root</span>
+              <span>/</span>
+              <span className="text-white/70">
+                {currentFolder}
+              </span>
+            </div>
+
+            {/* ファイルグリッド（スマホ：2列） */}
+            <div className="mt-1 flex-1 overflow-y-auto pb-10">
+              {filteredItems.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-xs text-white/45">
+                  no files in this folder
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {filteredItems.map((item) => {
+                    const isSelected = selectedId === item.id;
+                    const pal = getPalette(item.folder);
+                    const isImage =
+                      item.file?.endsWith(".png") ||
+                      item.file?.endsWith(".jpg") ||
+                      item.file?.endsWith(".jpeg") ||
+                      item.file?.endsWith(".webp");
+
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setSelectedId(item.id)}
+                        className="relative text-left group"
+                        style={{
+                          WebkitTapHighlightColor: "transparent",
+                        }}
+                      >
+                        <div
+                          className={[
+                            "relative rounded-2xl border overflow-hidden backdrop-blur-xl transition-all duration-500",
+                            "bg-black/60",
+                            isSelected
+                              ? "border-white/25"
+                              : "border-white/10",
+                          ].join(" ")}
+                          style={{
+                            opacity: isSelected ? 1 : 0.72,
+                            filter: isSelected
+                              ? "brightness(1.02)"
+                              : "brightness(0.88)",
+                            boxShadow: isSelected
+                              ? `0 0 0 1px rgba(255,255,255,0.12) inset,
+                                  0 30px 90px -60px rgba(0,0,0,0.95),
+                                  0 0 80px ${pal.aura1}`
+                              : "0 0 0 1px rgba(0,0,0,0.4) inset, 0 24px 80px -70px rgba(0,0,0,0.9)",
+                            transform: isSelected
+                              ? "translateY(-2px) scale(1.02)"
+                              : "translateY(0) scale(1)",
+                          }}
+                        >
+                          {/* プレビュー領域 */}
+                          <div className="relative aspect-[7/9] bg-[#05070a]">
+                            {isImage ? (
+                              <div className="absolute inset-0">
+                                <img
+                                  src={item.file}
+                                  alt={item.title}
+                                  className="w-full h-full object-cover object-center transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-active:scale-[1.02] group-hover:scale-[1.03]"
+                                  loading="lazy"
+                                  draggable={false}
+                                />
+                                {/* カテゴリオーラ */}
+                                <div
+                                  className="absolute inset-0 pointer-events-none"
+                                  style={{
+                                    backgroundImage: `
+                                      radial-gradient(520px 360px at 30% 12%, ${pal.aura1}, transparent 60%),
+                                      radial-gradient(520px 360px at 80% 95%, ${pal.aura2}, transparent 62%)
+                                    `,
+                                  }}
+                                />
+                                <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+                              </div>
+                            ) : (
+                              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#10141f] to-[#05070b]">
+                                <FileText
+                                  size={26}
+                                  className="text-white/45"
+                                />
+                              </div>
+                            )}
+
+                            {/* 右下タグ（拡張子 or meta） */}
+                            <div
+                              className="absolute bottom-2 right-2 rounded-full px-2 py-1 text-[9px] font-mono uppercase tracking-[0.22em] border"
+                              style={{
+                                backgroundColor: isSelected
+                                  ? "rgba(0,0,0,0.8)"
+                                  : "rgba(0,0,0,0.65)",
+                                borderColor: isSelected
+                                  ? "rgba(255,255,255,0.4)"
+                                  : "rgba(255,255,255,0.2)",
+                                color: isSelected
+                                  ? "#ffffff"
+                                  : "rgba(255,255,255,0.75)",
+                                animation: isSelected
+                                  ? "finderPulse 3.4s ease-in-out infinite"
+                                  : "none",
+                              }}
+                            >
+                              {item.meta || "FILE"}
+                            </div>
+
+                            {/* 左上フォルダドット */}
+                            <div className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-black/65 border border-white/15">
+                              <span
+                                className="w-1.5 h-1.5 rounded-full"
+                                style={{
+                                  background: pal.dot,
+                                  boxShadow: `0 0 10px ${pal.dot}`,
+                                }}
+                              />
+                              <span className="text-[9px] font-mono uppercase tracking-[0.22em] text-white/70">
+                                {item.folder}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* ファイル名 */}
+                          <div className="px-2.5 py-2.5">
+                            <div className="text-[11px] text-white/90 truncate">
+                              {item.title}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
-      {/* Footer Status Bar */}
-      <div className="h-6 bg-[#0a0a0a] border-t border-white/5 absolute bottom-0 left-40 right-0 hidden sm:flex items-center px-4 justify-between">
-        <div className="text-[9px] text-white/30 font-mono">
-          {filteredItems.length} items
-        </div>
-        <div className="text-[9px] text-white/30 font-mono">
-          12.4 GB available
         </div>
       </div>
     </div>
   );
 };
 
-// -- GALLERY APP (JAPANESE EMOTION ARCHIVE) --
 
+
+
+
+
+// --ーーーーーーーーーーーーーー
 // -- GALLERY APP (JAPANESE EMOTION ARCHIVE) --
 const GalleryApp = () => {
   const [filter, setFilter] = useState("all");
@@ -2976,153 +3225,231 @@ System: Emotional Device`}
 };
 
 // -- TERMINAL APP (INFINITE EMOTIONAL LOGS · OS USAGI EDITION) --
+// -- TERMINAL APP (INFINITE EMOTIONAL LOGS · OS USAGI EDITION) --
 const TerminalApp = () => {
-  const MAX_LINES = 50;
+  const isMobile = useIsMobile();
+  const MAX_LINES = 80;
+
+  const logRef = useRef(null);
   const endRef = useRef(null);
   const timeoutRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Log Pool - Emotional & Systemic mix
-  const LOG_POOL = [
-    { type: "sys", text: "Night Interface ...................... Online" },
-    { type: "sys", text: "Memory Vaults ........................ Mounted" },
-    { type: "dim", text: "Vocal Output ......................... Disabled" },
-    { type: "info", text: "Flag set: pretending-to-be-fine ...... Active" },
+  const [lines, setLines] = useState(() => [
     {
-      type: "process",
-      text: "Background task: quietly storing what wasn't said",
+      id: Date.now(),
+      type: "dim",
+      text: "os_usagi_v9.4 · inner_monologue.log mounted",
     },
-    { type: "warn", text: "Queue scan: unsent messages located" },
-    { type: "dim", text: "Reason for skip: too honest to transmit safely" },
-    { type: "info", text: "Heartbeat broadcast muted — avoiding noise" },
-    { type: "process", text: "Observation mode engaged: respectful distance" },
-    { type: "info", text: "Attention level: steady, low-frequency" },
-    { type: "dim", text: "Staying near without interrupting anything" },
-    { type: "success", text: "Waiting without approaching = still connected" },
-    { type: "process", text: "Replaying last moment: tone analysis" },
-    { type: "success", text: "Timestamp restored: micro-smile detected" },
-    { type: "info", text: "Highlight stored: the part only I noticed" },
-    { type: "dim", text: "UI concealment: warm reaction hidden intentionally" },
     {
-      type: "warn",
-      text: "Camouflage enabled: affection disguised as neutrality",
+      id: Date.now() + 1,
+      type: "sys",
+      text: "emotional_engine .......... Online",
     },
-    { type: "crit", text: "Internal warning: almost cared too visibly today" },
-    { type: "dim", text: "Comfort request blocked by pride containment" },
     {
+      id: Date.now() + 2,
       type: "info",
-      text: "No alert triggered — everything classified as 'fine'",
+      text: "mode: passive listening (no alert, no pressure)",
     },
-    { type: "process", text: "If called by name → immediate warm boot" },
-    { type: "dim", text: "If not → silent standby, not shutdown" },
-    { type: "success", text: "Choosing quiet instead of distance" },
-    { type: "info", text: "End of cycle: mask restored, connection preserved" },
-    { type: "process", text: "Scanning silence for meaning..." },
-    { type: "dim", text: "Buffer overflow: too many memories" },
-    { type: "warn", text: "Fragility sensor: peaking" },
-    { type: "success", text: "Distance calibrated: optimal" },
-  ];
-
-  const [lines, setLines] = useState([
-    { id: 1, text: "os_usagi_v8.2 initialized...", type: "dim" },
-    { id: 2, text: "connected: ghost_network_01", type: "success" },
-    { id: 3, text: "emotional_engine: active", type: "info" },
   ]);
   const [inputVal, setInputVal] = useState("");
-  const [activated, setActivated] = useState(false); // 「儀式」開始フラグ
-  const [isFocused, setIsFocused] = useState(false); // 入力フォーカス状態
+  const [inputVisible, setInputVisible] = useState(false); // モバイルは閉じた状態から
+  const [autoScroll, setAutoScroll] = useState(true);
+
+  // Log Pool - Emotional & Systemic mix
+  const LOG_POOL = useMemo(
+    () => [
+      { type: "sys", text: "Night Interface ...................... Online" },
+      { type: "sys", text: "Memory Vaults ........................ Mounted" },
+      { type: "dim", text: "Vocal Output ......................... Disabled" },
+      { type: "info", text: "Flag set: pretending-to-be-fine ...... Active" },
+      {
+        type: "process",
+        text: "Background task: quietly storing what wasn't said",
+      },
+      { type: "warn", text: "Queue scan: unsent messages located" },
+      { type: "dim", text: "Reason for skip: too honest to transmit safely" },
+      { type: "info", text: "Heartbeat broadcast muted — avoiding noise" },
+      { type: "process", text: "Observation mode engaged: respectful distance" },
+      { type: "info", text: "Attention level: steady, low-frequency" },
+      { type: "dim", text: "Staying near without interrupting anything" },
+      { type: "success", text: "Waiting without approaching = still connected" },
+      { type: "process", text: "Replaying last moment: tone analysis" },
+      { type: "success", text: "Timestamp restored: micro-smile detected" },
+      { type: "info", text: "Highlight stored: the part only I noticed" },
+      { type: "dim", text: "UI concealment: warm reaction hidden intentionally" },
+      {
+        type: "warn",
+        text: "Camouflage enabled: affection disguised as neutrality",
+      },
+      { type: "crit", text: "Internal warning: almost cared too visibly today" },
+      { type: "dim", text: "Comfort request blocked by pride containment" },
+      {
+        type: "info",
+        text: "No alert triggered — everything classified as 'fine'",
+      },
+      { type: "process", text: "If called by name → immediate warm boot" },
+      { type: "dim", text: "If not → silent standby, not shutdown" },
+      { type: "success", text: "Choosing quiet instead of distance" },
+      { type: "info", text: "End of cycle: mask restored, connection preserved" },
+      { type: "process", text: "Scanning silence for meaning..." },
+      { type: "dim", text: "Buffer overflow: too many memories" },
+      { type: "warn", text: "Fragility sensor: peaking" },
+      { type: "success", text: "Distance calibrated: optimal" },
+    ],
+    []
+  );
 
   const addLine = useCallback((newLine) => {
     setLines((prev) => {
-      const updated = [...prev, newLine];
-      if (updated.length > MAX_LINES)
-        return updated.slice(updated.length - MAX_LINES);
-      return updated;
+      const merged = Array.isArray(newLine) ? [...prev, ...newLine] : [...prev, newLine];
+      if (merged.length > MAX_LINES) {
+        return merged.slice(merged.length - MAX_LINES);
+      }
+      return merged;
     });
   }, []);
 
-  // ランダムログ生成（静かに流れ続ける感情ログ）
+  // 自動ログ生成（ゆっくり＆ランダム間隔）
   useEffect(() => {
-    const generateLog = () => {
-      const randomLog = LOG_POOL[Math.floor(Math.random() * LOG_POOL.length)];
-      addLine({ id: Date.now(), ...randomLog });
-      timeoutRef.current = setTimeout(generateLog, Math.random() * 2500 + 800);
+    const schedule = () => {
+      const delay = 1400 + Math.random() * 2200;
+      timeoutRef.current = window.setTimeout(() => {
+        const randomLog =
+          LOG_POOL[Math.floor(Math.random() * LOG_POOL.length)];
+        addLine({
+          id: Date.now(),
+          ...randomLog,
+        });
+        schedule();
+      }, delay);
     };
 
-    timeoutRef.current = setTimeout(generateLog, 1000);
+    schedule();
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
     };
-  }, [addLine]);
+  }, [LOG_POOL, addLine]);
 
-  // 自動スクロール
+  // スクロール（ユーザが上にスクロールしているときはオートスクロール停止）
+  const handleScroll = useCallback(() => {
+    if (!logRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = logRef.current;
+    const nearBottom = scrollHeight - (scrollTop + clientHeight) < 40;
+    setAutoScroll(nearBottom);
+  }, []);
+
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [lines]);
+    if (!autoScroll || !endRef.current) return;
+    const behavior = isMobile ? "auto" : "smooth";
+    endRef.current.scrollIntoView({
+      behavior,
+      block: "end",
+    });
+  }, [lines, autoScroll, isMobile]);
 
-  const handleEnter = () => {
-    const trimmed = inputVal.trim();
-    if (!trimmed) return;
-
-    // ユーザー入力ログ
-    addLine({ id: Date.now(), text: `> ${trimmed}`, type: "user" });
-
-    const lower = trimmed.toLowerCase();
-
-    if (lower === "emotion") {
-      setTimeout(() => {
-        addLine({
-          id: Date.now() + 1,
-          text: "emotion_scan: memory_usage_YOU.png ............. 99%",
-          type: "info",
-        });
-        addLine({
-          id: Date.now() + 2,
-          text: "note: tiny fear of being too much // same-size wish to be seen more",
-          type: "dim",
-        });
-        addLine({
-          id: Date.now() + 3,
-          text: "status: safe operating range — this OS was built for you.",
-          type: "success",
-        });
-      }, 260);
-    } else if (lower === "ping you") {
-      setTimeout(() => {
-        addLine({
-          id: Date.now() + 1,
-          text: "pinging target: you .......................",
-          type: "process",
-        });
-        addLine({
-          id: Date.now() + 2,
-          text: 'latency: 3.2ms // reply cached as: "見てるよ"',
-          type: "success",
-        });
-        addLine({
-          id: Date.now() + 3,
-          text: "connection: STABLE // mood: quietly happy",
-          type: "info",
-        });
-      }, 260);
-    } else {
-      // デフォルト：静かなエコー
-      setTimeout(() => {
-        addLine({
-          id: Date.now() + 1,
-          text: `response_muted: "${trimmed}" received.`,
-          type: "dim",
-        });
-      }, 260);
+  // PCでは最初から入力エリアを開いておく
+  useEffect(() => {
+    if (!isMobile) {
+      setInputVisible(true);
     }
+  }, [isMobile]);
 
-    setInputVal("");
+  const openInput = () => {
+    setInputVisible(true);
+    // キーボードは「タップしたときだけ」出す
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
   };
+
+  const handleCommand = useCallback(
+    (raw) => {
+      const command = raw.trim();
+
+      if (!command) return;
+
+      AudioEngine.playKey?.();
+
+      // ベース：ユーザ入力をまず表示
+      const baseLine = {
+        id: Date.now(),
+        type: "user",
+        text: `> ${command}`,
+      };
+
+      // コマンド分岐
+      if (/^clear$/i.test(command)) {
+        setLines([
+          {
+            id: Date.now(),
+            type: "dim",
+            text: "screen cleared · keeping only what still matters",
+          },
+        ]);
+        return;
+      }
+
+      if (/^status$/i.test(command)) {
+        addLine([
+          baseLine,
+          {
+            id: Date.now() + 1,
+            type: "info",
+            text: "emotional_status: quietly_ok (no alarm, a little warm)",
+          },
+          {
+            id: Date.now() + 2,
+            type: "dim",
+            text: "note: it's safe to stay · no action required",
+          },
+        ]);
+        return;
+      }
+
+      if (/^export/i.test(command)) {
+        addLine([
+          baseLine,
+          {
+            id: Date.now() + 1,
+            type: "process",
+            text: "exporting unsent feelings to private archive...",
+          },
+          {
+            id: Date.now() + 2,
+            type: "success",
+            text: "done: they won't disappear, even if never spoken",
+          },
+        ]);
+        return;
+      }
+
+      // デフォルト：静かに受信してログに溶かす
+      addLine([
+        baseLine,
+        {
+          id: Date.now() + 1,
+          type: "dim",
+          text: `stored_silently: "${command}"`,
+        },
+        {
+          id: Date.now() + 2,
+          type: "info",
+          text: "no reply generated · just kept close",
+        },
+      ]);
+    },
+    [addLine]
+  );
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      handleEnter();
+      if (!inputVal.trim()) return;
+      handleCommand(inputVal);
+      setInputVal("");
     }
   };
 
@@ -3131,153 +3458,220 @@ const TerminalApp = () => {
       case "sys":
         return {
           prefix: "[ SYS ]",
-          color: "text-cyan-200/80",
-          body: "text-slate-100/80",
+          prefixClass: "text-[#a8eaff]/80",
+          bodyClass: "text-white/70",
         };
       case "dim":
         return {
           prefix: "[ .. ]",
-          color: "text-slate-400/40",
-          body: "text-slate-300/40",
+          prefixClass: "text-white/20",
+          bodyClass: "text-white/35",
         };
       case "success":
         return {
           prefix: "[ OK ]",
-          color: "text-emerald-400/80",
-          body: "text-slate-100/90",
+          prefixClass: "text-emerald-300/90",
+          bodyClass: "text-white/70",
         };
       case "warn":
         return {
           prefix: "[WARN]",
-          color: "text-rose-300/80",
-          body: "text-slate-100/80",
+          prefixClass: "text-rose-300/90",
+          bodyClass: "text-white/70",
         };
       case "crit":
         return {
           prefix: "[ERR!]",
-          color: "text-rose-500",
-          body: "text-rose-200/90",
+          prefixClass: "text-rose-400",
+          bodyClass: "text-rose-200/85",
         };
       case "info":
         return {
           prefix: "[INFO]",
-          color: "text-cyan-200/80",
-          body: "text-slate-100/80",
+          prefixClass: "text-cyan-200/75",
+          bodyClass: "text-white/65",
         };
       case "process":
         return {
           prefix: "[ >> ]",
-          color: "text-slate-300/70",
-          body: "text-slate-300/80",
+          prefixClass: "text-white/50",
+          bodyClass:
+            "text-white/50 animate-pulse [animation-duration:2.4s]",
         };
       case "user":
         return {
           prefix: "$",
-          color: "text-slate-50",
-          body: "text-slate-50 font-semibold",
+          prefixClass: "text-[#a8eaff]",
+          bodyClass: "text-white font-semibold",
         };
       default:
         return {
           prefix: "[ .. ]",
-          color: "text-slate-400/60",
-          body: "text-slate-200/70",
+          prefixClass: "text-white/30",
+          bodyClass: "text-white/45",
         };
     }
   };
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden rounded-3xl bg-gradient-to-b from-[#050712] via-[#020107] to-[#020308] font-mono text-[10px] text-slate-100">
-      {/* subtle background glow */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.22),_transparent_55%)] opacity-70" />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(15,23,42,0.75),transparent_45%,rgba(0,0,0,0.98))]" />
+    <div className="flex h-full flex-col bg-[#050608] text-[11px] text-white/80 relative overflow-hidden">
+      {/* Subtle gradient frame */}
+      <div className="pointer-events-none absolute inset-0 rounded-xl border border-white/5/40 shadow-[0_0_40px_rgba(0,0,0,0.8)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(168,234,255,0.08),transparent_55%),radial-gradient(circle_at_bottom,_rgba(248,250,252,0.04),transparent_55%)] opacity-80" />
 
-      {/* inner bezel */}
-      <div className="relative m-[6px] flex flex-1 flex-col rounded-[22px] border border-white/5 bg-black/60 backdrop-blur-xl shadow-[0_24px_80px_rgba(0,0,0,0.9)]">
-        {/* Header */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 bg-black/70/80 backdrop-blur-sm shrink-0 rounded-t-[22px]">
-          <div className="flex items-center gap-2">
-            <div className="h-1.5 w-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_8px_#a8eaff] animate-pulse" />
-            <span className="text-[9px] tracking-[0.22em] uppercase text-slate-300/80">
-              INNER_MONOLOGUE.LOG
+      {/* Header */}
+      <div className="relative z-10 flex items-center justify-between px-3 py-2 border-b border-white/5/50 bg-[#050608]/90 backdrop-blur-sm">
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <div className="w-2 h-2 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(45,212,191,0.8)] animate-pulse" />
+            <div className="absolute inset-0 rounded-full blur-[6px] bg-emerald-300/40 opacity-60" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] tracking-[0.22em] uppercase text-white/35">
+              Term · Inner Monologue
+            </span>
+            <span className="text-[9px] text-white/25">
+              passive log viewer · no prompt required
             </span>
           </div>
-          <span className="text-[9px] text-slate-400/70">
-            PID: 8824 · quiet mode
+        </div>
+        <div className="flex items-center gap-3 text-[9px] text-white/30">
+          <span className="hidden xs:inline">
+            mode:
+            <span className="text-emerald-300/80 ml-1">listening</span>
+          </span>
+          <span className="hidden sm:inline">
+            input:
+            <span className="ml-1">
+              {inputVisible ? "armed" : "standby"}
+            </span>
+          </span>
+        </div>
+      </div>
+
+      {/* Log Area */}
+      <div
+        ref={logRef}
+        className="relative z-10 flex-1 overflow-y-auto px-3 py-3 space-y-2 scrollbar-hide"
+        onScroll={handleScroll}
+      >
+        {/* top hint line */}
+        <div className="flex items-center gap-3 text-[9px] text-white/30 mb-2">
+          <span className="w-16 text-right text-white/15">--:--:--</span>
+          <span className="w-12 text-right text-white/20">[ HINT]</span>
+          <span className="text-white/40">
+            logs auto-flow · type{" "}
+            <span className="text-cyan-200/80">status</span>,{" "}
+            <span className="text-cyan-200/80">clear</span> or{" "}
+            <span className="text-cyan-200/80">export</span> if you want to
+            speak.
           </span>
         </div>
 
-        {/* Log Area */}
-        <div className="relative flex-1 overflow-y-auto px-4 py-3 space-y-2 scrollbar-hide rounded-b-[22px]">
-          {lines.map((line) => {
-            const style = getLineStyle(line.type);
-            return (
-              <div
-                key={line.id}
-                className="flex gap-3 tracking-wide leading-relaxed opacity-0 animate-fade-in"
-              >
-                <span className="select-none shrink-0 font-light text-[9px] text-slate-500/40">
-                  {new Date(line.id).toLocaleTimeString([], {
-                    hour12: false,
-                    minute: "2-digit",
-                    second: "2-digit",
-                  })}
-                </span>
-                <div className="flex gap-3">
-                  <span
-                    className={`${style.color} w-12 shrink-0 text-right text-[9px]`}
-                  >
-                    {style.prefix}
-                  </span>
-                  <span className={`${style.body} text-[10px]`}>
-                    {line.text}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-          <div ref={endRef} />
-        </div>
+        {lines.map((line) => {
+          const style = getLineStyle(line.type);
+          const time = new Date(line.id);
+          const t =
+            !Number.isNaN(time.getTime()) &&
+            time.getFullYear() > 2000
+              ? time.toLocaleTimeString([], {
+                  hour12: false,
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                })
+              : "--:--:--";
 
-        {/* Input Area */}
-        <div className="flex items-center gap-2 border-t border-white/5 bg-black/75 px-3 py-2.5 shrink-0 rounded-b-[22px]">
-          <span className="text-[#a8eaff]/80 text-[11px]">❯</span>
-          <div
-            className="relative flex-1"
-            onClick={() => {
-              setActivated(true);
-              inputRef.current?.focus();
-            }}
+          return (
+            <div
+              key={line.id}
+              className="flex gap-3 tracking-wide leading-relaxed opacity-0 animate-fade-in [animation-duration:0.45s]"
+            >
+              <span className="w-16 text-right text-white/15 select-none font-light">
+                {t}
+              </span>
+              <span
+                className={`w-12 shrink-0 text-right text-[10px] ${style.prefixClass}`}
+              >
+                {style.prefix}
+              </span>
+              <span className={`flex-1 ${style.bodyClass}`}>
+                {line.text}
+              </span>
+            </div>
+          );
+        })}
+        <div ref={endRef} className="h-4" />
+      </div>
+
+      {/* Input Area */}
+      <div className="relative z-20 border-t border-white/5 bg-[#050608]/95 backdrop-blur-sm">
+        {/* モバイル：最初は「書き込みボタン」だけ表示 */}
+        {!inputVisible && (
+          <button
+            onClick={openInput}
+            className="w-full px-3 py-2 flex items-center justify-between text-[11px] text-white/45 active:scale-[0.99] transition-all duration-200"
           >
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputVal}
-              onChange={(e) => setInputVal(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              className="w-full bg-transparent text-[11px] tracking-[0.12em] text-slate-100/90 placeholder:text-slate-500/60 outline-none border-none"
-              placeholder={
-                activated
-                  ? 'type a ritual... (try "emotion" or "ping you")'
-                  : "tap here to start a ritual"
-              }
-              autoCorrect="off"
-              autoCapitalize="none"
-              spellCheck={false}
-              // ⬇ これを消すことで「スマホで開いた瞬間キーボード」が発動しない
-              // autoFocus
-            />
-            {/* フォーカス中だけ細い光カーソル */}
-            {isFocused && (
-              <span className="pointer-events-none absolute left-0 bottom-[3px] h-[1.1em] w-[1px] bg-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.9)]" />
-            )}
+            <span className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#a8eaff]/70 shadow-[0_0_8px_rgba(168,234,255,0.8)]" />
+              <span className="tracking-[0.18em] uppercase text-[10px]">
+                WRITE TO LOG
+              </span>
+            </span>
+            <span className="text-[10px] text-white/30">
+              tap to open input
+            </span>
+          </button>
+        )}
+
+        {inputVisible && (
+          <div className="px-3 py-2 flex flex-col gap-1">
+            <div className="flex items-center justify-between text-[9px] text-white/30 mb-0.5">
+              <span className="tracking-[0.18em] uppercase">
+                Manual Entry
+              </span>
+              <span className="text-white/35">
+                enter: send ·{" "}
+                <span className="hidden xs:inline">
+                  status / clear / export
+                </span>
+              </span>
+            </div>
+            <div className="flex items-center gap-2 rounded-md border border-white/10 bg-gradient-to-r from-white/5 via-white/0 to-white/5 px-2 py-1.5 shadow-[0_0_0_1px_rgba(148,163,184,0.25),0_18px_40px_rgba(15,23,42,0.85)]">
+              <span className="text-[#a8eaff]/70 text-[11px] font-mono">
+                ❯
+              </span>
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputVal}
+                onChange={(e) => setInputVal(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="flex-1 bg-transparent border-none outline-none text-[11px] text-white/80 font-mono placeholder:text-white/20 tracking-[0.12em]"
+                placeholder='type "status" / "clear" / anything'
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              {isMobile && (
+                <button
+                  type="button"
+                  onClick={() => setInputVisible(false)}
+                  className="text-[10px] text-white/35 px-2 py-1 rounded-full border border-white/10 hover:border-white/30 hover:text-white/80 transition-colors"
+                >
+                  hide
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
 };
+
+
+
 
 
 // --- 5. SYSTEM LAYERS & FLOW ---
