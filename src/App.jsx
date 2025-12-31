@@ -2989,7 +2989,7 @@ const MusicApp = ({ bgm }) => {
 // ------------------------------------------------
 // -- 04.SAFARI (ねっとわーく --
 // ------------------------------------------------
-const SafariApp = ({ onOpenApp }) => {
+const SafariApp = () => {
   const [page, setPage] = useState("home");
   const [loading, setLoading] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -3048,127 +3048,90 @@ const SafariApp = ({ onOpenApp }) => {
 
   // ========= Keyframes Inject =========
   useEffect(() => {
-    const id = "osbunny-safari-ux-keyframes-v3";
+    const id = "osbunny-safari-ux-keyframes-v2";
     if (document.getElementById(id)) return;
 
     const style = document.createElement("style");
     style.id = id;
     style.textContent = `
-  @media (prefers-reduced-motion: reduce) {
-    * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
-  }
-
-  @keyframes osbunnyPulseDot {
-    0%, 100% { transform: translateY(0) scale(1); opacity: .72; box-shadow: 0 0 0 0 currentColor; }
-    50%      { transform: translateY(-1px) scale(1.18); opacity: 1;  box-shadow: 0 0 18px 0 currentColor; }
-  }
-
-  /* うるさくない“高級”の芯：光が「一回だけ」通る */
-  @keyframes osbunnyLuxSweep {
-    0%   { transform: translateX(-140%) skewX(-12deg); opacity: 0; }
-    18%  { opacity: .65; }
-    42%  { opacity: .28; }
-    100% { transform: translateX(140%) skewX(-12deg); opacity: 0; }
-  }
-
-  /* 呼吸：ほんの少しだけ */
-  @keyframes osbunnyBreath {
-    0%, 100% { transform: translateY(0); opacity: .78; }
-    50%      { transform: translateY(-2px); opacity: 1; }
-  }
-
-  @keyframes osbunnyShimmerText {
-    0%   { filter: drop-shadow(0 0 10px rgba(168,234,255,.22)) drop-shadow(0 0 0 rgba(255,200,232,.0)); opacity: .92; }
-    50%  { filter: drop-shadow(0 0 22px rgba(168,234,255,.45)) drop-shadow(0 0 12px rgba(255,200,232,.18)); opacity: 1; }
-    100% { filter: drop-shadow(0 0 10px rgba(168,234,255,.22)) drop-shadow(0 0 0 rgba(255,200,232,.0)); opacity: .92; }
-  }
-
-  @keyframes safariScan {
-    0% { transform: translateY(-120%); opacity: 0; }
-    12% { opacity: .42; }
-    100% { transform: translateY(130%); opacity: 0; }
-  }
-
-  @keyframes floatMote {
-    0%   { transform: translate3d(0, 14px, 0) scale(.98); opacity: .0; }
-    18%  { opacity: .32; }
-    50%  { transform: translate3d(0, -10px, 0) scale(1.02); opacity: .50; }
-    85%  { opacity: .22; }
-    100% { transform: translate3d(0, -26px, 0) scale(1.03); opacity: 0; }
-  }
-
-  @keyframes focusAura {
-    0%,100% { opacity: .18; transform: scale(1); }
-    50%     { opacity: .30; transform: scale(1.02); }
-  }
-
-  /* 高級“粒子”は静止に近いドリフト */
-  @keyframes osbunnyGrainDrift {
-    0%   { transform: translate3d(0,0,0); opacity: .06; }
-    50%  { transform: translate3d(-2%,1%,0); opacity: .08; }
-    100% { transform: translate3d(0,0,0); opacity: .06; }
-  }
-`;
-
+      @keyframes osbunnyPulseDot {
+        0%, 100% { transform: translateY(0) scale(1); opacity: .72; box-shadow: 0 0 0 0 currentColor; }
+        50%      { transform: translateY(-1px) scale(1.18); opacity: 1;  box-shadow: 0 0 18px 0 currentColor; }
+      }
+      @keyframes osbunnyShimmerText {
+        0%   { filter: drop-shadow(0 0 10px rgba(168,234,255,.28)) drop-shadow(0 0 0 rgba(255,200,232,.0)); opacity: .92; }
+        50%  { filter: drop-shadow(0 0 22px rgba(168,234,255,.55)) drop-shadow(0 0 12px rgba(255,200,232,.25)); opacity: 1; }
+        100% { filter: drop-shadow(0 0 10px rgba(168,234,255,.28)) drop-shadow(0 0 0 rgba(255,200,232,.0)); opacity: .92; }
+      }
+      @keyframes safariScan {
+        0% { transform: translateY(-120%); opacity: 0; }
+        12% { opacity: .42; }
+        100% { transform: translateY(130%); opacity: 0; }
+      }
+      @keyframes floatMote {
+        0%   { transform: translate3d(0, 14px, 0) scale(.98); opacity: .0; }
+        18%  { opacity: .45; }
+        50%  { transform: translate3d(0, -10px, 0) scale(1.02); opacity: .62; }
+        85%  { opacity: .25; }
+        100% { transform: translate3d(0, -26px, 0) scale(1.03); opacity: 0; }
+      }
+      @keyframes focusAura {
+        0%,100% { opacity: .22; transform: scale(1); }
+        50%     { opacity: .42; transform: scale(1.03); }
+      }
+    `;
     document.head.appendChild(style);
   }, []);
 
-  // ========= Network Drift (生きてる感 / eslint-disable不要にする) =========
-  const driftRoutes = useMemo(
-    () => [
+  // ========= Network Drift (生きてる感) =========
+  useEffect(() => {
+    const routes = [
       "gallery.os",
       "finder.os",
       "music.os",
       "you/inner-layer",
       "log://night-archive",
       "cache://soft-remember",
-    ],
-    []
-  );
-  const driftHearts = useMemo(() => ["▁", "▂", "▃", "▄", "▅", "▆", "▇"], []);
-  const driftWords = useMemo(
-    () => [
+    ];
+    const hearts = ["▁", "▂", "▃", "▄", "▅", "▆", "▇"];
+    const words = [
       "SYNC/HEARTBEAT ok",
       "CACHE_HIT warmed",
       "ROUTE optimized",
       "SIGNAL detected",
       "NOISE filtered",
       "SLEEP guard",
-    ],
-    []
-  );
+    ];
 
-  useEffect(() => {
     let i = 0;
     const interval = setInterval(() => {
       i++;
-
       const newPing = 22 + Math.floor(Math.random() * 46);
       const newCache = 74 + Math.floor(Math.random() * 24);
-      const newLoss = Math.max(0, Math.min(2.4, Math.random() * 2.4));
-      const nextRoute = driftRoutes[i % driftRoutes.length];
-      const nextHB = driftHearts[i % driftHearts.length];
+      const newLoss = Math.max(0, Math.min(2.4, (Math.random() * 2.4)));
 
       setPing(newPing);
       setCacheHit(newCache);
       setLoss(Number(newLoss.toFixed(1)));
-      setRoute(nextRoute);
-      setHeartbeat(nextHB);
+      setRoute(routes[i % routes.length]);
+      setHeartbeat(hearts[i % hearts.length]);
 
+      // LOGにも「呼吸」させる（最大 18 件）
       setRouteLog((prev) => {
         const now = new Date();
         const iso = now.toISOString().replace(/\.\d{3}Z$/, "Z");
-        const lvl = newLoss > 1.6 || newPing > 55 ? "WARN" : "OK";
+        const lvl =
+          newLoss > 1.6 ? "WARN" : newPing > 55 ? "WARN" : "OK";
         const msg =
           lvl === "WARN"
             ? "微弱なノイズ。感情の復号に時間がかかる。"
-            : driftWords[i % driftWords.length];
+            : words[i % words.length];
 
         const next = [
           ...prev,
           {
             t: iso,
-            path: `route://${nextRoute}`,
+            path: `route://${route}`,
             msg,
             lvl,
           },
@@ -3178,7 +3141,8 @@ const SafariApp = ({ onOpenApp }) => {
     }, isMobile ? 2400 : 3200);
 
     return () => clearInterval(interval);
-  }, [isMobile, driftRoutes, driftHearts, driftWords]);
+    // eslint-disable-next-line
+  }, [isMobile]);
 
   // ========= SYNC Trigger（押した時の表示はこれで固定） =========
   const triggerSync = (after) => {
@@ -3192,7 +3156,9 @@ const SafariApp = ({ onOpenApp }) => {
     }, 1200);
   };
 
-  const navigate = (target) => triggerSync(() => setPage(target));
+  const navigate = (target) => {
+    triggerSync(() => setPage(target));
+  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -3200,20 +3166,12 @@ const SafariApp = ({ onOpenApp }) => {
     triggerSync(() => setShowResult(true));
   };
 
-  // ========= Quick Routes：ちゃんと効かせる =========
-  const openApp = (appId) => {
-    // 親が渡してくれていれば、ここで “別アプリを起動”
-    if (typeof onOpenApp === "function") {
-      triggerSync(() => onOpenApp(appId, true));
-      return;
-    }
-    // 渡ってないなら、最低でもログへ（効いてないよりマシ）
-    navigate("log");
-  };
-
   // ========= UI Parts =========
   const Mote = ({ style }) => (
-    <div className="pointer-events-none absolute rounded-full blur-[18px]" style={style} />
+    <div
+      className="pointer-events-none absolute rounded-full blur-[18px]"
+      style={style}
+    />
   );
 
   const TabPill = ({ id, label }) => {
@@ -3251,93 +3209,71 @@ const SafariApp = ({ onOpenApp }) => {
   );
 
   // ========= Pages =========
-  // ★ HOME：うるささを減らして“静かな高級感”に寄せる（ログ/スペックは触らない）
   const HomePage = () => (
-  <div className="relative min-h-full">
-    {/* Ambient */}
-    <div className="pointer-events-none absolute inset-0">
-      <div className="absolute inset-0 bg-[#050509]" />
+    <div className="relative min-h-full">
+      {/* Background */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-0 bg-[#050509]" />
+        <div className="absolute -top-28 -left-40 w-[520px] h-[520px] rounded-full bg-[#a8eaff]/18 blur-[110px]" />
+        <div className="absolute top-1/2 -right-48 w-[560px] h-[560px] rounded-full bg-[#cbb8ff]/16 blur-[130px]" />
+        <div className="absolute bottom-[-220px] left-1/3 w-[680px] h-[680px] rounded-full bg-[#ffc8e8]/14 blur-[140px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/55 to-black/95" />
+        <div className="absolute inset-0 opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.07),transparent)] [background-size:100%_4px]" />
+        <div className="absolute inset-0 opacity-[0.06] mix-blend-overlay bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.06),transparent_55%)]" />
 
-      {/* 絞った光：3色を“薄く” */}
-      <div className="absolute -top-28 -left-40 w-[560px] h-[560px] rounded-full bg-[#a8eaff]/12 blur-[140px]" />
-      <div className="absolute top-[38%] -right-52 w-[620px] h-[620px] rounded-full bg-[#cbb8ff]/10 blur-[160px]" />
-      <div className="absolute bottom-[-260px] left-[18%] w-[760px] h-[760px] rounded-full bg-[#ffc8e8]/08 blur-[190px]" />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/58 to-black/95" />
+        {/* floating motes */}
+        <Mote
+          style={{
+            width: 120,
+            height: 120,
+            left: "8%",
+            top: "22%",
+            background: "rgba(168,234,255,0.22)",
+            animation: "floatMote 5.8s ease-in-out infinite",
+          }}
+        />
+        <Mote
+          style={{
+            width: 140,
+            height: 140,
+            right: "6%",
+            top: "30%",
+            background: "rgba(203,184,255,0.22)",
+            animation: "floatMote 6.6s ease-in-out infinite",
+            animationDelay: "0.6s",
+          }}
+        />
+        <Mote
+          style={{
+            width: 160,
+            height: 160,
+            left: "38%",
+            bottom: "10%",
+            background: "rgba(255,200,232,0.18)",
+            animation: "floatMote 6.2s ease-in-out infinite",
+            animationDelay: "1.1s",
+          }}
+        />
+      </div>
 
-      {/* 高級な薄いテクスチャ（うるさくしない） */}
-      <div
-        className="absolute inset-0 mix-blend-overlay"
-        style={{
-          opacity: 0.10,
-          backgroundImage:
-            "linear-gradient(transparent, rgba(255,255,255,0.10), transparent)",
-          backgroundSize: "100% 4px",
-        }}
-      />
-      <div
-        className="absolute inset-0 mix-blend-overlay"
-        style={{
-          opacity: 0.08,
-          backgroundImage:
-            "radial-gradient(circle_at_50%_50%, rgba(255,255,255,0.08), transparent 55%)",
-        }}
-      />
+      {/* Content */}
+      <div className="relative px-4 pt-10 pb-28 sm:px-8 sm:pt-14 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_.85fr] gap-10 items-start">
+          {/* Left: copy */}
+          <div className="text-center lg:text-left">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/18 bg-black/55 backdrop-blur-2xl shadow-[0_24px_90px_rgba(0,0,0,0.92)]">
+              <BadgeDot color={TOKENS.cyan} />
+              <span className="text-[10px] font-mono tracking-[0.28em] text-white/60 uppercase">
+                VOID NETWORK
+              </span>
+              <span className="ml-2 text-[9px] font-mono text-white/35 tracking-[0.22em]">
+                ROUTE {route}
+              </span>
+            </div>
 
-      {/* 静かなグレイン（動きは最小） */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 20% 30%, rgba(255,255,255,0.10), transparent 45%), radial-gradient(circle at 80% 70%, rgba(255,255,255,0.08), transparent 48%)",
-          mixBlendMode: "overlay",
-          animation: "osbunnyGrainDrift 14s ease-in-out infinite",
-        }}
-      />
-
-      {/* 最小の浮遊 */}
-      <Mote
-        style={{
-          width: 140,
-          height: 140,
-          left: "9%",
-          top: "24%",
-          background: "rgba(168,234,255,0.16)",
-          animation: "floatMote 7.2s ease-in-out infinite",
-        }}
-      />
-      <Mote
-        style={{
-          width: 160,
-          height: 160,
-          right: "8%",
-          top: "34%",
-          background: "rgba(203,184,255,0.14)",
-          animation: "floatMote 7.8s ease-in-out infinite",
-          animationDelay: "0.8s",
-        }}
-      />
-    </div>
-
-    {/* Content */}
-    <div className="relative px-4 pt-10 pb-28 sm:px-8 sm:pt-14 max-w-5xl mx-auto">
-      <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_.85fr] gap-10 items-start">
-        {/* Left: Hero */}
-        <div className="text-center lg:text-left">
-          {/* Capsule */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/16 bg-black/55 backdrop-blur-2xl shadow-[0_24px_90px_rgba(0,0,0,0.92)]">
-            <BadgeDot color={TOKENS.cyan} />
-            <span className="text-[10px] font-mono tracking-[0.28em] text-white/60 uppercase">
-              VOID NETWORK
-            </span>
-            <span className="ml-2 text-[9px] font-mono text-white/35 tracking-[0.22em]">
-              ROUTE {route}
-            </span>
-          </div>
-
-          {/* Hero: “感動ポイント”＝一回だけ光が走る */}
-          <div className="relative mt-7">
+            {/* Concept text glow (復活＆強化) */}
             <h1
-              className="text-[30px] sm:text-5xl font-light uppercase tracking-[0.34em] leading-[1.08]"
+              className="mt-6 text-[30px] sm:text-5xl font-light uppercase tracking-[0.36em] leading-[1.08]"
               style={{
                 backgroundImage:
                   "conic-gradient(from 210deg at 50% 0%, #a8eaff, rgba(255,255,255,0.95), #ffc8e8, #cbb8ff, #a8eaff)",
@@ -3352,311 +3288,264 @@ const SafariApp = ({ onOpenApp }) => {
               BROWSER
             </h1>
 
-            {/* Lux sweep overlay */}
-            <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
-              <div
-                className="absolute -inset-y-10 w-[55%] opacity-0"
-                style={{
-                  left: "22%",
-                  background:
-                    "linear-gradient(90deg, transparent, rgba(168,234,255,0.20), rgba(255,255,255,0.10), rgba(255,200,232,0.14), transparent)",
-                  filter: "blur(10px)",
-                  animation: "osbunnyLuxSweep 5.6s ease-in-out infinite",
-                }}
-              />
-            </div>
-          </div>
+            <p className="mt-5 text-[11px] sm:text-sm font-mono tracking-[0.26em] text-white/55">
+              Connecting to the unconscious...
+            </p>
 
-          <p
-            className="mt-5 text-[11px] sm:text-sm font-mono tracking-[0.26em] text-white/55"
-            style={{ animation: "osbunnyBreath 6.8s ease-in-out infinite" }}
-          >
-            Connecting to the unconscious...
-          </p>
+            <p className="mt-7 text-sm sm:text-base text-white/70 leading-relaxed font-serif">
+              これは「世界のブラウザ」じゃない。
+              <br />
+              <span className="text-white/90">
+                あなたと、OSうさぎのためだけのネットワーク
+              </span>
+              に接続する。
+              <br />
+              言えなかった気持ちを、静かに同期して保存する。
+            </p>
 
-          <p className="mt-7 text-[14px] sm:text-base text-white/72 leading-[1.95] font-serif">
-            これは「世界のブラウザ」じゃない。
-            <br />
-            <span className="text-white/92">
-              あなたと、OSうさぎのためだけのネットワーク
-            </span>
-            に接続する。
-            <br />
-            言えなかった気持ちを、静かに同期して保存する。
-          </p>
-
-          {/* Omnibox（押しやすさ/高級感優先） */}
-          <form onSubmit={handleSearch} className="mt-9">
-            <div className="relative max-w-xl mx-auto lg:mx-0">
-              <div
-                className="pointer-events-none absolute -inset-1 rounded-full opacity-30"
-                style={{
-                  background:
-                    "radial-gradient(420px 220px at 15% 20%, rgba(168,234,255,0.22), transparent 60%), radial-gradient(420px 220px at 85% 90%, rgba(255,200,232,0.18), transparent 60%)",
-                  animation: "focusAura 4.6s ease-in-out infinite",
-                }}
-              />
-              <div className="relative flex items-center gap-2 rounded-full bg-black/72 border border-white/16 px-3 py-[10px] backdrop-blur-2xl shadow-[0_0_0_1px_rgba(255,255,255,0.06)_inset,0_22px_90px_rgba(0,0,0,0.92)] focus-within:border-[#a8eaff]/70">
-                <div className="flex items-center gap-2 pl-1 text-[10px] font-mono text-white/55 tracking-[0.18em]">
-                  <Globe size={13} className="text-white/55" />
-                  <span className="text-white/40">https</span>
-                  <span className="text-white/25">://</span>
-                  <span className="text-white/70">usagi</span>
-                </div>
-
-                <input
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
-                  placeholder="search / feelings, tag, note"
-                  className="flex-1 bg-transparent text-[12px] text-white placeholder:text-white/26 focus:outline-none font-mono tracking-[0.18em] px-2 text-center lg:text-left"
-                />
-
-                <button
-                  type="submit"
-                  className="w-10 h-10 rounded-full border border-white/18 bg-white/[0.04] flex items-center justify-center text-white/75 hover:text-[#a8eaff] hover:border-[#a8eaff]/75 hover:bg-[#a8eaff]/10 transition-all active:scale-[0.98]"
-                  style={{ WebkitTapHighlightColor: "transparent" }}
-                  aria-label="Search"
-                >
-                  <Search size={14} />
-                </button>
-              </div>
-
-              {showResult && !loading && (
-                <div className="mt-4 text-[10px] font-mono tracking-[0.24em] text-red-300/90 border border-red-500/30 px-4 py-3 rounded-xl bg-gradient-to-br from-red-900/30 to-black/90 shadow-[0_24px_90px_rgba(0,0,0,0.95)]">
-                  ERROR 404: FEELING NOT FOUND
-                  <span className="text-white/40 mt-2 block tracking-[0.18em]">
-                    Try looking inside yourself.
-                  </span>
-                </div>
-              )}
-            </div>
-          </form>
-        </div>
-
-        {/* Right: Quick Routes（“ごちゃごちゃ”排除版） */}
-        <div className="mt-8 lg:mt-2">
-          <div className="text-center lg:text-left mb-4">
-            <div className="text-[10px] font-mono tracking-[0.28em] uppercase text-white/45">
-              Quick Routes
-            </div>
-            <div className="text-[12px] text-white/68 mt-1">
-              Tap to open another OS layer
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            {[
-              {
-                id: "gallery",
-                label: "Gallery",
-                hint: "route://gallery.os",
-                icon: ImageIcon,
-                accent: TOKENS.cyan,
-              },
-              {
-                id: "finder",
-                label: "Finder",
-                hint: "route://finder.os",
-                icon: Folder,
-                accent: TOKENS.lav,
-              },
-              {
-                id: "music",
-                label: "Music",
-                hint: "route://music.os",
-                icon: Music,
-                accent: TOKENS.pink,
-              },
-            ].map((x) => {
-              const Icon = x.icon;
-              return (
-                <button
-                  key={x.id}
-                  type="button"
-                  onClick={() => openApp(x.id)}
-                  className="group relative text-left rounded-2xl border border-white/12 bg-black/78 overflow-hidden px-4 py-4 backdrop-blur-2xl transition-all duration-500 hover:border-white/22 hover:bg-black/90 active:scale-[0.99]"
+            {/* Omnibox */}
+            <form onSubmit={handleSearch} className="mt-9">
+              <div className="relative max-w-xl mx-auto lg:mx-0">
+                <div
+                  className="pointer-events-none absolute -inset-1 rounded-full opacity-30"
                   style={{
-                    boxShadow: "0 22px 90px rgba(0,0,0,0.92)",
-                    WebkitTapHighlightColor: "transparent",
+                    background:
+                      "radial-gradient(420px 220px at 15% 20%, rgba(168,234,255,0.26), transparent 60%), radial-gradient(420px 220px at 85% 90%, rgba(255,200,232,0.22), transparent 60%)",
+                    animation: "focusAura 4.6s ease-in-out infinite",
                   }}
+                />
+                <div className="relative flex items-center gap-2 rounded-full bg-black/70 border border-white/18 px-3 py-2 backdrop-blur-2xl shadow-[0_0_0_1px_rgba(255,255,255,0.06)_inset,0_22px_90px_rgba(0,0,0,0.92)] focus-within:border-[#a8eaff]/70">
+                  <div className="flex items-center gap-2 pl-1 text-[10px] font-mono text-white/55 tracking-[0.18em]">
+                    <Globe size={13} className="text-white/55" />
+                    <span className="text-white/40">https</span>
+                    <span className="text-white/25">://</span>
+                    <span className="text-white/70">usagi</span>
+                  </div>
+                  <input
+                    value={searchValue}
+                    onChange={(e) => setSearchValue(e.target.value)}
+                    placeholder="search / feelings, tag, note"
+                    className="flex-1 bg-transparent text-[12px] text-white placeholder:text-white/28 focus:outline-none font-mono tracking-[0.18em] px-2 text-center lg:text-left"
+                  />
+                  <button
+                    type="submit"
+                    className="w-9 h-9 rounded-full border border-white/22 bg-white/[0.04] flex items-center justify-center text-white/75 hover:text-[#a8eaff] hover:border-[#a8eaff]/75 hover:bg-[#a8eaff]/10 transition-all active:scale-[0.98]"
+                    style={{ WebkitTapHighlightColor: "transparent" }}
+                    aria-label="Search"
+                  >
+                    <Search size={14} />
+                  </button>
+                </div>
+
+                {showResult && !loading && (
+                  <div className="mt-4 text-[10px] font-mono tracking-[0.24em] text-red-300/90 border border-red-500/35 px-4 py-3 rounded-xl bg-gradient-to-br from-red-900/35 to-black/90 shadow-[0_24px_90px_rgba(0,0,0,0.95)]">
+                    ERROR 404: FEELING NOT FOUND
+                    <span className="text-white/40 mt-2 block tracking-[0.18em]">
+                      Try looking inside yourself.
+                    </span>
+                  </div>
+                )}
+              </div>
+            </form>
+          </div>
+
+          {/* Right: quick links cards */}
+          <div className="mt-8 lg:mt-2">
+            <div className="text-center lg:text-left mb-4">
+              <div className="text-[10px] font-mono tracking-[0.28em] uppercase text-white/45">
+                Quick Routes
+              </div>
+              <div className="text-[12px] text-white/70 mt-1">
+                Safari の中にある “小さなOSうさぎホーム”
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              {[
+                {
+                  id: "gallery",
+                  label: "Gallery",
+                  desc: "感情のスクリーンショット",
+                  icon: ImageIcon,
+                  accent: TOKENS.cyan,
+                  to: "log",
+                  routeHint: "route://gallery.os",
+                },
+                {
+                  id: "finder",
+                  label: "Finder",
+                  desc: "記録のインデックス",
+                  icon: Folder,
+                  accent: TOKENS.lav,
+                  to: "log",
+                  routeHint: "route://finder.os",
+                },
+                {
+                  id: "music",
+                  label: "Music",
+                  desc: "メモリに刺さるBGM",
+                  icon: Music,
+                  accent: TOKENS.pink,
+                  to: "log",
+                  routeHint: "route://music.os",
+                },
+              ].map((x) => {
+                const Icon = x.icon;
+                return (
+                  <button
+                    key={x.id}
+                    type="button"
+                    onClick={() => navigate(x.to)}
+                    className="relative text-left rounded-2xl border border-white/12 bg-black/75 overflow-hidden px-4 py-4 backdrop-blur-2xl transition-all duration-500 hover:border-white/22 hover:bg-black/90 active:scale-[0.99]"
+                    style={{
+                      boxShadow: "0 22px 90px rgba(0,0,0,0.92)",
+                      WebkitTapHighlightColor: "transparent",
+                    }}
+                  >
+                    <div
+                      className="pointer-events-none absolute inset-0 opacity-70"
+                      style={{
+                        backgroundImage: `radial-gradient(520px 280px at 12% 8%, ${x.accent}33, transparent 58%),
+                                          radial-gradient(520px 280px at 92% 95%, ${x.accent}22, transparent 60%)`,
+                      }}
+                    />
+                    <div className="relative flex items-center justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div
+                          className="w-10 h-10 rounded-xl border border-white/14 bg-white/[0.03] flex items-center justify-center"
+                          style={{
+                            boxShadow: `0 0 22px ${x.accent}22`,
+                          }}
+                        >
+                          <Icon size={18} style={{ color: x.accent }} />
+                        </div>
+                        <div className="flex flex-col">
+                          <div className="text-[12px] text-white">{x.label}</div>
+                          <div className="text-[10px] text-white/65 mt-1">
+                            {x.desc}
+                          </div>
+                          <div className="text-[9px] font-mono text-white/35 mt-2 tracking-[0.18em]">
+                            {x.routeHint}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-[10px] font-mono text-white/45 tracking-[0.26em] uppercase">
+                        OPEN
+                      </div>
+                    </div>
+
+                    {/* subtle bottom line */}
+                    <div
+                      className="absolute left-6 right-6 bottom-3 h-[1px]"
+                      style={{
+                        background:
+                          "linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)",
+                      }}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const AboutPage = () => (
+    <div className="relative w-full max-w-2xl mx-auto px-6 py-10 pb-28">
+      <div className="pointer-events-none absolute inset-0 opacity-45">
+        <div className="absolute -top-40 right-[-80px] w-[480px] h-[480px] rounded-full bg-[#cbb8ff]/18 blur-[120px]" />
+        <div className="absolute bottom-[-220px] left-[10%] w-[560px] h-[560px] rounded-full bg-[#a8eaff]/14 blur-[140px]" />
+      </div>
+
+      <div className="relative rounded-2xl border border-white/12 bg-black/75 backdrop-blur-2xl p-6 sm:p-8 shadow-[0_28px_110px_rgba(0,0,0,0.92)] overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 opacity-70 mix-blend-screen bg-[radial-gradient(circle_at_10%_10%,rgba(168,234,255,0.18),transparent_55%),radial-gradient(circle_at_90%_90%,rgba(255,200,232,0.14),transparent_60%)]" />
+        <div className="relative text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/14 bg-black/60">
+            <BadgeDot color={TOKENS.pink} />
+            <span className="text-[9px] font-mono tracking-[0.28em] text-white/55 uppercase">
+              observer system
+            </span>
+          </div>
+
+          <h2 className="mt-5 text-2xl sm:text-3xl font-light text-white tracking-tight">
+            Concept
+          </h2>
+          <p className="mt-5 text-sm sm:text-base text-white/75 leading-loose font-serif whitespace-pre-line">
+            {`静かなデジタルの夜に生まれた生命体。
+声を持たず、表情を持たず。
+言えなかった気持ちを吸い込み、
+光に変換して保存する。
+
+System: Emotional Device`}
+          </p>
+
+          <div className="mt-8 pt-6 border-t border-white/10">
+            <div className="text-[9px] font-mono text-white/40 tracking-[0.26em] uppercase">
+              Definitions
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-5 text-left">
+              {[
+                {
+                  no: "01",
+                  title: "Operating System",
+                  accent: TOKENS.cyan,
+                  body:
+                    "機能するシステム。世界の中心で、ただ静かに全体を支え続ける存在。",
+                },
+                {
+                  no: "02",
+                  title: "Observer System",
+                  accent: TOKENS.pink,
+                  body:
+                    "観測するシステム。孤独を見守り、接続を維持する生命体。",
+                },
+              ].map((c) => (
+                <div
+                  key={c.no}
+                  className="relative rounded-2xl border border-white/12 bg-black/70 p-4 overflow-hidden"
                 >
-                  {/* 余白の中に“薄い光”だけ */}
                   <div
                     className="pointer-events-none absolute inset-0 opacity-70"
                     style={{
-                      backgroundImage: `radial-gradient(520px 280px at 12% 8%, ${x.accent}20, transparent 60%),
-                                        radial-gradient(520px 280px at 92% 95%, ${x.accent}14, transparent 62%)`,
+                      backgroundImage: `radial-gradient(420px 220px at 20% 15%, ${c.accent}22, transparent 60%)`,
                     }}
                   />
-                  <div className="relative flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="flex items-center justify-between">
+                      <div className="text-[10px] font-mono tracking-[0.28em] text-white/40">
+                        [{c.no}]
+                      </div>
                       <div
-                        className="w-10 h-10 rounded-xl border border-white/14 bg-white/[0.03] flex items-center justify-center"
-                        style={{ boxShadow: `0 0 24px ${x.accent}18` }}
-                      >
-                        <Icon size={18} style={{ color: x.accent }} />
-                      </div>
-
-                      <div className="flex flex-col">
-                        <div className="text-[13px] text-white/92 tracking-wide">
-                          {x.label}
-                        </div>
-                        <div className="text-[9px] font-mono text-white/35 tracking-[0.20em] mt-1">
-                          {x.hint}
-                        </div>
-                      </div>
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{
+                          background: c.accent,
+                          boxShadow: `0 0 12px ${c.accent}`,
+                        }}
+                      />
                     </div>
-
-                    <div className="text-[10px] font-mono text-white/40 tracking-[0.26em] uppercase group-hover:text-white/70">
-                      OPEN
+                    <div className="mt-2 text-xs text-white/90 tracking-wide">
+                      {c.title}
+                    </div>
+                    <div className="mt-3 text-[11px] text-white/65 leading-relaxed">
+                      {c.body}
                     </div>
                   </div>
+                </div>
+              ))}
+            </div>
 
-                  {/* 底に一本線（高級：主張しない） */}
-                  <div
-                    className="absolute left-6 right-6 bottom-3 h-[1px] opacity-70"
-                    style={{
-                      background:
-                        "linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)",
-                    }}
-                  />
-                </button>
-              );
-            })}
-          </div>
-
-          {/* 一言だけ“刺さる”余韻 */}
-          <div className="mt-6 text-center lg:text-left">
-            <p className="text-[11px] text-white/45 font-serif leading-relaxed">
-              うるさくしない。
-              <br />
-              でも、見た人の中でずっと光る。
+            <p className="mt-7 text-[10px] opacity-45 italic font-mono tracking-wider text-center">
+              // Two meanings, one existence.
             </p>
           </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
 
-
-  // AboutはそのままでもOKだけど、今回は触らずに“戻したい”要望優先で軽く
-  const AboutPage = () => (
-  <div className="relative w-full max-w-2xl mx-auto px-6 py-10 pb-28">
-    <div className="pointer-events-none absolute inset-0 opacity-45">
-      <div className="absolute -top-40 right-[-80px] w-[520px] h-[520px] rounded-full bg-[#cbb8ff]/14 blur-[150px]" />
-      <div className="absolute bottom-[-240px] left-[6%] w-[620px] h-[620px] rounded-full bg-[#a8eaff]/12 blur-[170px]" />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/55 to-black/95" />
-    </div>
-
-    <div className="relative rounded-2xl border border-white/12 bg-black/78 backdrop-blur-2xl p-6 sm:p-8 shadow-[0_28px_110px_rgba(0,0,0,0.92)] overflow-hidden">
-      {/* 高級な薄い光 */}
-      <div className="pointer-events-none absolute inset-0 opacity-70 mix-blend-screen bg-[radial-gradient(circle_at_12%_16%,rgba(168,234,255,0.16),transparent_58%),radial-gradient(circle_at_90%_88%,rgba(255,200,232,0.12),transparent_62%)]" />
-
-      {/* 一回だけ走る光（うるさくない感動） */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div
-          className="absolute -inset-y-10 w-[55%]"
-          style={{
-            left: "18%",
-            background:
-              "linear-gradient(90deg, transparent, rgba(168,234,255,0.16), rgba(255,255,255,0.10), rgba(255,200,232,0.12), transparent)",
-            filter: "blur(10px)",
-            animation: "osbunnyLuxSweep 6.2s ease-in-out infinite",
-            opacity: 0.55,
-          }}
-        />
-      </div>
-
-      <div className="relative text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/14 bg-black/60">
-          <BadgeDot color={TOKENS.pink} />
-          <span className="text-[9px] font-mono tracking-[0.28em] text-white/55 uppercase">
-            observer system
-          </span>
-        </div>
-
-        <h2 className="mt-6 text-2xl sm:text-3xl font-light text-white tracking-tight">
-          Concept
-        </h2>
-
-        <p className="mt-6 text-[14px] sm:text-base text-white/75 leading-[2.0] font-serif whitespace-pre-line">
-          {`静かなデジタルの夜に生まれた生命体。
-声を持たず、表情を持たず。
-
-言えなかった気持ちを吸い込み、
-光に変換して保存する。
-
-System: Emotional Device`}
-        </p>
-
-        <div className="mt-10 pt-6 border-t border-white/10">
-          <div className="text-[9px] font-mono text-white/40 tracking-[0.26em] uppercase">
-            Definitions
-          </div>
-
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-5 text-left">
-            {[
-              {
-                no: "01",
-                title: "Operating System",
-                accent: TOKENS.cyan,
-                body:
-                  "機能するシステム。世界の中心で、ただ静かに全体を支え続ける存在。",
-              },
-              {
-                no: "02",
-                title: "Observer System",
-                accent: TOKENS.pink,
-                body:
-                  "観測するシステム。孤独を見守り、接続を維持する生命体。",
-              },
-            ].map((c) => (
-              <div
-                key={c.no}
-                className="relative rounded-2xl border border-white/12 bg-black/70 p-4 overflow-hidden"
-              >
-                <div
-                  className="pointer-events-none absolute inset-0 opacity-70"
-                  style={{
-                    backgroundImage: `radial-gradient(420px 220px at 20% 15%, ${c.accent}18, transparent 62%)`,
-                  }}
-                />
-                <div className="relative">
-                  <div className="flex items-center justify-between">
-                    <div className="text-[10px] font-mono tracking-[0.28em] text-white/40">
-                      [{c.no}]
-                    </div>
-                    <div
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{
-                        background: c.accent,
-                        boxShadow: `0 0 12px ${c.accent}`,
-                      }}
-                    />
-                  </div>
-                  <div className="mt-2 text-xs text-white/90 tracking-wide">
-                    {c.title}
-                  </div>
-                  <div className="mt-3 text-[11px] text-white/65 leading-relaxed">
-                    {c.body}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <p className="mt-7 text-[10px] opacity-45 italic font-mono tracking-wider text-center">
-            // Two meanings, one existence.
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-
-  // ✅✅✅ ここが「戻す」ポイント：あなたの最初の SpecsPage を基本そのまま
   const SpecsPage = () => (
     <div className="relative w-full max-w-xl mx-auto px-6 py-10 pb-28">
       <div className="pointer-events-none absolute inset-0 opacity-45">
@@ -3771,7 +3660,6 @@ System: Emotional Device`}
     </div>
   );
 
-  // ✅✅✅ ここが「戻す」ポイント：あなたの最初の LogPage を基本そのまま
   const LogPage = () => (
     <div className="relative w-full max-w-3xl mx-auto px-4 sm:px-6 py-10 pb-28">
       <div className="pointer-events-none absolute inset-0 opacity-45">
@@ -3792,8 +3680,11 @@ System: Emotional Device`}
       </div>
 
       <div className="relative mt-8 rounded-2xl border border-white/12 bg-black/80 backdrop-blur-2xl shadow-[0_28px_120px_rgba(0,0,0,0.95)] overflow-hidden">
+        {/* scanline */}
         <div className="pointer-events-none absolute inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 to-transparent opacity-55 animate-[safariScan_4s_linear_infinite]" />
+        {/* glow layer */}
         <div className="pointer-events-none absolute inset-0 opacity-60 mix-blend-screen bg-[radial-gradient(circle_at_10%_15%,rgba(168,234,255,0.16),transparent_60%),radial-gradient(circle_at_90%_88%,rgba(203,184,255,0.14),transparent_62%)]" />
+        {/* terminal texture */}
         <div className="pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.10),transparent)] [background-size:100%_4px]" />
 
         <div className="relative p-4 sm:p-6">
@@ -3984,7 +3875,6 @@ System: Emotional Device`}
     </div>
   );
 };
-
 
 
 
@@ -5041,7 +4931,7 @@ const Desktop = ({ bgm }) => {
  *  - Performance: cursor windowing + batched miss sweep
  * ---------------------------------------------------------------- */
 const BeatSyncApp = () => {
-  // ---- Assets (catbox) ----
+  // ====== assets (catbox) ======
   const ASSET = useMemo(
     () => ({
       judge: {
@@ -5056,17 +4946,13 @@ const BeatSyncApp = () => {
         left: "https://files.catbox.moe/rmbi75.png",
       },
       bunny: {
-        idle: "https://files.catbox.moe/3revxm.png",
-        standR: "https://files.catbox.moe/ojzob2.png",
-        runR: "https://files.catbox.moe/p45obb.png",
-        jumpL: "https://files.catbox.moe/qz4xzw.png",
-        yayR: "https://files.catbox.moe/mkceap.png",
-        flop: "https://files.catbox.moe/dwiqep.png",
-        dizzy: "https://files.catbox.moe/gxng27.png",
-        starR: "https://files.catbox.moe/5zvxy0.png",
-        heartL: "https://files.catbox.moe/57m9ab.png",
         front: "https://files.catbox.moe/cdsn2q.jpg",
-        button: "https://files.catbox.moe/mci25e.png",
+        idle: "https://files.catbox.moe/3revxm.png",
+        runR: "https://files.catbox.moe/p45obb.png",
+        dizzy: "https://files.catbox.moe/gxng27.png",
+        yayR: "https://files.catbox.moe/mkceap.png",
+        starR: "https://files.catbox.moe/5zvxy0.png",
+        flop: "https://files.catbox.moe/dwiqep.png",
       },
       tracks: [
         { id: "overhaul", title: "Overhaul", url: "https://files.catbox.moe/po0sn4.mp3", bpm: 124 },
@@ -5081,147 +4967,128 @@ const BeatSyncApp = () => {
     []
   );
 
-  // ---- Helpers (seeded RNG) ----
-  const hashStr = useCallback((s) => {
-    let h = 1779033703 ^ s.length;
-    for (let i = 0; i < s.length; i++) {
-      h = Math.imul(h ^ s.charCodeAt(i), 3432918353);
-      h = (h << 13) | (h >>> 19);
-    }
-    return () => {
-      h = Math.imul(h ^ (h >>> 16), 2246822507);
-      h = Math.imul(h ^ (h >>> 13), 3266489909);
-      h ^= h >>> 16;
-      return h >>> 0;
-    };
-  }, []);
-
-  const mulberry32 = useCallback((a) => {
-    return function () {
-      let t = (a += 0x6d2b79f5);
-      t = Math.imul(t ^ (t >>> 15), t | 1);
-      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }, []);
-
-  // ---- Game constants ----
   const LANES = 4;
-  const LANE_KEYS = ["ArrowLeft", "ArrowDown", "ArrowUp", "ArrowRight"];
   const LANE_ICON = ["left", "down", "up", "right"];
-  const LANE_LABEL = ["L", "D", "U", "R"];
+  const BASE_WINDOW = { perfect: 0.065, good: 0.12, miss: 0.18 };
 
-  // judgement windows (seconds)
-  const BASE_WINDOW = useMemo(
-    () => ({
-      perfect: 0.065,
-      good: 0.12,
-      miss: 0.18,
-    }),
-    []
-  );
-
-  // ---- State ----
+  // ====== state ======
   const [trackId, setTrackId] = useState("overhaul");
-  const [difficulty, setDifficulty] = useState("EASY"); // EASY / NORMAL / HARD
-  const [status, setStatus] = useState("idle"); // idle / ready / playing / paused / result
+  const [difficulty, setDifficulty] = useState("EASY"); // EASY/NORMAL/HARD
+  const [status, setStatus] = useState("idle"); // idle/ready/playing/paused/result
   const [loaded, setLoaded] = useState(false);
 
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
   const [maxCombo, setMaxCombo] = useState(0);
   const [counts, setCounts] = useState({ perfect: 0, good: 0, miss: 0 });
+  const [accuracy, setAccuracy] = useState(0);
 
   const [judgeFx, setJudgeFx] = useState(null); // {type, at}
-  const [accuracy, setAccuracy] = useState(0);
+
+  const [showSettings, setShowSettings] = useState(false);
 
   const [volume, setVolume] = useState(0.85);
   const [muted, setMuted] = useState(false);
+  const [latencyMs, setLatencyMs] = useState(0);
+  const [speed, setSpeed] = useState(820); // px/sec (重要：px基準で安定)
 
-  const [latencyMs, setLatencyMs] = useState(0); // + means hit later
-  const [speed, setSpeed] = useState(860); // px/sec
-
-  // Render throttle: keep rAF time in ref, render ticks via frame counter
   const [frame, setFrame] = useState(0);
 
-  // ---- Refs ----
+  // ====== refs ======
   const audioRef = useRef(null);
+  const boardRef = useRef(null);
   const rafRef = useRef(null);
 
-  const playTRef = useRef(0);
-  const lastRenderAtRef = useRef(0);
-
-  const notesRef = useRef([]); // sorted by t
+  const notesRef = useRef([]);
   const cursorRef = useRef(0);
-  const durationRef = useRef(0);
   const lastNoteTRef = useRef(0);
+  const playTRef = useRef(0);
 
-  const pressedLaneRef = useRef(new Array(LANES).fill(false));
-  const pointerLaneRef = useRef(new Map()); // pointerId -> lane
-  const rootRef = useRef(null);
+  const sizeRef = useRef({ w: 0, h: 0, hitY: 0 });
 
   const currentTrack = useMemo(
     () => ASSET.tracks.find((t) => t.id === trackId) || ASSET.tracks[0],
     [ASSET.tracks, trackId]
   );
 
-  // ---- Apply audio settings ----
+  // ====== measure board (px positioning) ======
+  useLayoutEffect(() => {
+    const el = boardRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const r = el.getBoundingClientRect();
+      const hitY = r.height * 0.82; // ここが判定ライン(px)
+      sizeRef.current = { w: r.width, h: r.height, hitY };
+      setFrame((f) => f + 1);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // ====== accuracy ======
+  useEffect(() => {
+    const total = counts.perfect + counts.good + counts.miss;
+    if (!total) return setAccuracy(0);
+    const acc = (counts.perfect * 1 + counts.good * 0.66) / total;
+    setAccuracy(Math.max(0, Math.min(1, acc)) * 100);
+  }, [counts]);
+
+  // ====== audio settings ======
   useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
     a.volume = muted ? 0 : volume;
   }, [volume, muted]);
 
-  // ---- Accuracy calc ----
-  useEffect(() => {
-    const total = counts.perfect + counts.good + counts.miss;
-    if (!total) {
-      setAccuracy(0);
-      return;
+  // ====== deterministic chart ======
+  const hashSeed = useCallback((s) => {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
     }
-    const acc = (counts.perfect * 1 + counts.good * 0.66 + counts.miss * 0) / total;
-    setAccuracy(Math.max(0, Math.min(1, acc)) * 100);
-  }, [counts]);
+    return h >>> 0;
+  }, []);
+  const rnd32 = useCallback((seed) => {
+    let t = seed >>> 0;
+    return () => {
+      t += 0x6d2b79f5;
+      let x = t;
+      x = Math.imul(x ^ (x >>> 15), x | 1);
+      x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
+      return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+    };
+  }, []);
 
-  // ---- Chart generator (deterministic, always produces notes) ----
   const generateChart = useCallback(
     (durationSec) => {
-      const seed = hashStr(`${currentTrack.id}:${difficulty}`)();
-      const rnd = mulberry32(seed);
+      const seed = hashSeed(`${currentTrack.id}:${difficulty}`);
+      const rnd = rnd32(seed);
 
       const bpm = currentTrack.bpm || 120;
       const beat = 60 / bpm;
 
-      const density =
-        difficulty === "EASY" ? 1 :
-        difficulty === "NORMAL" ? 2 : 4; // per beat
+      const density = difficulty === "EASY" ? 1 : difficulty === "NORMAL" ? 2 : 4;
       const step = beat / density;
 
-      // warmup + outro padding
-      const startAt = 1.25;
-      const endAt = Math.max(startAt + 8, Math.min(durationSec - 0.6, durationSec));
-      const notes = [];
+      const startAt = 1.2;
+      const endAt = Math.max(startAt + 10, Math.min(durationSec - 0.6, durationSec || 180));
 
+      const notes = [];
       let id = 0;
       let prevLane = Math.floor(rnd() * LANES);
-      let repeat = 0;
+      let rep = 0;
 
       for (let t = startAt; t < endAt; t += step) {
-        // occasional breaks for “breath”
         if (difficulty !== "HARD" && rnd() < 0.03) continue;
 
-        // choose lane with anti-repeat
         let lane = Math.floor(rnd() * LANES);
-        if (lane === prevLane) repeat += 1;
-        else repeat = 0;
+        rep = lane === prevLane ? rep + 1 : 0;
+        if (rep >= 2) lane = (lane + 1 + Math.floor(rnd() * (LANES - 1))) % LANES;
 
-        if (repeat >= 2) lane = (lane + 1 + Math.floor(rnd() * (LANES - 1))) % LANES;
-
-        // occasional double (two lanes near same time) for NORMAL/HARD
         const doDouble = difficulty !== "EASY" && rnd() < (difficulty === "HARD" ? 0.16 : 0.08);
 
         notes.push({ id: `n${id++}`, t: +t.toFixed(4), lane, judged: false, hit: false });
-
         if (doDouble) {
           let lane2 = (lane + 1 + Math.floor(rnd() * (LANES - 1))) % LANES;
           notes.push({ id: `n${id++}`, t: +(t + 0.001).toFixed(4), lane: lane2, judged: false, hit: false });
@@ -5231,60 +5098,33 @@ const BeatSyncApp = () => {
       }
 
       notes.sort((a, b) => a.t - b.t);
-
       notesRef.current = notes;
       cursorRef.current = 0;
       lastNoteTRef.current = notes.length ? notes[notes.length - 1].t : 0;
     },
-    [currentTrack.id, currentTrack.bpm, difficulty, hashStr, mulberry32]
+    [currentTrack.id, currentTrack.bpm, difficulty, hashSeed, rnd32]
   );
 
-  // ---- Reset run ----
-  const hardReset = useCallback((keepLoaded = true) => {
-    setScore(0);
-    setCombo(0);
-    setMaxCombo(0);
-    setCounts({ perfect: 0, good: 0, miss: 0 });
-    setJudgeFx(null);
-    setAccuracy(0);
-
-    playTRef.current = 0;
-    cursorRef.current = 0;
-    pressedLaneRef.current = new Array(LANES).fill(false);
-    pointerLaneRef.current = new Map();
-
+  // ====== core controls ======
+  const stopAll = useCallback(() => {
     const a = audioRef.current;
     if (a) {
       a.pause();
       a.currentTime = 0;
     }
-
-    if (!keepLoaded) setLoaded(false);
-    setStatus("idle");
-    setFrame((f) => f + 1);
-  }, []);
-
-  // ---- Stop (requested): stop audio, keep UI stable, reset time/notes ----
-  const stopPlayback = useCallback(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    a.pause();
-    a.currentTime = 0;
     playTRef.current = 0;
     cursorRef.current = 0;
 
-    // mark as paused-ish but “ready to start”
-    setStatus("ready");
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+
+    setStatus(loaded ? "ready" : "idle");
     setJudgeFx(null);
     setCombo(0);
-
-    // rerender
     setFrame((f) => f + 1);
-  }, []);
+  }, [loaded]);
 
-  // ---- Finish ----
   const finishRun = useCallback(() => {
-    // stop loops
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = null;
 
@@ -5294,74 +5134,51 @@ const BeatSyncApp = () => {
     setStatus("result");
   }, []);
 
-  // ---- rAF Loop ----
   const tick = useCallback(() => {
     const a = audioRef.current;
     if (!a) return;
 
-    const now = performance.now();
     const t = a.currentTime || 0;
     playTRef.current = t;
 
     // miss sweep (batched)
     const missLine = t - (BASE_WINDOW.miss + 0.02) - latencyMs / 1000;
-    let i = cursorRef.current;
     const notes = notesRef.current;
+    let i = cursorRef.current;
 
-    let missedCount = 0;
+    let missed = 0;
     while (i < notes.length) {
       const n = notes[i];
       if (n.judged) { i++; continue; }
       if (n.t <= missLine) {
         n.judged = true;
         n.hit = false;
-        missedCount++;
+        missed++;
         i++;
         continue;
       }
       break;
     }
-    if (missedCount > 0) {
+    if (missed > 0) {
       cursorRef.current = i;
-      setCounts((c) => ({ ...c, miss: c.miss + missedCount }));
+      setCounts((c) => ({ ...c, miss: c.miss + missed }));
       setCombo(0);
-      setJudgeFx({ type: "miss", at: now });
-      if (navigator.vibrate) navigator.vibrate(10);
+      setJudgeFx({ type: "miss", at: performance.now() });
     }
 
-    // end detection
-    const dur = durationRef.current || a.duration || 0;
-    const lastNoteT = lastNoteTRef.current || 0;
-    const doneByNotes = notes.length
-      ? t > lastNoteT + 0.9
-      : t > 1.5;
-
-    if ((dur && t >= dur - 0.02) || doneByNotes) {
+    const lastT = lastNoteTRef.current || 0;
+    if (t > lastT + 0.9) {
       finishRun();
       return;
     }
 
-    // render throttle: 60fps feel, but avoid redundant state writes if tab is slow
-    if (now - lastRenderAtRef.current > 0) {
-      lastRenderAtRef.current = now;
-      setFrame((f) => f + 1);
-    }
-
+    setFrame((f) => f + 1);
     rafRef.current = requestAnimationFrame(tick);
-  }, [BASE_WINDOW.miss, finishRun, latencyMs]);
+  }, [finishRun, latencyMs]);
 
-  // ---- Start / Pause / Resume ----
   const startRun = useCallback(async () => {
     const a = audioRef.current;
-    if (!a) return;
-
-    // ensure metadata loaded
-    if (!loaded) return;
-
-    // generate chart for current duration
-    const dur = a.duration || durationRef.current || 0;
-    durationRef.current = dur;
-    generateChart(dur || 180);
+    if (!a || !loaded) return;
 
     // reset stats
     setScore(0);
@@ -5370,21 +5187,22 @@ const BeatSyncApp = () => {
     setCounts({ perfect: 0, good: 0, miss: 0 });
     setJudgeFx(null);
 
-    // start
+    const dur = a.duration || 180;
+    generateChart(dur);
+
     a.currentTime = 0;
     playTRef.current = 0;
     cursorRef.current = 0;
 
     try {
       await a.play();
-    } catch (e) {
-      // autoplay blocked – keep ready state
+    } catch {
+      // autoplay/gesture failでも「見えない」を防ぐ：readyに戻す
       setStatus("ready");
       return;
     }
 
     setStatus("playing");
-
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(tick);
   }, [generateChart, loaded, tick]);
@@ -5403,7 +5221,7 @@ const BeatSyncApp = () => {
     if (!a) return;
     try {
       await a.play();
-    } catch (e) {
+    } catch {
       return;
     }
     setStatus("playing");
@@ -5412,9 +5230,8 @@ const BeatSyncApp = () => {
   }, [tick]);
 
   const restartRun = useCallback(async () => {
-    // restart from zero with same chart
     const a = audioRef.current;
-    if (!a) return;
+    if (!a || !loaded) return;
 
     setScore(0);
     setCombo(0);
@@ -5422,10 +5239,7 @@ const BeatSyncApp = () => {
     setCounts({ perfect: 0, good: 0, miss: 0 });
     setJudgeFx(null);
 
-    notesRef.current.forEach((n) => {
-      n.judged = false;
-      n.hit = false;
-    });
+    notesRef.current.forEach((n) => { n.judged = false; n.hit = false; });
     cursorRef.current = 0;
 
     a.pause();
@@ -5434,7 +5248,7 @@ const BeatSyncApp = () => {
 
     try {
       await a.play();
-    } catch (e) {
+    } catch {
       setStatus("ready");
       return;
     }
@@ -5442,12 +5256,10 @@ const BeatSyncApp = () => {
     setStatus("playing");
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(tick);
-  }, [tick]);
+  }, [loaded, tick]);
 
-  // ---- Hit logic ----
   const applyJudge = useCallback((type) => {
-    const now = performance.now();
-    setJudgeFx({ type, at: now });
+    setJudgeFx({ type, at: performance.now() });
 
     if (type === "perfect") {
       setCounts((c) => ({ ...c, perfect: c.perfect + 1 }));
@@ -5457,7 +5269,6 @@ const BeatSyncApp = () => {
         setMaxCombo((m) => Math.max(m, next));
         return next;
       });
-      if (navigator.vibrate) navigator.vibrate(6);
     } else if (type === "good") {
       setCounts((c) => ({ ...c, good: c.good + 1 }));
       setScore((s) => s + 600 + combo * 4);
@@ -5466,142 +5277,60 @@ const BeatSyncApp = () => {
         setMaxCombo((m) => Math.max(m, next));
         return next;
       });
-      if (navigator.vibrate) navigator.vibrate(4);
     } else {
       setCounts((c) => ({ ...c, miss: c.miss + 1 }));
       setCombo(0);
-      if (navigator.vibrate) navigator.vibrate(10);
     }
   }, [combo]);
 
-  const hitLane = useCallback(
-    (lane) => {
-      if (!(status === "playing" || status === "paused" || status === "ready")) return;
+  const hitLane = useCallback((lane) => {
+    if (status === "ready") { startRun(); return; }
+    if (status === "paused") { resumeRun(); return; }
+    if (status !== "playing") return;
 
-      // allow “tap to start”
-      if (status === "ready") {
-        startRun();
-        return;
-      }
-      if (status === "paused") {
-        resumeRun();
-        return;
-      }
+    const t = playTRef.current || 0;
+    const adjT = t + latencyMs / 1000;
 
-      const t = playTRef.current || 0;
-      const adjT = t + latencyMs / 1000;
+    const notes = notesRef.current;
+    let i = cursorRef.current;
 
-      const notes = notesRef.current;
-      let i = cursorRef.current;
+    let bestIdx = -1;
+    let bestAbs = Infinity;
 
-      // find best candidate near time window in this lane
-      let bestIdx = -1;
-      let bestAbs = Infinity;
+    const searchUntil = Math.min(i + 18, notes.length);
+    for (let k = i; k < searchUntil; k++) {
+      const n = notes[k];
+      if (n.judged) continue;
 
-      const searchUntil = Math.min(i + 18, notes.length); // local search window
-      for (let k = i; k < searchUntil; k++) {
-        const n = notes[k];
-        if (n.judged) continue;
-        const dt = n.t - adjT;
-        if (dt < -BASE_WINDOW.miss) continue;
-        if (dt > BASE_WINDOW.miss) break;
-        if (n.lane !== lane) continue;
+      const dt = n.t - adjT;
+      if (dt < -BASE_WINDOW.miss) continue;
+      if (dt > BASE_WINDOW.miss) break;
+      if (n.lane !== lane) continue;
 
-        const abs = Math.abs(dt);
-        if (abs < bestAbs) {
-          bestAbs = abs;
-          bestIdx = k;
-        }
-      }
-
-      if (bestIdx === -1) {
-        applyJudge("miss");
-        return;
-      }
-
-      const n = notes[bestIdx];
-      const dt = Math.abs(n.t - adjT);
-
-      n.judged = true;
-      n.hit = true;
-
-      // advance cursor minimally
-      while (cursorRef.current < notes.length && notes[cursorRef.current].judged) cursorRef.current++;
-
-      if (dt <= BASE_WINDOW.perfect) applyJudge("perfect");
-      else if (dt <= BASE_WINDOW.good) applyJudge("good");
-      else applyJudge("miss");
-    },
-    [BASE_WINDOW.good, BASE_WINDOW.miss, BASE_WINDOW.perfect, applyJudge, latencyMs, resumeRun, startRun, status, startRun, resumeRun]
-  );
-
-  // ---- Input handlers (touch / pointer / keyboard) ----
-  const onPointerDownLane = useCallback(
-    (lane, e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      pressedLaneRef.current[lane] = true;
-      pointerLaneRef.current.set(e.pointerId, lane);
-
-      try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
-
-      hitLane(lane);
-      setFrame((f) => f + 1);
-    },
-    [hitLane]
-  );
-
-  const onPointerUpAny = useCallback((e) => {
-    const lane = pointerLaneRef.current.get(e.pointerId);
-    if (lane !== undefined) {
-      pressedLaneRef.current[lane] = false;
-      pointerLaneRef.current.delete(e.pointerId);
-      setFrame((f) => f + 1);
+      const abs = Math.abs(dt);
+      if (abs < bestAbs) { bestAbs = abs; bestIdx = k; }
     }
-  }, []);
 
-  useEffect(() => {
-    const el = rootRef.current;
-    if (!el) return;
+    if (bestIdx === -1) { applyJudge("miss"); return; }
 
-    el.addEventListener("pointerup", onPointerUpAny, { passive: false });
-    el.addEventListener("pointercancel", onPointerUpAny, { passive: false });
+    const n = notes[bestIdx];
+    const dt = Math.abs(n.t - adjT);
 
-    return () => {
-      el.removeEventListener("pointerup", onPointerUpAny);
-      el.removeEventListener("pointercancel", onPointerUpAny);
-    };
-  }, [onPointerUpAny]);
+    n.judged = true;
+    n.hit = true;
 
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.repeat) return;
-      const idx = LANE_KEYS.indexOf(e.key);
-      if (idx >= 0) {
-        e.preventDefault();
-        hitLane(idx);
-      }
-      if (e.key === " " || e.key === "Enter") {
-        e.preventDefault();
-        if (status === "playing") pauseRun();
-        else if (status === "paused") resumeRun();
-        else if (status === "ready") startRun();
-      }
-    };
-    window.addEventListener("keydown", onKey, { passive: false });
-    return () => window.removeEventListener("keydown", onKey);
-  }, [hitLane, pauseRun, resumeRun, startRun, status]);
+    while (cursorRef.current < notes.length && notes[cursorRef.current].judged) cursorRef.current++;
 
-  // ---- Audio load ----
+    if (dt <= BASE_WINDOW.perfect) applyJudge("perfect");
+    else if (dt <= BASE_WINDOW.good) applyJudge("good");
+    else applyJudge("miss");
+  }, [applyJudge, latencyMs, resumeRun, startRun, status]);
+
+  // ====== load audio ======
   useEffect(() => {
     setLoaded(false);
     setStatus("idle");
     setJudgeFx(null);
-    setCombo(0);
-    setScore(0);
-    setMaxCombo(0);
-    setCounts({ perfect: 0, good: 0, miss: 0 });
 
     const a = audioRef.current;
     if (!a) return;
@@ -5610,7 +5339,6 @@ const BeatSyncApp = () => {
     a.currentTime = 0;
 
     const onMeta = () => {
-      durationRef.current = a.duration || 0;
       setLoaded(true);
       setStatus("ready");
     };
@@ -5626,7 +5354,6 @@ const BeatSyncApp = () => {
   }, [currentTrack.url, finishRun]);
 
   useEffect(() => {
-    // swap src safely
     const a = audioRef.current;
     if (!a) return;
     a.src = currentTrack.url;
@@ -5634,20 +5361,21 @@ const BeatSyncApp = () => {
     a.load();
   }, [currentTrack.url]);
 
-  // ---- Visible notes (cursor windowing for performance) ----
+  // ====== visible notes (px stable) ======
   const ui = useMemo(() => {
     const t = playTRef.current || 0;
-    const hitY = 0.86; // relative
-    const spawnAhead = 2.4; // sec ahead visible
-    const past = 0.35; // sec behind visible
+    const { w, h, hitY } = sizeRef.current;
+    const laneW = w ? w / LANES : 0;
+
+    // spawn ahead: 画面上端から出てくる時間
+    const spawnAhead = hitY && speed ? (hitY + 120) / speed : 2.2;
+    const past = 0.35;
 
     const minT = t - past;
     const maxT = t + spawnAhead;
 
     const notes = notesRef.current;
     let i = cursorRef.current;
-
-    // allow showing a bit before cursor for continuity
     while (i > 0 && notes[i - 1] && notes[i - 1].t >= minT) i--;
 
     const list = [];
@@ -5655,27 +5383,14 @@ const BeatSyncApp = () => {
       const n = notes[k];
       if (n.t < minT) continue;
       if (n.t > maxT) break;
-      if (!n.judged || (n.judged && !n.hit && n.t > t - 0.12)) {
-        list.push(n);
-      }
-      if (list.length > 64) break;
+      if (!n.judged || (n.judged && !n.hit && n.t > t - 0.12)) list.push(n);
+      if (list.length > 72) break;
     }
 
-    // judgement image timing
-    const fxAlive = judgeFx && performance.now() - judgeFx.at < 380;
+    const fxAlive = judgeFx && performance.now() - judgeFx.at < 360;
 
-    return { t, hitY, list, fxAlive };
-  }, [frame, judgeFx]);
-
-  const difficultyMeta = useMemo(() => {
-    const d =
-      difficulty === "EASY"
-        ? { label: "EASY", glow: "rgba(168,234,255,0.22)" }
-        : difficulty === "NORMAL"
-        ? { label: "NORMAL", glow: "rgba(185,168,255,0.22)" }
-        : { label: "HARD", glow: "rgba(255,200,232,0.22)" };
-    return d;
-  }, [difficulty]);
+    return { t, w, h, hitY, laneW, list, fxAlive };
+  }, [frame, judgeFx, speed]);
 
   const bunnyMood = useMemo(() => {
     if (status === "result") return ASSET.bunny.flop;
@@ -5686,174 +5401,203 @@ const BeatSyncApp = () => {
     return ASSET.bunny.idle;
   }, [ASSET.bunny, combo, judgeFx, status]);
 
-  // ---- UI ----
+  // ====== UI (mobile-first: board is always visible; settings = drawer) ======
   return (
-    <div
-      ref={rootRef}
-      className="relative h-full w-full bg-[#020204] overflow-hidden select-none"
-      style={{
-        touchAction: "none",
-      }}
-    >
-      {/* Premium back haze */}
+    <div className="relative h-full w-full bg-[#020204] overflow-hidden select-none" style={{ touchAction: "none" }}>
+      {/* premium haze */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -inset-20 opacity-70"
+        <div
+          className="absolute -inset-20 opacity-70"
           style={{
             background:
-              "radial-gradient(900px 520px at 20% 15%, rgba(168,234,255,0.18), transparent 60%)," +
-              "radial-gradient(820px 540px at 80% 20%, rgba(185,168,255,0.16), transparent 62%)," +
-              "radial-gradient(980px 620px at 55% 92%, rgba(255,200,232,0.12), transparent 64%)",
+              "radial-gradient(900px 520px at 20% 15%, rgba(168,234,255,0.14), transparent 60%)," +
+              "radial-gradient(820px 540px at 80% 20%, rgba(185,168,255,0.12), transparent 62%)," +
+              "radial-gradient(980px 620px at 55% 92%, rgba(255,200,232,0.10), transparent 64%)",
             filter: "blur(6px)",
           }}
         />
         <div
-          className="absolute inset-0 opacity-[0.14]"
+          className="absolute inset-0 opacity-[0.08]"
           style={{
             backgroundImage:
-              "linear-gradient(to bottom, rgba(255,255,255,0.06), transparent 18%, transparent 82%, rgba(255,255,255,0.05))," +
-              "radial-gradient(circle at 50% 40%, rgba(255,255,255,0.06), transparent 50%)",
-          }}
-        />
-        <div
-          className="absolute inset-0 opacity-[0.07]"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(to bottom, rgba(255,255,255,0.22) 0px, rgba(255,255,255,0.22) 1px, transparent 1px, transparent 6px)",
+              "repeating-linear-gradient(to bottom, rgba(255,255,255,0.18) 0px, rgba(255,255,255,0.18) 1px, transparent 1px, transparent 7px)",
             mixBlendMode: "overlay",
           }}
         />
       </div>
 
-      {/* Top HUD */}
+      {/* Top mini HUD (simple) */}
       <div className="absolute top-0 left-0 right-0 z-30 px-4 pt-3">
         <div
-          className="mx-auto max-w-[980px] flex items-center justify-between rounded-2xl border border-white/10 bg-black/35 backdrop-blur-2xl px-4 py-3"
-          style={{
-            boxShadow:
-              "0 10px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)",
-          }}
+          className="mx-auto max-w-[860px] rounded-2xl border border-white/10 bg-black/30 backdrop-blur-2xl px-4 py-3 flex items-center justify-between"
+          style={{ boxShadow: "0 14px 50px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06)" }}
         >
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-2xl border border-white/12 bg-white/5 overflow-hidden"
-              style={{ boxShadow: "0 10px 25px rgba(0,0,0,0.45)" }}
-            >
-              <img src={ASSET.bunny.front} alt="os_bunny" className="h-full w-full object-cover opacity-90" />
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-9 w-9 rounded-2xl border border-white/12 bg-white/5 overflow-hidden shrink-0">
+              <img src={ASSET.bunny.front} className="h-full w-full object-cover opacity-90" alt="os_bunny" />
             </div>
-            <div className="leading-tight">
-              <div className="text-[10px] tracking-[0.34em] uppercase text-white/55 font-medium">
+            <div className="min-w-0">
+              <div className="text-[10px] tracking-[0.34em] uppercase text-white/50">
                 OS_USAGI <span className="text-white/85">SYNC</span>
               </div>
-              <div className="text-[12px] text-white/75">
+              <div className="text-[12px] text-white/80 truncate">
                 BEAT SYNC · <span className="text-white/90">{currentTrack.title}</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 text-[10px] tracking-[0.34em] uppercase text-white/40">
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1">
-                Difficulty <span className="text-white/80">{difficulty}</span>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="hidden sm:flex items-center gap-2">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] tracking-[0.28em] uppercase text-white/55">
+                {difficulty}
               </span>
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1">
-                Accuracy <span className="text-white/80">{accuracy.toFixed(1)}%</span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] tracking-[0.28em] uppercase text-white/55">
+                ACC {accuracy.toFixed(1)}%
               </span>
             </div>
 
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1">
-              <span className="text-[10px] tracking-[0.3em] uppercase text-white/50">Score</span>
-              <span className="text-[12px] text-white/85 tabular-nums">{score.toLocaleString()}</span>
-            </div>
-
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1">
-              <span className="text-[10px] tracking-[0.3em] uppercase text-white/50">Combo</span>
-              <span className="text-[12px] text-white/85 tabular-nums">{combo}</span>
-            </div>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] tracking-[0.28em] uppercase text-white/65">
+              SCORE <span className="text-white/85 tabular-nums">{score.toLocaleString()}</span>
+            </span>
 
             <button
-              className="h-9 w-9 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl active:scale-[0.98]"
-              onClick={() => hardReset(false)}
-              aria-label="Close"
-              style={{
-                boxShadow:
-                  "0 10px 25px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06)",
-              }}
+              className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
+              onClick={() => setShowSettings(true)}
+              aria-label="settings"
+              style={{ boxShadow: "0 12px 35px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
             >
-              <X className="mx-auto opacity-80" size={16} />
+              <Settings size={16} className="mx-auto opacity-80" />
+            </button>
+
+            <button
+              className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
+              onClick={stopAll}
+              aria-label="close"
+              style={{ boxShadow: "0 12px 35px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+            >
+              <X size={16} className="mx-auto opacity-80" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Main layout */}
-      <div className="absolute inset-0 pt-[74px] pb-[calc(env(safe-area-inset-bottom)+14px)]">
-        <div className="mx-auto h-full max-w-[980px] px-4">
-          <div className="h-full grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
-            {/* Side panel */}
-            <div className="relative rounded-[28px] border border-white/10 bg-black/30 backdrop-blur-2xl overflow-hidden"
-              style={{
-                boxShadow:
-                  "0 18px 60px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06)",
-              }}
-            >
-              <div className="absolute inset-0 pointer-events-none"
+      {/* Game area */}
+      <div className="absolute inset-0 pt-[70px] pb-[calc(env(safe-area-inset-bottom)+12px)]">
+        <div className="mx-auto max-w-[860px] h-full px-4">
+          <div
+            ref={boardRef}
+            className="relative h-full rounded-[28px] border border-white/10 bg-black/25 backdrop-blur-2xl overflow-hidden"
+            style={{ boxShadow: "0 18px 70px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+          >
+            {/* lane glass */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div
+                className="absolute inset-0 opacity-[0.14]"
                 style={{
-                  background:
-                    "radial-gradient(520px 320px at 30% 20%, rgba(168,234,255,0.14), transparent 60%)," +
-                    "radial-gradient(520px 320px at 80% 70%, rgba(185,168,255,0.12), transparent 62%)",
+                  backgroundImage:
+                    "linear-gradient(to bottom, rgba(255,255,255,0.10), transparent 16%, transparent 86%, rgba(255,255,255,0.08))",
+                  mixBlendMode: "overlay",
                 }}
               />
-              <div className="relative p-5">
-                <div className="flex items-start gap-4">
-                  <div className="h-[108px] w-[108px] rounded-[26px] border border-white/10 bg-white/5 overflow-hidden">
-                    <img src={bunnyMood} alt="bunny" className="h-full w-full object-cover opacity-90" />
+              <div className="absolute inset-0 grid grid-cols-4">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="relative">
+                    <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-white/10" />
                   </div>
-                  <div className="flex-1">
-                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/50">
-                      Beat Sync
-                    </div>
-                    <div className="mt-1 text-[18px] text-white/85 font-semibold leading-tight">
-                      {currentTrack.title}
-                    </div>
-                    <div className="mt-2 text-[12px] text-white/55">
-                      Difficulty: <span className="text-white/80">{difficulty}</span>
-                      <span className="mx-2 text-white/20">·</span>
-                      Accuracy: <span className="text-white/80">{accuracy.toFixed(1)}%</span>
-                    </div>
+                ))}
+              </div>
+            </div>
 
-                    <div className="mt-3 flex items-center gap-2">
-                      <span
-                        className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] tracking-[0.3em] uppercase border border-white/10 bg-white/5 text-white/60"
-                        style={{ boxShadow: `0 0 0 1px ${difficultyMeta.glow} inset` }}
-                      >
-                        SYNC
-                        <span className="h-1.5 w-1.5 rounded-full bg-white/80"
-                          style={{
-                            boxShadow:
-                              "0 0 14px rgba(168,234,255,0.55), 0 0 18px rgba(185,168,255,0.45)",
-                            animation: "osbPulse 2.8s cubic-bezier(0.22,1,0.36,1) infinite",
-                          }}
-                        />
-                      </span>
-                    </div>
-                  </div>
-                </div>
+            {/* bunny badge */}
+            <div className="absolute left-4 top-4 z-10 flex items-center gap-3">
+              <div className="h-12 w-12 rounded-[18px] border border-white/10 bg-white/5 overflow-hidden">
+                <img src={bunnyMood} alt="bunny" className="h-full w-full object-cover opacity-90" />
+              </div>
+              <div>
+                <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">COMBO</div>
+                <div className="text-[18px] text-white/90 tabular-nums">{combo}</div>
+              </div>
+            </div>
 
-                {/* Transport controls */}
-                <div className="mt-5 grid grid-cols-3 gap-2">
-                  <button
-                    className="col-span-1 h-11 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl active:scale-[0.99]"
-                    onClick={() => {
-                      if (status === "playing") pauseRun();
-                      else if (status === "paused") resumeRun();
-                      else if (status === "ready") startRun();
-                    }}
-                    disabled={!loaded}
+            {/* notes (px-based transform) */}
+            <div className="absolute inset-0">
+              {ui.list.map((n) => {
+                const size = 54;
+                const x = ui.laneW * (n.lane + 0.5);
+                const dt = n.t - (ui.t + latencyMs / 1000); // future + / past -
+                const y = ui.hitY - dt * speed;
+
+                const alpha = n.judged && !n.hit ? 0.12 : 1;
+
+                return (
+                  <div
+                    key={n.id}
+                    className="absolute"
                     style={{
-                      boxShadow:
-                        "0 12px 30px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.06)",
+                      width: size,
+                      height: size,
+                      opacity: alpha,
+                      transform: `translate3d(${x - size / 2}px, ${y - size / 2}px, 0)`,
+                      willChange: "transform",
                     }}
                   >
-                    <div className="flex items-center justify-center gap-2 text-white/80">
+                    <div
+                      className="h-full w-full rounded-2xl border border-white/12 bg-black/35 backdrop-blur-xl flex items-center justify-center"
+                      style={{
+                        boxShadow:
+                          "0 18px 45px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      <img
+                        src={ASSET.arrows[LANE_ICON[n.lane]]}
+                        alt="note"
+                        className="h-8 w-8 opacity-90"
+                        style={{ filter: "drop-shadow(0 0 12px rgba(255,255,255,0.10))" }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* judge fx */}
+            {ui.fxAlive && (
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                <img
+                  src={
+                    judgeFx.type === "perfect"
+                      ? ASSET.judge.perfect
+                      : judgeFx.type === "good"
+                      ? ASSET.judge.good
+                      : ASSET.judge.miss
+                  }
+                  alt="judge"
+                  className="h-14 opacity-90"
+                  style={{
+                    filter:
+                      "drop-shadow(0 0 18px rgba(168,234,255,0.16)) drop-shadow(0 0 22px rgba(185,168,255,0.12))",
+                    animation: "osbJudge 360ms cubic-bezier(0.22,1,0.36,1) both",
+                  }}
+                />
+              </div>
+            )}
+
+            {/* bottom controls + pads (always visible, not clutter) */}
+            <div className="absolute inset-x-0 bottom-0 z-20 pb-[env(safe-area-inset-bottom)]">
+              {/* transport row */}
+              <div className="px-4 pb-3">
+                <div className="mx-auto max-w-[560px] grid grid-cols-3 gap-2">
+                  <button
+                    className="h-12 rounded-2xl border border-white/12 bg-white/10 text-white/90 active:scale-[0.99]"
+                    onClick={() => {
+                      if (!loaded) return;
+                      if (status === "playing") pauseRun();
+                      else if (status === "paused") resumeRun();
+                      else startRun();
+                    }}
+                    style={{ boxShadow: "0 16px 45px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+                  >
+                    <div className="flex items-center justify-center gap-2">
                       {status === "playing" ? <Pause size={16} /> : <Play size={16} />}
                       <span className="text-[11px] tracking-[0.22em] uppercase">
                         {status === "playing" ? "Pause" : "Play"}
@@ -5861,456 +5605,259 @@ const BeatSyncApp = () => {
                     </div>
                   </button>
 
-                  {/* STOP button (requested) */}
                   <button
-                    className="col-span-1 h-11 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl active:scale-[0.99]"
-                    onClick={stopPlayback}
-                    disabled={!loaded}
-                    style={{
-                      boxShadow:
-                        "0 12px 30px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.06)",
-                    }}
+                    className="h-12 rounded-2xl border border-white/10 bg-white/5 text-white/85 active:scale-[0.99]"
+                    onClick={stopAll}
+                    style={{ boxShadow: "0 16px 45px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06)" }}
                   >
-                    <div className="flex items-center justify-center gap-2 text-white/80">
-                      <Minimize2 size={16} />
-                      <span className="text-[11px] tracking-[0.22em] uppercase">Stop</span>
-                    </div>
+                    <span className="text-[11px] tracking-[0.22em] uppercase">Stop</span>
                   </button>
 
                   <button
-                    className="col-span-1 h-11 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl active:scale-[0.99]"
+                    className="h-12 rounded-2xl border border-white/10 bg-white/5 text-white/85 active:scale-[0.99]"
                     onClick={restartRun}
-                    disabled={!loaded}
-                    style={{
-                      boxShadow:
-                        "0 12px 30px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.06)",
-                    }}
+                    style={{ boxShadow: "0 16px 45px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06)" }}
                   >
-                    <div className="flex items-center justify-center gap-2 text-white/80">
+                    <div className="flex items-center justify-center gap-2">
                       <RotateCcw size={16} />
                       <span className="text-[11px] tracking-[0.22em] uppercase">Restart</span>
                     </div>
                   </button>
                 </div>
-
-                {/* Track / Difficulty */}
-                <div className="mt-4 grid grid-cols-1 gap-3">
-                  <div className="rounded-2xl border border-white/10 bg-black/25 px-3 py-3">
-                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">
-                      Track
-                    </div>
-                    <div className="grid grid-cols-1 gap-2">
-                      <select
-                        className="w-full h-11 rounded-2xl bg-white/5 border border-white/10 text-white/75 px-3 text-[13px] outline-none"
-                        value={trackId}
-                        onChange={(e) => setTrackId(e.target.value)}
-                      >
-                        {ASSET.tracks.map((t) => (
-                          <option key={t.id} value={t.id} className="bg-black">
-                            {t.title}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-black/25 px-3 py-3">
-                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">
-                      Difficulty
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      {["EASY", "NORMAL", "HARD"].map((d) => {
-                        const active = d === difficulty;
-                        const glow =
-                          d === "EASY" ? "rgba(168,234,255,0.28)" :
-                          d === "NORMAL" ? "rgba(185,168,255,0.28)" :
-                          "rgba(255,200,232,0.26)";
-                        return (
-                          <button
-                            key={d}
-                            className={`h-11 rounded-2xl border backdrop-blur-xl active:scale-[0.99] ${
-                              active ? "border-white/18 bg-white/10 text-white/90" : "border-white/10 bg-white/5 text-white/65"
-                            }`}
-                            style={{
-                              boxShadow: active
-                                ? `0 14px 40px rgba(0,0,0,0.55), 0 0 0 1px ${glow} inset`
-                                : "0 12px 30px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.05)",
-                            }}
-                            onClick={() => setDifficulty(d)}
-                          >
-                            <span className="text-[11px] tracking-[0.22em] uppercase">{d}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-black/25 px-3 py-3">
-                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">
-                      Tuning
-                    </div>
-
-                    <div className="space-y-3">
-                      <div>
-                        <div className="flex items-center justify-between text-[11px] text-white/55">
-                          <span className="tracking-[0.22em] uppercase">Latency</span>
-                          <span className="tabular-nums text-white/70">{latencyMs} ms</span>
-                        </div>
-                        <input
-                          type="range"
-                          min={-80}
-                          max={120}
-                          value={latencyMs}
-                          onChange={(e) => setLatencyMs(parseInt(e.target.value, 10))}
-                          className="w-full accent-white/70"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex items-center justify-between text-[11px] text-white/55">
-                          <span className="tracking-[0.22em] uppercase">Speed</span>
-                          <span className="tabular-nums text-white/70">{speed} px/s</span>
-                        </div>
-                        <input
-                          type="range"
-                          min={680}
-                          max={1100}
-                          value={speed}
-                          onChange={(e) => setSpeed(parseInt(e.target.value, 10))}
-                          className="w-full accent-white/70"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex items-center justify-between text-[11px] text-white/55">
-                          <span className="tracking-[0.22em] uppercase">Volume</span>
-                          <span className="tabular-nums text-white/70">{Math.round(volume * 100)}%</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
-                            onClick={() => setMuted((m) => !m)}
-                          >
-                            <Volume2 size={16} className={`mx-auto ${muted ? "opacity-40" : "opacity-80"}`} />
-                          </button>
-                          <input
-                            type="range"
-                            min={0}
-                            max={1}
-                            step={0.01}
-                            value={volume}
-                            onChange={(e) => setVolume(parseFloat(e.target.value))}
-                            className="w-full accent-white/70"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Hidden audio */}
-                <audio ref={audioRef} preload="metadata" />
               </div>
-            </div>
 
-            {/* Game board */}
-            <div className="relative rounded-[28px] border border-white/10 bg-black/30 backdrop-blur-2xl overflow-hidden"
-              style={{
-                boxShadow:
-                  "0 18px 60px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.06)",
-              }}
-            >
-              <div className="absolute inset-0 pointer-events-none"
-                style={{
-                  background:
-                    "radial-gradient(680px 420px at 50% 18%, rgba(168,234,255,0.12), transparent 60%)," +
-                    "radial-gradient(680px 420px at 50% 92%, rgba(185,168,255,0.12), transparent 62%)",
-                }}
-              />
-
-              {/* board inner */}
-              <div className="relative h-full">
-                {/* Title row (mobile) */}
-                <div className="lg:hidden px-4 pt-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">BEAT SYNC</div>
-                      <div className="text-[16px] text-white/85 font-semibold">{currentTrack.title}</div>
-                      <div className="text-[12px] text-white/55 mt-1">
-                        Difficulty: <span className="text-white/80">{difficulty}</span>
-                        <span className="mx-2 text-white/20">·</span>
-                        Accuracy: <span className="text-white/80">{accuracy.toFixed(1)}%</span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">SCORE</div>
-                      <div className="text-[16px] text-white/90 tabular-nums">{score.toLocaleString()}</div>
-                      <div className="text-[12px] text-white/55">COMBO {combo}</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Lanes area */}
-                <div className="absolute inset-0 px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+16px)]">
-                  <div className="relative h-full">
-                    {/* lanes glass */}
-                    <div className="absolute inset-x-0 top-0 bottom-0 rounded-[26px] border border-white/10 bg-white/[0.03]"
-                      style={{
-                        boxShadow:
-                          "inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(255,255,255,0.04)",
+              {/* hit pads */}
+              <div className="px-4 pb-4">
+                <div className="mx-auto max-w-[560px] grid grid-cols-4 gap-3">
+                  {[0, 1, 2, 3].map((lane) => (
+                    <button
+                      key={lane}
+                      className="h-[70px] rounded-[22px] border border-white/12 bg-white/[0.04] backdrop-blur-2xl active:scale-[0.99]"
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        hitLane(lane);
                       }}
-                    />
-                    <div className="absolute inset-0 pointer-events-none opacity-[0.10]"
                       style={{
-                        backgroundImage:
-                          "linear-gradient(to bottom, rgba(255,255,255,0.18), transparent 14%, transparent 86%, rgba(255,255,255,0.12))",
-                        mixBlendMode: "overlay",
+                        boxShadow: "0 18px 45px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06)",
                       }}
-                    />
-
-                    <div className="absolute inset-0 grid grid-cols-4 gap-0">
-                      {[0,1,2,3].map((lane) => (
-                        <div key={lane} className="relative">
-                          <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-white/10" />
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Notes */}
-                    <div className="absolute inset-0">
-                      {ui.list.map((n) => {
-                        const dt = n.t - ui.t - latencyMs / 1000; // future positive
-                        const y = ui.hitY * 100 - dt * (speed / 9.6); // scale-ish
-                        const xPct = ((n.lane + 0.5) / LANES) * 100;
-
-                        const size = 56; // px
-                        const judged = n.judged;
-                        const alpha = judged && !n.hit ? 0.15 : 1;
-
-                        const glow =
-                          n.lane === 0 ? "rgba(185,168,255,0.30)" :
-                          n.lane === 1 ? "rgba(168,234,255,0.28)" :
-                          n.lane === 2 ? "rgba(255,200,232,0.24)" :
-                          "rgba(168,234,255,0.24)";
-
-                        return (
-                          <div
-                            key={n.id}
-                            className="absolute"
-                            style={{
-                              left: `calc(${xPct}% - ${size/2}px)`,
-                              top: `calc(${y}% - ${size/2}px)`,
-                              width: size,
-                              height: size,
-                              opacity: alpha,
-                              transform: "translateZ(0)",
-                            }}
-                          >
-                            <div
-                              className="h-full w-full rounded-2xl border border-white/12 bg-black/35 backdrop-blur-xl flex items-center justify-center"
-                              style={{
-                                boxShadow:
-                                  `0 18px 40px rgba(0,0,0,0.55), 0 0 0 1px ${glow} inset, 0 0 22px ${glow}`,
-                              }}
-                            >
-                              <img
-                                src={ASSET.arrows[LANE_ICON[n.lane]]}
-                                alt={LANE_LABEL[n.lane]}
-                                className="h-8 w-8 opacity-90"
-                                style={{
-                                  filter: "drop-shadow(0 0 10px rgba(255,255,255,0.12))",
-                                }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Judge FX */}
-                    {ui.fxAlive && (
-                      <div className="absolute inset-x-0 top-[56%] -translate-y-1/2 flex justify-center pointer-events-none">
+                      aria-label={`lane-${lane}`}
+                    >
+                      <div className="h-full flex items-center justify-center">
                         <img
-                          src={
-                            judgeFx.type === "perfect"
-                              ? ASSET.judge.perfect
-                              : judgeFx.type === "good"
-                              ? ASSET.judge.good
-                              : ASSET.judge.miss
-                          }
-                          alt={judgeFx.type}
-                          className="h-14 sm:h-16 opacity-90"
-                          style={{
-                            filter:
-                              "drop-shadow(0 0 18px rgba(168,234,255,0.18)) drop-shadow(0 0 22px rgba(185,168,255,0.14))",
-                            animation:
-                              "osbJudge 380ms cubic-bezier(0.22,1,0.36,1) both",
-                          }}
+                          src={ASSET.arrows[LANE_ICON[lane]]}
+                          alt="pad"
+                          className="h-9 w-9 opacity-90"
+                          style={{ filter: "drop-shadow(0 0 12px rgba(255,255,255,0.10))" }}
                         />
                       </div>
-                    )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
 
-                    {/* Receptors (touch targets) */}
-                    <div className="absolute inset-x-0 bottom-0 pb-[env(safe-area-inset-bottom)]">
-                      <div className="mx-auto max-w-[560px]">
-                        <div className="grid grid-cols-4 gap-3 px-2 pb-3">
-                          {[0,1,2,3].map((lane) => {
-                            const pressed = pressedLaneRef.current[lane];
-                            const glow =
-                              lane === 0 ? "rgba(185,168,255,0.30)" :
-                              lane === 1 ? "rgba(168,234,255,0.30)" :
-                              lane === 2 ? "rgba(255,200,232,0.26)" :
-                              "rgba(168,234,255,0.26)";
-
-                            return (
-                              <button
-                                key={lane}
-                                className="h-[68px] rounded-[22px] border border-white/12 bg-white/[0.04] backdrop-blur-2xl active:scale-[0.99]"
-                                onPointerDown={(e) => onPointerDownLane(lane, e)}
-                                aria-label={`lane-${lane}`}
-                                style={{
-                                  boxShadow: pressed
-                                    ? `0 18px 45px rgba(0,0,0,0.55), 0 0 0 1px ${glow} inset, 0 0 24px ${glow}`
-                                    : `0 18px 45px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)`,
-                                  transform: pressed ? "translateY(1px) scale(0.99)" : "translateZ(0)",
-                                }}
-                              >
-                                <div className="h-full flex items-center justify-center">
-                                  <img
-                                    src={ASSET.arrows[LANE_ICON[lane]]}
-                                    alt={LANE_LABEL[lane]}
-                                    className="h-9 w-9 opacity-90"
-                                    style={{
-                                      filter: pressed
-                                        ? `drop-shadow(0 0 16px ${glow})`
-                                        : "drop-shadow(0 0 12px rgba(255,255,255,0.10))",
-                                    }}
-                                  />
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Result modal */}
-                    {status === "result" && (
-                      <div className="absolute inset-0 flex items-center justify-center p-4">
-                        <div className="absolute inset-0 bg-black/55 backdrop-blur-2xl" />
-                        <div
-                          className="relative w-full max-w-[420px] rounded-[28px] border border-white/12 bg-black/45 backdrop-blur-2xl p-5"
-                          style={{
-                            boxShadow:
-                              "0 28px 90px rgba(0,0,0,0.70), inset 0 1px 0 rgba(255,255,255,0.06)",
-                          }}
-                        >
-                          <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">
-                            RESULT
-                          </div>
-                          <div className="mt-1 text-[22px] font-semibold text-white/90">
-                            SYNC COMPLETE
-                          </div>
-                          <div className="mt-1 text-[12px] text-white/55">
-                            もう一回いく？
-                          </div>
-
-                          <div className="mt-4 grid grid-cols-3 gap-2">
-                            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-                              <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Perfect</div>
-                              <div className="mt-1 text-[18px] text-white/90 tabular-nums">{counts.perfect}</div>
-                            </div>
-                            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-                              <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Good</div>
-                              <div className="mt-1 text-[18px] text-white/90 tabular-nums">{counts.good}</div>
-                            </div>
-                            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-                              <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Miss</div>
-                              <div className="mt-1 text-[18px] text-white/90 tabular-nums">{counts.miss}</div>
-                            </div>
-                          </div>
-
-                          <div className="mt-3 grid grid-cols-2 gap-2">
-                            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-                              <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Max Combo</div>
-                              <div className="mt-1 text-[18px] text-white/90 tabular-nums">{maxCombo}</div>
-                            </div>
-                            <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-                              <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Accuracy</div>
-                              <div className="mt-1 text-[18px] text-white/90 tabular-nums">{accuracy.toFixed(1)}%</div>
-                            </div>
-                          </div>
-
-                          <div className="mt-4 grid grid-cols-2 gap-2">
-                            <button
-                              className="h-12 rounded-2xl border border-white/12 bg-white/10 text-white/90 active:scale-[0.99]"
-                              onClick={restartRun}
-                              style={{
-                                boxShadow:
-                                  "0 18px 45px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)",
-                              }}
-                            >
-                              <span className="text-[11px] tracking-[0.22em] uppercase">Restart</span>
-                            </button>
-                            <button
-                              className="h-12 rounded-2xl border border-white/10 bg-white/5 text-white/80 active:scale-[0.99]"
-                              onClick={() => setStatus("ready")}
-                              style={{
-                                boxShadow:
-                                  "0 18px 45px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)",
-                              }}
-                            >
-                              <span className="text-[11px] tracking-[0.22em] uppercase">Back</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Ready overlay */}
-                    {status === "ready" && (
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="rounded-full border border-white/10 bg-black/35 backdrop-blur-2xl px-5 py-3">
-                          <div className="text-[10px] tracking-[0.34em] uppercase text-white/50 text-center">
-                            TAP ANY LANE TO START
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Paused overlay */}
-                    {status === "paused" && (
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="rounded-full border border-white/10 bg-black/45 backdrop-blur-2xl px-5 py-3">
-                          <div className="text-[10px] tracking-[0.34em] uppercase text-white/60 text-center">
-                            PAUSED · TAP ANY LANE TO RESUME
-                          </div>
-                        </div>
-                      </div>
-                    )}
+            {/* ready / paused hint */}
+            {(status === "ready" || status === "paused") && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="rounded-full border border-white/10 bg-black/35 backdrop-blur-2xl px-5 py-3">
+                  <div className="text-[10px] tracking-[0.34em] uppercase text-white/60 text-center">
+                    {status === "ready" ? "TAP PAD TO START" : "PAUSED · TAP PAD TO RESUME"}
                   </div>
                 </div>
               </div>
+            )}
 
-              {/* Keyframes */}
-              <style>{`
-                @keyframes osbPulse {
-                  0%,100% { transform: translateZ(0) scale(1); opacity: .65; }
-                  50% { transform: translateZ(0) scale(1.18); opacity: 1; }
-                }
-                @keyframes osbJudge {
-                  0% { transform: translateY(8px) scale(.96); opacity: 0; }
-                  40% { transform: translateY(0px) scale(1.02); opacity: 1; }
-                  100% { transform: translateY(-6px) scale(1.00); opacity: 0; }
-                }
-              `}</style>
-            </div>
+            {/* result */}
+            {status === "result" && (
+              <div className="absolute inset-0 z-40 flex items-center justify-center p-4">
+                <div className="absolute inset-0 bg-black/55 backdrop-blur-2xl" />
+                <div
+                  className="relative w-full max-w-[420px] rounded-[28px] border border-white/12 bg-black/45 backdrop-blur-2xl p-5"
+                  style={{ boxShadow: "0 28px 90px rgba(0,0,0,0.70), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+                >
+                  <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">RESULT</div>
+                  <div className="mt-1 text-[22px] font-semibold text-white/90">SYNC COMPLETE</div>
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+                      <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Perfect</div>
+                      <div className="mt-1 text-[18px] text-white/90 tabular-nums">{counts.perfect}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+                      <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Good</div>
+                      <div className="mt-1 text-[18px] text-white/90 tabular-nums">{counts.good}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+                      <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Miss</div>
+                      <div className="mt-1 text-[18px] text-white/90 tabular-nums">{counts.miss}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+                      <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Max Combo</div>
+                      <div className="mt-1 text-[18px] text-white/90 tabular-nums">{maxCombo}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+                      <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Accuracy</div>
+                      <div className="mt-1 text-[18px] text-white/90 tabular-nums">{accuracy.toFixed(1)}%</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <button
+                      className="h-12 rounded-2xl border border-white/12 bg-white/10 text-white/90 active:scale-[0.99]"
+                      onClick={restartRun}
+                      style={{ boxShadow: "0 18px 45px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+                    >
+                      <span className="text-[11px] tracking-[0.22em] uppercase">Restart</span>
+                    </button>
+                    <button
+                      className="h-12 rounded-2xl border border-white/10 bg-white/5 text-white/85 active:scale-[0.99]"
+                      onClick={() => setStatus("ready")}
+                      style={{ boxShadow: "0 18px 45px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+                    >
+                      <span className="text-[11px] tracking-[0.22em] uppercase">Back</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* audio */}
+            <audio ref={audioRef} preload="metadata" />
+
+            {/* keyframes */}
+            <style>{`
+              @keyframes osbJudge {
+                0% { transform: translateY(10px) scale(.96); opacity: 0; }
+                40% { transform: translateY(0) scale(1.02); opacity: 1; }
+                100% { transform: translateY(-8px) scale(1.00); opacity: 0; }
+              }
+            `}</style>
           </div>
         </div>
       </div>
+
+      {/* Settings drawer (only when needed → clutter 0) */}
+      {showSettings && (
+        <div className="absolute inset-0 z-50">
+          <div className="absolute inset-0 bg-black/55 backdrop-blur-2xl" onClick={() => setShowSettings(false)} />
+          <div
+            className="absolute left-1/2 bottom-0 w-[min(860px,100%)] -translate-x-1/2 rounded-t-[28px] border border-white/12 bg-black/45 backdrop-blur-2xl p-4"
+            style={{ boxShadow: "0 -26px 80px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+          >
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">SETTINGS</div>
+              <button
+                className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
+                onClick={() => setShowSettings(false)}
+              >
+                <X size={16} className="mx-auto opacity-80" />
+              </button>
+            </div>
+
+            <div className="mt-3 grid gap-3">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">TRACK</div>
+                <select
+                  className="w-full h-12 rounded-2xl bg-white/5 border border-white/10 text-white/80 px-3 text-[13px] outline-none"
+                  value={trackId}
+                  onChange={(e) => setTrackId(e.target.value)}
+                >
+                  {ASSET.tracks.map((t) => (
+                    <option key={t.id} value={t.id} className="bg-black">
+                      {t.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">DIFFICULTY</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {["EASY", "NORMAL", "HARD"].map((d) => (
+                    <button
+                      key={d}
+                      className={`h-12 rounded-2xl border active:scale-[0.99] ${
+                        d === difficulty ? "border-white/20 bg-white/10 text-white/90" : "border-white/10 bg-white/5 text-white/70"
+                      }`}
+                      onClick={() => setDifficulty(d)}
+                    >
+                      <span className="text-[11px] tracking-[0.22em] uppercase">{d}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-3 space-y-3">
+                <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">TUNING</div>
+
+                <div>
+                  <div className="flex items-center justify-between text-[11px] text-white/60">
+                    <span className="tracking-[0.22em] uppercase">LATENCY</span>
+                    <span className="tabular-nums text-white/75">{latencyMs} ms</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={-80}
+                    max={120}
+                    value={latencyMs}
+                    onChange={(e) => setLatencyMs(parseInt(e.target.value, 10))}
+                    className="w-full accent-white/70"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between text-[11px] text-white/60">
+                    <span className="tracking-[0.22em] uppercase">SPEED</span>
+                    <span className="tabular-nums text-white/75">{speed} px/s</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={650}
+                    max={1150}
+                    value={speed}
+                    onChange={(e) => setSpeed(parseInt(e.target.value, 10))}
+                    className="w-full accent-white/70"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between text-[11px] text-white/60">
+                    <span className="tracking-[0.22em] uppercase">VOLUME</span>
+                    <span className="tabular-nums text-white/75">{Math.round(volume * 100)}%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
+                      onClick={() => setMuted((m) => !m)}
+                      aria-label="mute"
+                    >
+                      <Volume2 size={16} className={`mx-auto ${muted ? "opacity-40" : "opacity-80"}`} />
+                    </button>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={volume}
+                      onChange={(e) => setVolume(parseFloat(e.target.value))}
+                      className="w-full accent-white/70"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pb-[env(safe-area-inset-bottom)]" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
 
 
 // -------------------------------------------------------------------------
