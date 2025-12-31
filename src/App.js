@@ -3844,7 +3844,7 @@ function Scanlines({ opacity = 0.12 }) {
 
 
 
-export default function AppRoot() {
+export function AppRoot() {
   return (
     <MobileProvider>
       <App items={_ITEMS} />
