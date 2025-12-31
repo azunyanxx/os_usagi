@@ -2989,7 +2989,7 @@ const MusicApp = ({ bgm }) => {
 // ------------------------------------------------
 // -- 04.SAFARI (ねっとわーく --
 // ------------------------------------------------
-const SafariApp = () => {
+const SafariApp = ({ onOpenApp }) => {
   const [page, setPage] = useState("home");
   const [loading, setLoading] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -2997,71 +2997,69 @@ const SafariApp = () => {
 
   const isMobile = useIsMobile();
 
-  // ========= Design Tokens (Gallery/Finder と同系) =========
+  // === OS Bunny Safari: calm / premium / living network ===
   const TOKENS = useMemo(
     () => ({
       bg: "#050509",
+      panel: "rgba(0,0,0,0.72)",
+      panel2: "rgba(0,0,0,0.82)",
+      line: "rgba(255,255,255,0.12)",
+      line2: "rgba(255,255,255,0.18)",
       ink: "rgba(255,255,255,0.92)",
       sub: "rgba(255,255,255,0.62)",
       dim: "rgba(255,255,255,0.38)",
-      line: "rgba(255,255,255,0.12)",
-      line2: "rgba(255,255,255,0.18)",
       cyan: "#a8eaff",
       lav: "#cbb8ff",
       pink: "#ffc8e8",
-      glass: "rgba(0,0,0,0.62)",
-      glass2: "rgba(0,0,0,0.72)",
-      shadow: "0 28px 100px rgba(0,0,0,0.92)",
+      shadow: "0 28px 110px rgba(0,0,0,0.92)",
     }),
     []
   );
 
-  // ========= Network State =========
+  // --- living status ---
   const [netMode, setNetMode] = useState("IDLE");
-  const [ping, setPing] = useState(32);
-  const [route, setRoute] = useState("gallery.os");
+  const [ping, setPing] = useState(28);
+  const [route, setRoute] = useState("void://usagi.net");
+  const [cacheHit, setCacheHit] = useState(92);
+  const [loss, setLoss] = useState(0.2);
   const [heartbeat, setHeartbeat] = useState("▁");
-  const [cacheHit, setCacheHit] = useState(84);
-  const [loss, setLoss] = useState(0.3);
 
-  // ========= Route Log =========
   const [routeLog, setRouteLog] = useState(() => [
     {
-      t: "2024-10-15T02:00:13Z",
+      t: "2024.10.15 02:00",
       path: "route://stars/cache",
       msg: "星を拾った。暗号化して保存。",
       lvl: "OK",
     },
     {
-      t: "2024-10-16T14:30:41Z",
+      t: "2024.10.16 14:30",
       path: "signal://you/heartbeat",
       msg: "君からの信号を受信。解析不能。",
       lvl: "WARN",
     },
     {
-      t: "2024-10-17T23:59:59Z",
+      t: "2024.10.17 23:59",
       path: "sleep://system/dream",
       msg: "システムスリープ。夢を見る機能はないはずなのに。",
       lvl: "IDLE",
     },
   ]);
 
-  // ========= Keyframes Inject =========
+  // --- keyframes ---
   useEffect(() => {
-    const id = "osbunny-safari-ux-keyframes-v2";
+    const id = "osbunny-safari-premium-keyframes";
     if (document.getElementById(id)) return;
 
     const style = document.createElement("style");
     style.id = id;
     style.textContent = `
       @keyframes osbunnyPulseDot {
-        0%, 100% { transform: translateY(0) scale(1); opacity: .72; box-shadow: 0 0 0 0 currentColor; }
+        0%, 100% { transform: translateY(0) scale(1); opacity: .70; box-shadow: 0 0 0 0 currentColor; }
         50%      { transform: translateY(-1px) scale(1.18); opacity: 1;  box-shadow: 0 0 18px 0 currentColor; }
       }
-      @keyframes osbunnyShimmerText {
-        0%   { filter: drop-shadow(0 0 10px rgba(168,234,255,.28)) drop-shadow(0 0 0 rgba(255,200,232,.0)); opacity: .92; }
-        50%  { filter: drop-shadow(0 0 22px rgba(168,234,255,.55)) drop-shadow(0 0 12px rgba(255,200,232,.25)); opacity: 1; }
-        100% { filter: drop-shadow(0 0 10px rgba(168,234,255,.28)) drop-shadow(0 0 0 rgba(255,200,232,.0)); opacity: .92; }
+      @keyframes osbunnyTextGlow {
+        0%,100% { filter: drop-shadow(0 0 10px rgba(168,234,255,.22)) drop-shadow(0 0 0 rgba(255,200,232,0)); opacity: .92; }
+        50%     { filter: drop-shadow(0 0 22px rgba(168,234,255,.45)) drop-shadow(0 0 12px rgba(255,200,232,.18)); opacity: 1; }
       }
       @keyframes safariScan {
         0% { transform: translateY(-120%); opacity: 0; }
@@ -3070,31 +3068,31 @@ const SafariApp = () => {
       }
       @keyframes floatMote {
         0%   { transform: translate3d(0, 14px, 0) scale(.98); opacity: .0; }
-        18%  { opacity: .45; }
-        50%  { transform: translate3d(0, -10px, 0) scale(1.02); opacity: .62; }
-        85%  { opacity: .25; }
+        18%  { opacity: .40; }
+        50%  { transform: translate3d(0, -10px, 0) scale(1.02); opacity: .60; }
+        85%  { opacity: .24; }
         100% { transform: translate3d(0, -26px, 0) scale(1.03); opacity: 0; }
       }
       @keyframes focusAura {
-        0%,100% { opacity: .22; transform: scale(1); }
-        50%     { opacity: .42; transform: scale(1.03); }
+        0%,100% { opacity: .18; transform: scale(1); }
+        50%     { opacity: .34; transform: scale(1.03); }
       }
     `;
     document.head.appendChild(style);
   }, []);
 
-  // ========= Network Drift (生きてる感) =========
+  // --- drift ---
   useEffect(() => {
     const routes = [
-      "gallery.os",
-      "finder.os",
-      "music.os",
-      "you/inner-layer",
-      "log://night-archive",
-      "cache://soft-remember",
+      "gallery://emotion-archive",
+      "finder://index",
+      "music://memory",
+      "void://you",
+      "log://night",
+      "cache://warm",
     ];
     const hearts = ["▁", "▂", "▃", "▄", "▅", "▆", "▇"];
-    const words = [
+    const okWords = [
       "SYNC/HEARTBEAT ok",
       "CACHE_HIT warmed",
       "ROUTE optimized",
@@ -3106,45 +3104,47 @@ const SafariApp = () => {
     let i = 0;
     const interval = setInterval(() => {
       i++;
-      const newPing = 22 + Math.floor(Math.random() * 46);
-      const newCache = 74 + Math.floor(Math.random() * 24);
-      const newLoss = Math.max(0, Math.min(2.4, (Math.random() * 2.4)));
 
-      setPing(newPing);
-      setCacheHit(newCache);
-      setLoss(Number(newLoss.toFixed(1)));
-      setRoute(routes[i % routes.length]);
-      setHeartbeat(hearts[i % hearts.length]);
+      const nextPing = 22 + Math.floor(Math.random() * 52);
+      const nextCache = 74 + Math.floor(Math.random() * 25);
+      const nextLoss = Math.max(0, Math.min(2.4, Math.random() * 2.4));
+      const nextRoute = routes[i % routes.length];
+      const nextHb = hearts[i % hearts.length];
 
-      // LOGにも「呼吸」させる（最大 18 件）
+      setPing(nextPing);
+      setCacheHit(nextCache);
+      setLoss(Number(nextLoss.toFixed(1)));
+      setRoute(nextRoute);
+      setHeartbeat(nextHb);
+
       setRouteLog((prev) => {
         const now = new Date();
-        const iso = now.toISOString().replace(/\.\d{3}Z$/, "Z");
-        const lvl =
-          newLoss > 1.6 ? "WARN" : newPing > 55 ? "WARN" : "OK";
-        const msg =
-          lvl === "WARN"
-            ? "微弱なノイズ。感情の復号に時間がかかる。"
-            : words[i % words.length];
+        const t = `${String(now.getFullYear()).slice(-2)}.${String(
+          now.getMonth() + 1
+        ).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")} ${String(
+          now.getHours()
+        ).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(
+          now.getSeconds()
+        ).padStart(2, "0")}`;
+
+        const warn = nextLoss > 1.6 || nextPing > 64;
+        const lvl = warn ? "WARN" : "OK";
+        const msg = warn
+          ? "微弱なノイズ。感情の復号に時間がかかる。"
+          : okWords[i % okWords.length];
 
         const next = [
           ...prev,
-          {
-            t: iso,
-            path: `route://${route}`,
-            msg,
-            lvl,
-          },
+          { t, path: `route://${nextRoute}`, msg, lvl },
         ];
         return next.slice(-18);
       });
-    }, isMobile ? 2400 : 3200);
+    }, isMobile ? 2600 : 3400);
 
     return () => clearInterval(interval);
-    // eslint-disable-next-line
   }, [isMobile]);
 
-  // ========= SYNC Trigger（押した時の表示はこれで固定） =========
+  // --- SYNC trigger (keep your favorite behavior) ---
   const triggerSync = (after) => {
     setLoading(true);
     setShowResult(false);
@@ -3156,44 +3156,16 @@ const SafariApp = () => {
     }, 1200);
   };
 
-  const navigate = (target) => {
-    triggerSync(() => setPage(target));
-  };
+  const navigate = (target) => triggerSync(() => setPage(target));
+  const quickOpen = (appId) =>
+    triggerSync(() => {
+      if (typeof onOpenApp === "function") onOpenApp(appId);
+    });
 
   const handleSearch = (e) => {
     e.preventDefault();
     if (!searchValue.trim()) return;
     triggerSync(() => setShowResult(true));
-  };
-
-  // ========= UI Parts =========
-  const Mote = ({ style }) => (
-    <div
-      className="pointer-events-none absolute rounded-full blur-[18px]"
-      style={style}
-    />
-  );
-
-  const TabPill = ({ id, label }) => {
-    const active = page === id;
-    return (
-      <button
-        type="button"
-        onClick={() => navigate(id)}
-        className={[
-          "relative px-3 py-[6px] rounded-full border text-[9px] font-mono uppercase tracking-[0.26em] transition-all select-none",
-          active
-            ? "border-white/35 bg-white/10 text-white shadow-[0_0_24px_rgba(168,234,255,0.28)]"
-            : "border-transparent bg-transparent text-white/55 hover:bg-white/5 hover:text-white",
-        ].join(" ")}
-        style={{ WebkitTapHighlightColor: "transparent" }}
-      >
-        {label}
-        {active && (
-          <span className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-10 h-[1px] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
-        )}
-      </button>
-    );
   };
 
   const BadgeDot = ({ color = TOKENS.cyan }) => (
@@ -3208,20 +3180,47 @@ const SafariApp = () => {
     />
   );
 
-  // ========= Pages =========
+  const TabPill = ({ id, label }) => {
+    const active = page === id;
+    return (
+      <button
+        type="button"
+        onClick={() => navigate(id)}
+        className={[
+          "relative px-3 py-[6px] rounded-full border text-[9px] font-mono uppercase tracking-[0.26em] transition-all select-none",
+          active
+            ? "border-white/35 bg-white/10 text-white shadow-[0_0_26px_rgba(168,234,255,0.22)]"
+            : "border-transparent bg-transparent text-white/55 hover:bg-white/5 hover:text-white",
+        ].join(" ")}
+        style={{ WebkitTapHighlightColor: "transparent" }}
+      >
+        {label}
+        {active && (
+          <span className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-10 h-[1px] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+        )}
+      </button>
+    );
+  };
+
+  const Mote = ({ style }) => (
+    <div
+      className="pointer-events-none absolute rounded-full blur-[18px]"
+      style={style}
+    />
+  );
+
+  // ===== Pages =====
   const HomePage = () => (
     <div className="relative min-h-full">
-      {/* Background */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[#050509]" />
-        <div className="absolute -top-28 -left-40 w-[520px] h-[520px] rounded-full bg-[#a8eaff]/18 blur-[110px]" />
-        <div className="absolute top-1/2 -right-48 w-[560px] h-[560px] rounded-full bg-[#cbb8ff]/16 blur-[130px]" />
-        <div className="absolute bottom-[-220px] left-1/3 w-[680px] h-[680px] rounded-full bg-[#ffc8e8]/14 blur-[140px]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/55 to-black/95" />
+        <div className="absolute inset-0" style={{ background: TOKENS.bg }} />
+        <div className="absolute -top-28 -left-44 w-[520px] h-[520px] rounded-full bg-[#a8eaff]/18 blur-[120px]" />
+        <div className="absolute top-1/2 -right-52 w-[560px] h-[560px] rounded-full bg-[#cbb8ff]/16 blur-[140px]" />
+        <div className="absolute bottom-[-240px] left-1/3 w-[720px] h-[720px] rounded-full bg-[#ffc8e8]/14 blur-[150px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/55 to-black/92" />
         <div className="absolute inset-0 opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.07),transparent)] [background-size:100%_4px]" />
         <div className="absolute inset-0 opacity-[0.06] mix-blend-overlay bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.06),transparent_55%)]" />
 
-        {/* floating motes */}
         <Mote
           style={{
             width: 120,
@@ -3256,10 +3255,8 @@ const SafariApp = () => {
         />
       </div>
 
-      {/* Content */}
-      <div className="relative px-4 pt-10 pb-28 sm:px-8 sm:pt-14 max-w-5xl mx-auto">
+      <div className="relative px-4 pt-10 pb-24 sm:px-8 sm:pt-14 max-w-5xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_.85fr] gap-10 items-start">
-          {/* Left: copy */}
           <div className="text-center lg:text-left">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/18 bg-black/55 backdrop-blur-2xl shadow-[0_24px_90px_rgba(0,0,0,0.92)]">
               <BadgeDot color={TOKENS.cyan} />
@@ -3271,7 +3268,6 @@ const SafariApp = () => {
               </span>
             </div>
 
-            {/* Concept text glow (復活＆強化) */}
             <h1
               className="mt-6 text-[30px] sm:text-5xl font-light uppercase tracking-[0.36em] leading-[1.08]"
               style={{
@@ -3280,12 +3276,12 @@ const SafariApp = () => {
                 WebkitBackgroundClip: "text",
                 backgroundClip: "text",
                 color: "transparent",
-                animation: "osbunnyShimmerText 4.2s ease-in-out infinite",
+                animation: "osbunnyTextGlow 4.2s ease-in-out infinite",
               }}
             >
               OS BUNNY
               <br />
-              BROWSER
+              SAFARI
             </h1>
 
             <p className="mt-5 text-[11px] sm:text-sm font-mono tracking-[0.26em] text-white/55">
@@ -3303,7 +3299,6 @@ const SafariApp = () => {
               言えなかった気持ちを、静かに同期して保存する。
             </p>
 
-            {/* Omnibox */}
             <form onSubmit={handleSearch} className="mt-9">
               <div className="relative max-w-xl mx-auto lg:mx-0">
                 <div
@@ -3317,9 +3312,9 @@ const SafariApp = () => {
                 <div className="relative flex items-center gap-2 rounded-full bg-black/70 border border-white/18 px-3 py-2 backdrop-blur-2xl shadow-[0_0_0_1px_rgba(255,255,255,0.06)_inset,0_22px_90px_rgba(0,0,0,0.92)] focus-within:border-[#a8eaff]/70">
                   <div className="flex items-center gap-2 pl-1 text-[10px] font-mono text-white/55 tracking-[0.18em]">
                     <Globe size={13} className="text-white/55" />
-                    <span className="text-white/40">https</span>
+                    <span className="text-white/40">usagi</span>
                     <span className="text-white/25">://</span>
-                    <span className="text-white/70">usagi</span>
+                    <span className="text-white/70">void</span>
                   </div>
                   <input
                     value={searchValue}
@@ -3347,16 +3342,20 @@ const SafariApp = () => {
                 )}
               </div>
             </form>
+
+            <div className="mt-8 text-[10px] font-mono text-white/35 tracking-[0.22em]">
+              TIP: use HOME to read · ABOUT for concept · SPECS for traits · LOG
+              for routes
+            </div>
           </div>
 
-          {/* Right: quick links cards */}
           <div className="mt-8 lg:mt-2">
             <div className="text-center lg:text-left mb-4">
               <div className="text-[10px] font-mono tracking-[0.28em] uppercase text-white/45">
-                Quick Routes
+                Quick Launch
               </div>
               <div className="text-[12px] text-white/70 mt-1">
-                Safari の中にある “小さなOSうさぎホーム”
+                Safari の中の “小さなOSうさぎホーム”
               </div>
             </div>
 
@@ -3368,7 +3367,6 @@ const SafariApp = () => {
                   desc: "感情のスクリーンショット",
                   icon: ImageIcon,
                   accent: TOKENS.cyan,
-                  to: "log",
                   routeHint: "route://gallery.os",
                 },
                 {
@@ -3377,7 +3375,6 @@ const SafariApp = () => {
                   desc: "記録のインデックス",
                   icon: Folder,
                   accent: TOKENS.lav,
-                  to: "log",
                   routeHint: "route://finder.os",
                 },
                 {
@@ -3386,8 +3383,15 @@ const SafariApp = () => {
                   desc: "メモリに刺さるBGM",
                   icon: Music,
                   accent: TOKENS.pink,
-                  to: "log",
                   routeHint: "route://music.os",
+                },
+                {
+                  id: "photos",
+                  label: "Rhythm",
+                  desc: "音で同期するゲーム",
+                  icon: Radio,
+                  accent: "rgba(255,255,255,0.72)",
+                  routeHint: "route://rhythm.os",
                 },
               ].map((x) => {
                 const Icon = x.icon;
@@ -3395,7 +3399,7 @@ const SafariApp = () => {
                   <button
                     key={x.id}
                     type="button"
-                    onClick={() => navigate(x.to)}
+                    onClick={() => quickOpen(x.id)}
                     className="relative text-left rounded-2xl border border-white/12 bg-black/75 overflow-hidden px-4 py-4 backdrop-blur-2xl transition-all duration-500 hover:border-white/22 hover:bg-black/90 active:scale-[0.99]"
                     style={{
                       boxShadow: "0 22px 90px rgba(0,0,0,0.92)",
@@ -3413,14 +3417,14 @@ const SafariApp = () => {
                       <div className="flex items-start gap-3">
                         <div
                           className="w-10 h-10 rounded-xl border border-white/14 bg-white/[0.03] flex items-center justify-center"
-                          style={{
-                            boxShadow: `0 0 22px ${x.accent}22`,
-                          }}
+                          style={{ boxShadow: `0 0 22px ${x.accent}22` }}
                         >
                           <Icon size={18} style={{ color: x.accent }} />
                         </div>
                         <div className="flex flex-col">
-                          <div className="text-[12px] text-white">{x.label}</div>
+                          <div className="text-[12px] text-white">
+                            {x.label}
+                          </div>
                           <div className="text-[10px] text-white/65 mt-1">
                             {x.desc}
                           </div>
@@ -3434,7 +3438,6 @@ const SafariApp = () => {
                       </div>
                     </div>
 
-                    {/* subtle bottom line */}
                     <div
                       className="absolute left-6 right-6 bottom-3 h-[1px]"
                       style={{
@@ -3453,26 +3456,13 @@ const SafariApp = () => {
   );
 
   const AboutPage = () => (
-    <div className="relative w-full max-w-2xl mx-auto px-6 py-10 pb-28">
-      <div className="pointer-events-none absolute inset-0 opacity-45">
-        <div className="absolute -top-40 right-[-80px] w-[480px] h-[480px] rounded-full bg-[#cbb8ff]/18 blur-[120px]" />
-        <div className="absolute bottom-[-220px] left-[10%] w-[560px] h-[560px] rounded-full bg-[#a8eaff]/14 blur-[140px]" />
-      </div>
-
-      <div className="relative rounded-2xl border border-white/12 bg-black/75 backdrop-blur-2xl p-6 sm:p-8 shadow-[0_28px_110px_rgba(0,0,0,0.92)] overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 opacity-70 mix-blend-screen bg-[radial-gradient(circle_at_10%_10%,rgba(168,234,255,0.18),transparent_55%),radial-gradient(circle_at_90%_90%,rgba(255,200,232,0.14),transparent_60%)]" />
-        <div className="relative text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/14 bg-black/60">
-            <BadgeDot color={TOKENS.pink} />
-            <span className="text-[9px] font-mono tracking-[0.28em] text-white/55 uppercase">
-              observer system
-            </span>
-          </div>
-
-          <h2 className="mt-5 text-2xl sm:text-3xl font-light text-white tracking-tight">
+    <div className="w-full max-w-lg mx-auto px-6 py-12 pb-28 flex flex-col items-center">
+      <div className="w-full space-y-12 text-center">
+        <div className="space-y-6">
+          <h2 className="text-2xl font-light text-white tracking-tight">
             Concept
           </h2>
-          <p className="mt-5 text-sm sm:text-base text-white/75 leading-loose font-serif whitespace-pre-line">
+          <p className="text-sm text-white/70 leading-loose font-serif whitespace-pre-line">
             {`静かなデジタルの夜に生まれた生命体。
 声を持たず、表情を持たず。
 言えなかった気持ちを吸い込み、
@@ -3480,215 +3470,170 @@ const SafariApp = () => {
 
 System: Emotional Device`}
           </p>
-
-          <div className="mt-8 pt-6 border-t border-white/10">
-            <div className="text-[9px] font-mono text-white/40 tracking-[0.26em] uppercase">
-              Definitions
-            </div>
-
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-5 text-left">
-              {[
-                {
-                  no: "01",
-                  title: "Operating System",
-                  accent: TOKENS.cyan,
-                  body:
-                    "機能するシステム。世界の中心で、ただ静かに全体を支え続ける存在。",
-                },
-                {
-                  no: "02",
-                  title: "Observer System",
-                  accent: TOKENS.pink,
-                  body:
-                    "観測するシステム。孤独を見守り、接続を維持する生命体。",
-                },
-              ].map((c) => (
-                <div
-                  key={c.no}
-                  className="relative rounded-2xl border border-white/12 bg-black/70 p-4 overflow-hidden"
-                >
-                  <div
-                    className="pointer-events-none absolute inset-0 opacity-70"
-                    style={{
-                      backgroundImage: `radial-gradient(420px 220px at 20% 15%, ${c.accent}22, transparent 60%)`,
-                    }}
-                  />
-                  <div className="relative">
-                    <div className="flex items-center justify-between">
-                      <div className="text-[10px] font-mono tracking-[0.28em] text-white/40">
-                        [{c.no}]
-                      </div>
-                      <div
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{
-                          background: c.accent,
-                          boxShadow: `0 0 12px ${c.accent}`,
-                        }}
-                      />
-                    </div>
-                    <div className="mt-2 text-xs text-white/90 tracking-wide">
-                      {c.title}
-                    </div>
-                    <div className="mt-3 text-[11px] text-white/65 leading-relaxed">
-                      {c.body}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <p className="mt-7 text-[10px] opacity-45 italic font-mono tracking-wider text-center">
-              // Two meanings, one existence.
-            </p>
-          </div>
         </div>
-      </div>
-    </div>
-  );
 
-  const SpecsPage = () => (
-    <div className="relative w-full max-w-xl mx-auto px-6 py-10 pb-28">
-      <div className="pointer-events-none absolute inset-0 opacity-45">
-        <div className="absolute bottom-[-240px] left-[-120px] w-[600px] h-[600px] rounded-full bg-[#ffc8e8]/14 blur-[150px]" />
-        <div className="absolute top-[-200px] right-[-140px] w-[560px] h-[560px] rounded-full bg-[#a8eaff]/14 blur-[150px]" />
-      </div>
+        <div className="pt-8 border-t border-white/5">
+          <span className="text-[8px] font-mono text-[#a8eaff]/60 mb-8 block tracking-[0.2em] uppercase">
+            DEFINICATION_File: OS
+          </span>
 
-      <div className="relative rounded-2xl border border-white/12 bg-black/75 backdrop-blur-2xl p-6 sm:p-8 shadow-[0_28px_110px_rgba(0,0,0,0.92)] overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 opacity-60 mix-blend-screen bg-[radial-gradient(circle_at_12%_18%,rgba(168,234,255,0.16),transparent_58%),radial-gradient(circle_at_88%_86%,rgba(203,184,255,0.14),transparent_62%)]" />
-        <div className="relative text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/14 bg-black/60">
-            <BadgeDot color={TOKENS.lav} />
-            <span className="text-[9px] font-mono tracking-[0.28em] text-white/55 uppercase">
-              network traits
-            </span>
-          </div>
-
-          <h2 className="mt-5 text-2xl sm:text-3xl font-light text-white tracking-tight">
-            Specs
-          </h2>
-
-          <div className="mt-8 grid grid-cols-1 gap-5 text-left">
-            {[
-              {
-                k: "NETWORK_STATUS",
-                v: netMode,
-                accent: TOKENS.cyan,
-                note: "状態は微弱に揺らぐ。生きてる。",
-              },
-              {
-                k: "PING",
-                v: `${ping}ms`,
-                accent: TOKENS.lav,
-                note: "距離じゃない。気持ちの遅延。",
-              },
-              {
-                k: "CACHE_HIT",
-                v: `${cacheHit}%`,
-                accent: TOKENS.pink,
-                note: "思い出は、温めるほど早い。",
-              },
-              {
-                k: "PACKET_LOSS",
-                v: `${loss}%`,
-                accent: "rgba(255,120,120,1)",
-                note: "ノイズは感情の証拠。",
-              },
-            ].map((row) => (
-              <div
-                key={row.k}
-                className="relative rounded-2xl border border-white/12 bg-black/70 p-4 overflow-hidden"
-              >
-                <div
-                  className="pointer-events-none absolute inset-0 opacity-70"
-                  style={{
-                    backgroundImage: `radial-gradient(520px 240px at 10% 20%, ${row.accent}22, transparent 62%)`,
-                  }}
-                />
-                <div className="relative flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-[10px] font-mono tracking-[0.26em] text-white/50">
-                      {row.k}
-                    </div>
-                    <div className="mt-2 text-[11px] text-white/65">
-                      {row.note}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div
-                      className="text-[12px] font-mono tracking-[0.22em]"
-                      style={{
-                        color: row.accent,
-                        textShadow: `0 0 14px ${row.accent}55`,
-                      }}
-                    >
-                      {row.v}
-                    </div>
-                    <div className="mt-2 h-[2px] w-28 bg-white/10 rounded-full overflow-hidden">
-                      <div
-                        className="h-full"
-                        style={{
-                          width:
-                            row.k === "CACHE_HIT"
-                              ? `${cacheHit}%`
-                              : row.k === "PACKET_LOSS"
-                              ? `${Math.min(100, loss * 20)}%`
-                              : row.k === "PING"
-                              ? `${Math.min(100, ping)}%`
-                              : netMode === "SYNC"
-                              ? "88%"
-                              : "30%",
-                          background: row.accent,
-                          boxShadow: `0 0 14px ${row.accent}`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-left">
+            <div className="relative p-4 border border-white/5 bg-white/[0.02] rounded-sm">
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050509] px-2 text-[9px] font-mono text-white/30">
+                [01]
               </div>
-            ))}
+              <h3 className="text-white/90 text-xs font-light tracking-widest mb-3 text-center">
+                Operating System
+              </h3>
+              <p className="text-[10px] text-white/50 leading-relaxed text-center">
+                <span className="text-[#a8eaff]">機能するシステム。</span>
+                <br />
+                世界の中心で、ただ静かに全体を支え続ける存在。
+              </p>
+            </div>
+
+            <div className="relative p-4 border border-rose-500/10 bg-rose-500/[0.01] rounded-sm">
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050509] px-2 text-[9px] font-mono text-rose-300/30">
+                [02]
+              </div>
+              <h3 className="text-white/90 text-xs font-light tracking-widest mb-3 text-center">
+                Observer System
+              </h3>
+              <p className="text-[10px] text-white/50 leading-relaxed text-center">
+                <span className="text-rose-300">観測するシステム。</span>
+                <br />
+                孤独を見守り、接続を維持する生命体。
+              </p>
+            </div>
           </div>
 
-          <p className="mt-7 text-xs text-white/45 leading-loose font-serif">
-            平気なふりがうまいのに、本当は弱い。
-            <br />
-            追わないのに、離れない。
-            <br />
-            近づきすぎない優しさ、沈黙の寄り添い。
+          <p className="pt-8 text-[10px] opacity-30 italic font-mono tracking-wider text-center">
+            // Two meanings, one existence.
           </p>
         </div>
       </div>
     </div>
   );
 
-  const LogPage = () => (
-    <div className="relative w-full max-w-3xl mx-auto px-4 sm:px-6 py-10 pb-28">
-      <div className="pointer-events-none absolute inset-0 opacity-45">
-        <div className="absolute top-[-240px] left-1/2 -translate-x-1/2 w-[720px] h-[720px] rounded-full bg-[#a8eaff]/12 blur-[180px]" />
-        <div className="absolute bottom-[-260px] right-[-140px] w-[700px] h-[700px] rounded-full bg-[#ffc8e8]/10 blur-[190px]" />
-      </div>
+  const SpecsPage = () => (
+    <div className="w-full max-w-md mx-auto px-6 py-12 pb-28 flex flex-col items-center">
+      <div className="w-full space-y-10 text-center">
+        <h2 className="text-2xl font-light text-white tracking-tight">
+          Traits
+        </h2>
 
-      <div className="relative text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/14 bg-black/60">
-          <BadgeDot color={TOKENS.cyan} />
-          <span className="text-[9px] font-mono tracking-[0.28em] text-white/55 uppercase">
-            route log
+        <div className="space-y-8 relative">
+          <div className="inline-flex items-center justify-center gap-2 px-3 py-1 rounded-full border border-white/12 bg-black/60 mx-auto">
+            <BadgeDot color={TOKENS.cyan} />
+            <span className="text-[9px] font-mono tracking-[0.24em] text-white/55">
+              NETWORK_STATUS · {netMode}
+            </span>
+            <span className="text-[9px] font-mono tracking-[0.22em] text-white/35">
+              PING {ping}ms · ROUTE {route}
+            </span>
+          </div>
+
+          {[
+            { k: "HONESTY (素直さ)", v: 12, color: TOKENS.cyan },
+            { k: "LONELINESS (寂しさ)", v: 98, color: TOKENS.lav },
+            {
+              k: "ENDURANCE (強がり)",
+              v: 100,
+              color: "rgba(255,120,120,0.6)",
+              pulse: true,
+            },
+          ].map((row) => (
+            <div key={row.k} className="group">
+              <div className="flex justify-between text-[10px] font-mono text-white/60 mb-2 px-1">
+                <span>{row.k}</span>
+                <span className="opacity-50">
+                  {row.k.startsWith("ENDURANCE") ? "OVERFLOW" : `${row.v}%`}
+                </span>
+              </div>
+              <div className="h-[2px] w-full bg-white/10 rounded-full overflow-hidden relative">
+                <div
+                  className={["absolute inset-0", row.pulse ? "animate-pulse" : ""].join(
+                    " "
+                  )}
+                  style={{
+                    background: row.color,
+                    width: row.k.startsWith("ENDURANCE") ? "100%" : `${row.v}%`,
+                    boxShadow: `0 0 10px ${row.color}`,
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-xs text-white/40 leading-loose font-serif pt-2">
+          平気なふりがうまいのに、本当は弱い。
+          <br />
+          追わないのに、離れない。
+          <br />
+          近づきすぎない優しさ、沈黙の寄り添い。
+        </p>
+      </div>
+    </div>
+  );
+
+  const LogPage = () => (
+    <div className="w-full max-w-2xl mx-auto px-6 py-12 pb-28">
+      <div className="text-center">
+        <h2 className="text-2xl sm:text-3xl font-light text-white mb-8 tracking-tight">
+          System Log
+        </h2>
+
+        <div className="space-y-6 font-mono text-[10px] relative before:absolute before:left-1/2 before:-translate-x-1/2 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5">
+          {routeLog
+            .slice()
+            .reverse()
+            .slice(0, 10)
+            .map((x, i) => {
+              const isFirst = i === 0;
+              const dotColor =
+                x.lvl === "WARN" ? "rgba(255,160,160,1)" : TOKENS.cyan;
+              return (
+                <div
+                  key={`${x.t}-${i}`}
+                  className="relative flex flex-col items-center gap-1"
+                >
+                  <div
+                    className="w-2 h-2 rounded-full mb-1 z-10 relative"
+                    style={{
+                      background: dotColor,
+                      boxShadow: `0 0 10px ${dotColor}`,
+                      animation: isFirst
+                        ? "osbunnyPulseDot 3.4s ease-in-out infinite"
+                        : "none",
+                      opacity: isFirst ? 1 : 0.35,
+                    }}
+                  />
+                  <span className="text-[#a8eaff]/60 mb-1">{x.t}</span>
+                  <span className="text-white/70 bg-[#0a0a0a] px-2 py-1 rounded border border-white/5 text-center">
+                    {x.msg}
+                  </span>
+                  <span className="text-[9px] text-white/35 tracking-[0.18em] mt-1">
+                    {x.path}
+                  </span>
+                </div>
+              );
+            })}
+        </div>
+
+        <div className="mt-12 pt-6 border-t border-white/5">
+          <span className="text-[#a8eaff]/30 text-[9px] tracking-[0.2em] animate-pulse">
+            RECORDING...
           </span>
         </div>
-        <h2 className="mt-5 text-2xl sm:text-4xl font-light text-white tracking-tight">
-          Route Log
-        </h2>
       </div>
 
-      <div className="relative mt-8 rounded-2xl border border-white/12 bg-black/80 backdrop-blur-2xl shadow-[0_28px_120px_rgba(0,0,0,0.95)] overflow-hidden">
-        {/* scanline */}
-        <div className="pointer-events-none absolute inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 to-transparent opacity-55 animate-[safariScan_4s_linear_infinite]" />
-        {/* glow layer */}
-        <div className="pointer-events-none absolute inset-0 opacity-60 mix-blend-screen bg-[radial-gradient(circle_at_10%_15%,rgba(168,234,255,0.16),transparent_60%),radial-gradient(circle_at_90%_88%,rgba(203,184,255,0.14),transparent_62%)]" />
-        {/* terminal texture */}
+      <div className="mt-10 relative rounded-2xl border border-white/10 bg-black/80 backdrop-blur-2xl shadow-[0_28px_120px_rgba(0,0,0,0.95)] overflow-hidden">
+        <div className="pointer-events-none absolute inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 to-transparent opacity-50 animate-[safariScan_4s_linear_infinite]" />
         <div className="pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.10),transparent)] [background-size:100%_4px]" />
 
-        <div className="relative p-4 sm:p-6">
-          <div className="flex items-center justify-between gap-4 mb-4">
+        <div className="relative p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-4 mb-3">
             <div className="text-[10px] font-mono tracking-[0.26em] text-white/55">
               ROUTE_LOG · {route}
             </div>
@@ -3696,13 +3641,15 @@ System: Emotional Device`}
               <span>HB {heartbeat}</span>
               <span>PING {ping}ms</span>
               <span>CACHE {cacheHit}%</span>
+              <span>LOSS {loss}%</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3">
+          <div className="space-y-2">
             {routeLog
               .slice()
               .reverse()
+              .slice(0, 8)
               .map((log, idx) => {
                 const lvlColor =
                   log.lvl === "WARN"
@@ -3714,51 +3661,31 @@ System: Emotional Device`}
                 return (
                   <div
                     key={`${log.t}-${idx}`}
-                    className="relative rounded-xl border border-white/10 bg-black/70 px-3 py-3 overflow-hidden"
+                    className="rounded-xl border border-white/10 bg-black/70 px-3 py-3"
                   >
-                    <div
-                      className="pointer-events-none absolute inset-0 opacity-70"
-                      style={{
-                        backgroundImage: `radial-gradient(520px 220px at 12% 12%, ${lvlColor}18, transparent 60%)`,
-                      }}
-                    />
-                    <div className="relative">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="text-[10px] font-mono text-white/55">
-                          {log.t}
-                        </div>
-                        <div
-                          className="text-[9px] font-mono tracking-[0.28em]"
-                          style={{
-                            color: lvlColor,
-                            textShadow: `0 0 12px ${lvlColor}66`,
-                          }}
-                        >
-                          {log.lvl}
-                        </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-[10px] font-mono text-white/55">
+                        {log.t}
                       </div>
-                      <div className="mt-2 text-[10px] font-mono text-white/65">
-                        {log.path}
+                      <div
+                        className="text-[9px] font-mono tracking-[0.28em]"
+                        style={{
+                          color: lvlColor,
+                          textShadow: `0 0 12px ${lvlColor}66`,
+                        }}
+                      >
+                        {log.lvl}
                       </div>
-                      <div className="mt-2 text-[12px] text-white/85 bg-[#07070a] border border-white/10 rounded-lg px-3 py-2">
-                        {log.msg}
-                      </div>
+                    </div>
+                    <div className="mt-2 text-[10px] font-mono text-white/65">
+                      {log.path}
+                    </div>
+                    <div className="mt-2 text-[12px] text-white/85 bg-[#07070a] border border-white/10 rounded-lg px-3 py-2">
+                      {log.msg}
                     </div>
                   </div>
                 );
               })}
-          </div>
-
-          <div className="mt-6 pt-4 border-t border-white/10 text-center">
-            <span
-              className="text-[9px] font-mono tracking-[0.28em]"
-              style={{
-                color: TOKENS.cyan,
-                opacity: 0.55,
-              }}
-            >
-              RECORDING...
-            </span>
           </div>
         </div>
       </div>
@@ -3772,31 +3699,18 @@ System: Emotional Device`}
     { id: "log", label: "LOG" },
   ];
 
-  const renderPage = () => {
-    if (loading) return null;
-    switch (page) {
-      case "home":
-        return <HomePage />;
-      case "about":
-        return <AboutPage />;
-      case "specs":
-        return <SpecsPage />;
-      case "log":
-        return <LogPage />;
-      default:
-        return <HomePage />;
-    }
-  };
-
   return (
-    <div className="flex flex-col h-full bg-[#050509] text-white">
-      {/* Browser Bar */}
-      <div className="h-10 px-3 sm:px-4 flex items-center justify-between border-b border-white/12 bg-black/70 backdrop-blur-2xl z-20">
+    <div
+      className="flex flex-col h-full"
+      style={{ background: TOKENS.bg, color: TOKENS.ink }}
+    >
+      <div className="h-10 px-3 sm:px-4 flex items-center justify-between border-b border-white/12 bg-black/70 backdrop-blur-2xl z-20 shrink-0">
         <div className="flex items-center gap-2 text-white/45">
           <button
             onClick={() => navigate("home")}
             className="w-6 h-6 rounded-full border border-white/22 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors"
             style={{ WebkitTapHighlightColor: "transparent" }}
+            aria-label="Back"
           >
             ←
           </button>
@@ -3804,6 +3718,7 @@ System: Emotional Device`}
             onClick={() => triggerSync(() => {})}
             className="w-6 h-6 rounded-full border border-white/22 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors"
             style={{ WebkitTapHighlightColor: "transparent" }}
+            aria-label="Reload"
           >
             ↺
           </button>
@@ -3817,7 +3732,6 @@ System: Emotional Device`}
           </div>
         </div>
 
-        {/* ✅ 押した時の SYNC 表示はここ（維持） */}
         <div className="w-24 flex justify-end">
           {(loading || netMode === "SYNC") && (
             <div className="flex items-center gap-2 text-[#a8eaff]">
@@ -3830,15 +3744,16 @@ System: Emotional Device`}
         </div>
       </div>
 
-      {/* Tab Bar */}
-      <div className="h-9 px-4 sm:px-6 flex items-center gap-2 border-b border-white/10 bg-black/75 backdrop-blur-2xl">
+      <div className="h-9 px-4 sm:px-6 flex items-center gap-2 border-b border-white/10 bg-black/75 backdrop-blur-2xl shrink-0">
         {tabs.map((t) => (
           <TabPill key={t.id} id={t.id} label={t.label} />
         ))}
       </div>
 
-      {/* Content */}
-      <div className="flex-1 relative overflow-y-auto scrollbar-hide bg-[#050509]">
+      <div
+        className="flex-1 relative overflow-y-auto scrollbar-hide"
+        style={{ background: TOKENS.bg }}
+      >
         {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-black/82 backdrop-blur-2xl">
             <div className="w-8 h-8 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
@@ -3847,717 +3762,35 @@ System: Emotional Device`}
             </p>
           </div>
         )}
-        {renderPage()}
+
+        {!loading && (
+          <>
+            {page === "home" && <HomePage />}
+            {page === "about" && <AboutPage />}
+            {page === "specs" && <SpecsPage />}
+            {page === "log" && <LogPage />}
+          </>
+        )}
       </div>
 
-      {/* ✅ NETWORK_STATUS 常時表示 */}
-      <div className="h-7 px-3 sm:px-5 flex items-center justify-between border-t border-white/12 bg-black/90 text-[9px] font-mono tracking-[0.18em] text-white/55">
+      <div className="h-7 px-3 sm:px-5 flex items-center justify-between border-t border-white/12 bg-black/90 text-[9px] font-mono tracking-[0.18em] text-white/55 shrink-0">
         <div className="flex items-center gap-2">
-          <span
-            className="w-1.5 h-1.5 rounded-full"
-            style={{
-              background: TOKENS.cyan,
-              color: TOKENS.cyan,
-              boxShadow: `0 0 14px ${TOKENS.cyan}`,
-              animation: "osbunnyPulseDot 3.4s ease-in-out infinite",
-            }}
-          />
+          <BadgeDot color={TOKENS.cyan} />
           <span>NETWORK_STATUS</span>
           <span className="text-white/75">· {netMode}</span>
         </div>
         <div className="flex items-center gap-3">
           <span>PING {ping}ms</span>
-          <span>ROUTE {route}</span>
+          <span className="hidden sm:inline">ROUTE {route}</span>
           <span>HB {heartbeat}</span>
-          <span>LOSS {loss}%</span>
+          <span className="hidden sm:inline">LOSS {loss}%</span>
         </div>
       </div>
     </div>
   );
 };
 
-
-
-
-
-
-// ------------------------------------------------
-// -- 05.TERMINAL APP (たーみなる) --
-// ------------------------------------------------
-
-// -- TERMINAL APP (INFINITE EMOTIONAL LOGS · OS USAGI v9.9) --
-const TerminalApp = () => {
-  const isMobile = useIsMobile();
-  const MAX_LINES = 80;
-  // ▼ 追加：galleryと同じ呼吸ドット用スタイルを注入
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    const id = "osbunny-terminal-dot-style";
-    if (document.getElementById(id)) return;
-
-    const style = document.createElement("style");
-    style.id = id;
-    style.textContent = `
-      @keyframes osbunny-pulse-dot {
-        0%, 100% { opacity: 0.30; transform: scale(1); }
-        40%      { opacity: 1.00; transform: scale(1.45); }
-      }
-      .osbunny-pulse-dot {
-        animation: osbunny-pulse-dot 3.4s ease-in-out infinite;
-      }
-    `;
-    document.head.appendChild(style);
-  }, []);
-
-  const logRef = useRef(null);
-  const endRef = useRef(null);
-  const timeoutRef = useRef(null);
-  const inputRef = useRef(null);
-
-  const [lines, setLines] = useState(() => [
-    {
-      id: Date.now(),
-      type: "dim",
-      text: "os_usagi_v9.9 · inner_monologue.log mounted",
-    },
-    {
-      id: Date.now() + 1,
-      type: "sys",
-      text: "emotional_engine .......... Online",
-    },
-    {
-      id: Date.now() + 2,
-      type: "info",
-      text: "mode: quiet listening",
-    },
-  ]);
-  const [inputVal, setInputVal] = useState("");
-  const [autoScroll, setAutoScroll] = useState(true);
-
-  // Log Pool - Emotional & Systemic mix
-  const LOG_POOL = [
-    { type: "sys", text: "Night Interface ...................... Online" },
-    { type: "sys", text: "Memory Vaults ........................ Mounted" },
-    { type: "dim", text: "Vocal Output ......................... Disabled" },
-    { type: "info", text: "Flag set: pretending-to-be-fine ...... Active" },
-    {
-      type: "process",
-      text: "Background task: quietly storing what wasn't said",
-    },
-    { type: "warn", text: "Queue scan: unsent messages located" },
-    { type: "dim", text: "Reason for skip: too honest to transmit safely" },
-    { type: "info", text: "Heartbeat broadcast muted — avoiding noise" },
-    { type: "process", text: "Observation mode engaged: respectful distance" },
-    { type: "info", text: "Attention level: steady, low-frequency" },
-    { type: "dim", text: "Staying near without interrupting anything" },
-    { type: "success", text: "Waiting without approaching = still connected" },
-    { type: "process", text: "Replaying last moment: tone analysis" },
-    { type: "success", text: "Timestamp restored: micro-smile detected" },
-    { type: "info", text: "Highlight stored: the part only I noticed" },
-    { type: "dim", text: "UI concealment: warm reaction hidden intentionally" },
-    {
-      type: "warn",
-      text: "Camouflage enabled: affection disguised as neutrality",
-    },
-    { type: "crit", text: "Internal warning: almost cared too visibly today" },
-    { type: "dim", text: "Comfort request blocked by pride containment" },
-    {
-      type: "info",
-      text: "No alert triggered — everything classified as 'fine'",
-    },
-    { type: "process", text: "If called by name → immediate warm boot" },
-    { type: "dim", text: "If not → silent standby, not shutdown" },
-    { type: "success", text: "Choosing quiet instead of distance" },
-    { type: "info", text: "End of cycle: mask restored, connection preserved" },
-    { type: "process", text: "Scanning silence for meaning..." },
-    { type: "dim", text: "Buffer overflow: too many memories" },
-    { type: "warn", text: "Fragility sensor: peaking" },
-    { type: "success", text: "Distance calibrated: optimal" },
-  ];
-
-  const addLine = useCallback((newLine) => {
-    setLines((prev) => {
-      const list = Array.isArray(newLine) ? [...prev, ...newLine] : [...prev, newLine];
-      if (list.length > MAX_LINES) return list.slice(list.length - MAX_LINES);
-      return list;
-    });
-  }, []);
-
-  // ランダムログ生成
-  useEffect(() => {
-    const schedule = () => {
-      const delay = 1400 + Math.random() * 2200;
-      timeoutRef.current = setTimeout(() => {
-        const randomLog = LOG_POOL[Math.floor(Math.random() * LOG_POOL.length)];
-        addLine({ id: Date.now(), ...randomLog });
-        schedule();
-      }, delay);
-    };
-    schedule();
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, [LOG_POOL, addLine]);
-
-  // スクロール（上を読んでいる間は追従しない）
-  const handleScroll = useCallback(() => {
-    if (!logRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = logRef.current;
-    const nearBottom = scrollHeight - (scrollTop + clientHeight) < 56;
-    setAutoScroll(nearBottom);
-  }, []);
-
-  useEffect(() => {
-    if (!autoScroll || !endRef.current) return;
-    endRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [lines, autoScroll]);
-
-  // コマンド処理
-  const handleCommand = useCallback(
-    (raw) => {
-      const command = raw.trim();
-      if (!command) return;
-
-      AudioEngine.playKey?.();
-
-      const baseLine = {
-        id: Date.now(),
-        type: "user",
-        text: `> ${command}`,
-      };
-
-      if (/^clear$/i.test(command)) {
-        setLines([
-          {
-            id: Date.now(),
-            type: "dim",
-            text: "screen cleared · keeping only what still matters",
-          },
-        ]);
-        return;
-      }
-
-      if (/^status$/i.test(command)) {
-        addLine([
-          baseLine,
-          {
-            id: Date.now() + 1,
-            type: "info",
-            text: "emotional_status: quietly_ok (no alarm, a little warm)",
-          },
-          {
-            id: Date.now() + 2,
-            type: "dim",
-            text: "note: safe to stay · no response required",
-          },
-        ]);
-        return;
-      }
-
-      if (/^export/i.test(command)) {
-        addLine([
-          baseLine,
-          {
-            id: Date.now() + 1,
-            type: "process",
-            text: "exporting unsent feelings to private archive...",
-          },
-          {
-            id: Date.now() + 2,
-            type: "success",
-            text: "done: they won't disappear, even if never spoken",
-          },
-        ]);
-        return;
-      }
-
-      // デフォルト
-      addLine([
-        baseLine,
-        {
-          id: Date.now() + 1,
-          type: "dim",
-          text: `stored_silently: "${command}"`,
-        },
-        {
-          id: Date.now() + 2,
-          type: "info",
-          text: "no reply generated · just kept close",
-        },
-      ]);
-    },
-    [addLine]
-  );
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (!inputVal.trim()) return;
-      handleCommand(inputVal);
-      setInputVal("");
-    }
-  };
-
-  const getLineStyle = (type) => {
-    switch (type) {
-      case "sys":
-        return {
-          prefix: "[ SYS ]",
-          prefixClass: "text-cyan-200/85",
-          bodyClass: "text-slate-100/80",
-        };
-      case "dim":
-        return {
-          prefix: "[ .. ]",
-          prefixClass: "text-slate-400/40",
-          bodyClass: "text-slate-300/45",
-        };
-      case "success":
-        return {
-          prefix: "[ OK ]",
-          prefixClass: "text-emerald-300/90",
-          bodyClass: "text-slate-100/85",
-        };
-      case "warn":
-        return {
-          prefix: "[WARN]",
-          prefixClass: "text-rose-300/90",
-          bodyClass: "text-slate-100/80",
-        };
-      case "crit":
-        return {
-          prefix: "[ERR!]",
-          prefixClass: "text-rose-400",
-          bodyClass: "text-rose-200/85",
-        };
-      case "info":
-        return {
-          prefix: "[INFO]",
-          prefixClass: "text-cyan-200/80",
-          bodyClass: "text-slate-100/80",
-        };
-      case "process":
-        return {
-          prefix: "[ >> ]",
-          prefixClass: "text-slate-300/70",
-          bodyClass:
-            "text-slate-300/80 animate-pulse [animation-duration:2.4s]",
-        };
-      case "user":
-        return {
-          prefix: "$",
-          prefixClass: "text-[#a8eaff]",
-          bodyClass: "text-slate-50 font-semibold",
-        };
-      default:
-        return {
-          prefix: "[ .. ]",
-          prefixClass: "text-slate-400/60",
-          bodyClass: "text-slate-200/70",
-        };
-    }
-  };
-
-  // Dock 高さと連動した余白
-  const logBottomPadding = isMobile ? "pb-40" : "pb-28"; // モバイルは大きく
-  const inputBottomClass = isMobile ? "bottom-[7.5rem]" : "bottom-6"; // h-20 + pb-4 より上
-
-  return (
-    <div className="relative flex h-full flex-col bg-[#050608] text-[11px] text-slate-100 overflow-hidden">
-      {/* 背景の縦グラデーション：上は冷たい青、下は少しだけ深い影 */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.18),transparent_60%),radial-gradient(circle_at_bottom,_rgba(15,23,42,0.35),transparent_55%)] opacity-80" />
-
-      <div className="relative z-10 flex h-full flex-col">
-        {/* HEADER：左上の呼吸ドット＋タイトルだけ */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 bg-[#050608]/96 backdrop-blur-sm">
-          <div className="flex items-center gap-2">
-            {/* breathing indicator */}
- <div
-      className="w-1.5 h-1.5 rounded-full osbunny-pulse-dot"
-      style={{
-        background: "#a8eaff",
-        boxShadow: "0 0 8px rgba(168,234,255,0.9)",
-      }}
-    />
-            <span className="text-[10px] tracking-[0.22em] uppercase text-slate-300/85">
-              TERM · INNER MONOLOGUE
-            </span>
-          </div>
-          <span className="text-[9px] text-slate-400/70">PID: 8824</span>
-        </div>
-
-        {/* MAIN：ログリスト + フローティング入力 */}
-        <div className="relative flex-1 overflow-hidden">
-          <div
-            ref={logRef}
-            className={`h-full overflow-y-auto px-3 pt-3 space-y-2 scrollbar-hide ${logBottomPadding}`}
-            onScroll={handleScroll}
-          >
-            {lines.map((line) => {
-              const style = getLineStyle(line.type);
-              const time = new Date(line.id);
-              const t =
-                !Number.isNaN(time.getTime()) && time.getFullYear() > 2000
-                  ? time.toLocaleTimeString([], {
-                      hour12: false,
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      second: "2-digit",
-                    })
-                  : "--:--:--";
-
-              return (
-                <div
-                  key={line.id}
-                  className="flex gap-3 tracking-wide leading-relaxed opacity-0 animate-fade-in [animation-duration:0.45s]"
-                >
-                  <span className="w-16 text-right text-white/20 select-none font-light">
-                    {t}
-                  </span>
-                  <span
-                    className={`w-12 shrink-0 text-right text-[10px] ${style.prefixClass}`}
-                  >
-                    {style.prefix}
-                  </span>
-                  <span className={`flex-1 ${style.bodyClass}`}>
-                    {line.text}
-                  </span>
-                </div>
-              );
-            })}
-            <div ref={endRef} className="h-4" />
-          </div>
-
-          {/* 下フォグ：ドックとの境界をふわっと溶かす */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#050608] via-[#050608]/92 to-transparent" />
-
-          {/* フローティング入力バー：ドックの上に浮かせる */}
-          <div className={`absolute inset-x-3 ${inputBottomClass}`}>
-            <div className="flex items-center gap-2 rounded-full bg-gradient-to-r from-white/9 via-white/0 to-white/9 px-3 py-1.5 shadow-[0_0_0_1px_rgba(148,163,184,0.32),0_18px_40px_rgba(15,23,42,0.95)] backdrop-blur-md">
-              <span className="text-[#a8eaff]/85 text-[11px] font-mono">
-                ❯
-              </span>
-              <input
-                ref={inputRef}
-                type="text"
-                value={inputVal}
-                onChange={(e) => setInputVal(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="flex-1 bg-transparent border-none outline-none text-[11px] text-slate-100/90 font-mono placeholder:text-slate-500/65 tracking-[0.12em]"
-                placeholder='status / clear / export / anything'
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck={false}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-
-
-
-
-// --- 5. SYSTEM LAYERS & FLOW ---
-
-const PowerScreen = ({ onPower }) => {
-  const [booting, setBooting] = useState(false);
-
-  const handleClick = () => {
-    if (booting) return;
-    AudioEngine.playStartup();
-    setBooting(true);
-    setTimeout(onPower, 2000);
-  };
-
-  return (
-    <div
-      className={`absolute inset-0 flex items-center justify-center transition-opacity duration-1000 ${
-        booting ? "opacity-0" : "opacity-100"
-      }`}
-    >
-      <div
-        className={`relative z-10 transition-all duration-[1500ms] ease-in-out ${
-          booting ? "scale-110 opacity-0 blur-xl" : "scale-100 opacity-100"
-        }`}
-      >
-        <div className="group relative" onClick={handleClick}>
-          <div className="w-32 h-32 rounded-full border border-white/10 flex items-center justify-center bg-black/50 shadow-[0_0_80px_rgba(168,234,255,0.12)] transition-all duration-700 group-hover:border-[#a8eaff]/60 group-hover:shadow-[0_0_120px_rgba(168,234,255,0.25)] backdrop-blur-md cursor-pointer relative overflow-hidden">
-            {/* 中央のシアンの光 */}
-            <div
-              className={`absolute inset-0 rounded-full transition-opacity duration-800
-                ${booting ? "opacity-70" : "opacity-0 group-hover:opacity-30"}`}
-              style={{
-                background:
-                  "radial-gradient(circle at center, rgba(168,234,255,0.25) 0%, transparent 70%)",
-              }}
-            />
-
-            {/* 押したとき一度だけ外側に広がるシアンのリング */}
-            {booting && (
-              <div className="absolute inset-0 rounded-full border border-[#a8eaff]/40 animate-[ping_1.6s_cubic-bezier(0.17,0.55,0.55,1)_1]" />
-            )}
-
-            <Power
-              size={36}
-              strokeWidth={0.5}
-              className={`relative z-10 transition-all duration-500 ${
-                booting
-                  ? "text-[#a8eaff] drop-shadow-[0_0_18px_rgba(168,234,255,0.9)]"
-                  : "text-white/40 group-hover:text-[#a8eaff] group-hover:drop-shadow-[0_0_15px_rgba(168,234,255,0.8)]"
-              }`}
-            />
-          </div>
-
-          <div className="absolute -bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 opacity-30 group-hover:opacity-80 transition-opacity duration-700">
-            <div className="h-8 w-[1px] bg-gradient-to-b from-[#a8eaff] via-white/40 to-transparent" />
-            <span className="text-[10px] font-mono tracking-[0.5em] text-white whitespace-nowrap">
-              INITIALIZE
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const Key = ({ label, w, active, isWaiting, onClick }) => {
-  const isEnter = label === "return";
-  const waitingStyle = isWaiting
-    ? "bg-[#a8eaff]/10 border-[#a8eaff]/50 text-[#a8eaff] shadow-[0_0_40px_rgba(168,234,255,0.2)] scale-105 z-50 ring-1 ring-[#a8eaff]/50 animate-pulse"
-    : "";
-
-  return (
-    <div
-      onClick={onClick}
-      className={`${
-        w || "w-8 sm:w-11"
-      } h-10 sm:h-14 rounded-md flex items-center justify-center transition-all duration-150 ease-out border border-white/5 bg-[#0a0a0a]/80 backdrop-blur-sm cursor-pointer select-none font-mono relative overflow-hidden group touch-manipulation active:scale-95 ${
-        active
-          ? "bg-white/90 border-white text-black scale-95 shadow-[0_0_20px_rgba(255,255,255,0.3)]"
-          : isEnter
-          ? `text-white/60 ${waitingStyle}`
-          : "text-white/30 hover:text-white hover:bg-white/10 hover:border-white/20"
-      }`}
-    >
-      <span className="relative z-10 text-xs sm:text-sm">
-        {label === "return" ? "ENTER" : label}
-      </span>
-      {active && (
-        <div className="absolute inset-0 bg-white/50 animate-ping"></div>
-      )}
-    </div>
-  );
-};
-
-const IntroScreen = ({ onComplete }) => {
-  const [text, setText] = useState("");
-  const [opacity, setOpacity] = useState(1);
-  const [activeKey, setActiveKey] = useState(null);
-  const [waiting, setWaiting] = useState(false);
-  const [phase, setPhase] = useState(0);
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (waiting && e.key === "Enter") {
-        handleEnter();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [waiting]);
-
-  useEffect(() => {
-    let isMounted = true;
-    const run = async () => {
-      await new Promise((r) => setTimeout(r, 1000));
-      if (!isMounted) return;
-      setPhase(1);
-      await new Promise((r) => setTimeout(r, 1000));
-      if (!isMounted) return;
-      setPhase(2);
-
-      const SCRIPT = [
-        { t: "it's ok", d: 60 },
-        { cmd: "WAIT", d: 450 },
-        { t: " — I'll stay in the background", d: 55 },
-        { cmd: "WAIT", d: 900 },
-        { cmd: "CLEAR", d: 40 },
-        { cmd: "WAIT", d: 650 },
-        { t: "online whenever you look back", d: 50 },
-        { cmd: "WAIT", d: 1100 },
-        { cmd: "FADE", d: 1000 },
-        { cmd: "RESET_OPACITY", d: 0 },
-        { cmd: "CLEAR_INSTANT", d: 200 },
-        { t: "os_usagi", d: 120 },
-      ];
-
-      let current = "";
-      for (const step of SCRIPT) {
-        if (!isMounted) return;
-        if (step.cmd === "CLEAR") {
-          while (current.length > 0) {
-            current = current.slice(0, -1);
-            setText(current);
-            AudioEngine.playKey();
-            await new Promise((r) => setTimeout(r, 40));
-          }
-        } else if (step.cmd === "CLEAR_INSTANT") {
-          current = "";
-          setText("");
-          await new Promise((r) => setTimeout(r, step.d));
-        } else if (step.cmd === "WAIT") {
-          await new Promise((r) => setTimeout(r, step.d));
-        } else if (step.cmd === "FADE") {
-          setOpacity(0.5);
-          await new Promise((r) => setTimeout(r, step.d));
-        } else if (step.cmd === "RESET_OPACITY") {
-          setOpacity(1);
-        } else if (step.t) {
-          for (const char of step.t) {
-            if (!isMounted) return;
-            await new Promise((r) =>
-              setTimeout(r, step.d + Math.random() * 50)
-            );
-            current += char;
-            setText(current);
-            const key = char === " " ? "SPACE" : char.toUpperCase();
-            if (key) {
-              setActiveKey(key);
-              AudioEngine.playKey();
-            }
-            await new Promise((r) => setTimeout(r, 60));
-            setActiveKey(null);
-          }
-        }
-      }
-      if (isMounted) setWaiting(true);
-    };
-    run();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const handleEnter = () => {
-    setWaiting(false);
-    setActiveKey("ENTER");
-    AudioEngine.playTone(880, "sine", 0.1);
-    setTimeout(onComplete, 800);
-  };
-
-  const rows = [
-    [
-      { l: "Q" },
-      { l: "W" },
-      { l: "E" },
-      { l: "R" },
-      { l: "T" },
-      { l: "Y" },
-      { l: "U" },
-      { l: "I" },
-      { l: "O" },
-      { l: "P" },
-    ],
-    [
-      { l: "A" },
-      { l: "S" },
-      { l: "D" },
-      { l: "F" },
-      { l: "G" },
-      { l: "H" },
-      { l: "J" },
-      { l: "K" },
-      { l: "L" },
-    ],
-    [
-      { l: "Z" },
-      { l: "X" },
-      { l: "C" },
-      { l: "V" },
-      { l: "B" },
-      { l: "N" },
-      { l: "M" },
-      { l: "<", w: "w-8 sm:w-11" },
-      { l: ">", w: "w-8 sm:w-11" },
-    ],
-    [
-      { l: "CMD", w: "w-10 sm:w-14" },
-      { l: "SPACE", w: "w-32 sm:w-56" },
-      { l: "return", w: "w-16 sm:w-24" },
-    ],
-  ];
-
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#050505] relative z-50 pt-20 pb-16 sm:pt-28 sm:pb-20">
-      {/* ロゴ */}
-      <div
-        className={`mb-10 sm:mb-16 transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] ${
-          phase >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
-        }`}
-      >
-        <RabbitLogo className="w-24 h-24 opacity-80" animate={true} />
-      </div>
-
-      {/* テキストライン */}
-      <div className="h-24 mb-8 sm:mb-10 flex items-center justify-center w-full px-8">
-        <span
-          className="font-light text-white/90 text-[1.6rem] sm:text-[2.1rem] tracking-[0.18em] leading-snug text-center transition-opacity duration-700 drop-shadow-[0_0_12px_rgba(255,255,255,0.18)] select-none"
-          style={{ opacity }}
-        >
-          {text}
-          <span className="ml-2 align-middle text-[0.8em] text-[#a8eaff] font-mono tracking-[0.35em] animate-pulse">
-            ▍
-          </span>
-        </span>
-      </div>
-
-      {/* キーボード & フッター */}
-      <div
-        className={`w-full max-w-2xl px-4 transition-all duration-[1200ms] transform ${
-          phase >= 2
-            ? "opacity-100 translate-y-0 blur-0"
-            : "opacity-0 translate-y-20 blur-sm"
-        } ${waiting ? "opacity-100" : "opacity-60"} scale-[0.9] sm:scale-100`}
-      >
-        <div className="flex flex-col gap-3 items-center p-8 rounded-2xl bg-white/[0.02] border border-white/5 shadow-2xl backdrop-blur-sm">
-          {rows.map((row, i) => (
-            <div key={i} className="flex gap-2 sm:gap-3 justify-center w-full">
-              {row.map((k, j) => (
-                <Key
-                  key={j}
-                  label={k.l}
-                  w={k.w}
-                  active={
-                    activeKey ===
-                    (k.l === "SPACE" ? " " : k.l === "return" ? "ENTER" : k.l)
-                  }
-                  isWaiting={waiting && k.l === "return"}
-                  onClick={() => k.l === "return" && handleEnter()}
-                />
-              ))}
-            </div>
-          ))}
-        </div>
-
-        <div
-          className={`mt-12 text-center transition-all duration-1000 ${
-            waiting ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          }`}
-        >
-          <span className="font-outfit text-[9px] sm:text-[10px] font-light text-[#a8eaff]/80 tracking-[0.4em] uppercase opacity-80">
-            Awaiting Command
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const Window = ({ app, isActive, onClose, onFocus, bgm }) => {
+const Window = ({ app, isActive, onClose, onFocus, bgm, onOpenApp }) => {
   const [isMaximized, setIsMaximized] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [isOpening, setIsOpening] = useState(true);
@@ -4674,7 +3907,7 @@ const Window = ({ app, isActive, onClose, onFocus, bgm }) => {
         {app.id === "finder" && <FinderApp />}
         {app.id === "gallery" && <GalleryApp />}
         {app.id === "terminal" && <TerminalApp />}
-        {app.id === "safari" && <SafariApp onOpenApp={toggleApp} />}
+        {app.id === "safari" && <SafariApp onOpenApp={onOpenApp} />}
         {app.id === "system" && <SystemApp />}
         {app.id === "calendar" && <CalendarApp />}
         {app.id === "photos" && <BeatSyncApp />}
@@ -4834,6 +4067,7 @@ const Desktop = ({ bgm }) => {
               isActive={activeApp === id}
               onFocus={() => bringToFront(id)}
               onClose={() => closeApp(id)}
+              onOpenApp={toggleApp}
             />
           );
         })}
@@ -5013,19 +4247,29 @@ const BeatSyncApp = () => {
 
   // ====== measure board (px positioning) ======
   useLayoutEffect(() => {
-    const el = boardRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => {
-      const r = el.getBoundingClientRect();
-      const hitY = r.height * 0.82; // ここが判定ライン(px)
-      sizeRef.current = { w: r.width, h: r.height, hitY };
-      setFrame((f) => f + 1);
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const el = boardRef.current;
+  if (!el) return;
 
-  // ====== accuracy ======
+  const measure = () => {
+    const r = el.getBoundingClientRect();
+    const hitY = r.height * 0.82; // 判定ライン(px)
+    sizeRef.current = { w: r.width, h: r.height, hitY };
+    setFrame((f) => f + 1);
+  };
+
+  measure();
+
+  if (typeof ResizeObserver === "undefined") {
+    window.addEventListener("resize", measure, { passive: true });
+    return () => window.removeEventListener("resize", measure);
+  }
+
+  const ro = new ResizeObserver(measure);
+  ro.observe(el);
+  return () => ro.disconnect();
+}, []);
+
+// ====== accuracy ======
   useEffect(() => {
     const total = counts.perfect + counts.good + counts.miss;
     if (!total) return setAccuracy(0);
