@@ -2212,7 +2212,7 @@ function Card({
   App
 ------------------------------ */
 
-export default function App({
+export function App({
   items = [],
   defaultFilter = "all",
   accentCyan = "#a8eaff",
