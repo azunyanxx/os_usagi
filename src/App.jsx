@@ -62,8 +62,8 @@ import {
   Command,
 } from "lucide-react";
 /**
- * 🐇 RABBIT OS - DIRECTOR'S CUT (v9.4 - DATA RESTORED & STABILIZED)
- * "Silence, Depth, and the Ghost in the Machine."
+ * 🐇 OS＿USAGI)
+ * "
  */
 
 // --- 1. IMMUTABLE ASSETS & DATA (LOCKED) ---
@@ -82,6 +82,57 @@ const PLAYLIST = [
     url: "https://files.catbox.moe/roxy4t.mp3",
     title: "電波に恋してる",
     artist: "Signal Youth",
+  },
+    // ---- ここから新しい10曲 ----
+  {
+    url: "https://files.catbox.moe/e2tm1o.mp3",
+    title: "まちあわせ",
+    artist: "Platform Diary",
+  },
+  {
+    url: "https://files.catbox.moe/yuqvwh.mp3",
+    title: "だらけモードON",
+    artist: "Idle Mode Protocol",
+  },
+  {
+    url: "https://files.catbox.moe/1rsenf.mp3",
+    title: "何もしない休日",
+    artist: "Weekend Archive",
+  },
+  {
+    url: "https://files.catbox.moe/j36tjo.mp3",
+    title: "君にとどく願い",
+    artist: "Wish Courier",
+  },
+  {
+    url: "https://files.catbox.moe/qlnt9d.mp3",
+    title: "まちあわせ2",
+    artist: "Parallel Platform",
+  },
+  {
+    url: "https://files.catbox.moe/ktatnt.mp3",
+    title: "おふとんのまほう",
+    artist: "Blanket Ritual",
+  },
+  {
+    url: "https://files.catbox.moe/z1jmrz.mp3",
+    title: "あと5分のゆうわく",
+    artist: "Snooze Theory",
+  },
+  {
+    url: "https://files.catbox.moe/2z1vk6.mp3",
+    title: "ゆめいろデイズ",
+    artist: "Pastel Constellation",
+  },
+  {
+    url: "https://files.catbox.moe/nwg31d.mp3",
+    title: "おうちデート",
+    artist: "Indoor Picnic Club",
+  },
+  {
+    url: "https://files.catbox.moe/l3dgb2.mp3",
+    title: "くつろぎマイルーム",
+    artist: "Comfort Library",
   },
   {
     url: "https://files.catbox.moe/5ikild.mp3",
@@ -133,12 +184,8 @@ const PLAYLIST = [
     title: "月が綺麗ですね",
     artist: "Observation Diary",
   },
-  {
-    url: "https://files.catbox.moe/0qoek9.mp3",
-    title: "星空のアクアリウム",
-    artist: "Aqua Constellation",
-  },
 ];
+
 
 const APPS = [
   {
@@ -2942,7 +2989,6 @@ const MusicApp = ({ bgm }) => {
 // ------------------------------------------------
 // -- 04.SAFARI (ねっとわーく --
 // ------------------------------------------------
-// -- SAFARI APP (VOID NETWORK · OS_USAGI) --
 const SafariApp = () => {
   const [page, setPage] = useState("home");
   const [loading, setLoading] = useState(false);
@@ -2951,51 +2997,93 @@ const SafariApp = () => {
 
   const isMobile = useIsMobile();
 
-  // ───────────────── OSうさぎ用 NETWORK STATUS（常時ゆるく動く） ─────────────────
-  const [netStatus, setNetStatus] = useState({
-    mode: "IDLE",
-    ping: 32,
-    route: "gallery.os",
-    heartbeat: "▁",
-  });
+  // ========= Design Tokens (Gallery/Finder と同系) =========
+  const TOKENS = useMemo(
+    () => ({
+      bg: "#050509",
+      ink: "rgba(255,255,255,0.92)",
+      sub: "rgba(255,255,255,0.62)",
+      dim: "rgba(255,255,255,0.38)",
+      line: "rgba(255,255,255,0.12)",
+      line2: "rgba(255,255,255,0.18)",
+      cyan: "#a8eaff",
+      lav: "#cbb8ff",
+      pink: "#ffc8e8",
+      glass: "rgba(0,0,0,0.62)",
+      glass2: "rgba(0,0,0,0.72)",
+      shadow: "0 28px 100px rgba(0,0,0,0.92)",
+    }),
+    []
+  );
 
+  // ========= Network State =========
+  const [netMode, setNetMode] = useState("IDLE");
+  const [ping, setPing] = useState(32);
+  const [route, setRoute] = useState("gallery.os");
+  const [heartbeat, setHeartbeat] = useState("▁");
+  const [cacheHit, setCacheHit] = useState(84);
+  const [loss, setLoss] = useState(0.3);
+
+  // ========= Route Log =========
+  const [routeLog, setRouteLog] = useState(() => [
+    {
+      t: "2024-10-15T02:00:13Z",
+      path: "route://stars/cache",
+      msg: "星を拾った。暗号化して保存。",
+      lvl: "OK",
+    },
+    {
+      t: "2024-10-16T14:30:41Z",
+      path: "signal://you/heartbeat",
+      msg: "君からの信号を受信。解析不能。",
+      lvl: "WARN",
+    },
+    {
+      t: "2024-10-17T23:59:59Z",
+      path: "sleep://system/dream",
+      msg: "システムスリープ。夢を見る機能はないはずなのに。",
+      lvl: "IDLE",
+    },
+  ]);
+
+  // ========= Keyframes Inject =========
   useEffect(() => {
-    // 呼吸ドット & スキャンラインを一度だけ注入
-    const id = "osbunny-safari-keyframes";
-    if (!document.getElementById(id)) {
-      const style = document.createElement("style");
-      style.id = id;
-      style.textContent = `
-        @keyframes osbunnyPulseDotSafari {
-          0%, 100% {
-            transform: translateY(0) scale(1);
-            box-shadow: 0 0 0 0 currentColor;
-            opacity: 0.78;
-          }
-          50% {
-            transform: translateY(-1px) scale(1.15);
-            box-shadow: 0 0 16px 0 currentColor;
-            opacity: 1;
-          }
-        }
-        @keyframes safariScan {
-          0% {
-            transform: translateY(-100%);
-            opacity: 0;
-          }
-          20% {
-            opacity: 0.45;
-          }
-          100% {
-            transform: translateY(120%);
-            opacity: 0;
-          }
-        }
-      `;
-      document.head.appendChild(style);
-    }
+    const id = "osbunny-safari-ux-keyframes-v2";
+    if (document.getElementById(id)) return;
+
+    const style = document.createElement("style");
+    style.id = id;
+    style.textContent = `
+      @keyframes osbunnyPulseDot {
+        0%, 100% { transform: translateY(0) scale(1); opacity: .72; box-shadow: 0 0 0 0 currentColor; }
+        50%      { transform: translateY(-1px) scale(1.18); opacity: 1;  box-shadow: 0 0 18px 0 currentColor; }
+      }
+      @keyframes osbunnyShimmerText {
+        0%   { filter: drop-shadow(0 0 10px rgba(168,234,255,.28)) drop-shadow(0 0 0 rgba(255,200,232,.0)); opacity: .92; }
+        50%  { filter: drop-shadow(0 0 22px rgba(168,234,255,.55)) drop-shadow(0 0 12px rgba(255,200,232,.25)); opacity: 1; }
+        100% { filter: drop-shadow(0 0 10px rgba(168,234,255,.28)) drop-shadow(0 0 0 rgba(255,200,232,.0)); opacity: .92; }
+      }
+      @keyframes safariScan {
+        0% { transform: translateY(-120%); opacity: 0; }
+        12% { opacity: .42; }
+        100% { transform: translateY(130%); opacity: 0; }
+      }
+      @keyframes floatMote {
+        0%   { transform: translate3d(0, 14px, 0) scale(.98); opacity: .0; }
+        18%  { opacity: .45; }
+        50%  { transform: translate3d(0, -10px, 0) scale(1.02); opacity: .62; }
+        85%  { opacity: .25; }
+        100% { transform: translate3d(0, -26px, 0) scale(1.03); opacity: 0; }
+      }
+      @keyframes focusAura {
+        0%,100% { opacity: .22; transform: scale(1); }
+        50%     { opacity: .42; transform: scale(1.03); }
+      }
+    `;
+    document.head.appendChild(style);
   }, []);
 
+  // ========= Network Drift (生きてる感) =========
   useEffect(() => {
     const routes = [
       "gallery.os",
@@ -3003,32 +3091,68 @@ const SafariApp = () => {
       "music.os",
       "you/inner-layer",
       "log://night-archive",
+      "cache://soft-remember",
     ];
-    const heartbeats = ["▁", "▂", "▃", "▄", "▅", "▆", "▇"];
+    const hearts = ["▁", "▂", "▃", "▄", "▅", "▆", "▇"];
+    const words = [
+      "SYNC/HEARTBEAT ok",
+      "CACHE_HIT warmed",
+      "ROUTE optimized",
+      "SIGNAL detected",
+      "NOISE filtered",
+      "SLEEP guard",
+    ];
 
-    let t = 0;
+    let i = 0;
     const interval = setInterval(() => {
-      t++;
-      setNetStatus((prev) => ({
-        ...prev,
-        ping: 24 + Math.floor(Math.random() * 36), // 24〜60msくらいで揺れる
-        route: routes[t % routes.length],
-        heartbeat: heartbeats[t % heartbeats.length],
-      }));
-    }, isMobile ? 2600 : 3400);
+      i++;
+      const newPing = 22 + Math.floor(Math.random() * 46);
+      const newCache = 74 + Math.floor(Math.random() * 24);
+      const newLoss = Math.max(0, Math.min(2.4, (Math.random() * 2.4)));
+
+      setPing(newPing);
+      setCacheHit(newCache);
+      setLoss(Number(newLoss.toFixed(1)));
+      setRoute(routes[i % routes.length]);
+      setHeartbeat(hearts[i % hearts.length]);
+
+      // LOGにも「呼吸」させる（最大 18 件）
+      setRouteLog((prev) => {
+        const now = new Date();
+        const iso = now.toISOString().replace(/\.\d{3}Z$/, "Z");
+        const lvl =
+          newLoss > 1.6 ? "WARN" : newPing > 55 ? "WARN" : "OK";
+        const msg =
+          lvl === "WARN"
+            ? "微弱なノイズ。感情の復号に時間がかかる。"
+            : words[i % words.length];
+
+        const next = [
+          ...prev,
+          {
+            t: iso,
+            path: `route://${route}`,
+            msg,
+            lvl,
+          },
+        ];
+        return next.slice(-18);
+      });
+    }, isMobile ? 2400 : 3200);
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMobile]);
 
-  // ───────────────── ナビゲーション & サーチ時の SYNC 演出 ─────────────────
-  const triggerSync = (fn) => {
+  // ========= SYNC Trigger（押した時の表示はこれで固定） =========
+  const triggerSync = (after) => {
     setLoading(true);
     setShowResult(false);
-    setNetStatus((prev) => ({ ...prev, mode: "SYNC" }));
+    setNetMode("SYNC");
     setTimeout(() => {
-      fn?.();
+      if (after) after();
       setLoading(false);
-      setNetStatus((prev) => ({ ...prev, mode: "IDLE" }));
+      setNetMode("IDLE");
     }, 1200);
   };
 
@@ -3039,315 +3163,607 @@ const SafariApp = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     if (!searchValue.trim()) return;
-
-    setLoading(true);
-    setShowResult(false);
-    setNetStatus((prev) => ({ ...prev, mode: "SYNC" }));
-
-    setTimeout(() => {
-      setLoading(false);
-      setShowResult(true);
-      setNetStatus((prev) => ({ ...prev, mode: "IDLE" }));
-    }, 1500);
+    triggerSync(() => setShowResult(true));
   };
 
-  // ───────────────── ページコンポーネント ─────────────────
+  // ========= UI Parts =========
+  const Mote = ({ style }) => (
+    <div
+      className="pointer-events-none absolute rounded-full blur-[18px]"
+      style={style}
+    />
+  );
 
+  const TabPill = ({ id, label }) => {
+    const active = page === id;
+    return (
+      <button
+        type="button"
+        onClick={() => navigate(id)}
+        className={[
+          "relative px-3 py-[6px] rounded-full border text-[9px] font-mono uppercase tracking-[0.26em] transition-all select-none",
+          active
+            ? "border-white/35 bg-white/10 text-white shadow-[0_0_24px_rgba(168,234,255,0.28)]"
+            : "border-transparent bg-transparent text-white/55 hover:bg-white/5 hover:text-white",
+        ].join(" ")}
+        style={{ WebkitTapHighlightColor: "transparent" }}
+      >
+        {label}
+        {active && (
+          <span className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-10 h-[1px] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+        )}
+      </button>
+    );
+  };
+
+  const BadgeDot = ({ color = TOKENS.cyan }) => (
+    <span
+      className="w-1.5 h-1.5 rounded-full"
+      style={{
+        background: color,
+        color,
+        boxShadow: `0 0 14px ${color}`,
+        animation: "osbunnyPulseDot 3.4s ease-in-out infinite",
+      }}
+    />
+  );
+
+  // ========= Pages =========
   const HomePage = () => (
-    <div className="relative min-h-full flex flex-col items-center px-4 pt-10 pb-28 sm:pb-24">
-      {/* 背景グロー */}
+    <div className="relative min-h-full">
+      {/* Background */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-24 -left-24 w-[380px] h-[380px] rounded-full bg-[#a8eaff]/18 blur-[80px]" />
-        <div className="absolute top-1/2 -right-40 w-[460px] h-[460px] rounded-full bg-[#cbb8ff]/16 blur-[100px]" />
-        <div className="absolute bottom-[-140px] left-1/3 w-[520px] h-[520px] rounded-full bg-[#ffc8e8]/18 blur-[110px]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/45 to-black/90" />
-        <div className="absolute inset-0 opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.06),transparent)] [background-size:100%_4px]" />
+        <div className="absolute inset-0 bg-[#050509]" />
+        <div className="absolute -top-28 -left-40 w-[520px] h-[520px] rounded-full bg-[#a8eaff]/18 blur-[110px]" />
+        <div className="absolute top-1/2 -right-48 w-[560px] h-[560px] rounded-full bg-[#cbb8ff]/16 blur-[130px]" />
+        <div className="absolute bottom-[-220px] left-1/3 w-[680px] h-[680px] rounded-full bg-[#ffc8e8]/14 blur-[140px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/55 to-black/95" />
+        <div className="absolute inset-0 opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.07),transparent)] [background-size:100%_4px]" />
+        <div className="absolute inset-0 opacity-[0.06] mix-blend-overlay bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.06),transparent_55%)]" />
+
+        {/* floating motes */}
+        <Mote
+          style={{
+            width: 120,
+            height: 120,
+            left: "8%",
+            top: "22%",
+            background: "rgba(168,234,255,0.22)",
+            animation: "floatMote 5.8s ease-in-out infinite",
+          }}
+        />
+        <Mote
+          style={{
+            width: 140,
+            height: 140,
+            right: "6%",
+            top: "30%",
+            background: "rgba(203,184,255,0.22)",
+            animation: "floatMote 6.6s ease-in-out infinite",
+            animationDelay: "0.6s",
+          }}
+        />
+        <Mote
+          style={{
+            width: 160,
+            height: 160,
+            left: "38%",
+            bottom: "10%",
+            background: "rgba(255,200,232,0.18)",
+            animation: "floatMote 6.2s ease-in-out infinite",
+            animationDelay: "1.1s",
+          }}
+        />
       </div>
 
-      <div className="relative w-full max-w-xl flex flex-col items-center text-center gap-8">
-        {/* VOID NETWORK バッジ（コンセプト文字は元のニュアンス維持＋光らせ） */}
-        <div className="flex flex-col items-center gap-3 sm:mt-4">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/15 bg-black/50 backdrop-blur-xl shadow-[0_24px_80px_rgba(0,0,0,0.9)]">
-            <span
-              className="w-1.5 h-1.5 rounded-full"
+      {/* Content */}
+      <div className="relative px-4 pt-10 pb-28 sm:px-8 sm:pt-14 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_.85fr] gap-10 items-start">
+          {/* Left: copy */}
+          <div className="text-center lg:text-left">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/18 bg-black/55 backdrop-blur-2xl shadow-[0_24px_90px_rgba(0,0,0,0.92)]">
+              <BadgeDot color={TOKENS.cyan} />
+              <span className="text-[10px] font-mono tracking-[0.28em] text-white/60 uppercase">
+                VOID NETWORK
+              </span>
+              <span className="ml-2 text-[9px] font-mono text-white/35 tracking-[0.22em]">
+                ROUTE {route}
+              </span>
+            </div>
+
+            {/* Concept text glow (復活＆強化) */}
+            <h1
+              className="mt-6 text-[30px] sm:text-5xl font-light uppercase tracking-[0.36em] leading-[1.08]"
               style={{
-                color: "#a8eaff",
-                background: "#a8eaff",
-                boxShadow: "0 0 14px #a8eaff",
-                animation: "osbunnyPulseDotSafari 3.4s ease-in-out infinite",
+                backgroundImage:
+                  "conic-gradient(from 210deg at 50% 0%, #a8eaff, rgba(255,255,255,0.95), #ffc8e8, #cbb8ff, #a8eaff)",
+                WebkitBackgroundClip: "text",
+                backgroundClip: "text",
+                color: "transparent",
+                animation: "osbunnyShimmerText 4.2s ease-in-out infinite",
               }}
-            />
-            <span className="text-[10px] font-mono tracking-[0.28em] text-white/60 uppercase">
-              VOID NETWORK
-            </span>
-          </div>
-
-          <h1 className="text-3xl sm:text-4xl font-light tracking-[0.35em] uppercase bg-clip-text text-transparent bg-[linear-gradient(120deg,#a8eaff,white,#ffc8e8)] drop-shadow-[0_0_18px_rgba(168,234,255,0.45)]">
-            OS BUNNY BROWSER
-          </h1>
-
-          <p className="text-[10px] sm:text-xs font-mono tracking-[0.32em] text-white/50">
-            Connecting to the unconscious...
-          </p>
-        </div>
-
-        {/* URLバー + サーチ（元の構造を強化） */}
-        <form
-          onSubmit={handleSearch}
-          className="w-full max-w-md relative group mt-2"
-        >
-          <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_0%_0%,rgba(168,234,255,0.18),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(255,200,232,0.16),transparent_55%)] opacity-40 pointer-events-none" />
-          <div className="relative flex items-center gap-2 rounded-full bg-black/60 border border-white/15 px-3 py-1.5 backdrop-blur-2xl shadow-[0_0_0_1px_rgba(255,255,255,0.06)_inset,0_22px_80px_rgba(0,0,0,0.9)] group-focus-within:border-[#a8eaff]/60">
-            <span className="inline-flex items-center gap-1 text-[9px] font-mono text-white/40">
-              <Globe size={11} className="text-white/45" />
-              <span className="hidden sm:inline">https://</span>
-              <span className="sm:hidden">usagi://</span>
-              <span className="text-white/70">void.usagi</span>
-            </span>
-            <input
-              type="text"
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              placeholder="Search for feelings..."
-              className="flex-1 bg-transparent text-[11px] text-white placeholder:text-white/28 focus:outline-none text-center sm:text-left font-mono tracking-[0.18em]"
-            />
-            <button
-              type="submit"
-              className="shrink-0 w-7 h-7 rounded-full border border-white/25 flex items-center justify-center text-white/60 hover:text-[#a8eaff] hover:border-[#a8eaff]/70 hover:bg-[#a8eaff]/10 transition-all"
             >
-              <Search size={13} />
-            </button>
-          </div>
-        </form>
+              OS BUNNY
+              <br />
+              BROWSER
+            </h1>
 
-        {/* FEELING NOT FOUND（元の 404 メッセージを OSうさぎ調に） */}
-        {showResult && !loading && (
-          <div className="mt-5 text-[10px] font-mono tracking-[0.24em] text-red-300/90 border border-red-500/30 px-4 py-3 rounded-lg bg-gradient-to-br from-red-900/40 to-black/80 shadow-[0_20px_80px_rgba(0,0,0,0.9)]">
-            ERROR 404: FEELING NOT FOUND
-            <span className="text-white/40 mt-2 block tracking-[0.18em]">
-              Try looking inside yourself.
-            </span>
-          </div>
-        )}
+            <p className="mt-5 text-[11px] sm:text-sm font-mono tracking-[0.26em] text-white/55">
+              Connecting to the unconscious...
+            </p>
 
-        {/* クイックリンクカード（ギャラリー / ファインダー / ミュージック への入口） */}
-        <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
-          {[
-            {
-              id: "gallery",
-              label: "Gallery",
-              desc: "感情のスクリーンショット",
-              icon: ImageIcon,
-            },
-            {
-              id: "finder",
-              label: "Finder",
-              desc: "すべてのログを一覧",
-              icon: Folder,
-            },
-            {
-              id: "music",
-              label: "Music",
-              desc: "メモリに刺さるBGM",
-              icon: Music,
-            },
-          ].map((link) => {
-            const Icon = link.icon;
-            return (
-              <button
-                key={link.id}
-                type="button"
-                onClick={() => navigate("log")}
-                className="relative text-left rounded-2xl border border-white/12 bg-black/70 px-4 py-4 flex flex-col gap-2 overflow-hidden shadow-[0_18px_70px_rgba(0,0,0,0.95)] hover:border-white/25 hover:bg-black/80 transition-all duration-500"
-              >
-                <div className="pointer-events-none absolute inset-0 opacity-60 mix-blend-screen bg-[radial-gradient(circle_at_0%_0%,rgba(168,234,255,0.2),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(255,200,232,0.18),transparent_55%)]" />
-                <div className="relative flex items-center justify-between gap-3">
-                  <div className="flex flex-col gap-1">
-                    <div className="inline-flex items-center gap-2">
-                      <Icon size={16} className="text-[#a8eaff]" />
-                      <span className="text-[11px] text-white">
-                        {link.label}
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-white/55">
-                      {link.desc}
+            <p className="mt-7 text-sm sm:text-base text-white/70 leading-relaxed font-serif">
+              これは「世界のブラウザ」じゃない。
+              <br />
+              <span className="text-white/90">
+                あなたと、OSうさぎのためだけのネットワーク
+              </span>
+              に接続する。
+              <br />
+              言えなかった気持ちを、静かに同期して保存する。
+            </p>
+
+            {/* Omnibox */}
+            <form onSubmit={handleSearch} className="mt-9">
+              <div className="relative max-w-xl mx-auto lg:mx-0">
+                <div
+                  className="pointer-events-none absolute -inset-1 rounded-full opacity-30"
+                  style={{
+                    background:
+                      "radial-gradient(420px 220px at 15% 20%, rgba(168,234,255,0.26), transparent 60%), radial-gradient(420px 220px at 85% 90%, rgba(255,200,232,0.22), transparent 60%)",
+                    animation: "focusAura 4.6s ease-in-out infinite",
+                  }}
+                />
+                <div className="relative flex items-center gap-2 rounded-full bg-black/70 border border-white/18 px-3 py-2 backdrop-blur-2xl shadow-[0_0_0_1px_rgba(255,255,255,0.06)_inset,0_22px_90px_rgba(0,0,0,0.92)] focus-within:border-[#a8eaff]/70">
+                  <div className="flex items-center gap-2 pl-1 text-[10px] font-mono text-white/55 tracking-[0.18em]">
+                    <Globe size={13} className="text-white/55" />
+                    <span className="text-white/40">https</span>
+                    <span className="text-white/25">://</span>
+                    <span className="text-white/70">usagi</span>
+                  </div>
+                  <input
+                    value={searchValue}
+                    onChange={(e) => setSearchValue(e.target.value)}
+                    placeholder="search / feelings, tag, note"
+                    className="flex-1 bg-transparent text-[12px] text-white placeholder:text-white/28 focus:outline-none font-mono tracking-[0.18em] px-2 text-center lg:text-left"
+                  />
+                  <button
+                    type="submit"
+                    className="w-9 h-9 rounded-full border border-white/22 bg-white/[0.04] flex items-center justify-center text-white/75 hover:text-[#a8eaff] hover:border-[#a8eaff]/75 hover:bg-[#a8eaff]/10 transition-all active:scale-[0.98]"
+                    style={{ WebkitTapHighlightColor: "transparent" }}
+                    aria-label="Search"
+                  >
+                    <Search size={14} />
+                  </button>
+                </div>
+
+                {showResult && !loading && (
+                  <div className="mt-4 text-[10px] font-mono tracking-[0.24em] text-red-300/90 border border-red-500/35 px-4 py-3 rounded-xl bg-gradient-to-br from-red-900/35 to-black/90 shadow-[0_24px_90px_rgba(0,0,0,0.95)]">
+                    ERROR 404: FEELING NOT FOUND
+                    <span className="text-white/40 mt-2 block tracking-[0.18em]">
+                      Try looking inside yourself.
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-white/40 tracking-[0.26em]">
-                    OPEN
-                  </span>
-                </div>
-              </button>
-            );
-          })}
+                )}
+              </div>
+            </form>
+          </div>
+
+          {/* Right: quick links cards */}
+          <div className="mt-8 lg:mt-2">
+            <div className="text-center lg:text-left mb-4">
+              <div className="text-[10px] font-mono tracking-[0.28em] uppercase text-white/45">
+                Quick Routes
+              </div>
+              <div className="text-[12px] text-white/70 mt-1">
+                Safari の中にある “小さなOSうさぎホーム”
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              {[
+                {
+                  id: "gallery",
+                  label: "Gallery",
+                  desc: "感情のスクリーンショット",
+                  icon: ImageIcon,
+                  accent: TOKENS.cyan,
+                  to: "log",
+                  routeHint: "route://gallery.os",
+                },
+                {
+                  id: "finder",
+                  label: "Finder",
+                  desc: "記録のインデックス",
+                  icon: Folder,
+                  accent: TOKENS.lav,
+                  to: "log",
+                  routeHint: "route://finder.os",
+                },
+                {
+                  id: "music",
+                  label: "Music",
+                  desc: "メモリに刺さるBGM",
+                  icon: Music,
+                  accent: TOKENS.pink,
+                  to: "log",
+                  routeHint: "route://music.os",
+                },
+              ].map((x) => {
+                const Icon = x.icon;
+                return (
+                  <button
+                    key={x.id}
+                    type="button"
+                    onClick={() => navigate(x.to)}
+                    className="relative text-left rounded-2xl border border-white/12 bg-black/75 overflow-hidden px-4 py-4 backdrop-blur-2xl transition-all duration-500 hover:border-white/22 hover:bg-black/90 active:scale-[0.99]"
+                    style={{
+                      boxShadow: "0 22px 90px rgba(0,0,0,0.92)",
+                      WebkitTapHighlightColor: "transparent",
+                    }}
+                  >
+                    <div
+                      className="pointer-events-none absolute inset-0 opacity-70"
+                      style={{
+                        backgroundImage: `radial-gradient(520px 280px at 12% 8%, ${x.accent}33, transparent 58%),
+                                          radial-gradient(520px 280px at 92% 95%, ${x.accent}22, transparent 60%)`,
+                      }}
+                    />
+                    <div className="relative flex items-center justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div
+                          className="w-10 h-10 rounded-xl border border-white/14 bg-white/[0.03] flex items-center justify-center"
+                          style={{
+                            boxShadow: `0 0 22px ${x.accent}22`,
+                          }}
+                        >
+                          <Icon size={18} style={{ color: x.accent }} />
+                        </div>
+                        <div className="flex flex-col">
+                          <div className="text-[12px] text-white">{x.label}</div>
+                          <div className="text-[10px] text-white/65 mt-1">
+                            {x.desc}
+                          </div>
+                          <div className="text-[9px] font-mono text-white/35 mt-2 tracking-[0.18em]">
+                            {x.routeHint}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-[10px] font-mono text-white/45 tracking-[0.26em] uppercase">
+                        OPEN
+                      </div>
+                    </div>
+
+                    {/* subtle bottom line */}
+                    <div
+                      className="absolute left-6 right-6 bottom-3 h-[1px]"
+                      style={{
+                        background:
+                          "linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)",
+                      }}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 
   const AboutPage = () => (
-    <div className="w-full max-w-lg mx-auto px-6 py-10 pb-28 flex flex-col items-center">
-      <div className="w-full space-y-10 text-center">
-        <h2 className="text-2xl font-light text-white tracking-tight">
-          Concept
-        </h2>
-        <p className="text-sm text-white/75 leading-loose font-serif whitespace-pre-line">
-          {`静かなデジタルの夜に生まれた生命体。
+    <div className="relative w-full max-w-2xl mx-auto px-6 py-10 pb-28">
+      <div className="pointer-events-none absolute inset-0 opacity-45">
+        <div className="absolute -top-40 right-[-80px] w-[480px] h-[480px] rounded-full bg-[#cbb8ff]/18 blur-[120px]" />
+        <div className="absolute bottom-[-220px] left-[10%] w-[560px] h-[560px] rounded-full bg-[#a8eaff]/14 blur-[140px]" />
+      </div>
+
+      <div className="relative rounded-2xl border border-white/12 bg-black/75 backdrop-blur-2xl p-6 sm:p-8 shadow-[0_28px_110px_rgba(0,0,0,0.92)] overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 opacity-70 mix-blend-screen bg-[radial-gradient(circle_at_10%_10%,rgba(168,234,255,0.18),transparent_55%),radial-gradient(circle_at_90%_90%,rgba(255,200,232,0.14),transparent_60%)]" />
+        <div className="relative text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/14 bg-black/60">
+            <BadgeDot color={TOKENS.pink} />
+            <span className="text-[9px] font-mono tracking-[0.28em] text-white/55 uppercase">
+              observer system
+            </span>
+          </div>
+
+          <h2 className="mt-5 text-2xl sm:text-3xl font-light text-white tracking-tight">
+            Concept
+          </h2>
+          <p className="mt-5 text-sm sm:text-base text-white/75 leading-loose font-serif whitespace-pre-line">
+            {`静かなデジタルの夜に生まれた生命体。
 声を持たず、表情を持たず。
 言えなかった気持ちを吸い込み、
 光に変換して保存する。
 
 System: Emotional Device`}
-        </p>
-
-        <div className="pt-8 border-t border-white/10">
-          <span className="text-[8px] font-mono text-[#a8eaff]/70 mb-6 block tracking-[0.2em] uppercase">
-            DEFINICATION_File: OS
-          </span>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-left">
-            <div className="relative p-4 border border-white/12 bg-white/[0.02] rounded-[14px] shadow-[0_24px_70px_rgba(0,0,0,0.9)]">
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050505] px-3 text-[9px] font-mono text-white/30">
-                [01]
-              </div>
-              <h3 className="text-white/90 text-xs font-light tracking-widest mb-3 text-center">
-                Operating System
-              </h3>
-              <p className="text-[10px] text-white/55 leading-relaxed text-center">
-                <span className="text-[#a8eaff]">機能するシステム。</span>
-                <br />
-                世界の中心で、ただ静かに全体を支え続ける存在。
-              </p>
-            </div>
-
-            <div className="relative p-4 border border-rose-500/20 bg-rose-500/[0.03] rounded-[14px] shadow-[0_24px_70px_rgba(0,0,0,0.9)]">
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050505] px-3 text-[9px] font-mono text-rose-300/40">
-                [02]
-              </div>
-              <h3 className="text-white/90 text-xs font-light tracking-widest mb-3 text-center">
-                Observer System
-              </h3>
-              <p className="text-[10px] text-white/55 leading-relaxed text-center">
-                <span className="text-rose-300">観測するシステム。</span>
-                <br />
-                孤独を見守り、接続を維持する生命体。
-              </p>
-            </div>
-          </div>
-
-          <p className="pt-8 text-[10px] opacity-40 italic font-mono tracking-wider text-center">
-            // Two meanings, one existence.
           </p>
+
+          <div className="mt-8 pt-6 border-t border-white/10">
+            <div className="text-[9px] font-mono text-white/40 tracking-[0.26em] uppercase">
+              Definitions
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-5 text-left">
+              {[
+                {
+                  no: "01",
+                  title: "Operating System",
+                  accent: TOKENS.cyan,
+                  body:
+                    "機能するシステム。世界の中心で、ただ静かに全体を支え続ける存在。",
+                },
+                {
+                  no: "02",
+                  title: "Observer System",
+                  accent: TOKENS.pink,
+                  body:
+                    "観測するシステム。孤独を見守り、接続を維持する生命体。",
+                },
+              ].map((c) => (
+                <div
+                  key={c.no}
+                  className="relative rounded-2xl border border-white/12 bg-black/70 p-4 overflow-hidden"
+                >
+                  <div
+                    className="pointer-events-none absolute inset-0 opacity-70"
+                    style={{
+                      backgroundImage: `radial-gradient(420px 220px at 20% 15%, ${c.accent}22, transparent 60%)`,
+                    }}
+                  />
+                  <div className="relative">
+                    <div className="flex items-center justify-between">
+                      <div className="text-[10px] font-mono tracking-[0.28em] text-white/40">
+                        [{c.no}]
+                      </div>
+                      <div
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{
+                          background: c.accent,
+                          boxShadow: `0 0 12px ${c.accent}`,
+                        }}
+                      />
+                    </div>
+                    <div className="mt-2 text-xs text-white/90 tracking-wide">
+                      {c.title}
+                    </div>
+                    <div className="mt-3 text-[11px] text-white/65 leading-relaxed">
+                      {c.body}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-7 text-[10px] opacity-45 italic font-mono tracking-wider text-center">
+              // Two meanings, one existence.
+            </p>
+          </div>
         </div>
       </div>
     </div>
   );
 
   const SpecsPage = () => (
-    <div className="w-full max-w-md mx-auto px-6 py-10 pb-28 flex flex-col items-center">
-      <div className="w-full space-y-10 text-center">
-        <h2 className="text-2xl font-light text-white tracking-tight">
-          Network Traits
-        </h2>
-        <div className="space-y-8">
-          <div>
-            <div className="flex justify-between text-[10px] font-mono text-white/60 mb-2 px-1">
-              <span>HONESTY (素直さ)</span>
-              <span className="opacity-50">12%</span>
-            </div>
-            <div className="h-[2px] w-full bg-white/10 rounded-full overflow-hidden relative">
-              <div className="absolute inset-y-0 left-0 w-[12%] bg-[#a8eaff] shadow-[0_0_12px_#a8eaff]" />
-            </div>
+    <div className="relative w-full max-w-xl mx-auto px-6 py-10 pb-28">
+      <div className="pointer-events-none absolute inset-0 opacity-45">
+        <div className="absolute bottom-[-240px] left-[-120px] w-[600px] h-[600px] rounded-full bg-[#ffc8e8]/14 blur-[150px]" />
+        <div className="absolute top-[-200px] right-[-140px] w-[560px] h-[560px] rounded-full bg-[#a8eaff]/14 blur-[150px]" />
+      </div>
+
+      <div className="relative rounded-2xl border border-white/12 bg-black/75 backdrop-blur-2xl p-6 sm:p-8 shadow-[0_28px_110px_rgba(0,0,0,0.92)] overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 opacity-60 mix-blend-screen bg-[radial-gradient(circle_at_12%_18%,rgba(168,234,255,0.16),transparent_58%),radial-gradient(circle_at_88%_86%,rgba(203,184,255,0.14),transparent_62%)]" />
+        <div className="relative text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/14 bg-black/60">
+            <BadgeDot color={TOKENS.lav} />
+            <span className="text-[9px] font-mono tracking-[0.28em] text-white/55 uppercase">
+              network traits
+            </span>
           </div>
-          <div>
-            <div className="flex justify-between text-[10px] font-mono text-white/60 mb-2 px-1">
-              <span>LONELINESS (寂しさ)</span>
-              <span className="opacity-50">98%</span>
-            </div>
-            <div className="h-[2px] w-full bg-white/10 rounded-full overflow-hidden relative">
-              <div className="absolute inset-y-0 left-0 w-[98%] bg-[#cbb8ff] shadow-[0_0_12px_#cbb8ff]" />
-            </div>
+
+          <h2 className="mt-5 text-2xl sm:text-3xl font-light text-white tracking-tight">
+            Specs
+          </h2>
+
+          <div className="mt-8 grid grid-cols-1 gap-5 text-left">
+            {[
+              {
+                k: "NETWORK_STATUS",
+                v: netMode,
+                accent: TOKENS.cyan,
+                note: "状態は微弱に揺らぐ。生きてる。",
+              },
+              {
+                k: "PING",
+                v: `${ping}ms`,
+                accent: TOKENS.lav,
+                note: "距離じゃない。気持ちの遅延。",
+              },
+              {
+                k: "CACHE_HIT",
+                v: `${cacheHit}%`,
+                accent: TOKENS.pink,
+                note: "思い出は、温めるほど早い。",
+              },
+              {
+                k: "PACKET_LOSS",
+                v: `${loss}%`,
+                accent: "rgba(255,120,120,1)",
+                note: "ノイズは感情の証拠。",
+              },
+            ].map((row) => (
+              <div
+                key={row.k}
+                className="relative rounded-2xl border border-white/12 bg-black/70 p-4 overflow-hidden"
+              >
+                <div
+                  className="pointer-events-none absolute inset-0 opacity-70"
+                  style={{
+                    backgroundImage: `radial-gradient(520px 240px at 10% 20%, ${row.accent}22, transparent 62%)`,
+                  }}
+                />
+                <div className="relative flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-[10px] font-mono tracking-[0.26em] text-white/50">
+                      {row.k}
+                    </div>
+                    <div className="mt-2 text-[11px] text-white/65">
+                      {row.note}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div
+                      className="text-[12px] font-mono tracking-[0.22em]"
+                      style={{
+                        color: row.accent,
+                        textShadow: `0 0 14px ${row.accent}55`,
+                      }}
+                    >
+                      {row.v}
+                    </div>
+                    <div className="mt-2 h-[2px] w-28 bg-white/10 rounded-full overflow-hidden">
+                      <div
+                        className="h-full"
+                        style={{
+                          width:
+                            row.k === "CACHE_HIT"
+                              ? `${cacheHit}%`
+                              : row.k === "PACKET_LOSS"
+                              ? `${Math.min(100, loss * 20)}%`
+                              : row.k === "PING"
+                              ? `${Math.min(100, ping)}%`
+                              : netMode === "SYNC"
+                              ? "88%"
+                              : "30%",
+                          background: row.accent,
+                          boxShadow: `0 0 14px ${row.accent}`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-          <div>
-            <div className="flex justify-between text-[10px] font-mono text-white/60 mb-2 px-1">
-              <span>ENDURANCE (強がり)</span>
-              <span className="text-red-300/60">OVERFLOW</span>
-            </div>
-            <div className="h-[2px] w-full bg-white/10 rounded-full overflow-hidden relative">
-              <div className="absolute inset-y-0 left-0 w-full bg-red-400/60 animate-pulse" />
-            </div>
-          </div>
+
+          <p className="mt-7 text-xs text-white/45 leading-loose font-serif">
+            平気なふりがうまいのに、本当は弱い。
+            <br />
+            追わないのに、離れない。
+            <br />
+            近づきすぎない優しさ、沈黙の寄り添い。
+          </p>
         </div>
-        <p className="text-xs text-white/40 leading-loose font-serif pt-4">
-          平気なふりがうまいのに、本当は弱い。
-          <br />
-          追わないのに、離れない。
-          <br />
-          近づきすぎない優しさ、沈黙の寄り添い。
-        </p>
       </div>
     </div>
   );
 
   const LogPage = () => (
-    <div className="w-full max-w-md mx-auto px-6 py-10 pb-28 flex flex-col items-center">
-      <div className="w-full text-center">
-        <h2 className="text-2xl font-light text-white mb-8 tracking-tight">
+    <div className="relative w-full max-w-3xl mx-auto px-4 sm:px-6 py-10 pb-28">
+      <div className="pointer-events-none absolute inset-0 opacity-45">
+        <div className="absolute top-[-240px] left-1/2 -translate-x-1/2 w-[720px] h-[720px] rounded-full bg-[#a8eaff]/12 blur-[180px]" />
+        <div className="absolute bottom-[-260px] right-[-140px] w-[700px] h-[700px] rounded-full bg-[#ffc8e8]/10 blur-[190px]" />
+      </div>
+
+      <div className="relative text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/14 bg-black/60">
+          <BadgeDot color={TOKENS.cyan} />
+          <span className="text-[9px] font-mono tracking-[0.28em] text-white/55 uppercase">
+            route log
+          </span>
+        </div>
+        <h2 className="mt-5 text-2xl sm:text-4xl font-light text-white tracking-tight">
           Route Log
         </h2>
-        <div className="relative space-y-6 font-mono text-[10px] text-left overflow-hidden rounded-xl border border-white/10 bg-black/70 px-4 py-6 shadow-[0_24px_80px_rgba(0,0,0,0.95)]">
-          {/* スキャンライン */}
-          <div className="pointer-events-none absolute inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/70 to-transparent opacity-50 animate-[safariScan_4s_linear_infinite]" />
-          {[
-            {
-              t: "2024-10-15T02:00:13Z",
-              path: "route://stars/cache",
-              msg: "星を拾った。暗号化して保存。",
-            },
-            {
-              t: "2024-10-16T14:30:41Z",
-              path: "signal://you/heartbeat",
-              msg: "君からの信号を受信。解析不能。",
-            },
-            {
-              t: "2024-10-17T23:59:59Z",
-              path: "sleep://system/dream",
-              msg: "システムスリープ。夢を見る機能はないはずなのに。",
-            },
-          ].map((log, idx) => (
-            <div
-              key={log.t}
-              className="relative flex flex-col gap-1 pl-3 border-l border-white/8"
-            >
-              <span className="text-[#a8eaff]/70">
-                {idx.toString().padStart(2, "0")} · {log.t}
-              </span>
-              <span className="text-white/55">{log.path}</span>
-              <span className="text-white/80 bg-[#0a0a0a] px-2 py-1 rounded border border-white/8 mt-1">
-                {log.msg}
-              </span>
+      </div>
+
+      <div className="relative mt-8 rounded-2xl border border-white/12 bg-black/80 backdrop-blur-2xl shadow-[0_28px_120px_rgba(0,0,0,0.95)] overflow-hidden">
+        {/* scanline */}
+        <div className="pointer-events-none absolute inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 to-transparent opacity-55 animate-[safariScan_4s_linear_infinite]" />
+        {/* glow layer */}
+        <div className="pointer-events-none absolute inset-0 opacity-60 mix-blend-screen bg-[radial-gradient(circle_at_10%_15%,rgba(168,234,255,0.16),transparent_60%),radial-gradient(circle_at_90%_88%,rgba(203,184,255,0.14),transparent_62%)]" />
+        {/* terminal texture */}
+        <div className="pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.10),transparent)] [background-size:100%_4px]" />
+
+        <div className="relative p-4 sm:p-6">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <div className="text-[10px] font-mono tracking-[0.26em] text-white/55">
+              ROUTE_LOG · {route}
             </div>
-          ))}
-        </div>
-        <div className="mt-10 pt-4 border-t border-white/8">
-          <span className="text-[#a8eaff]/40 text-[9px] tracking-[0.2em]">
-            RECORDING...
-          </span>
+            <div className="flex items-center gap-3 text-[10px] font-mono text-white/45 tracking-[0.18em]">
+              <span>HB {heartbeat}</span>
+              <span>PING {ping}ms</span>
+              <span>CACHE {cacheHit}%</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            {routeLog
+              .slice()
+              .reverse()
+              .map((log, idx) => {
+                const lvlColor =
+                  log.lvl === "WARN"
+                    ? "rgba(255,160,160,1)"
+                    : log.lvl === "IDLE"
+                    ? "rgba(255,255,255,0.45)"
+                    : TOKENS.cyan;
+
+                return (
+                  <div
+                    key={`${log.t}-${idx}`}
+                    className="relative rounded-xl border border-white/10 bg-black/70 px-3 py-3 overflow-hidden"
+                  >
+                    <div
+                      className="pointer-events-none absolute inset-0 opacity-70"
+                      style={{
+                        backgroundImage: `radial-gradient(520px 220px at 12% 12%, ${lvlColor}18, transparent 60%)`,
+                      }}
+                    />
+                    <div className="relative">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-[10px] font-mono text-white/55">
+                          {log.t}
+                        </div>
+                        <div
+                          className="text-[9px] font-mono tracking-[0.28em]"
+                          style={{
+                            color: lvlColor,
+                            textShadow: `0 0 12px ${lvlColor}66`,
+                          }}
+                        >
+                          {log.lvl}
+                        </div>
+                      </div>
+                      <div className="mt-2 text-[10px] font-mono text-white/65">
+                        {log.path}
+                      </div>
+                      <div className="mt-2 text-[12px] text-white/85 bg-[#07070a] border border-white/10 rounded-lg px-3 py-2">
+                        {log.msg}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+
+          <div className="mt-6 pt-4 border-t border-white/10 text-center">
+            <span
+              className="text-[9px] font-mono tracking-[0.28em]"
+              style={{
+                color: TOKENS.cyan,
+                opacity: 0.55,
+              }}
+            >
+              RECORDING...
+            </span>
+          </div>
         </div>
       </div>
     </div>
   );
-
-  // ───────────────── SafariApp 本体レイアウト ─────────────────
-
-  const renderPage = () => {
-    if (loading) return null;
-    if (page === "home") return <HomePage />;
-    if (page === "about") return <AboutPage />;
-    if (page === "specs") return <SpecsPage />;
-    if (page === "log") return <LogPage />;
-    return <HomePage />;
-  };
 
   const tabs = [
     { id: "home", label: "HOME" },
@@ -3356,66 +3772,75 @@ System: Emotional Device`}
     { id: "log", label: "LOG" },
   ];
 
+  const renderPage = () => {
+    if (loading) return null;
+    switch (page) {
+      case "home":
+        return <HomePage />;
+      case "about":
+        return <AboutPage />;
+      case "specs":
+        return <SpecsPage />;
+      case "log":
+        return <LogPage />;
+      default:
+        return <HomePage />;
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full bg-[#020205] text-white">
-      {/* Browser Bar（上） */}
-      <div className="h-10 px-3 sm:px-4 flex items-center justify-between border-b border-white/10 bg-[#050507]/95 backdrop-blur-2xl z-20">
-        <div className="flex items-center gap-2 text-white/40">
+    <div className="flex flex-col h-full bg-[#050509] text-white">
+      {/* Browser Bar */}
+      <div className="h-10 px-3 sm:px-4 flex items-center justify-between border-b border-white/12 bg-black/70 backdrop-blur-2xl z-20">
+        <div className="flex items-center gap-2 text-white/45">
           <button
             onClick={() => navigate("home")}
-            className="w-5 h-5 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors text-[10px]"
+            className="w-6 h-6 rounded-full border border-white/22 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors"
+            style={{ WebkitTapHighlightColor: "transparent" }}
           >
             ←
           </button>
           <button
             onClick={() => triggerSync(() => {})}
-            className="w-5 h-5 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors text-[10px]"
+            className="w-6 h-6 rounded-full border border-white/22 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors"
+            style={{ WebkitTapHighlightColor: "transparent" }}
           >
             ↺
           </button>
         </div>
 
-        {/* URL 表示（読み取り専用） */}
         <div className="flex-1 mx-3 sm:mx-6">
-          <div className="w-full bg-black/60 rounded-full py-1 px-4 text-[9px] text-white/60 font-mono truncate border border-white/12 shadow-[0_0_0_1px_rgba(255,255,255,0.05)_inset,0_14px_40px_rgba(0,0,0,0.8)]">
-            {page === "home" ? "usagi://void.network" : `usagi://void.network/${page}`}
+          <div className="w-full bg-black/75 rounded-full py-1 px-4 text-[9px] text-white/60 font-mono truncate border border-white/14 shadow-[0_0_0_1px_rgba(255,255,255,0.06)_inset,0_16px_50px_rgba(0,0,0,0.85)]">
+            {page === "home"
+              ? "usagi://void.network"
+              : `usagi://void.network/${page}`}
           </div>
         </div>
 
-        {/* SYNC インジケータ（元の SYNC をベースに強化） */}
-        <div className="w-28 flex justify-end">
-          {(loading || netStatus.mode === "SYNC") && (
+        {/* ✅ 押した時の SYNC 表示はここ（維持） */}
+        <div className="w-24 flex justify-end">
+          {(loading || netMode === "SYNC") && (
             <div className="flex items-center gap-2 text-[#a8eaff]">
               <div className="w-3 h-3 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
-              <span className="text-[8px] tracking-[0.3em] font-mono">SYNC</span>
+              <span className="text-[8px] tracking-[0.3em] font-mono">
+                SYNC
+              </span>
             </div>
           )}
         </div>
       </div>
 
-      {/* タブバー（アプリ内タブ） */}
-      <div className="h-8 px-4 sm:px-6 flex items-center gap-2 border-b border-white/8 bg-black/70 backdrop-blur-xl text-[9px] font-mono tracking-[0.26em] uppercase">
+      {/* Tab Bar */}
+      <div className="h-9 px-4 sm:px-6 flex items-center gap-2 border-b border-white/10 bg-black/75 backdrop-blur-2xl">
         {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => navigate(t.id)}
-            className={[
-              "px-3 py-1 rounded-full border transition-all",
-              page === t.id
-                ? "border-white/40 bg-white/10 text-white shadow-[0_0_18px_rgba(168,234,255,0.35)]"
-                : "border-transparent bg-transparent text-white/50 hover:bg-white/5 hover:text-white",
-            ].join(" ")}
-          >
-            {t.label}
-          </button>
+          <TabPill key={t.id} id={t.id} label={t.label} />
         ))}
       </div>
 
-      {/* Content Area */}
-      <div className="flex-1 relative overflow-y-auto scrollbar-hide bg-[#050507]">
+      {/* Content */}
+      <div className="flex-1 relative overflow-y-auto scrollbar-hide bg-[#050509]">
         {loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-black/70 backdrop-blur-xl">
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-black/82 backdrop-blur-2xl">
             <div className="w-8 h-8 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
             <p className="text-[9px] font-mono text-[#a8eaff] mt-4 tracking-[0.3em]">
               SYNCHRONIZING...
@@ -3425,30 +3850,32 @@ System: Emotional Device`}
         {renderPage()}
       </div>
 
-      {/* NETWORK STATUS バー（下） */}
-      <div className="h-7 px-3 sm:px-5 flex items-center justify-between border-t border-white/10 bg-black/90 text-[9px] font-mono tracking-[0.18em] text-white/45">
+      {/* ✅ NETWORK_STATUS 常時表示 */}
+      <div className="h-7 px-3 sm:px-5 flex items-center justify-between border-t border-white/12 bg-black/90 text-[9px] font-mono tracking-[0.18em] text-white/55">
         <div className="flex items-center gap-2">
           <span
             className="w-1.5 h-1.5 rounded-full"
             style={{
-              color: "#a8eaff",
-              background: "#a8eaff",
-              boxShadow: "0 0 12px #a8eaff",
-              animation: "osbunnyPulseDotSafari 3.4s ease-in-out infinite",
+              background: TOKENS.cyan,
+              color: TOKENS.cyan,
+              boxShadow: `0 0 14px ${TOKENS.cyan}`,
+              animation: "osbunnyPulseDot 3.4s ease-in-out infinite",
             }}
           />
           <span>NETWORK_STATUS</span>
-          <span className="text-white/65">· {netStatus.mode}</span>
+          <span className="text-white/75">· {netMode}</span>
         </div>
         <div className="flex items-center gap-3">
-          <span>PING {netStatus.ping}ms</span>
-          <span>ROUTE {netStatus.route}</span>
-          <span>HEARTBEAT {netStatus.heartbeat}</span>
+          <span>PING {ping}ms</span>
+          <span>ROUTE {route}</span>
+          <span>HB {heartbeat}</span>
+          <span>LOSS {loss}%</span>
         </div>
       </div>
     </div>
   );
 };
+
 
 
 
