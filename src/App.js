@@ -2975,10 +2975,12 @@ System: Emotional Device`}
   );
 };
 
-// -- TERMINAL APP (INFINITE EMOTIONAL LOGS) --
+// -- TERMINAL APP (INFINITE EMOTIONAL LOGS · OS USAGI EDITION) --
 const TerminalApp = () => {
   const MAX_LINES = 50;
   const endRef = useRef(null);
+  const timeoutRef = useRef(null);
+  const inputRef = useRef(null);
 
   // Log Pool - Emotional & Systemic mix
   const LOG_POOL = [
@@ -3027,6 +3029,8 @@ const TerminalApp = () => {
     { id: 3, text: "emotional_engine: active", type: "info" },
   ]);
   const [inputVal, setInputVal] = useState("");
+  const [activated, setActivated] = useState(false); // 「儀式」開始フラグ
+  const [isFocused, setIsFocused] = useState(false); // 入力フォーカス状態
 
   const addLine = useCallback((newLine) => {
     setLines((prev) => {
@@ -3037,32 +3041,88 @@ const TerminalApp = () => {
     });
   }, []);
 
+  // ランダムログ生成（静かに流れ続ける感情ログ）
   useEffect(() => {
     const generateLog = () => {
       const randomLog = LOG_POOL[Math.floor(Math.random() * LOG_POOL.length)];
       addLine({ id: Date.now(), ...randomLog });
       timeoutRef.current = setTimeout(generateLog, Math.random() * 2500 + 800);
     };
-    const timeoutRef = { current: null };
+
     timeoutRef.current = setTimeout(generateLog, 1000);
-    return () => clearTimeout(timeoutRef.current);
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
   }, [addLine]);
 
+  // 自動スクロール
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [lines]);
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && inputVal.trim()) {
-      addLine({ id: Date.now(), text: `> ${inputVal}`, type: "user" });
+  const handleEnter = () => {
+    const trimmed = inputVal.trim();
+    if (!trimmed) return;
+
+    // ユーザー入力ログ
+    addLine({ id: Date.now(), text: `> ${trimmed}`, type: "user" });
+
+    const lower = trimmed.toLowerCase();
+
+    if (lower === "emotion") {
       setTimeout(() => {
         addLine({
           id: Date.now() + 1,
-          text: `response_muted: "${inputVal}" received.`,
+          text: "emotion_scan: memory_usage_YOU.png ............. 99%",
+          type: "info",
+        });
+        addLine({
+          id: Date.now() + 2,
+          text: "note: tiny fear of being too much // same-size wish to be seen more",
           type: "dim",
         });
-      }, 300);
-      setInputVal("");
+        addLine({
+          id: Date.now() + 3,
+          text: "status: safe operating range — this OS was built for you.",
+          type: "success",
+        });
+      }, 260);
+    } else if (lower === "ping you") {
+      setTimeout(() => {
+        addLine({
+          id: Date.now() + 1,
+          text: "pinging target: you .......................",
+          type: "process",
+        });
+        addLine({
+          id: Date.now() + 2,
+          text: 'latency: 3.2ms // reply cached as: "見てるよ"',
+          type: "success",
+        });
+        addLine({
+          id: Date.now() + 3,
+          text: "connection: STABLE // mood: quietly happy",
+          type: "info",
+        });
+      }, 260);
+    } else {
+      // デフォルト：静かなエコー
+      setTimeout(() => {
+        addLine({
+          id: Date.now() + 1,
+          text: `response_muted: "${trimmed}" received.`,
+          type: "dim",
+        });
+      }, 260);
+    }
+
+    setInputVal("");
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleEnter();
     }
   };
 
@@ -3071,121 +3131,154 @@ const TerminalApp = () => {
       case "sys":
         return {
           prefix: "[ SYS ]",
-          color: "text-[#a8eaff]",
-          body: "text-white/50",
+          color: "text-cyan-200/80",
+          body: "text-slate-100/80",
         };
       case "dim":
         return {
           prefix: "[ .. ]",
-          color: "text-white/20",
-          body: "text-white/20",
+          color: "text-slate-400/40",
+          body: "text-slate-300/40",
         };
       case "success":
         return {
           prefix: "[ OK ]",
           color: "text-emerald-400/80",
-          body: "text-white/60",
+          body: "text-slate-100/90",
         };
       case "warn":
         return {
           prefix: "[WARN]",
           color: "text-rose-300/80",
-          body: "text-white/60",
+          body: "text-slate-100/80",
         };
       case "crit":
         return {
           prefix: "[ERR!]",
           color: "text-rose-500",
-          body: "text-rose-200/80",
+          body: "text-rose-200/90",
         };
       case "info":
         return {
           prefix: "[INFO]",
-          color: "text-cyan-200/60",
-          body: "text-white/50",
+          color: "text-cyan-200/80",
+          body: "text-slate-100/80",
         };
       case "process":
         return {
           prefix: "[ >> ]",
-          color: "text-white/40",
-          body: "text-white/40 animate-pulse",
+          color: "text-slate-300/70",
+          body: "text-slate-300/80",
         };
       case "user":
         return {
           prefix: "$",
-          color: "text-white",
-          body: "text-white font-bold",
+          color: "text-slate-50",
+          body: "text-slate-50 font-semibold",
         };
       default:
         return {
           prefix: "[ .. ]",
-          color: "text-white/30",
-          body: "text-white/40",
+          color: "text-slate-400/60",
+          body: "text-slate-200/70",
         };
     }
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#050505] font-mono text-[10px] relative overflow-hidden">
-      {/* Overlays */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.03),rgba(0,255,0,0.01),rgba(0,0,255,0.03))] bg-[length:100%_3px,3px_100%] pointer-events-none z-10 opacity-30"></div>
-      <div className="absolute inset-0 bg-gradient-to-b from-[#a8eaff]/5 to-transparent pointer-events-none z-0"></div>
+    <div className="relative flex h-full flex-col overflow-hidden rounded-3xl bg-gradient-to-b from-[#050712] via-[#020107] to-[#020308] font-mono text-[10px] text-slate-100">
+      {/* subtle background glow */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.22),_transparent_55%)] opacity-70" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(15,23,42,0.75),transparent_45%,rgba(0,0,0,0.98))]" />
 
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 bg-[#0a0a0a]/80 backdrop-blur z-20 shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] animate-pulse shadow-[0_0_5px_#a8eaff]"></div>
-          <span className="text-white/30 tracking-widest uppercase">
-            Inner_Monologue.log
+      {/* inner bezel */}
+      <div className="relative m-[6px] flex flex-1 flex-col rounded-[22px] border border-white/5 bg-black/60 backdrop-blur-xl shadow-[0_24px_80px_rgba(0,0,0,0.9)]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 bg-black/70/80 backdrop-blur-sm shrink-0 rounded-t-[22px]">
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_8px_#a8eaff] animate-pulse" />
+            <span className="text-[9px] tracking-[0.22em] uppercase text-slate-300/80">
+              INNER_MONOLOGUE.LOG
+            </span>
+          </div>
+          <span className="text-[9px] text-slate-400/70">
+            PID: 8824 · quiet mode
           </span>
         </div>
-        <span className="text-white/20">PID:8824</span>
-      </div>
 
-      {/* Log Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2 relative z-20 scrollbar-hide">
-        {lines.map((line) => {
-          const style = getLineStyle(line.type);
-          return (
-            <div
-              key={line.id}
-              className="flex gap-3 tracking-wide leading-relaxed opacity-0 animate-fade-in"
-            >
-              <span className="text-white/10 select-none shrink-0 font-light">
-                {new Date(line.id).toLocaleTimeString([], {
-                  hour12: false,
-                  minute: "2-digit",
-                  second: "2-digit",
-                })}
-              </span>
-              <div className="flex gap-3">
-                <span className={`${style.color} w-12 shrink-0 text-right`}>
-                  {style.prefix}
+        {/* Log Area */}
+        <div className="relative flex-1 overflow-y-auto px-4 py-3 space-y-2 scrollbar-hide rounded-b-[22px]">
+          {lines.map((line) => {
+            const style = getLineStyle(line.type);
+            return (
+              <div
+                key={line.id}
+                className="flex gap-3 tracking-wide leading-relaxed opacity-0 animate-fade-in"
+              >
+                <span className="select-none shrink-0 font-light text-[9px] text-slate-500/40">
+                  {new Date(line.id).toLocaleTimeString([], {
+                    hour12: false,
+                    minute: "2-digit",
+                    second: "2-digit",
+                  })}
                 </span>
-                <span className={`${style.body}`}>{line.text}</span>
+                <div className="flex gap-3">
+                  <span
+                    className={`${style.color} w-12 shrink-0 text-right text-[9px]`}
+                  >
+                    {style.prefix}
+                  </span>
+                  <span className={`${style.body} text-[10px]`}>
+                    {line.text}
+                  </span>
+                </div>
               </div>
-            </div>
-          );
-        })}
-        <div ref={endRef} />
-      </div>
+            );
+          })}
+          <div ref={endRef} />
+        </div>
 
-      {/* Input Area */}
-      <div className="p-3 bg-[#0a0a0a] border-t border-white/5 flex items-center gap-2 z-20 shrink-0">
-        <span className="text-[#a8eaff]/50 animate-pulse">❯</span>
-        <input
-          type="text"
-          value={inputVal}
-          onChange={(e) => setInputVal(e.target.value)}
-          onKeyDown={handleKeyDown}
-          className="flex-1 bg-transparent border-none outline-none text-white/60 font-mono placeholder-white/10 tracking-widest"
-          placeholder="Type to echo..."
-          autoFocus
-        />
+        {/* Input Area */}
+        <div className="flex items-center gap-2 border-t border-white/5 bg-black/75 px-3 py-2.5 shrink-0 rounded-b-[22px]">
+          <span className="text-[#a8eaff]/80 text-[11px]">❯</span>
+          <div
+            className="relative flex-1"
+            onClick={() => {
+              setActivated(true);
+              inputRef.current?.focus();
+            }}
+          >
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputVal}
+              onChange={(e) => setInputVal(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              className="w-full bg-transparent text-[11px] tracking-[0.12em] text-slate-100/90 placeholder:text-slate-500/60 outline-none border-none"
+              placeholder={
+                activated
+                  ? 'type a ritual... (try "emotion" or "ping you")'
+                  : "tap here to start a ritual"
+              }
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              // ⬇ これを消すことで「スマホで開いた瞬間キーボード」が発動しない
+              // autoFocus
+            />
+            {/* フォーカス中だけ細い光カーソル */}
+            {isFocused && (
+              <span className="pointer-events-none absolute left-0 bottom-[3px] h-[1.1em] w-[1px] bg-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.9)]" />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 };
+
 
 // --- 5. SYSTEM LAYERS & FLOW ---
 
