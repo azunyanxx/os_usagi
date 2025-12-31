@@ -2989,481 +2989,266 @@ const MusicApp = ({ bgm }) => {
 // ------------------------------------------------
 // -- 04.SAFARI (ねっとわーく --
 // ------------------------------------------------
-const SafariApp = ({ onOpenApp }) => {
+/ ------------------------------------------------
+// -- 04.SAFARI (VOID NETWORK) --
+// -- 04.SAFARI (ねっとわーく --
+// ------------------------------------------------
+// -- SAFARI APP (VOID NETWORK · OS_USAGI) --
+const SafariApp = () => {
   const [page, setPage] = useState("home");
   const [loading, setLoading] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [showResult, setShowResult] = useState(false);
 
+  const isMobile = useIsMobile(); // ← これ追加
   const isMobile = useIsMobile();
 
-  // ========= Design Tokens (Gallery/Finder と同系) =========
-  const TOKENS = useMemo(
-    () => ({
-      bg: "#050509",
-      ink: "rgba(255,255,255,0.92)",
-      sub: "rgba(255,255,255,0.62)",
-      dim: "rgba(255,255,255,0.38)",
-      line: "rgba(255,255,255,0.12)",
-      line2: "rgba(255,255,255,0.18)",
-      cyan: "#a8eaff",
-      lav: "#cbb8ff",
-      pink: "#ffc8e8",
-      glass: "rgba(0,0,0,0.62)",
-      glass2: "rgba(0,0,0,0.72)",
-      shadow: "0 28px 100px rgba(0,0,0,0.92)",
-    }),
-    []
-  );
-
-  // ========= Network State =========
-  const [netMode, setNetMode] = useState("IDLE");
-  const [ping, setPing] = useState(32);
-  const [route, setRoute] = useState("gallery.os");
-  const [heartbeat, setHeartbeat] = useState("▁");
-  const [cacheHit, setCacheHit] = useState(84);
-  const [loss, setLoss] = useState(0.3);
-
-  // ========= Route Log =========
-  const [routeLog, setRouteLog] = useState(() => [
-    {
-      t: "2024-10-15T02:00:13Z",
-      path: "route://stars/cache",
-      msg: "星を拾った。暗号化して保存。",
-      lvl: "OK",
-    },
-    {
-      t: "2024-10-16T14:30:41Z",
-      path: "signal://you/heartbeat",
-      msg: "君からの信号を受信。解析不能。",
-      lvl: "WARN",
-    },
-    {
-      t: "2024-10-17T23:59:59Z",
-      path: "sleep://system/dream",
-      msg: "システムスリープ。夢を見る機能はないはずなのに。",
-      lvl: "IDLE",
-    },
-  ]);
-
-  // ========= Keyframes Inject =========
-  useEffect(() => {
-    const id = "osbunny-safari-ux-keyframes-v3";
-    if (document.getElementById(id)) return;
-
-    const style = document.createElement("style");
-    style.id = id;
-    style.textContent = `
-      @keyframes osbunnyPulseDot {
-        0%, 100% { transform: translateY(0) scale(1); opacity: .72; box-shadow: 0 0 0 0 currentColor; }
-        50%      { transform: translateY(-1px) scale(1.18); opacity: 1;  box-shadow: 0 0 18px 0 currentColor; }
-      }
-      @keyframes osbunnyShimmerText {
-        0%   { filter: drop-shadow(0 0 10px rgba(168,234,255,.28)) drop-shadow(0 0 0 rgba(255,200,232,.0)); opacity: .92; }
-        50%  { filter: drop-shadow(0 0 22px rgba(168,234,255,.55)) drop-shadow(0 0 12px rgba(255,200,232,.25)); opacity: 1; }
-        100% { filter: drop-shadow(0 0 10px rgba(168,234,255,.28)) drop-shadow(0 0 0 rgba(255,200,232,.0)); opacity: .92; }
-      }
-      @keyframes safariScan {
-        0% { transform: translateY(-120%); opacity: 0; }
-        12% { opacity: .42; }
-        100% { transform: translateY(130%); opacity: 0; }
-      }
-      @keyframes floatMote {
-        0%   { transform: translate3d(0, 14px, 0) scale(.98); opacity: .0; }
-        18%  { opacity: .45; }
-        50%  { transform: translate3d(0, -10px, 0) scale(1.02); opacity: .62; }
-        85%  { opacity: .25; }
-        100% { transform: translate3d(0, -26px, 0) scale(1.03); opacity: 0; }
-      }
-      @keyframes focusAura {
-        0%,100% { opacity: .22; transform: scale(1); }
-        50%     { opacity: .42; transform: scale(1.03); }
-      }
-    `;
-    document.head.appendChild(style);
-  }, []);
-
-  // ========= Network Drift (生きてる感 / eslint-disable不要にする) =========
-  const driftRoutes = useMemo(
-    () => [
-      "gallery.os",
-      "finder.os",
-      "music.os",
-      "you/inner-layer",
-      "log://night-archive",
-      "cache://soft-remember",
-    ],
-    []
-  );
-  const driftHearts = useMemo(() => ["▁", "▂", "▃", "▄", "▅", "▆", "▇"], []);
-  const driftWords = useMemo(
-    () => [
-      "SYNC/HEARTBEAT ok",
-      "CACHE_HIT warmed",
-      "ROUTE optimized",
-      "SIGNAL detected",
-      "NOISE filtered",
-      "SLEEP guard",
-    ],
-    []
-  );
+  // SYNCっぽさを少しだけ揺らす用
+  const [syncText, setSyncText] = useState("SYNC");
+  const [ping, setPing] = useState(12);
 
   useEffect(() => {
-    let i = 0;
+    const id = "safari-void-keyframes";
+    if (!document.getElementById(id)) {
+      const style = document.createElement("style");
+      style.id = id;
+      style.textContent = `
+        @keyframes safariVoidPulse {
+          0%, 100% {
+            transform: translateY(0) scale(1);
+            box-shadow: 0 0 0 0 rgba(168,234,255,0.0);
+            opacity: 0.8;
+          }
+          50% {
+            transform: translateY(-0.5px) scale(1.08);
+            box-shadow: 0 0 14px 0 rgba(168,234,255,0.9);
+            opacity: 1;
+          }
+        }
+        @keyframes safariVoidScan {
+          0% { transform: translateY(-100%); }
+          100% { transform: translateY(100%); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
     const interval = setInterval(() => {
-      i++;
-
-      const newPing = 22 + Math.floor(Math.random() * 46);
-      const newCache = 74 + Math.floor(Math.random() * 24);
-      const newLoss = Math.max(0, Math.min(2.4, Math.random() * 2.4));
-      const nextRoute = driftRoutes[i % driftRoutes.length];
-      const nextHB = driftHearts[i % driftHearts.length];
-
-      setPing(newPing);
-      setCacheHit(newCache);
-      setLoss(Number(newLoss.toFixed(1)));
-      setRoute(nextRoute);
-      setHeartbeat(nextHB);
-
-      setRouteLog((prev) => {
-        const now = new Date();
-        const iso = now.toISOString().replace(/\.\d{3}Z$/, "Z");
-        const lvl = newLoss > 1.6 || newPing > 55 ? "WARN" : "OK";
-        const msg =
-          lvl === "WARN"
-            ? "微弱なノイズ。感情の復号に時間がかかる。"
-            : driftWords[i % driftWords.length];
-
-        const next = [
-          ...prev,
-          {
-            t: iso,
-            path: `route://${nextRoute}`,
-            msg,
-            lvl,
-          },
-        ];
-        return next.slice(-18);
-      });
-    }, isMobile ? 2400 : 3200);
+      setSyncText((prev) => (prev === "SYNC" ? "IDLE" : "SYNC"));
+      const base = 8 + Math.random() * 10;
+      setPing(Math.round(base));
+    }, 4200);
 
     return () => clearInterval(interval);
-  }, [isMobile, driftRoutes, driftHearts, driftWords]);
+  }, []);
 
-  // ========= SYNC Trigger（押した時の表示はこれで固定） =========
-  const triggerSync = (after) => {
+  const navigate = (target) => {
     setLoading(true);
     setShowResult(false);
-    setNetMode("SYNC");
+    // Simulate network delay for realism
     setTimeout(() => {
-      if (after) after();
+      setPage(target);
       setLoading(false);
-      setNetMode("IDLE");
     }, 1200);
   };
 
-  const navigate = (target) => triggerSync(() => setPage(target));
-
   const handleSearch = (e) => {
     e.preventDefault();
-    if (!searchValue.trim()) return;
-    triggerSync(() => setShowResult(true));
+    if (!searchValue) return;
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      setShowResult(true);
+    }, 1500);
   };
 
-  // ========= Quick Routes：ちゃんと効かせる =========
-  const openApp = (appId) => {
-    // 親が渡してくれていれば、ここで “別アプリを起動”
-    if (typeof onOpenApp === "function") {
-      triggerSync(() => onOpenApp(appId, true));
-      return;
-    }
-    // 渡ってないなら、最低でもログへ（効いてないよりマシ）
-    navigate("log");
-  };
-
-  // ========= UI Parts =========
-  const Mote = ({ style }) => (
-    <div className="pointer-events-none absolute rounded-full blur-[18px]" style={style} />
-  );
-
-  const TabPill = ({ id, label }) => {
-    const active = page === id;
-    return (
-      <button
-        type="button"
-        onClick={() => navigate(id)}
-        className={[
-          "relative px-3 py-[6px] rounded-full border text-[9px] font-mono uppercase tracking-[0.26em] transition-all select-none",
-          active
-            ? "border-white/35 bg-white/10 text-white shadow-[0_0_24px_rgba(168,234,255,0.28)]"
-            : "border-transparent bg-transparent text-white/55 hover:bg-white/5 hover:text-white",
-        ].join(" ")}
-        style={{ WebkitTapHighlightColor: "transparent" }}
-      >
-        {label}
-        {active && (
-          <span className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-10 h-[1px] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
-        )}
-      </button>
-    );
-  };
-
-  const BadgeDot = ({ color = TOKENS.cyan }) => (
-    <span
-      className="w-1.5 h-1.5 rounded-full"
-      style={{
-        background: color,
-        color,
-        boxShadow: `0 0 14px ${color}`,
-        animation: "osbunnyPulseDot 3.4s ease-in-out infinite",
-      }}
-    />
-  );
-
-  // ========= Pages =========
-  // ★ HOME：うるささを減らして“静かな高級感”に寄せる（ログ/スペックは触らない）
   const HomePage = () => (
-    <div className="relative min-h-full">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[#050509]" />
-        <div className="absolute -top-28 -left-40 w-[520px] h-[520px] rounded-full bg-[#a8eaff]/14 blur-[120px]" />
-        <div className="absolute top-1/2 -right-48 w-[560px] h-[560px] rounded-full bg-[#cbb8ff]/12 blur-[140px]" />
-        <div className="absolute bottom-[-240px] left-1/3 w-[700px] h-[700px] rounded-full bg-[#ffc8e8]/10 blur-[160px]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/58 to-black/95" />
-        <div className="absolute inset-0 opacity-[0.08] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.09),transparent)] [background-size:100%_4px]" />
+    <div
+      className="flex flex-col items-center justify-center min-h-full text-center px-6 py-20 relative"
+      className="flex flex-col items-center justify-center text-center px-6 py-16 sm:py-20 relative"
+      style={{
+        backgroundImage:
+          "radial-gradient(circle at top, rgba(168,234,255,0.08) 0%, transparent 60%), radial-gradient(circle at bottom, rgba(203,184,255,0.08) 0%, transparent 60%)",
+        backgroundRepeat: "no-repeat",
+        backgroundSize: "100% 100%",
+        minHeight: isMobile ? "calc(100vh - 80px)" : "calc(100vh - 96px)",
+      }}
+    >
+      {/* タイトル */}
+      <h1 className="text-3xl sm:text-4xl font-light tracking-[0.35em] text-white/90 mb-6 uppercase sm:animate-fade-in">
+        Void Network
+      </h1>
 
-        <Mote
-          style={{
-            width: 120,
-            height: 120,
-            left: "10%",
-            top: "22%",
-            background: "rgba(168,234,255,0.18)",
-            animation: "floatMote 6.0s ease-in-out infinite",
-          }}
+      {/* サブコピー */}
+      <p className="text-xs text-white/40 font-mono tracking-[0.3em] mb-10 sm:animate-fade-in">
+        Connecting to the unconscious...
+      </p>
+
+      {/* サーチボックス */}
+      <form
+        onSubmit={handleSearch}
+        className="w-full max-w-md relative group z-10 sm:animate-fade-in"
+      >
+        <input
+          type="text"
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+          placeholder="Search for feelings..."
+          className="w-full bg-white/5 border border-white/10 rounded-full py-3 px-6 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-[#a8eaff]/50 focus:bg-white/10 transition-all font-mono text-center tracking-wider"
         />
-        <Mote
-          style={{
-            width: 140,
-            height: 140,
-            right: "8%",
-            top: "30%",
-            background: "rgba(203,184,255,0.18)",
-            animation: "floatMote 6.8s ease-in-out infinite",
-            animationDelay: "0.6s",
-          }}
-        />
+        <button
+          type="submit"
+          className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-white/20 hover:text-[#a8eaff] transition-colors"
+        >
+          <Search size={14} />
+        </button>
+      </form>
+
+      {/* 404メッセージ */}
+      {showResult && (
+        <div className="mt-8 text-[10px] font-mono text-red-300/80 tracking-widest sm:animate-fade-in border border-red-500/20 px-4 py-2 rounded bg-red-900/10">
+          ERROR 404: FEELING NOT FOUND
+          <span className="text-white/30 opacity-50 mt-1 block">
+            Try looking inside yourself.
+          </span>
+        </div>
+      )}
+      {/* 背景グロー */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 -left-32 w-[360px] h-[360px] rounded-full bg-[#a8eaff]/18 blur-[70px]" />
+        <div className="absolute top-1/2 -right-40 w-[460px] h-[460px] rounded-full bg-[#cbb8ff]/14 blur-[90px]" />
+        <div className="absolute bottom-[-120px] left-1/3 w-[520px] h-[520px] rounded-full bg-[#ffc8e8]/16 blur-[100px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/50 to-black/90" />
+        <div className="absolute inset-0 opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.07),transparent)] [background-size:100%_4px]" />
       </div>
 
-      <div className="relative px-4 pt-10 pb-28 sm:px-8 sm:pt-14 max-w-5xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_.85fr] gap-10 items-start">
-          <div className="text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/18 bg-black/55 backdrop-blur-2xl shadow-[0_24px_90px_rgba(0,0,0,0.92)]">
-              <BadgeDot color={TOKENS.cyan} />
-              <span className="text-[10px] font-mono tracking-[0.28em] text-white/60 uppercase">
-                VOID NETWORK
-              </span>
-              <span className="ml-2 text-[9px] font-mono text-white/35 tracking-[0.22em]">
-                ROUTE {route}
-              </span>
-            </div>
-
-            {/* shimmer維持 */}
-            <h1
-              className="mt-7 text-[30px] sm:text-5xl font-light uppercase tracking-[0.36em] leading-[1.08]"
-              style={{
-                backgroundImage:
-                  "conic-gradient(from 210deg at 50% 0%, #a8eaff, rgba(255,255,255,0.95), #ffc8e8, #cbb8ff, #a8eaff)",
-                WebkitBackgroundClip: "text",
-                backgroundClip: "text",
-                color: "transparent",
-                animation: "osbunnyShimmerText 4.2s ease-in-out infinite",
-              }}
-            >
-              OS BUNNY
-              <br />
-              BROWSER
+      {/* 下の3ボタン */}
+      <div className="mt-16 flex flex-wrap justify-center gap-6 sm:gap-8 text-[10px] font-mono text-white/30 tracking-[0.2em] uppercase z-10 sm:animate-fade-in">
+        <div
+          onClick={() => navigate("about")}
+          className="cursor-pointer hover:text-[#a8eaff] hover:scale-105 transition-all duration-500 flex flex-col items-center gap-2 group"
+        >
+          <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center group-hover:border-[#a8eaff]/50 group-hover:bg-[#a8eaff]/5 transition-all">
+            <User size={16} />
+      <div className="relative w-full max-w-md sm:max-w-lg">
+        {/* タイトル */}
+        <div className="flex flex-col items-center gap-2 mb-6 sm:mb-8">
+          <div className="inline-flex items-center gap-2">
+            <span
+              className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_16px_rgba(168,234,255,0.95)]"
+              style={{ animation: "safariVoidPulse 3.4s ease-in-out infinite" }}
+            />
+            <h1 className="text-[22px] sm:text-[28px] font-light tracking-[0.35em] text-white/92 uppercase">
+              VOID NETWORK
             </h1>
-
-            <p className="mt-5 text-[11px] sm:text-sm font-mono tracking-[0.26em] text-white/55">
-              Connecting to the unconscious...
-            </p>
-
-            <p className="mt-7 text-sm sm:text-base text-white/70 leading-relaxed font-serif">
-              これは「世界のブラウザ」じゃない。
-              <br />
-              <span className="text-white/90">
-                あなたと、OSうさぎのためだけのネットワーク
-              </span>
-              に接続する。
-              <br />
-              言えなかった気持ちを、静かに同期して保存する。
-            </p>
-
-            <form onSubmit={handleSearch} className="mt-9">
-              <div className="relative max-w-xl mx-auto lg:mx-0">
-                <div
-                  className="pointer-events-none absolute -inset-1 rounded-full opacity-30"
-                  style={{
-                    background:
-                      "radial-gradient(420px 220px at 15% 20%, rgba(168,234,255,0.22), transparent 60%), radial-gradient(420px 220px at 85% 90%, rgba(255,200,232,0.18), transparent 60%)",
-                    animation: "focusAura 4.6s ease-in-out infinite",
-                  }}
-                />
-                <div className="relative flex items-center gap-2 rounded-full bg-black/70 border border-white/18 px-3 py-2 backdrop-blur-2xl shadow-[0_0_0_1px_rgba(255,255,255,0.06)_inset,0_22px_90px_rgba(0,0,0,0.92)] focus-within:border-[#a8eaff]/70">
-                  <div className="flex items-center gap-2 pl-1 text-[10px] font-mono text-white/55 tracking-[0.18em]">
-                    <Globe size={13} className="text-white/55" />
-                    <span className="text-white/40">https</span>
-                    <span className="text-white/25">://</span>
-                    <span className="text-white/70">usagi</span>
-                  </div>
-                  <input
-                    value={searchValue}
-                    onChange={(e) => setSearchValue(e.target.value)}
-                    placeholder="search / feelings, tag, note"
-                    className="flex-1 bg-transparent text-[12px] text-white placeholder:text-white/28 focus:outline-none font-mono tracking-[0.18em] px-2 text-center lg:text-left"
-                  />
-                  <button
-                    type="submit"
-                    className="w-9 h-9 rounded-full border border-white/22 bg-white/[0.04] flex items-center justify-center text-white/75 hover:text-[#a8eaff] hover:border-[#a8eaff]/75 hover:bg-[#a8eaff]/10 transition-all active:scale-[0.98]"
-                    style={{ WebkitTapHighlightColor: "transparent" }}
-                    aria-label="Search"
-                  >
-                    <Search size={14} />
-                  </button>
-                </div>
-
-                {showResult && !loading && (
-                  <div className="mt-4 text-[10px] font-mono tracking-[0.24em] text-red-300/90 border border-red-500/35 px-4 py-3 rounded-xl bg-gradient-to-br from-red-900/35 to-black/90 shadow-[0_24px_90px_rgba(0,0,0,0.95)]">
-                    ERROR 404: FEELING NOT FOUND
-                    <span className="text-white/40 mt-2 block tracking-[0.18em]">
-                      Try looking inside yourself.
-                    </span>
-                  </div>
-                )}
-              </div>
-            </form>
           </div>
+          About
+          <p className="text-[10px] sm:text-xs text-white/40 font-mono tracking-[0.3em]">
+            connecting to the unconscious...
+          </p>
+        </div>
+        <div
+          onClick={() => navigate("specs")}
+          className="cursor-pointer hover:text-[#a8eaff] hover:scale-105 transition-all duration-500 flex flex-col items-center gap-2 group"
 
-          {/* Quick Routes：ちゃんと“他アプリ起動” */}
-          <div className="mt-8 lg:mt-2">
-            <div className="text-center lg:text-left mb-4">
-              <div className="text-[10px] font-mono tracking-[0.28em] uppercase text-white/45">
-                Quick Routes
-              </div>
-              <div className="text-[12px] text-white/70 mt-1">
-                Safari の中にある “小さなOSうさぎホーム”
-              </div>
-            </div>
+        {/* サーチボックス */}
+        <form
+          onSubmit={handleSearch}
+          className="w-full relative group z-10"
+        >
+          <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center group-hover:border-[#a8eaff]/50 group-hover:bg-[#a8eaff]/5 transition-all">
+            <Hash size={16} />
+          <div className="absolute inset-0 rounded-full bg-[linear-gradient(90deg,rgba(168,234,255,0.22),rgba(203,184,255,0.16),rgba(255,200,232,0.22))] opacity-35 blur-[18px] pointer-events-none" />
+          <input
+            type="text"
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            placeholder="Search for feelings..."
+            className="relative w-full bg-black/60 border border-white/16 rounded-full py-3.5 px-6 text-[11px] text-white placeholder:text-white/28 focus:outline-none focus:border-[#a8eaff]/80 focus:shadow-[0_0_26px_rgba(168,234,255,0.45)] transition-all font-mono text-center tracking-[0.28em]"
+          />
+          <button
+            type="submit"
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/8 border border-white/25 flex items-center justify-center text-white/60 hover:text-[#a8eaff] hover:bg-white/12 active:scale-[0.96] transition-all"
+          >
+            <Search size={14} />
+          </button>
+        </form>
 
-            <div className="grid grid-cols-1 gap-4">
-              {[
-                {
-                  id: "gallery",
-                  label: "Gallery",
-                  desc: "感情のスクリーンショット",
-                  icon: ImageIcon,
-                  accent: TOKENS.cyan,
-                  routeHint: "route://gallery.os",
-                },
-                {
-                  id: "finder",
-                  label: "Finder",
-                  desc: "記録のインデックス",
-                  icon: Folder,
-                  accent: TOKENS.lav,
-                  routeHint: "route://finder.os",
-                },
-                {
-                  id: "music",
-                  label: "Music",
-                  desc: "メモリに刺さるBGM",
-                  icon: Music,
-                  accent: TOKENS.pink,
-                  routeHint: "route://music.os",
-                },
-              ].map((x) => {
-                const Icon = x.icon;
-                return (
-                  <button
-                    key={x.id}
-                    type="button"
-                    onClick={() => openApp(x.id)}
-                    className="relative text-left rounded-2xl border border-white/12 bg-black/75 overflow-hidden px-4 py-4 backdrop-blur-2xl transition-all duration-500 hover:border-white/22 hover:bg-black/90 active:scale-[0.99]"
-                    style={{
-                      boxShadow: "0 22px 90px rgba(0,0,0,0.92)",
-                      WebkitTapHighlightColor: "transparent",
-                    }}
-                  >
-                    <div
-                      className="pointer-events-none absolute inset-0 opacity-70"
-                      style={{
-                        backgroundImage: `radial-gradient(520px 280px at 12% 8%, ${x.accent}26, transparent 58%),
-                                          radial-gradient(520px 280px at 92% 95%, ${x.accent}18, transparent 60%)`,
-                      }}
-                    />
-                    <div className="relative flex items-center justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <div
-                          className="w-10 h-10 rounded-xl border border-white/14 bg-white/[0.03] flex items-center justify-center"
-                          style={{ boxShadow: `0 0 22px ${x.accent}22` }}
-                        >
-                          <Icon size={18} style={{ color: x.accent }} />
-                        </div>
-                        <div className="flex flex-col">
-                          <div className="text-[12px] text-white">{x.label}</div>
-                          <div className="text-[10px] text-white/65 mt-1">
-                            {x.desc}
-                          </div>
-                          <div className="text-[9px] font-mono text-white/35 mt-2 tracking-[0.18em]">
-                            {x.routeHint}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-[10px] font-mono text-white/45 tracking-[0.26em] uppercase">
-                        OPEN
-                      </div>
-                    </div>
-
-                    <div
-                      className="absolute left-6 right-6 bottom-3 h-[1px]"
-                      style={{
-                        background:
-                          "linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)",
-                      }}
-                    />
-                  </button>
-                );
-              })}
-            </div>
+        {/* 404メッセージ */}
+        {showResult && (
+          <div className="mt-8 text-[10px] font-mono text-red-300/90 tracking-[0.25em] border border-red-400/35 px-4 py-2.5 rounded-full bg-red-950/40 backdrop-blur-2xl shadow-[0_0_24px_rgba(248,113,113,0.3)]">
+            ERROR 404: FEELING NOT FOUND
+            <span className="text-white/40 mt-1 block tracking-[0.18em]">
+              try looking inside yourself.
+            </span>
           </div>
+          Specs
+        )}
+
+        {/* 下の3ボタン */}
+        <div className="mt-12 sm:mt-14 flex flex-wrap justify-center gap-6 sm:gap-8 text-[10px] font-mono text-white/40 tracking-[0.22em] uppercase">
+          <button
+            type="button"
+            onClick={() => navigate("about")}
+            className="cursor-pointer hover:text-[#a8eaff] hover:scale-105 transition-all duration-400 flex flex-col items-center gap-2 group"
+          >
+            <div className="w-12 h-12 rounded-full border border-white/14 flex items-center justify-center bg-black/50 group-hover:border-[#a8eaff]/60 group-hover:bg-[#a8eaff]/10 transition-all shadow-[0_18px_40px_rgba(0,0,0,0.7)]">
+              <User size={16} className="text-white/70 group-hover:text-[#a8eaff]" />
+            </div>
+            <span>ABOUT</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("specs")}
+            className="cursor-pointer hover:text-[#a8eaff] hover:scale-105 transition-all duration-400 flex flex-col items-center gap-2 group"
+          >
+            <div className="w-12 h-12 rounded-full border border-white/14 flex items-center justify-center bg-black/50 group-hover:border-[#a8eaff]/60 group-hover:bg-[#a8eaff]/10 transition-all shadow-[0_18px_40px_rgba(0,0,0,0.7)]">
+              <Hash size={16} className="text-white/70 group-hover:text-[#a8eaff]" />
+            </div>
+            <span>SPECS</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("log")}
+            className="cursor-pointer hover:text-[#a8eaff] hover:scale-105 transition-all duration-400 flex flex-col items-center gap-2 group"
+          >
+            <div className="w-12 h-12 rounded-full border border-white/14 flex items-center justify-center bg-black/50 group-hover:border-[#a8eaff]/60 group-hover:bg-[#a8eaff]/10 transition-all shadow-[0_18px_40px_rgba(0,0,0,0.7)]">
+              <FileText size={16} className="text-white/70 group-hover:text-[#a8eaff]" />
+            </div>
+            <span>LOG</span>
+          </button>
+        </div>
+        <div
+          onClick={() => navigate("log")}
+          className="cursor-pointer hover:text-[#a8eaff] hover:scale-105 transition-all duration-500 flex flex-col items-center gap-2 group"
+        >
+          <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center group-hover:border-[#a8eaff]/50 group-hover:bg-[#a8eaff]/5 transition-all">
+            <FileText size={16} />
+          </div>
+          Log
+
+        <div className="mt-10 text-[9px] font-mono text-white/28 tracking-[0.24em] uppercase">
+          // browser for things you can&#39;t say out loud
         </div>
       </div>
     </div>
   );
 
-  // AboutはそのままでもOKだけど、今回は触らずに“戻したい”要望優先で軽く
   const AboutPage = () => (
-    <div className="relative w-full max-w-2xl mx-auto px-6 py-10 pb-28">
-      <div className="pointer-events-none absolute inset-0 opacity-45">
-        <div className="absolute -top-40 right-[-80px] w-[480px] h-[480px] rounded-full bg-[#cbb8ff]/18 blur-[120px]" />
-        <div className="absolute bottom-[-220px] left-[10%] w-[560px] h-[560px] rounded-full bg-[#a8eaff]/14 blur-[140px]" />
-      </div>
-
-      <div className="relative rounded-2xl border border-white/12 bg-black/75 backdrop-blur-2xl p-6 sm:p-8 shadow-[0_28px_110px_rgba(0,0,0,0.92)] overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 opacity-70 mix-blend-screen bg-[radial-gradient(circle_at_10%_10%,rgba(168,234,255,0.18),transparent_55%),radial-gradient(circle_at_90%_90%,rgba(255,200,232,0.14),transparent_60%)]" />
-        <div className="relative text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/14 bg-black/60">
-            <BadgeDot color={TOKENS.pink} />
-            <span className="text-[9px] font-mono tracking-[0.28em] text-white/55 uppercase">
-              observer system
-            </span>
-          </div>
-
-          <h2 className="mt-5 text-2xl sm:text-3xl font-light text-white tracking-tight">
+    // FIX: Added pb-32 for mobile dock clearance and min-h-full
+    <div className="w-full max-w-lg mx-auto px-6 py-12 pb-32 flex flex-col items-center">
+      <div className="w-full space-y-12 text-center">
+        <div className="space-y-6 animate-fade-in">
+    <div className="w-full max-w-lg mx-auto px-6 py-10 pb-28 flex flex-col items-center">
+      <div className="w-full space-y-10 text-center">
+        <div className="space-y-5">
+          <h2 className="text-2xl font-light text-white tracking-tight">
             Concept
           </h2>
-          <p className="mt-5 text-sm sm:text-base text-white/75 leading-loose font-serif whitespace-pre-line">
+          <p className="text-sm text-white/70 leading-loose font-serif whitespace-pre-line">
+          <p className="text-[11px] sm:text-sm text-white/70 leading-loose font-serif whitespace-pre-line">
             {`静かなデジタルの夜に生まれた生命体。
 声を持たず、表情を持たず。
 言えなかった気持ちを吸い込み、
@@ -3472,338 +3257,288 @@ const SafariApp = ({ onOpenApp }) => {
 System: Emotional Device`}
           </p>
         </div>
-      </div>
-    </div>
-  );
 
-  // ✅✅✅ ここが「戻す」ポイント：あなたの最初の SpecsPage を基本そのまま
-  const SpecsPage = () => (
-    <div className="relative w-full max-w-xl mx-auto px-6 py-10 pb-28">
-      <div className="pointer-events-none absolute inset-0 opacity-45">
-        <div className="absolute bottom-[-240px] left-[-120px] w-[600px] h-[600px] rounded-full bg-[#ffc8e8]/14 blur-[150px]" />
-        <div className="absolute top-[-200px] right-[-140px] w-[560px] h-[560px] rounded-full bg-[#a8eaff]/14 blur-[150px]" />
-      </div>
+        <div className="pt-8 border-t border-white/5 sm:animate-fade-in">
+          <span className="text-[8px] font-mono text-[#a8eaff]/60 mb-8 block tracking-[0.2em] uppercase">
+        <div className="pt-6 border-t border-white/8">
+          <span className="text-[8px] font-mono text-[#a8eaff]/70 mb-6 block tracking-[0.26em] uppercase">
+            DEFINICATION_File: OS
+          </span>
 
-      <div className="relative rounded-2xl border border-white/12 bg-black/75 backdrop-blur-2xl p-6 sm:p-8 shadow-[0_28px_110px_rgba(0,0,0,0.92)] overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 opacity-60 mix-blend-screen bg-[radial-gradient(circle_at_12%_18%,rgba(168,234,255,0.16),transparent_58%),radial-gradient(circle_at_88%_86%,rgba(203,184,255,0.14),transparent_62%)]" />
-        <div className="relative text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/14 bg-black/60">
-            <BadgeDot color={TOKENS.lav} />
-            <span className="text-[9px] font-mono tracking-[0.28em] text-white/55 uppercase">
-              network traits
-            </span>
-          </div>
-
-          <h2 className="mt-5 text-2xl sm:text-3xl font-light text-white tracking-tight">
-            Specs
-          </h2>
-
-          <div className="mt-8 grid grid-cols-1 gap-5 text-left">
-            {[
-              {
-                k: "NETWORK_STATUS",
-                v: netMode,
-                accent: TOKENS.cyan,
-                note: "状態は微弱に揺らぐ。生きてる。",
-              },
-              {
-                k: "PING",
-                v: `${ping}ms`,
-                accent: TOKENS.lav,
-                note: "距離じゃない。気持ちの遅延。",
-              },
-              {
-                k: "CACHE_HIT",
-                v: `${cacheHit}%`,
-                accent: TOKENS.pink,
-                note: "思い出は、温めるほど早い。",
-              },
-              {
-                k: "PACKET_LOSS",
-                v: `${loss}%`,
-                accent: "rgba(255,120,120,1)",
-                note: "ノイズは感情の証拠。",
-              },
-            ].map((row) => (
-              <div
-                key={row.k}
-                className="relative rounded-2xl border border-white/12 bg-black/70 p-4 overflow-hidden"
-              >
-                <div
-                  className="pointer-events-none absolute inset-0 opacity-70"
-                  style={{
-                    backgroundImage: `radial-gradient(520px 240px at 10% 20%, ${row.accent}22, transparent 62%)`,
-                  }}
-                />
-                <div className="relative flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-[10px] font-mono tracking-[0.26em] text-white/50">
-                      {row.k}
-                    </div>
-                    <div className="mt-2 text-[11px] text-white/65">
-                      {row.note}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div
-                      className="text-[12px] font-mono tracking-[0.22em]"
-                      style={{
-                        color: row.accent,
-                        textShadow: `0 0 14px ${row.accent}55`,
-                      }}
-                    >
-                      {row.v}
-                    </div>
-                    <div className="mt-2 h-[2px] w-28 bg-white/10 rounded-full overflow-hidden">
-                      <div
-                        className="h-full"
-                        style={{
-                          width:
-                            row.k === "CACHE_HIT"
-                              ? `${cacheHit}%`
-                              : row.k === "PACKET_LOSS"
-                              ? `${Math.min(100, loss * 20)}%`
-                              : row.k === "PING"
-                              ? `${Math.min(100, ping)}%`
-                              : netMode === "SYNC"
-                              ? "88%"
-                              : "30%",
-                          background: row.accent,
-                          boxShadow: `0 0 14px ${row.accent}`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-left">
+            <div className="relative p-4 border border-white/5 bg-white/[0.02] rounded-sm">
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050505] px-2 text-[9px] font-mono text-white/30">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-left">
+            <div className="relative p-4 border border-white/8 bg-white/[0.03] rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050505] px-2 text-[9px] font-mono text-white/40 tracking-[0.18em]">
+                [01]
               </div>
-            ))}
+              <h3 className="text-white/90 text-xs font-light tracking-widest mb-3 text-center">
+              <h3 className="text-white/90 text-xs font-light tracking-[0.32em] mb-3 text-center uppercase">
+                Operating System
+              </h3>
+              <p className="text-[10px] text-white/50 leading-relaxed text-center">
+              <p className="text-[10px] text-white/55 leading-relaxed text-center">
+                <span className="text-[#a8eaff]">機能するシステム。</span>
+                <br />
+                世界の中心で、ただ静かに全体を支え続ける存在。
+              </p>
+            </div>
+
+            <div className="relative p-4 border border-rose-500/10 bg-rose-500/[0.01] rounded-sm">
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050505] px-2 text-[9px] font-mono text-rose-300/30">
+            <div className="relative p-4 border border-rose-400/20 bg-rose-500/[0.04] rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050505] px-2 text-[9px] font-mono text-rose-200/50 tracking-[0.18em]">
+                [02]
+              </div>
+              <h3 className="text-white/90 text-xs font-light tracking-widest mb-3 text-center">
+              <h3 className="text-white/90 text-xs font-light tracking-[0.32em] mb-3 text-center uppercase">
+                Observer System
+              </h3>
+              <p className="text-[10px] text-white/50 leading-relaxed text-center">
+                <span className="text-rose-300">観測するシステム。</span>
+              <p className="text-[10px] text-white/55 leading-relaxed text-center">
+                <span className="text-rose-200">観測するシステム。</span>
+                <br />
+                孤独を見守り、接続を維持する生命体。
+              </p>
+            </div>
           </div>
 
-          <p className="mt-7 text-xs text-white/45 leading-loose font-serif">
-            平気なふりがうまいのに、本当は弱い。
-            <br />
-            追わないのに、離れない。
-            <br />
-            近づきすぎない優しさ、沈黙の寄り添い。
+          <p className="pt-8 text-[10px] opacity-30 italic font-mono tracking-wider text-center">
+            // Two meanings, one existence.
+          <p className="pt-7 text-[10px] opacity-40 italic font-mono tracking-wider text-center">
+            // two meanings, one existence.
           </p>
         </div>
       </div>
     </div>
   );
 
-  // ✅✅✅ ここが「戻す」ポイント：あなたの最初の LogPage を基本そのまま
-  const LogPage = () => (
-    <div className="relative w-full max-w-3xl mx-auto px-4 sm:px-6 py-10 pb-28">
-      <div className="pointer-events-none absolute inset-0 opacity-45">
-        <div className="absolute top-[-240px] left-1/2 -translate-x-1/2 w-[720px] h-[720px] rounded-full bg-[#a8eaff]/12 blur-[180px]" />
-        <div className="absolute bottom-[-260px] right-[-140px] w-[700px] h-[700px] rounded-full bg-[#ffc8e8]/10 blur-[190px]" />
-      </div>
-
-      <div className="relative text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/14 bg-black/60">
-          <BadgeDot color={TOKENS.cyan} />
-          <span className="text-[9px] font-mono tracking-[0.28em] text-white/55 uppercase">
-            route log
-          </span>
-        </div>
-        <h2 className="mt-5 text-2xl sm:text-4xl font-light text-white tracking-tight">
-          Route Log
+  const SpecsPage = () => (
+    <div className="w-full max-w-md mx-auto px-6 py-12 pb-32 flex flex-col items-center">
+      <div className="w-full space-y-10 text-center">
+        <h2 className="text-2xl font-light text-white tracking-tight sm:animate-fade-in">
+    <div className="w-full max-w-md mx-auto px-6 py-10 pb-28 flex flex-col items-center">
+      <div className="w-full space-y-8 text-center">
+        <h2 className="text-2xl font-light text-white tracking-tight">
+          Traits
         </h2>
+        <div className="space-y-8 animate-fade-in">
+          <div className="group">
+        <div className="space-y-7">
+          <div>
+            <div className="flex justify-between text-[10px] font-mono text-white/60 mb-2 px-1">
+              <span>HONESTY (素直さ)</span>
+              <span className="opacity-50">12%</span>
+            </div>
+            <div className="h-[2px] w-full bg-white/10 rounded-full overflow-hidden relative">
+              <div className="absolute inset-0 bg-[#a8eaff] w-[12%] shadow-[0_0_10px_#a8eaff]" />
+              <div className="absolute inset-y-0 left-0 bg-[#a8eaff] w-[12%] shadow-[0_0_14px_#a8eaff]" />
+            </div>
+          </div>
+          <div className="group">
+          <div>
+            <div className="flex justify-between text-[10px] font-mono text-white/60 mb-2 px-1">
+              <span>LONELINESS (寂しさ)</span>
+              <span className="opacity-50">98%</span>
+            </div>
+            <div className="h-[2px] w-full bg-white/10 rounded-full overflow-hidden relative">
+              <div className="absolute inset-0 bg-[#cbb8ff] w-[98%] shadow-[0_0_10px_#cbb8ff]" />
+              <div className="absolute inset-y-0 left-0 bg-[#cbb8ff] w-[98%] shadow-[0_0_14px_#cbb8ff]" />
+            </div>
+          </div>
+          <div className="group">
+          <div>
+            <div className="flex justify-between text-[10px] font-mono text-white/60 mb-2 px-1">
+              <span>ENDURANCE (強がり)</span>
+              <span className="text-red-300/50">OVERFLOW</span>
+              <span className="text-red-300/65">OVERFLOW</span>
+            </div>
+            <div className="h-[2px] w-full bg-white/10 rounded-full overflow-hidden relative">
+              <div className="absolute inset-0 bg-red-400/50 w-full animate-pulse" />
+              <div className="absolute inset-0 bg-red-400/55 w-full animate-pulse" />
+            </div>
+          </div>
+        </div>
+        <p className="text-xs text-white/40 leading-loose font-serif pt-4 sm:animate-fade-in">
+        <p className="text-[11px] sm:text-xs text-white/45 leading-loose font-serif pt-4">
+          平気なふりがうまいのに、本当は弱い。
+          <br />
+          追わないのに、離れない。
+          <br />
+          近づきすぎない優しさ、沈黙の寄り添い。
+        </p>
       </div>
+    </div>
+  );
 
-      <div className="relative mt-8 rounded-2xl border border-white/12 bg-black/80 backdrop-blur-2xl shadow-[0_28px_120px_rgba(0,0,0,0.95)] overflow-hidden">
-        <div className="pointer-events-none absolute inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 to-transparent opacity-55 animate-[safariScan_4s_linear_infinite]" />
-        <div className="pointer-events-none absolute inset-0 opacity-60 mix-blend-screen bg-[radial-gradient(circle_at_10%_15%,rgba(168,234,255,0.16),transparent_60%),radial-gradient(circle_at_90%_88%,rgba(203,184,255,0.14),transparent_62%)]" />
-        <div className="pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.10),transparent)] [background-size:100%_4px]" />
-
-        <div className="relative p-4 sm:p-6">
-          <div className="flex items-center justify-between gap-4 mb-4">
-            <div className="text-[10px] font-mono tracking-[0.26em] text-white/55">
-              ROUTE_LOG · {route}
-            </div>
-            <div className="flex items-center gap-3 text-[10px] font-mono text-white/45 tracking-[0.18em]">
-              <span>HB {heartbeat}</span>
-              <span>PING {ping}ms</span>
-              <span>CACHE {cacheHit}%</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3">
-            {routeLog
-              .slice()
-              .reverse()
-              .map((log, idx) => {
-                const lvlColor =
-                  log.lvl === "WARN"
-                    ? "rgba(255,160,160,1)"
-                    : log.lvl === "IDLE"
-                    ? "rgba(255,255,255,0.45)"
-                    : TOKENS.cyan;
-
-                return (
-                  <div
-                    key={`${log.t}-${idx}`}
-                    className="relative rounded-xl border border-white/10 bg-black/70 px-3 py-3 overflow-hidden"
-                  >
-                    <div
-                      className="pointer-events-none absolute inset-0 opacity-70"
-                      style={{
-                        backgroundImage: `radial-gradient(520px 220px at 12% 12%, ${lvlColor}18, transparent 60%)`,
-                      }}
-                    />
-                    <div className="relative">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="text-[10px] font-mono text-white/55">
-                          {log.t}
-                        </div>
-                        <div
-                          className="text-[9px] font-mono tracking-[0.28em]"
-                          style={{
-                            color: lvlColor,
-                            textShadow: `0 0 12px ${lvlColor}66`,
-                          }}
-                        >
-                          {log.lvl}
-                        </div>
-                      </div>
-                      <div className="mt-2 text-[10px] font-mono text-white/65">
-                        {log.path}
-                      </div>
-                      <div className="mt-2 text-[12px] text-white/85 bg-[#07070a] border border-white/10 rounded-lg px-3 py-2">
-                        {log.msg}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-
-          <div className="mt-6 pt-4 border-t border-white/10 text-center">
-            <span
-              className="text-[9px] font-mono tracking-[0.28em]"
-              style={{
-                color: TOKENS.cyan,
-                opacity: 0.55,
-              }}
-            >
-              RECORDING...
+  const LogPage = () => (
+    <div className="w-full max-w-md mx-auto px-6 py-12 pb-32 flex flex-col items-center">
+    <div className="w-full max-w-md mx-auto px-6 py-10 pb-28 flex flex-col items-center">
+      <div className="w-full text-center">
+        <h2 className="text-2xl font-light text-white mb-8 tracking-tight animate-fade-in">
+        <h2 className="text-2xl font-light text-white mb-8 tracking-tight">
+          System Log
+        </h2>
+        <div className="space-y-6 font-mono text-[10px] animate-fade-in relative before:absolute before:left-1/2 before:-translate-x-1/2 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5">
+        <div className="space-y-6 font-mono text-[10px] relative before:absolute before:left-1/2 before:-translate-x-1/2 before:top-4 before:bottom-4 before:w-[1px] before:bg-white/10">
+          <div className="relative flex flex-col items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-[#a8eaff] shadow-[0_0_10px_#a8eaff] mb-1 z-10 relative"></div>
+            <div className="w-2 h-2 rounded-full bg-[#a8eaff] shadow-[0_0_12px_#a8eaff] mb-1 z-10 relative" />
+            <span className="text-[#a8eaff]/60 mb-1">2024.10.15 02:00</span>
+            <span className="text-white/70 bg-[#0a0a0a] px-2 py-1 rounded border border-white/5">
+            <span className="text-white/75 bg-[#050505] px-2 py-1 rounded-full border border-white/8">
+              星を拾った。暗号化して保存。
             </span>
           </div>
+          <div className="relative flex flex-col items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-white/20 mb-1 z-10 relative"></div>
+            <div className="w-2 h-2 rounded-full bg-white/25 mb-1 z-10 relative" />
+            <span className="text-[#a8eaff]/60 mb-1">2024.10.16 14:30</span>
+            <span className="text-white/70 bg-[#0a0a0a] px-2 py-1 rounded border border-white/5">
+            <span className="text-white/75 bg-[#050505] px-2 py-1 rounded-full border border-white/8">
+              君からの信号を受信。解析不能。
+            </span>
+          </div>
+          <div className="relative flex flex-col items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-white/20 mb-1 z-10 relative"></div>
+            <div className="w-2 h-2 rounded-full bg-white/25 mb-1 z-10 relative" />
+            <span className="text-[#a8eaff]/60 mb-1">2024.10.17 23:59</span>
+            <span className="text-white/70 bg-[#0a0a0a] px-2 py-1 rounded border border-white/5">
+            <span className="text-white/75 bg-[#050505] px-2 py-1 rounded-full border border-white/8">
+              システムスリープ。
+              <br />
+              夢を見る機能はないはずなのに。
+            </span>
+          </div>
+        </div>
+        <div className="mt-12 pt-6 border-t border-white/5">
+          <span className="text-[#a8eaff]/30 text-[9px] tracking-[0.2em] animate-pulse">
+        <div className="mt-10 pt-5 border-t border-white/8">
+          <span className="text-[#a8eaff]/40 text-[9px] tracking-[0.24em]" style={{ animation: "safariVoidPulse 3.6s ease-in-out infinite" }}>
+            RECORDING...
+          </span>
         </div>
       </div>
     </div>
   );
 
-  const tabs = [
-    { id: "home", label: "HOME" },
-    { id: "about", label: "ABOUT" },
-    { id: "specs", label: "SPECS" },
-    { id: "log", label: "LOG" },
-  ];
-
-  const renderPage = () => {
-    if (loading) return null;
-    switch (page) {
-      case "home":
-        return <HomePage />;
-      case "about":
-        return <AboutPage />;
-      case "specs":
-        return <SpecsPage />;
-      case "log":
-        return <LogPage />;
-      default:
-        return <HomePage />;
-    }
-  };
-
   return (
-    <div className="flex flex-col h-full bg-[#050509] text-white">
+    <div className="flex flex-col h-full bg-[#020202] text-white">
+    <div className="flex flex-col h-full bg-[#020308] text-white relative overflow-hidden">
+      {/* 背景グロー（全体） */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-40 -left-40 w-[480px] h-[480px] rounded-full bg-[#a8eaff]/18 blur-[80px]" />
+        <div className="absolute top-1/2 -right-40 w-[520px] h-[520px] rounded-full bg-[#cbb8ff]/16 blur-[96px]" />
+        <div className="absolute bottom-[-140px] left-1/3 w-[560px] h-[560px] rounded-full bg-[#ffc8e8]/18 blur-[110px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/60 to-black/95" />
+        <div className="absolute inset-0 opacity-[0.12] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.06),transparent)] [background-size:100%_4px]" />
+      </div>
+
       {/* Browser Bar */}
-      <div className="h-10 px-3 sm:px-4 flex items-center justify-between border-b border-white/12 bg-black/70 backdrop-blur-2xl z-20">
-        <div className="flex items-center gap-2 text-white/45">
+      <div className="h-10 px-4 flex items-center justify-between border-b border-white/10 bg-[#0a0a0a] z-20 shrink-0">
+        <div className="flex items-center gap-2 text-white/40">
           <button
-            onClick={() => navigate("home")}
-            className="w-6 h-6 rounded-full border border-white/22 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors"
-            style={{ WebkitTapHighlightColor: "transparent" }}
+            onClick={() => setPage("home")}
+            className="w-5 h-5 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors"
           >
             ←
           </button>
           <button
-            onClick={() => triggerSync(() => {})}
-            className="w-6 h-6 rounded-full border border-white/22 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors"
-            style={{ WebkitTapHighlightColor: "transparent" }}
+            onClick={() => window.history.back()}
+            className="w-5 h-5 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors"
           >
             ↺
           </button>
-        </div>
+      <div className="relative z-20 h-10 px-3 sm:px-4 flex items-center justify-between border-b border-white/12 bg-black/70 backdrop-blur-2xl shrink-0">
+        <div className="flex items-center gap-2">
+          {/* 左端の呼吸ドット + /void */}
+          <span
+            className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_16px_rgba(168,234,255,0.95)]"
+            style={{ animation: "safariVoidPulse 3.4s ease-in-out infinite" }}
+          />
+          <span className="hidden sm:inline text-[9px] font-mono uppercase tracking-[0.30em] text-white/55">
+            /void
+          </span>
 
-        <div className="flex-1 mx-3 sm:mx-6">
-          <div className="w-full bg-black/75 rounded-full py-1 px-4 text-[9px] text-white/60 font-mono truncate border border-white/14 shadow-[0_0_0_1px_rgba(255,255,255,0.06)_inset,0_16px_50px_rgba(0,0,0,0.85)]">
-            {page === "home"
-              ? "usagi://void.network"
-              : `usagi://void.network/${page}`}
+          <div className="ml-2 flex items-center gap-1.5 text-white/50">
+            <button
+              onClick={() => setPage("home")}
+              className="w-5 h-5 rounded-full border border-white/25 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors text-[10px]"
+            >
+              ←
+            </button>
+            <button
+              onClick={() => window.history.back()}
+              className="w-5 h-5 rounded-full border border-white/25 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors text-[10px]"
+            >
+              ↺
+            </button>
           </div>
         </div>
+        <div className="flex-1 mx-4">
+          <div className="w-full bg-white/5 rounded-full py-1 px-4 text-[9px] text-white/60 font-mono truncate">
+            {page === "home" ? "usagi.net/void" : `usagi.net/${page}`}
 
-        {/* ✅ 押した時の SYNC 表示はここ（維持） */}
+        <div className="flex-1 mx-3 sm:mx-4">
+          <div className="w-full bg-black/60 rounded-full py-1 px-4 text-[9px] text-white/65 font-mono truncate border border-white/16">
+            {page === "home" ? "os-usagi.net/void" : `os-usagi.net/${page}`}
+          </div>
+        </div>
         <div className="w-24 flex justify-end">
-          {(loading || netMode === "SYNC") && (
+          {loading && (
+
+        <div className="flex items-center gap-2 text-[9px] font-mono text-white/55 min-w-[80px] justify-end">
+          <div className="hidden sm:inline-flex items-center gap-1 px-2 py-[2px] rounded-full border border-white/18 bg-white/[0.03]">
+            <span className="text-white/70">PING</span>
+            <span className="text-white/90">{ping}ms</span>
+          </div>
+          {loading ? (
             <div className="flex items-center gap-2 text-[#a8eaff]">
               <div className="w-3 h-3 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
-              <span className="text-[8px] tracking-[0.3em] font-mono">
-                SYNC
+              <span className="text-[8px] tracking-[0.3em]">SYNC</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 px-2 py-[2px] rounded-full border border-[#a8eaff]/60 bg-black/70">
+              <span className="w-1 h-1 rounded-full bg-[#a8eaff] shadow-[0_0_10px_rgba(168,234,255,0.9)]" />
+              <span className="text-[8px] tracking-[0.32em] text-[#a8eaff]">
+                {syncText}
               </span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Tab Bar */}
-      <div className="h-9 px-4 sm:px-6 flex items-center gap-2 border-b border-white/10 bg-black/75 backdrop-blur-2xl">
-        {tabs.map((t) => (
-          <TabPill key={t.id} id={t.id} label={t.label} />
-        ))}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 relative overflow-y-auto scrollbar-hide bg-[#050509]">
-        {loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-black/82 backdrop-blur-2xl">
+      {/* Content Area with Scroll */}
+      <div className="flex-1 relative overflow-y-auto scrollbar-hide bg-[#050505]">
+        {loading ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-50">
             <div className="w-8 h-8 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
+      <div className="flex-1 relative overflow-y-auto scrollbar-hide">
+        {loading && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-black/70 backdrop-blur-2xl">
+            <div className="w-9 h-9 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
             <p className="text-[9px] font-mono text-[#a8eaff] mt-4 tracking-[0.3em]">
               SYNCHRONIZING...
             </p>
           </div>
+        ) : (
         )}
-        {renderPage()}
-      </div>
 
-      {/* ✅ NETWORK_STATUS 常時表示 */}
-      <div className="h-7 px-3 sm:px-5 flex items-center justify-between border-t border-white/12 bg-black/90 text-[9px] font-mono tracking-[0.18em] text-white/55">
-        <div className="flex items-center gap-2">
-          <span
-            className="w-1.5 h-1.5 rounded-full"
-            style={{
-              background: TOKENS.cyan,
-              color: TOKENS.cyan,
-              boxShadow: `0 0 14px ${TOKENS.cyan}`,
-              animation: "osbunnyPulseDot 3.4s ease-in-out infinite",
-            }}
-          />
-          <span>NETWORK_STATUS</span>
-          <span className="text-white/75">· {netMode}</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span>PING {ping}ms</span>
-          <span>ROUTE {route}</span>
-          <span>HB {heartbeat}</span>
-          <span>LOSS {loss}%</span>
-        </div>
+        {!loading && (
+          <>
+            {page === "home" && <HomePage />}
+            {page === "about" && <AboutPage />}
+            {page === "specs" && <SpecsPage />}
+            {page === "log" && <LogPage />}
+          </>
+        )}
       </div>
     </div>
   );
 };
+
 
 
 
@@ -4889,6 +4624,16 @@ const BeatSyncApp = () => {
     []
   );
 
+  // ---- Helpers ----
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const fmtMMSS = (sec) => {
+    if (!isFinite(sec) || sec < 0) return "--:--";
+    const s = Math.floor(sec);
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+  };
+
   // ---- Deterministic RNG ----
   const hash32 = React.useCallback((s) => {
     let h = 2166136261 >>> 0;
@@ -4898,7 +4643,6 @@ const BeatSyncApp = () => {
     }
     return h >>> 0;
   }, []);
-
   const mulberry32 = React.useCallback((a) => {
     return function () {
       let t = (a += 0x6d2b79f5);
@@ -4929,11 +4673,11 @@ const BeatSyncApp = () => {
   const [muted, setMuted] = React.useState(false);
 
   const [latencyMs, setLatencyMs] = React.useState(0);
-  const [speed, setSpeed] = React.useState(880); // px/sec (スマホ基準)
+  const [speed, setSpeed] = React.useState(920); // px/s
 
   const [showConfig, setShowConfig] = React.useState(false);
+  const [pendingBadge, setPendingBadge] = React.useState(""); // "applies next run"
 
-  // rAF trigger
   const [frame, setFrame] = React.useState(0);
 
   // ---- Refs ----
@@ -4947,26 +4691,28 @@ const BeatSyncApp = () => {
   const durationRef = React.useRef(0);
   const lastNoteTRef = React.useRef(0);
 
-  const rootRef = React.useRef(null);
   const boardRef = React.useRef(null);
   const [boardH, setBoardH] = React.useState(640);
-
-  // ---- ResizeObserver (確実に座標をpxで計算) ----
-  React.useEffect(() => {
-    if (!boardRef.current) return;
-    const ro = new ResizeObserver((entries) => {
-      const h = entries?.[0]?.contentRect?.height || 640;
-      setBoardH(Math.max(420, Math.floor(h)));
-    });
-    ro.observe(boardRef.current);
-    return () => ro.disconnect();
-  }, []);
+  const [boardW, setBoardW] = React.useState(360);
 
   // ---- Track ----
   const currentTrack = React.useMemo(
     () => ASSET.tracks.find((t) => t.id === trackId) || ASSET.tracks[0],
     [ASSET.tracks, trackId]
   );
+
+  // ---- ResizeObserver ----
+  React.useEffect(() => {
+    if (!boardRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      const r = entries?.[0]?.contentRect;
+      if (!r) return;
+      setBoardH(Math.max(520, Math.floor(r.height)));
+      setBoardW(Math.max(320, Math.floor(r.width)));
+    });
+    ro.observe(boardRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   // ---- Audio settings ----
   React.useEffect(() => {
@@ -4980,10 +4726,10 @@ const BeatSyncApp = () => {
     const total = counts.perfect + counts.good + counts.miss;
     if (!total) return setAccuracy(0);
     const acc = (counts.perfect * 1 + counts.good * 0.66) / total;
-    setAccuracy(Math.max(0, Math.min(1, acc)) * 100);
+    setAccuracy(clamp(acc, 0, 1) * 100);
   }, [counts]);
 
-  // ---- Chart generator (必ずノーツが出る) ----
+  // ---- Chart generator (difficulty truly affects density) ----
   const generateChart = React.useCallback(
     (durationSec) => {
       const seed = hash32(`${currentTrack.id}:${difficulty}`);
@@ -4992,11 +4738,12 @@ const BeatSyncApp = () => {
       const bpm = currentTrack.bpm || 120;
       const beat = 60 / bpm;
 
+      // density: EASY sparse, HARD dense
       const density = difficulty === "EASY" ? 1 : difficulty === "NORMAL" ? 2 : 4; // per beat
       const step = beat / density;
 
       const startAt = 1.1;
-      const endAt = Math.max(startAt + 10, Math.min(durationSec - 0.8, durationSec || 180));
+      const endAt = Math.max(startAt + 12, Math.min((durationSec || 180) - 0.8, durationSec || 180));
 
       const notes = [];
       let id = 0;
@@ -5004,15 +4751,18 @@ const BeatSyncApp = () => {
       let repeat = 0;
 
       for (let t = startAt; t < endAt; t += step) {
-        // 息継ぎ（HARD以外は少し間引き）
-        if (difficulty !== "HARD" && rnd() < 0.03) continue;
+        // EASYは間引き多め、NORMAL少し、HARDほぼ無し
+        const restProb = difficulty === "EASY" ? 0.06 : difficulty === "NORMAL" ? 0.03 : 0.015;
+        if (rnd() < restProb) continue;
 
         let lane = Math.floor(rnd() * LANES);
         if (lane === prevLane) repeat += 1;
         else repeat = 0;
         if (repeat >= 2) lane = (lane + 1 + Math.floor(rnd() * (LANES - 1))) % LANES;
 
-        const doDouble = difficulty !== "EASY" && rnd() < (difficulty === "HARD" ? 0.16 : 0.08);
+        // double notes
+        const dbl = difficulty === "EASY" ? 0.00 : difficulty === "NORMAL" ? 0.07 : 0.16;
+        const doDouble = rnd() < dbl;
 
         notes.push({ id: `n${id++}`, t: +t.toFixed(4), lane, judged: false, hit: false });
         if (doDouble) {
@@ -5031,29 +4781,22 @@ const BeatSyncApp = () => {
     [currentTrack.id, currentTrack.bpm, difficulty, hash32, mulberry32]
   );
 
-  // ---- Hard reset ----
+  // ---- Reset / Stop ----
   const hardReset = React.useCallback(() => {
-    setScore(0);
-    setCombo(0);
-    setMaxCombo(0);
+    setScore(0); setCombo(0); setMaxCombo(0);
     setCounts({ perfect: 0, good: 0, miss: 0 });
-    setJudgeFx(null);
-    setAccuracy(0);
+    setJudgeFx(null); setAccuracy(0);
+    setPendingBadge("");
 
-    playTRef.current = 0;
-    cursorRef.current = 0;
+    playTRef.current = 0; cursorRef.current = 0;
 
     const a = audioRef.current;
-    if (a) {
-      a.pause();
-      a.currentTime = 0;
-    }
+    if (a) { a.pause(); a.currentTime = 0; }
 
     setStatus(loaded ? "ready" : "idle");
     setFrame((f) => f + 1);
   }, [loaded]);
 
-  // ---- Stop (requested) ----
   const stopPlayback = React.useCallback(() => {
     const a = audioRef.current;
     if (!a) return;
@@ -5063,6 +4806,7 @@ const BeatSyncApp = () => {
     cursorRef.current = 0;
     setCombo(0);
     setJudgeFx(null);
+    setPendingBadge("");
     setStatus(loaded ? "ready" : "idle");
     setFrame((f) => f + 1);
   }, [loaded]);
@@ -5084,7 +4828,6 @@ const BeatSyncApp = () => {
     const t = a.currentTime || 0;
     playTRef.current = t;
 
-    // Miss sweep (batch)
     const missLine = t - (BASE_WINDOW.miss + 0.02) - latencyMs / 1000;
     let i = cursorRef.current;
     const notes = notesRef.current;
@@ -5093,13 +4836,7 @@ const BeatSyncApp = () => {
     while (i < notes.length) {
       const n = notes[i];
       if (n.judged) { i++; continue; }
-      if (n.t <= missLine) {
-        n.judged = true;
-        n.hit = false;
-        missed++;
-        i++;
-        continue;
-      }
+      if (n.t <= missLine) { n.judged = true; n.hit = false; missed++; i++; continue; }
       break;
     }
     if (missed > 0) {
@@ -5110,21 +4847,15 @@ const BeatSyncApp = () => {
       if (navigator.vibrate) navigator.vibrate(10);
     }
 
-    // End
     const dur = durationRef.current || a.duration || 0;
     const lastNoteT = lastNoteTRef.current || 0;
     const doneByNotes = notes.length ? t > lastNoteT + 0.9 : t > 1.5;
-    if ((dur && t >= dur - 0.02) || doneByNotes) {
-      finishRun();
-      return;
-    }
+    if ((dur && t >= dur - 0.02) || doneByNotes) { finishRun(); return; }
 
-    // render
     if (now - lastRenderAtRef.current > 0) {
       lastRenderAtRef.current = now;
       setFrame((f) => f + 1);
     }
-
     rafRef.current = requestAnimationFrame(tick);
   }, [BASE_WINDOW.miss, finishRun, latencyMs]);
 
@@ -5133,28 +4864,20 @@ const BeatSyncApp = () => {
     const a = audioRef.current;
     if (!a || !loaded) return;
 
-    // chart
     const dur = a.duration || durationRef.current || 0;
     durationRef.current = dur;
     generateChart(dur || 180);
 
-    // stats reset
-    setScore(0);
-    setCombo(0);
-    setMaxCombo(0);
+    setScore(0); setCombo(0); setMaxCombo(0);
     setCounts({ perfect: 0, good: 0, miss: 0 });
     setJudgeFx(null);
+    setPendingBadge("");
 
     a.currentTime = 0;
     playTRef.current = 0;
     cursorRef.current = 0;
 
-    try {
-      await a.play();
-    } catch {
-      setStatus("ready");
-      return;
-    }
+    try { await a.play(); } catch { setStatus("ready"); return; }
 
     setStatus("playing");
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -5173,11 +4896,7 @@ const BeatSyncApp = () => {
   const resumeRun = React.useCallback(async () => {
     const a = audioRef.current;
     if (!a) return;
-    try {
-      await a.play();
-    } catch {
-      return;
-    }
+    try { await a.play(); } catch { return; }
     setStatus("playing");
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(tick);
@@ -5187,25 +4906,17 @@ const BeatSyncApp = () => {
     const a = audioRef.current;
     if (!a || !loaded) return;
 
-    setScore(0);
-    setCombo(0);
-    setMaxCombo(0);
+    setScore(0); setCombo(0); setMaxCombo(0);
     setCounts({ perfect: 0, good: 0, miss: 0 });
     setJudgeFx(null);
+    setPendingBadge("");
 
     notesRef.current.forEach((n) => { n.judged = false; n.hit = false; });
     cursorRef.current = 0;
 
-    a.pause();
-    a.currentTime = 0;
-    playTRef.current = 0;
+    a.pause(); a.currentTime = 0; playTRef.current = 0;
 
-    try {
-      await a.play();
-    } catch {
-      setStatus("ready");
-      return;
-    }
+    try { await a.play(); } catch { setStatus("ready"); return; }
 
     setStatus("playing");
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -5251,9 +4962,8 @@ const BeatSyncApp = () => {
     const adjT = t + latencyMs / 1000;
     const notes = notesRef.current;
 
-    // local search
     const startIdx = cursorRef.current;
-    const endIdx = Math.min(startIdx + 20, notes.length);
+    const endIdx = Math.min(startIdx + 22, notes.length);
 
     let bestIdx = -1;
     let bestAbs = Infinity;
@@ -5269,23 +4979,15 @@ const BeatSyncApp = () => {
       if (n.lane !== lane) continue;
 
       const abs = Math.abs(dt);
-      if (abs < bestAbs) {
-        bestAbs = abs;
-        bestIdx = k;
-      }
+      if (abs < bestAbs) { bestAbs = abs; bestIdx = k; }
     }
 
-    if (bestIdx === -1) {
-      applyJudge("miss");
-      return;
-    }
+    if (bestIdx === -1) { applyJudge("miss"); return; }
 
     const n = notes[bestIdx];
     const dt = Math.abs(n.t - adjT);
 
-    n.judged = true;
-    n.hit = true;
-
+    n.judged = true; n.hit = true;
     while (cursorRef.current < notes.length && notes[cursorRef.current].judged) cursorRef.current++;
 
     if (dt <= BASE_WINDOW.perfect) applyJudge("perfect");
@@ -5293,10 +4995,8 @@ const BeatSyncApp = () => {
     else applyJudge("miss");
   }, [BASE_WINDOW.good, BASE_WINDOW.miss, BASE_WINDOW.perfect, applyJudge, latencyMs, resumeRun, startRun, status]);
 
-  // ---- Pointer (tap) ----
   const onPointerDownLane = React.useCallback((lane, e) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     hitLane(lane);
     setFrame((f) => f + 1);
   }, [hitLane]);
@@ -5337,17 +5037,19 @@ const BeatSyncApp = () => {
     a.load();
   }, [currentTrack.url]);
 
-  // ---- Visible notes: px座標で確実に表示 ----
+  // ---- UI calc ----
   const ui = React.useMemo(() => {
     const t = playTRef.current || 0;
+    const dur = durationRef.current || 0;
+    const remain = dur ? Math.max(0, dur - t) : NaN;
 
-    // 判定ライン（レーン領域の下寄り）
-    const hitY = Math.floor(boardH * 0.72);
-    const margin = 160; // 上下に余裕
+    // INPUT moved to top: receptors near top
+    const receptorY = Math.floor(boardH * 0.22);
 
-    const spawnAhead = (hitY + margin) / speed; // sec
-    const past = (boardH - hitY + margin) / speed; // sec
-
+    // visible window
+    const margin = 180;
+    const spawnAhead = (receptorY + margin) / speed;
+    const past = (boardH - receptorY + margin) / speed;
     const minT = t - past - 0.05;
     const maxT = t + spawnAhead + 0.05;
 
@@ -5365,8 +5067,11 @@ const BeatSyncApp = () => {
     }
 
     const fxAlive = judgeFx && performance.now() - judgeFx.at < 360;
-    return { t, hitY, list, fxAlive };
+
+    return { t, dur, remain, receptorY, list, fxAlive };
   }, [boardH, frame, judgeFx, speed]);
+
+  const noteSize = React.useMemo(() => (boardW < 420 ? 52 : 56), [boardW]);
 
   // ---- Bunny mood ----
   const bunnyMood = React.useMemo(() => {
@@ -5378,61 +5083,73 @@ const BeatSyncApp = () => {
     return ASSET.bunny.idle;
   }, [ASSET.bunny, combo, judgeFx, status]);
 
-  const noteSize = React.useMemo(() => (boardH < 560 ? 46 : 54), [boardH]);
+  // ---- Config changes: if playing => apply next run badge ----
+  const setDifficultySafe = (d) => {
+    setDifficulty(d);
+    if (status === "playing") setPendingBadge("Difficulty applies next run");
+    else stopPlayback();
+  };
+  const setSpeedSafe = (v) => {
+    setSpeed(v);
+    if (status === "playing") setPendingBadge("Speed applies next run");
+  };
+  const setLatencySafe = (v) => {
+    setLatencyMs(v);
+    if (status === "playing") setPendingBadge("Latency applies next run");
+  };
 
-  // ---- UI ----
+  // ---- Accent tokens ----
+  const ACCENT_MINT = "rgba(168,234,255,0.22)";
+  const ACCENT_LAV = "rgba(185,168,255,0.20)";
+
   return (
-    <div
-      ref={rootRef}
-      className="relative h-full w-full overflow-hidden select-none bg-[#05060a]"
-      style={{ touchAction: "none" }}
-    >
+    <div className="relative h-full w-full overflow-hidden select-none bg-[#05060a]" style={{ touchAction: "none" }}>
       {/* Premium haze */}
       <div className="absolute inset-0 pointer-events-none">
         <div
-          className="absolute -inset-24 opacity-80"
+          className="absolute -inset-24 opacity-90"
           style={{
             background:
-              "radial-gradient(900px 520px at 18% 12%, rgba(168,234,255,0.18), transparent 60%)," +
-              "radial-gradient(860px 520px at 84% 18%, rgba(185,168,255,0.16), transparent 62%)," +
-              "radial-gradient(980px 620px at 52% 92%, rgba(255,200,232,0.12), transparent 64%)",
-            filter: "blur(8px)",
+              `radial-gradient(900px 520px at 18% 10%, ${ACCENT_MINT}, transparent 60%),` +
+              `radial-gradient(860px 520px at 84% 16%, ${ACCENT_LAV}, transparent 62%),` +
+              "radial-gradient(980px 620px at 52% 92%, rgba(255,200,232,0.10), transparent 64%)",
+            filter: "blur(10px)",
           }}
         />
         <div
-          className="absolute inset-0 opacity-[0.09]"
+          className="absolute inset-0 opacity-[0.08]"
           style={{
             backgroundImage:
-              "repeating-linear-gradient(to bottom, rgba(255,255,255,0.18) 0px, rgba(255,255,255,0.18) 1px, transparent 1px, transparent 7px)",
+              "repeating-linear-gradient(to bottom, rgba(255,255,255,0.16) 0px, rgba(255,255,255,0.16) 1px, transparent 1px, transparent 7px)",
             mixBlendMode: "overlay",
           }}
         />
       </div>
 
-      {/* Top HUD (compact, not clutter) */}
+      {/* OS HUD (spacious, not cramped) */}
       <div className="absolute top-0 left-0 right-0 z-30 px-3 pt-3">
         <div
-          className="mx-auto max-w-[980px] rounded-2xl border border-white/10 bg-black/35 backdrop-blur-2xl px-3 py-3 flex items-center justify-between"
-          style={{
-            boxShadow: "0 16px 60px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06)",
-          }}
+          className="mx-auto max-w-[980px] rounded-2xl border border-white/10 bg-black/35 backdrop-blur-2xl px-4 py-3 flex items-center justify-between gap-3"
+          style={{ boxShadow: "0 18px 70px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.06)" }}
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className="h-8 w-8 rounded-2xl border border-white/12 bg-white/5 overflow-hidden">
+            <div className="h-9 w-9 rounded-2xl border border-white/12 bg-white/5 overflow-hidden">
               <img src={ASSET.bunny.front} alt="os_bunny" className="h-full w-full object-cover opacity-90" />
             </div>
             <div className="min-w-0">
               <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">
                 OS_USAGI <span className="text-white/85">SYNC</span>
               </div>
-              <div className="text-[13px] text-white/85 font-semibold truncate">
-                {currentTrack.title}
-              </div>
+              <div className="text-[13px] text-white/85 font-semibold truncate">{currentTrack.title}</div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <div className="hidden sm:flex items-center gap-2">
+              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                <span className="text-[10px] tracking-[0.28em] uppercase text-white/50">Remain</span>
+                <span className="ml-2 text-[12px] text-white/90 tabular-nums">{fmtMMSS(ui.remain)}</span>
+              </div>
               <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
                 <span className="text-[10px] tracking-[0.28em] uppercase text-white/50">Acc</span>
                 <span className="ml-2 text-[12px] text-white/85 tabular-nums">{accuracy.toFixed(1)}%</span>
@@ -5449,48 +5166,52 @@ const BeatSyncApp = () => {
             </div>
 
             <button
-              className="h-9 w-9 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
+              className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
               onClick={() => setShowConfig(true)}
               aria-label="config"
-              style={{ boxShadow: "0 14px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+              style={{ boxShadow: "0 14px 45px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
               title="Config"
             >
               <span className="text-white/80 text-[16px] leading-none">⚙︎</span>
             </button>
 
             <button
-              className="h-9 w-9 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
+              className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
               onClick={hardReset}
-              aria-label="close"
-              style={{ boxShadow: "0 14px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+              aria-label="reset"
+              style={{ boxShadow: "0 14px 45px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
               title="Reset"
             >
               <span className="text-white/80 text-[16px] leading-none">✕</span>
             </button>
           </div>
         </div>
+
+        {/* Mobile remain line (always visible) */}
+        <div className="mx-auto max-w-[980px] mt-2 px-1 sm:hidden">
+          <div className="flex items-center justify-between text-[10px] tracking-[0.28em] uppercase text-white/45">
+            <span>{difficulty} · speed {speed}</span>
+            <span className="tabular-nums text-white/70">remain {fmtMMSS(ui.remain)}</span>
+          </div>
+          {pendingBadge && (
+            <div className="mt-1 text-[10px] text-white/55">
+              <span className="inline-block px-2 py-1 rounded-full border border-white/10 bg-white/5">
+                {pendingBadge}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Board */}
-      <div className="absolute inset-0 pt-[70px] pb-[calc(env(safe-area-inset-bottom)+10px)]">
+      <div className="absolute inset-0 pt-[92px] pb-[calc(env(safe-area-inset-bottom)+10px)]">
         <div className="mx-auto h-full max-w-[980px] px-3">
           <div
             ref={boardRef}
-            className="relative h-full rounded-[28px] border border-white/10 bg-black/28 backdrop-blur-2xl overflow-hidden"
-            style={{
-              boxShadow: "0 22px 80px rgba(0,0,0,0.68), inset 0 1px 0 rgba(255,255,255,0.06)",
-            }}
+            className="relative h-full rounded-[30px] border border-white/10 bg-black/28 backdrop-blur-2xl overflow-hidden"
+            style={{ boxShadow: "0 24px 86px rgba(0,0,0,0.70), inset 0 1px 0 rgba(255,255,255,0.06)" }}
           >
-            {/* Inner glow */}
-            <div className="absolute inset-0 pointer-events-none"
-              style={{
-                background:
-                  "radial-gradient(740px 420px at 50% 12%, rgba(168,234,255,0.12), transparent 60%)," +
-                  "radial-gradient(740px 420px at 50% 92%, rgba(185,168,255,0.10), transparent 62%)",
-              }}
-            />
-
-            {/* Lanes */}
+            {/* lanes */}
             <div className="absolute inset-0">
               <div className="absolute inset-0 grid grid-cols-4">
                 {[0,1,2,3].map((lane) => (
@@ -5499,38 +5220,124 @@ const BeatSyncApp = () => {
                   </div>
                 ))}
               </div>
+
+              {/* subtle depth */}
               <div className="absolute inset-0 pointer-events-none opacity-[0.10]"
                 style={{
-                  backgroundImage: "linear-gradient(to bottom, rgba(255,255,255,0.16), transparent 14%, transparent 86%, rgba(255,255,255,0.12))",
+                  backgroundImage:
+                    "linear-gradient(to bottom, rgba(255,255,255,0.14), transparent 16%, transparent 84%, rgba(255,255,255,0.10))",
                   mixBlendMode: "overlay",
                 }}
               />
             </div>
 
-            {/* Bunny (small, premium) */}
-            <div className="absolute left-3 top-3 z-10">
+            {/* Bunny */}
+            <div className="absolute left-3 top-3 z-10 flex items-center gap-3">
               <div className="h-14 w-14 rounded-[18px] border border-white/10 bg-white/5 overflow-hidden">
                 <img src={bunnyMood} alt="bunny" className="h-full w-full object-cover opacity-90" />
               </div>
-              <div className="mt-2 text-[10px] tracking-[0.34em] uppercase text-white/45">
+              <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">
                 {difficulty} · {accuracy.toFixed(1)}%
+                <div className="mt-1 text-white/40 tracking-[0.28em] uppercase">lat {latencyMs}ms</div>
               </div>
             </div>
 
-            {/* Notes (VISIBLE) */}
+            {/* Transport */}
+            <div className="absolute right-3 top-3 z-10 flex gap-2">
+              <button
+                className="h-11 px-4 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
+                disabled={!loaded}
+                onClick={() => {
+                  if (status === "playing") pauseRun();
+                  else if (status === "paused") resumeRun();
+                  else if (status === "ready") startRun();
+                }}
+                style={{ boxShadow: "0 14px 45px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+              >
+                <span className="text-[11px] tracking-[0.28em] uppercase text-white/85">
+                  {status === "playing" ? "PAUSE" : "PLAY"}
+                </span>
+              </button>
+              <button
+                className="h-11 px-4 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
+                disabled={!loaded}
+                onClick={stopPlayback}
+                style={{ boxShadow: "0 14px 45px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+              >
+                <span className="text-[11px] tracking-[0.28em] uppercase text-white/75">STOP</span>
+              </button>
+              <button
+                className="h-11 px-4 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
+                disabled={!loaded}
+                onClick={restartRun}
+                style={{ boxShadow: "0 14px 45px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+              >
+                <span className="text-[11px] tracking-[0.28em] uppercase text-white/75">RESTART</span>
+              </button>
+            </div>
+
+            {/* Receptors moved UP (to avoid OS nav / other apps) */}
+            <div className="absolute inset-x-0" style={{ top: ui.receptorY - 54 }}>
+              <div className="mx-auto max-w-[620px] px-3">
+                <div className="grid grid-cols-4 gap-3">
+                  {[0,1,2,3].map((lane) => {
+                    const glow =
+                      lane === 0 ? "rgba(185,168,255,0.30)" :
+                      lane === 1 ? "rgba(168,234,255,0.30)" :
+                      lane === 2 ? "rgba(255,200,232,0.26)" :
+                      "rgba(168,234,255,0.26)";
+                    return (
+                      <button
+                        key={lane}
+                        className="h-[78px] rounded-[24px] border border-white/12 bg-white/[0.04] backdrop-blur-2xl active:scale-[0.99]"
+                        onPointerDown={(e) => onPointerDownLane(lane, e)}
+                        aria-label={`lane-${lane}`}
+                        style={{
+                          boxShadow:
+                            `0 22px 60px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 0 1px ${glow} inset`,
+                        }}
+                      >
+                        <div className="h-full flex items-center justify-center">
+                          <img
+                            src={ASSET.arrows[LANE_ICON[lane]]}
+                            alt="lane"
+                            className="h-10 w-10 opacity-95"
+                            style={{ filter: `drop-shadow(0 0 16px ${glow})` }}
+                          />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-3 text-center">
+                  {!loaded ? (
+                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">LOADING AUDIO…</div>
+                  ) : status === "ready" ? (
+                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">TAP ANY LANE TO START</div>
+                  ) : status === "paused" ? (
+                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">PAUSED · TAP ANY LANE TO RESUME</div>
+                  ) : (
+                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/40">remain {fmtMMSS(ui.remain)}</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Notes (falling DOWN to receptors) */}
             <div className="absolute inset-0">
               {ui.list.map((n) => {
-                const t = ui.t;
+                const t = playTRef.current || 0;
                 const adjT = t + latencyMs / 1000;
                 const dt = n.t - adjT; // future + / past -
-                const y = ui.hitY - dt * speed; // px
+                const y = ui.receptorY - dt * speed; // px (towards receptor)
                 const xPct = ((n.lane + 0.5) / LANES) * 100;
 
                 const glow =
-                  n.lane === 0 ? "rgba(185,168,255,0.28)" :
-                  n.lane === 1 ? "rgba(168,234,255,0.26)" :
-                  n.lane === 2 ? "rgba(255,200,232,0.22)" :
-                  "rgba(168,234,255,0.22)";
+                  n.lane === 0 ? "rgba(185,168,255,0.24)" :
+                  n.lane === 1 ? "rgba(168,234,255,0.22)" :
+                  n.lane === 2 ? "rgba(255,200,232,0.20)" :
+                  "rgba(168,234,255,0.20)";
 
                 return (
                   <div
@@ -5545,10 +5352,10 @@ const BeatSyncApp = () => {
                     }}
                   >
                     <div
-                      className="h-full w-full rounded-2xl border border-white/12 bg-black/35 backdrop-blur-xl flex items-center justify-center"
+                      className="h-full w-full rounded-2xl border border-white/12 bg-black/38 backdrop-blur-xl flex items-center justify-center"
                       style={{
                         boxShadow:
-                          `0 18px 40px rgba(0,0,0,0.55), 0 0 0 1px ${glow} inset, 0 0 22px ${glow}`,
+                          `0 18px 40px rgba(0,0,0,0.55), 0 0 0 1px ${glow} inset, 0 0 18px ${glow}`,
                       }}
                     >
                       <img
@@ -5585,106 +5392,13 @@ const BeatSyncApp = () => {
               </div>
             )}
 
-            {/* Transport (minimal) */}
-            <div className="absolute right-3 top-3 z-10 flex gap-2">
-              <button
-                className="h-11 px-4 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
-                disabled={!loaded}
-                onClick={() => {
-                  if (status === "playing") pauseRun();
-                  else if (status === "paused") resumeRun();
-                  else if (status === "ready") startRun();
-                }}
-                style={{ boxShadow: "0 14px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
-              >
-                <span className="text-[11px] tracking-[0.28em] uppercase text-white/85">
-                  {status === "playing" ? "PAUSE" : "PLAY"}
-                </span>
-              </button>
-              <button
-                className="h-11 px-4 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
-                disabled={!loaded}
-                onClick={stopPlayback}
-                style={{ boxShadow: "0 14px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
-              >
-                <span className="text-[11px] tracking-[0.28em] uppercase text-white/75">STOP</span>
-              </button>
-              <button
-                className="h-11 px-4 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
-                disabled={!loaded}
-                onClick={restartRun}
-                style={{ boxShadow: "0 14px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
-              >
-                <span className="text-[11px] tracking-[0.28em] uppercase text-white/75">RESTART</span>
-              </button>
-            </div>
-
-            {/* Receptors (big, stable) */}
-            <div className="absolute inset-x-0 bottom-0 pb-[env(safe-area-inset-bottom)]">
-              <div className="mx-auto max-w-[620px] px-3 pb-3">
-                <div className="grid grid-cols-4 gap-3">
-                  {[0,1,2,3].map((lane) => {
-                    const glow =
-                      lane === 0 ? "rgba(185,168,255,0.30)" :
-                      lane === 1 ? "rgba(168,234,255,0.30)" :
-                      lane === 2 ? "rgba(255,200,232,0.26)" :
-                      "rgba(168,234,255,0.26)";
-                    return (
-                      <button
-                        key={lane}
-                        className="h-[74px] rounded-[22px] border border-white/12 bg-white/[0.04] backdrop-blur-2xl active:scale-[0.99]"
-                        onPointerDown={(e) => onPointerDownLane(lane, e)}
-                        aria-label={`lane-${lane}`}
-                        style={{
-                          boxShadow:
-                            `0 20px 55px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 0 1px ${glow} inset`,
-                        }}
-                      >
-                        <div className="h-full flex items-center justify-center">
-                          <img
-                            src={ASSET.arrows[LANE_ICON[lane]]}
-                            alt="lane"
-                            className="h-10 w-10 opacity-95"
-                            style={{ filter: `drop-shadow(0 0 16px ${glow})` }}
-                          />
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Ready / Loading text */}
-                <div className="mt-3 text-center">
-                  {!loaded ? (
-                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">
-                      LOADING AUDIO…
-                    </div>
-                  ) : status === "ready" ? (
-                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">
-                      TAP ANY LANE TO START
-                    </div>
-                  ) : status === "paused" ? (
-                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">
-                      PAUSED · TAP ANY LANE TO RESUME
-                    </div>
-                  ) : (
-                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/40">
-                      {difficulty} · SPEED {speed} · LAT {latencyMs}ms
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
             {/* Result */}
             {status === "result" && (
               <div className="absolute inset-0 flex items-center justify-center p-4">
-                <div className="absolute inset-0 bg-black/55 backdrop-blur-2xl" />
+                <div className="absolute inset-0 bg-black/58 backdrop-blur-2xl" />
                 <div
-                  className="relative w-full max-w-[420px] rounded-[28px] border border-white/12 bg-black/45 backdrop-blur-2xl p-5"
-                  style={{
-                    boxShadow: "0 28px 90px rgba(0,0,0,0.72), inset 0 1px 0 rgba(255,255,255,0.06)",
-                  }}
+                  className="relative w-full max-w-[440px] rounded-[30px] border border-white/12 bg-black/45 backdrop-blur-2xl p-5"
+                  style={{ boxShadow: "0 30px 96px rgba(0,0,0,0.74), inset 0 1px 0 rgba(255,255,255,0.06)" }}
                 >
                   <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">RESULT</div>
                   <div className="mt-1 text-[22px] font-semibold text-white/90">SYNC COMPLETE</div>
@@ -5734,14 +5448,14 @@ const BeatSyncApp = () => {
               </div>
             )}
 
-            {/* Config Drawer */}
+            {/* Config Drawer (spacious + OS) */}
             {showConfig && (
               <div className="absolute inset-0 z-40">
-                <div className="absolute inset-0 bg-black/60 backdrop-blur-2xl" onClick={() => setShowConfig(false)} />
+                <div className="absolute inset-0 bg-black/62 backdrop-blur-2xl" onClick={() => setShowConfig(false)} />
                 <div className="absolute inset-x-0 bottom-0 pb-[env(safe-area-inset-bottom)]">
                   <div
-                    className="mx-auto max-w-[980px] rounded-t-[28px] border border-white/12 bg-black/55 backdrop-blur-2xl p-4"
-                    style={{ boxShadow: "0 -24px 90px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+                    className="mx-auto max-w-[980px] rounded-t-[30px] border border-white/12 bg-black/55 backdrop-blur-2xl p-4"
+                    style={{ boxShadow: "0 -26px 96px rgba(0,0,0,0.78), inset 0 1px 0 rgba(255,255,255,0.06)" }}
                   >
                     <div className="flex items-center justify-between">
                       <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">CONFIG</div>
@@ -5780,7 +5494,7 @@ const BeatSyncApp = () => {
                                 className={`h-11 rounded-2xl border active:scale-[0.99] ${
                                   active ? "border-white/18 bg-white/10 text-white/90" : "border-white/10 bg-white/5 text-white/70"
                                 }`}
-                                onClick={() => { setDifficulty(d); stopPlayback(); }}
+                                onClick={() => setDifficultySafe(d)}
                               >
                                 <span className="text-[11px] tracking-[0.22em] uppercase">{d}</span>
                               </button>
@@ -5799,10 +5513,10 @@ const BeatSyncApp = () => {
                             </div>
                             <input
                               type="range"
-                              min={-80}
-                              max={120}
+                              min={-120}
+                              max={180}
                               value={latencyMs}
-                              onChange={(e) => setLatencyMs(parseInt(e.target.value, 10))}
+                              onChange={(e) => setLatencySafe(parseInt(e.target.value, 10))}
                               className="w-full accent-white/70"
                             />
                           </div>
@@ -5814,9 +5528,9 @@ const BeatSyncApp = () => {
                             <input
                               type="range"
                               min={720}
-                              max={1180}
+                              max={1220}
                               value={speed}
-                              onChange={(e) => setSpeed(parseInt(e.target.value, 10))}
+                              onChange={(e) => setSpeedSafe(parseInt(e.target.value, 10))}
                               className="w-full accent-white/70"
                             />
                           </div>
@@ -5852,7 +5566,7 @@ const BeatSyncApp = () => {
 
                     <div className="mt-3 flex items-center justify-between">
                       <div className="text-[10px] tracking-[0.34em] uppercase text-white/35">
-                        Tip: “PLAYが効かない”時は一度レーンをタップして開始できます
+                        {status === "playing" ? "Tip: 調整は次回プレイに反映（プレイ中の事故防止）" : "Tip: Track変更後はSTOPで初期化されます"}
                       </div>
                       <button
                         className="h-11 px-4 rounded-2xl border border-white/12 bg-white/10 text-white/90 active:scale-[0.99]"
@@ -5866,10 +5580,8 @@ const BeatSyncApp = () => {
               </div>
             )}
 
-            {/* Hidden audio */}
             <audio ref={audioRef} preload="metadata" />
 
-            {/* Keyframes */}
             <style>{`
               @keyframes osbJudge {
                 0% { transform: translateY(10px) scale(.96); opacity: 0; }
