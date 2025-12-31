@@ -1863,30 +1863,33 @@ import {
   Maximize2,
 } from "lucide-react";
 
-/**
- * GalleryApp (OS Bunny style)
- * - category filter (sidebar on desktop / chips on mobile)
- * - search
- * - lightbox modal (prev/next, ESC, arrow keys, swipe)
- * - same aesthetic as your snippet: dark + glass + cyan/lavender
- *
- * expected item shape:
- * { id, folder, title, file, meta, desc? }
- */
+/* -----------------------------
+  helpers
+------------------------------ */
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+    const mql = window.matchMedia("(max-width: 767px)");
+    const sync = () => setIsMobile(!!mql.matches);
+    sync();
+
+    // Safari/old fallback
+    const add = mql.addEventListener ? "addEventListener" : "addListener";
+    const rem = mql.removeEventListener ? "removeEventListener" : "removeListener";
+    mql[add]?.("change", sync);
+
+    window.addEventListener("resize", sync);
+    return () => {
+      mql[rem]?.("change", sync);
+      window.removeEventListener("resize", sync);
+    };
   }, []);
   return isMobile;
 };
 
 const isImageLike = (url = "", meta = "") => {
-  const u = url.toLowerCase();
+  const u = (url || "").toLowerCase();
   return (
     u.endsWith(".png") ||
     u.endsWith(".jpg") ||
@@ -1905,20 +1908,59 @@ const clampIndex = (i, len) => {
   return (i % len + len) % len;
 };
 
-function Lightbox({
-  open,
-  items,
-  index,
-  onClose,
-  onPrev,
-  onNext,
-  accent = "#a8eaff",
-}) {
-  const isMobile = useIsMobile();
+/* -----------------------------
+  double tap (mobile)
+------------------------------ */
+
+const DOUBLE_TAP_MS = 260;
+const MOVE_PX = 10;
+
+function useTouchDoubleTap({ onDouble, onSingle }) {
+  const last = useRef(0);
+  const down = useRef({ x: 0, y: 0 });
+
+  const onPointerDown = useCallback((e) => {
+    if (e.pointerType !== "touch") return;
+    down.current = { x: e.clientX, y: e.clientY };
+  }, []);
+
+  const onPointerUp = useCallback(
+    (e) => {
+      if (e.pointerType !== "touch") return;
+
+      const dx = Math.abs(e.clientX - down.current.x);
+      const dy = Math.abs(e.clientY - down.current.y);
+      if (dx > MOVE_PX || dy > MOVE_PX) return; // scroll gesture
+
+      const now = Date.now();
+      const isDouble = now - last.current < DOUBLE_TAP_MS;
+
+      if (!isDouble) {
+        last.current = now;
+        onSingle?.();
+        return;
+      }
+
+      last.current = 0;
+      // try reduce double-tap zoom (best effort)
+      e.preventDefault?.();
+      onDouble?.();
+    },
+    [onDouble, onSingle]
+  );
+
+  return { onPointerDown, onPointerUp };
+}
+
+/* -----------------------------
+  Lightbox (title bottom-right only)
+------------------------------ */
+
+function Lightbox({ open, items, index, onClose, onPrev, onNext }) {
   const startX = useRef(null);
   const startY = useRef(null);
+  const item = items?.[index];
 
-  // keyboard
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => {
@@ -1930,7 +1972,6 @@ function Lightbox({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose, onPrev, onNext]);
 
-  // lock body scroll
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -1940,7 +1981,6 @@ function Lightbox({
     };
   }, [open]);
 
-  const item = items?.[index];
   if (!open || !item) return null;
 
   const onTouchStart = (e) => {
@@ -1958,7 +1998,6 @@ function Lightbox({
     startX.current = null;
     startY.current = null;
 
-    // horizontal swipe only
     if (Math.abs(dx) > 45 && Math.abs(dy) < 40) {
       if (dx > 0) onPrev?.();
       else onNext?.();
@@ -1967,109 +2006,247 @@ function Lightbox({
 
   return (
     <div
-      className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-center justify-center"
+      className="fixed inset-0 z-[300] overflow-hidden"
+      style={{
+        WebkitTapHighlightColor: "transparent",
+        overscrollBehavior: "contain",
+      }}
       onMouseDown={(e) => {
-        // click outside to close
         if (e.target === e.currentTarget) onClose?.();
       }}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      {/* frame */}
+      {/* cinematic backdrop */}
+      <div className="absolute inset-0 bg-black/85 backdrop-blur-[18px]" />
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(900px_520px_at_50%_15%,rgba(168,234,255,0.16),transparent_62%)]" />
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(900px_520px_at_50%_85%,rgba(203,184,255,0.14),transparent_62%)]" />
+      <div className="absolute inset-0 pointer-events-none opacity-[0.09] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.06),transparent)] [background-size:100%_3px]" />
+
+      {/* Close (safe-area) */}
+      <button
+        onClick={onClose}
+        className="fixed z-[999] right-[calc(env(safe-area-inset-right,0px)+14px)] top-[calc(env(safe-area-inset-top,0px)+14px)] w-12 h-12 rounded-full border border-white/15 bg-white/10 backdrop-blur-2xl shadow-[0_18px_60px_rgba(0,0,0,0.65)] flex items-center justify-center text-white/90 active:scale-[0.98]"
+        aria-label="close"
+      >
+        <X size={18} />
+      </button>
+
+      {/* Title pill (bottom-right only) */}
+      <div className="fixed z-[999] right-[calc(env(safe-area-inset-right,0px)+14px)] bottom-[calc(env(safe-area-inset-bottom,0px)+14px)]">
+        <div className="px-4 py-2.5 rounded-full border border-white/15 bg-white/10 backdrop-blur-2xl shadow-[0_20px_80px_rgba(0,0,0,0.70)]">
+          <div
+            className="text-[16px] leading-none text-white/92 tracking-wide"
+            style={{ fontFamily: `"Cormorant Garamond", serif` }}
+          >
+            {item.title}
+          </div>
+        </div>
+      </div>
+
+      {/* Stage */}
       <div
-        className={`relative w-[92vw] ${
-          isMobile ? "h-[86dvh]" : "h-[82vh]"
-        } max-w-5xl bg-[#060606] border border-white/10 rounded-2xl overflow-hidden shadow-[0_40px_100px_-30px_rgba(0,0,0,0.8)]`}
+        className="relative z-[310] w-full h-full grid place-items-center px-4 sm:px-10"
         style={{
-          boxShadow: `0 0 0 1px rgba(255,255,255,0.06), 0 40px 100px -30px rgba(0,0,0,0.8), 0 0 60px rgba(168,234,255,0.10)`,
+          paddingTop: "calc(env(safe-area-inset-top,0px) + 78px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom,0px) + 92px)",
         }}
       >
-        {/* top bar */}
-        <div className="h-12 px-4 flex items-center justify-between border-b border-white/10 bg-[#0a0a0a]/70 backdrop-blur z-10">
-          <div className="flex items-center gap-3 min-w-0">
-            <div
-              className="w-2 h-2 rounded-full shadow-[0_0_10px_rgba(168,234,255,0.8)]"
-              style={{ background: accent }}
+        <div className="relative w-full max-w-6xl">
+          {isImageLike(item.file, item.meta) ? (
+            <img
+              src={item.file}
+              alt={item.title}
+              className="w-full max-h-[72vh] object-contain rounded-[28px] border border-white/12"
+              style={{
+                boxShadow:
+                  "0 0 0 1px rgba(255,255,255,0.08) inset, 0 70px 180px -90px rgba(0,0,0,0.92), 0 0 140px rgba(168,234,255,0.14)",
+              }}
+              loading="eager"
+              draggable={false}
             />
-            <div className="min-w-0">
-              <div className="text-[11px] font-mono text-white/70 truncate">
-                {item.title}
-              </div>
-              <div className="text-[9px] font-mono text-white/30 tracking-[0.25em] uppercase">
-                {item.meta} · {item.folder}
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors text-white/70"
-            aria-label="close"
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* content */}
-        <div className="relative w-full h-[calc(100%-3rem)]">
-          {/* subtle overlay */}
-          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top,rgba(168,234,255,0.10),transparent_60%)]" />
-          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_bottom,rgba(203,184,255,0.08),transparent_60%)]" />
-
-          <div className="absolute inset-0 flex items-center justify-center p-6">
-            {isImageLike(item.file, item.meta) ? (
-              <img
-                src={item.file}
-                alt={item.title}
-                className="max-w-full max-h-full object-contain rounded-lg border border-white/10 shadow-[0_0_50px_rgba(168,234,255,0.08)]"
-                loading="eager"
-                draggable={false}
-              />
-            ) : (
-              <div className="w-full h-full rounded-lg border border-white/10 flex flex-col items-center justify-center text-white/30 font-mono">
-                <Maximize2 className="opacity-40 mb-3" />
+          ) : (
+            <div className="w-full h-[60vh] rounded-[28px] border border-white/12 bg-white/[0.04] grid place-items-center text-white/35 font-mono">
+              <div className="flex flex-col items-center">
+                <Maximize2 className="opacity-50 mb-3" />
                 PREVIEW_UNAVAILABLE
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* nav */}
+          {/* Nav (bigger targets) */}
           <button
             onClick={onPrev}
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full border border-white/10 bg-black/40 hover:bg-white/10 transition-colors flex items-center justify-center text-white/70"
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full border border-white/15 bg-black/30 backdrop-blur-2xl hover:bg-white/10 transition-colors flex items-center justify-center text-white/90"
             aria-label="prev"
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={20} />
           </button>
           <button
             onClick={onNext}
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full border border-white/10 bg-black/40 hover:bg-white/10 transition-colors flex items-center justify-center text-white/70"
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full border border-white/15 bg-black/30 backdrop-blur-2xl hover:bg-white/10 transition-colors flex items-center justify-center text-white/90"
             aria-label="next"
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={20} />
           </button>
-
-          {/* bottom info */}
-          <div className="absolute left-0 right-0 bottom-0 px-6 py-4 bg-gradient-to-t from-black/80 via-black/20 to-transparent">
-            <div className="flex items-end justify-between gap-4">
-              <div className="min-w-0">
-                <div className="text-xs text-white/80 tracking-wide truncate">
-                  {item.desc || "Visual memory fragment."}
-                </div>
-                <div className="text-[9px] font-mono text-white/30 tracking-[0.25em] uppercase mt-1">
-                  {index + 1} / {items.length}
-                </div>
-              </div>
-              <div className="text-[9px] font-mono text-white/20 tracking-[0.25em] uppercase hidden sm:block">
-                ← / → · ESC
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
   );
 }
+
+/* -----------------------------
+  Card
+------------------------------ */
+
+function GalleryCard({
+  item,
+  idx,
+  isMobile,
+  selected,
+  setSelectedId,
+  openAt,
+  accentCyan,
+}) {
+  const touch = useTouchDoubleTap({
+    onSingle: () => setSelectedId(item.id),
+    onDouble: () => openAt(idx),
+  });
+
+  return (
+    <button
+      type="button"
+      className="relative text-left w-full"
+      // desktop
+      onClick={() => setSelectedId(item.id)}
+      // IMPORTANT: mobileは二重発火になるので無効化
+      onDoubleClick={isMobile ? undefined : () => openAt(idx)}
+      onPointerDown={touch.onPointerDown}
+      onPointerUp={touch.onPointerUp}
+      style={{
+        WebkitTapHighlightColor: "transparent",
+        touchAction: "manipulation",
+      }}
+      aria-selected={selected}
+    >
+      <div
+        className="relative overflow-hidden rounded-[28px] border bg-white/[0.03] transition-[border,box-shadow,filter] duration-500"
+        style={{
+          borderColor: selected
+            ? "rgba(255,255,255,0.24)"
+            : "rgba(255,255,255,0.10)",
+          filter: selected ? "brightness(1.10)" : "brightness(1)",
+          boxShadow: selected
+            ? "0 0 0 1px rgba(255,255,255,0.10) inset, 0 70px 170px -120px rgba(0,0,0,0.95), 0 0 110px rgba(168,234,255,0.14)"
+            : "0 0 0 1px rgba(255,255,255,0.06) inset, 0 40px 120px -110px rgba(0,0,0,0.85)",
+        }}
+      >
+        {/* Media */}
+        <div className="relative aspect-[16/10] bg-[#06070a]">
+          {isImageLike(item.file, item.meta) ? (
+            <img
+              src={item.file}
+              alt={item.title}
+              loading="lazy"
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{
+                opacity: selected ? 0.98 : 0.86,
+                transition: "opacity 700ms ease",
+              }}
+            />
+          ) : (
+            <div className="absolute inset-0 grid place-items-center text-white/30 font-mono">
+              PREVIEW
+            </div>
+          )}
+
+          {/* aura + vignette */}
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(650px_360px_at_45%_18%,rgba(168,234,255,0.14),transparent_60%)]" />
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(650px_360px_at_55%_95%,rgba(203,184,255,0.12),transparent_62%)]" />
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+          <div className="absolute inset-0 pointer-events-none opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.05),transparent)] [background-size:100%_4px]" />
+
+          {/* Meta chip */}
+          <div className="absolute top-3.5 left-3.5">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/15 bg-black/25 backdrop-blur-2xl">
+              <span
+                className="w-1.5 h-1.5 rounded-full"
+                style={{
+                  background: accentCyan,
+                  boxShadow: "0 0 16px rgba(168,234,255,0.60)",
+                }}
+              />
+              <span className="text-[9px] font-mono tracking-[0.30em] uppercase text-white/90">
+                {item.meta}
+              </span>
+            </div>
+          </div>
+
+          {/* Selected ring (NO scale / NO shift) */}
+          {selected && (
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                boxShadow:
+                  "inset 0 0 0 1px rgba(255,255,255,0.16), inset 0 0 70px rgba(168,234,255,0.11)",
+              }}
+            />
+          )}
+        </div>
+
+        {/* Text */}
+        <div className="px-5 pt-4 pb-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div
+                className="text-[19px] sm:text-[20px] leading-snug text-white/92 font-medium tracking-wide truncate"
+                style={{ fontFamily: `"Cormorant Garamond", serif` }}
+              >
+                {item.title}
+              </div>
+              <div className="mt-1 text-[10px] font-mono tracking-[0.30em] uppercase text-white/35">
+                {item.folder}
+              </div>
+            </div>
+
+            <div
+              className="shrink-0 text-[10px] font-mono tracking-[0.30em] uppercase"
+              style={{
+                color: selected ? accentCyan : "rgba(255,255,255,0.22)",
+              }}
+            >
+              {selected ? "SELECTED" : ""}
+            </div>
+          </div>
+
+          {/* Description: layoutを占有しない（上品に出す） */}
+          <div
+            className="overflow-hidden"
+            style={{
+              maxHeight: selected ? 56 : 0,
+              opacity: selected ? 1 : 0,
+              transition: "max-height 520ms ease, opacity 420ms ease",
+            }}
+          >
+            <div className="mt-3 text-[12px] leading-relaxed text-white/55">
+              {item.desc || "Visual memory fragment."}
+            </div>
+          </div>
+
+          {isMobile && (
+            <div className="mt-4 text-[9px] font-mono tracking-[0.30em] uppercase text-white/22">
+              TAP = SELECT · DOUBLE TAP = OPEN
+            </div>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+/* -----------------------------
+  App
+------------------------------ */
 
 export default function GalleryApp({
   items = [],
@@ -2078,6 +2255,18 @@ export default function GalleryApp({
   accentLav = "#cbb8ff",
 }) {
   const isMobile = useIsMobile();
+
+  // fonts
+  useEffect(() => {
+    const id = "osbunny-fonts-aww2";
+    if (document.getElementById(id)) return;
+    const style = document.createElement("style");
+    style.id = id;
+    style.textContent = `
+      @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Manrope:wght@300;400;500;600&family=Noto+Sans+JP:wght@300;400;500&display=swap');
+    `;
+    document.head.appendChild(style);
+  }, []);
 
   const CATEGORIES = useMemo(
     () => [
@@ -2096,6 +2285,7 @@ export default function GalleryApp({
   const [q, setQ] = useState("");
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [selectedId, setSelectedId] = useState(null);
 
   const filteredItems = useMemo(() => {
     const query = normalize(q);
@@ -2131,196 +2321,192 @@ export default function GalleryApp({
     setActiveIndex((prev) => clampIndex(prev - 1, filteredItems.length));
   }, [filteredItems.length]);
 
-  // keep index valid if filter/search changes
+  // sync selection / index (依存関係 正しく)
   useEffect(() => {
     setActiveIndex((i) => clampIndex(i, filteredItems.length || 1));
-  }, [filteredItems.length]);
+
+    if (selectedId && !filteredItems.some((x) => x.id === selectedId)) {
+      setSelectedId(null);
+    }
+  }, [filteredItems.length, selectedId, filteredItems]);
 
   return (
-    <div className="flex h-full bg-[#050505]">
-      {/* Sidebar (desktop) */}
-      <div className="w-14 sm:w-56 border-r border-white/5 flex flex-col items-center sm:items-stretch py-6 gap-2 bg-[#080808] z-20 shrink-0">
-        <div className="text-[9px] font-mono text-white/30 mb-4 px-4 tracking-widest hidden sm:block">
-          Archive
-        </div>
-
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => setFilter(cat.id)}
-            className={`group flex items-center gap-3 px-3 py-3 rounded-md cursor-pointer transition-all duration-300 text-left ${
-              filter === cat.id
-                ? "bg-white/10 text-white"
-                : "text-white/30 hover:text-white hover:bg-white/5"
-            }`}
-          >
-            <cat.icon
-              size={16}
-              className={filter === cat.id ? "text-[#a8eaff]" : ""}
-            />
-            <span className="hidden sm:block text-xs tracking-wide">
-              {cat.label}
-            </span>
-            {filter === cat.id && (
-              <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_8px_#a8eaff] hidden sm:block" />
-            )}
-          </button>
-        ))}
-
-        <div className="mt-auto px-4 hidden sm:block">
-          <div className="text-[9px] font-mono text-white/20 border-t border-white/5 pt-4">
-            {filteredItems.length} ITEMS
-          </div>
-        </div>
-      </div>
-
-      {/* Main */}
-      <div className="flex-1 p-6 sm:p-10 overflow-y-auto scrollbar-hide pb-24 sm:pb-10 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#a8eaff]/5 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(203,184,255,0.06),transparent_55%)] pointer-events-none" />
+    <div
+      className="w-full h-full min-h-[100dvh] overflow-x-hidden"
+      style={{
+        fontFamily: `"Manrope","Noto Sans JP",system-ui,-apple-system,sans-serif`,
+        background: "#040507",
+      }}
+    >
+      <div className="relative h-full overflow-x-hidden">
+        {/* background */}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_560px_at_22%_-12%,rgba(168,234,255,0.16),transparent_60%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_620px_at_82%_112%,rgba(203,184,255,0.13),transparent_62%)]" />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.05),transparent)] [background-size:100%_4px]" />
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
-          <div>
-            <h2 className="text-3xl sm:text-4xl font-thin tracking-tighter text-white/95 mb-1">
-              {CATEGORIES.find((c) => c.id === filter)?.label}
-            </h2>
-            <p
-              className="text-[10px] font-mono tracking-[0.2em] uppercase"
-              style={{ color: accentLav }}
-            >
-              Fragmented Memories
-            </p>
-          </div>
+        <div className="sticky top-0 z-20 backdrop-blur-2xl bg-black/20 border-b border-white/5">
+          <div className="px-5 sm:px-10 pt-6 pb-5">
+            <div className="flex items-end justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-2 h-2 rounded-full"
+                    style={{
+                      background: accentCyan,
+                      boxShadow: "0 0 18px rgba(168,234,255,0.65)",
+                    }}
+                  />
+                  <div className="text-[10px] tracking-[0.32em] uppercase text-white/45 font-mono">
+                    OS_USAGI · SYNC
+                  </div>
+                </div>
 
-          {/* Search */}
-          <div className="flex items-center gap-2">
-            <div className="relative w-full sm:w-72">
-              <Search
-                size={14}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25"
-              />
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="search fragments..."
-                className="w-full bg-white/5 border border-white/10 rounded-full py-2 pl-9 pr-3 text-[11px] text-white/70 placeholder:text-white/20 focus:outline-none focus:border-[#a8eaff]/40 focus:bg-white/10 transition-all font-mono tracking-wider"
-              />
+                <div className="mt-2">
+                  <h2
+                    className="text-[42px] sm:text-[60px] leading-[1.00] text-white/95 font-medium tracking-tight"
+                    style={{ fontFamily: `"Cormorant Garamond", serif` }}
+                  >
+                    {CATEGORIES.find((c) => c.id === filter)?.label}
+                  </h2>
+                  <div className="mt-1 text-[11px] text-white/52 tracking-wide">
+                    Fragmented memories, rendered softly.
+                  </div>
+                </div>
+              </div>
+
+              {/* Search (desktop) */}
+              <div className="w-[44%] sm:w-[360px] max-w-[420px] hidden sm:block">
+                <div className="relative">
+                  <Search
+                    size={14}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"
+                  />
+                  <input
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder="search…"
+                    className="w-full bg-white/5 border border-white/10 rounded-full py-2.5 pl-9 pr-3 text-[12px] text-white/80 placeholder:text-white/25 focus:outline-none focus:border-white/20 focus:bg-white/10 transition-all"
+                    style={{ WebkitTapHighlightColor: "transparent" }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile search + chips */}
+            <div className="mt-4 sm:hidden">
+              <div className="relative">
+                <Search
+                  size={14}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"
+                />
+                <input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="search…"
+                  className="w-full bg-white/5 border border-white/10 rounded-full py-2.5 pl-9 pr-3 text-[12px] text-white/80 placeholder:text-white/25 focus:outline-none focus:border-white/20 focus:bg-white/10 transition-all"
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                />
+              </div>
+
+              <div className="mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                {CATEGORIES.map((cat) => {
+                  const active = filter === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setFilter(cat.id)}
+                      className={`shrink-0 px-3.5 py-2 rounded-full border text-[10px] tracking-[0.22em] uppercase font-mono transition-all ${
+                        active
+                          ? "border-white/25 bg-white/10 text-white"
+                          : "border-white/10 bg-white/[0.04] text-white/45"
+                      }`}
+                      style={{
+                        boxShadow: active
+                          ? "0 0 0 1px rgba(255,255,255,0.08) inset, 0 0 44px rgba(168,234,255,0.08)"
+                          : "0 0 0 1px rgba(255,255,255,0.04) inset",
+                      }}
+                    >
+                      {cat.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Desktop categories */}
+            <div className="hidden sm:flex mt-5 gap-2 flex-wrap">
+              {CATEGORIES.map((cat) => {
+                const active = filter === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setFilter(cat.id)}
+                    className={`px-4 py-2 rounded-full border text-[10px] tracking-[0.26em] uppercase font-mono transition-all ${
+                      active
+                        ? "border-white/25 bg-white/10 text-white"
+                        : "border-white/10 bg-white/[0.03] text-white/45 hover:bg-white/[0.06]"
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                );
+              })}
+              <div className="ml-auto text-[10px] tracking-[0.28em] uppercase text-white/25 font-mono self-center">
+                {filteredItems.length} ITEMS
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Mobile category chips */}
-        {isMobile && (
-          <div className="flex gap-2 overflow-x-auto pb-4 mb-2 scrollbar-hide">
-            {CATEGORIES.map((cat) => {
-              const active = filter === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setFilter(cat.id)}
-                  className={`shrink-0 px-3 py-2 rounded-full border text-[10px] font-mono tracking-widest transition-all ${
-                    active
-                      ? "border-[#a8eaff]/50 bg-[#a8eaff]/10 text-[#a8eaff]"
-                      : "border-white/10 bg-white/5 text-white/35"
-                  }`}
-                >
-                  {cat.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Grid */}
-        {filteredItems.length === 0 ? (
-          <div className="mt-10 border border-white/10 rounded-2xl p-10 bg-white/[0.02] text-center">
-            <div className="text-[10px] font-mono tracking-[0.3em] text-white/25 uppercase">
-              NO_MATCH
-            </div>
-            <div className="mt-3 text-sm text-white/50">
-              それっぽい記憶、見つからなかった
-            </div>
-            <button
-              onClick={() => setQ("")}
-              className="mt-6 px-4 py-2 rounded-full border border-white/10 text-[10px] font-mono tracking-widest text-white/50 hover:bg-white/5 hover:text-white transition-colors"
-            >
-              CLEAR_SEARCH
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pb-10">
-            {filteredItems.map((item, idx) => (
+        {/* Content */}
+        <div className="px-5 sm:px-10 pt-7 pb-32 sm:pb-16 overflow-x-hidden">
+          {filteredItems.length === 0 ? (
+            <div className="mt-10 border border-white/10 rounded-3xl p-10 bg-white/[0.03] text-center">
+              <div className="text-[10px] font-mono tracking-[0.34em] text-white/30 uppercase">
+                NO_MATCH
+              </div>
+              <div className="mt-3 text-sm text-white/55">
+                それっぽい記憶、見つからなかった
+              </div>
               <button
-                key={item.id}
-                onClick={() => openAt(idx)}
-                className="group relative text-left cursor-pointer"
+                onClick={() => setQ("")}
+                className="mt-6 px-4 py-2 rounded-full border border-white/12 text-[10px] font-mono tracking-[0.26em] uppercase text-white/55 hover:bg-white/[0.06] hover:text-white transition-colors"
               >
-                {/* Card */}
-                <div className="relative aspect-[4/3] bg-[#111] border border-white/10 rounded-2xl overflow-hidden transition-all duration-700 group-hover:border-[#a8eaff]/50 group-hover:shadow-[0_0_40px_rgba(168,234,255,0.10)] group-hover:scale-[1.01]">
-                  {/* image */}
-                  {isImageLike(item.file, item.meta) ? (
-                    <img
-                      src={item.file}
-                      alt={item.title}
-                      loading="lazy"
-                      className="absolute inset-0 w-full h-full object-cover transition-all duration-[1400ms] ease-out group-hover:scale-105 opacity-80 group-hover:opacity-100 grayscale group-hover:grayscale-0"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-white/20 font-mono">
-                      PREVIEW
-                    </div>
-                  )}
-
-                  {/* overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
-
-                  {/* meta tag */}
-                  <div className="absolute top-4 left-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                    <div
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ background: accentCyan }}
-                    />
-                    <span
-                      className="text-[9px] font-mono tracking-[0.25em] uppercase"
-                      style={{ color: accentCyan }}
-                    >
-                      {item.meta}
-                    </span>
-                  </div>
-
-                  {/* content */}
-                  <div className="absolute bottom-0 left-0 right-0 p-6 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-                    <h3 className="text-sm font-bold tracking-[0.08em] text-white">
-                      {item.title}
-                    </h3>
-                    <p className="text-[10px] text-white/50 font-light tracking-wide max-w-[90%] mt-1 hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity delay-200">
-                      {item.desc || "Visual memory fragment."}
-                    </p>
-                  </div>
-
-                  {/* edge glow */}
-                  <div className="absolute inset-0 rounded-2xl border border-white/0 group-hover:border-white/15 transition-all pointer-events-none" />
-                </div>
+                CLEAR
               </button>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
+          ) : (
+            <div className="grid gap-5 sm:gap-7 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredItems.map((item, idx) => (
+                <GalleryCard
+                  key={item.id}
+                  item={item}
+                  idx={idx}
+                  isMobile={isMobile}
+                  selected={selectedId === item.id}
+                  setSelectedId={setSelectedId}
+                  openAt={openAt}
+                  accentCyan={accentCyan}
+                />
+              ))}
+            </div>
+          )}
+        </div>
 
-      {/* Lightbox */}
-      <Lightbox
-        open={lightboxOpen}
-        items={filteredItems}
-        index={activeIndex}
-        onClose={() => setLightboxOpen(false)}
-        onPrev={prev}
-        onNext={next}
-        accent={accentCyan}
-      />
+        <Lightbox
+          open={lightboxOpen}
+          items={filteredItems}
+          index={activeIndex}
+          onClose={() => setLightboxOpen(false)}
+          onPrev={prev}
+          onNext={next}
+        />
+      </div>
     </div>
   );
 }
+
 
 
 
