@@ -2940,20 +2940,59 @@ const MusicApp = ({ bgm }) => {
 
 
 // ------------------------------------------------
-// -- 04.SAFARI (VOID NETWORK) --
+// -- 04.SAFARI (ねっとわーく --
 // ------------------------------------------------
+// -- SAFARI APP (VOID NETWORK · OS_USAGI) --
 const SafariApp = () => {
   const [page, setPage] = useState("home");
   const [loading, setLoading] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [showResult, setShowResult] = useState(false);
 
-  const isMobile = useIsMobile(); // ← これ追加
+  const isMobile = useIsMobile();
+
+  // SYNCっぽさを少しだけ揺らす用
+  const [syncText, setSyncText] = useState("SYNC");
+  const [ping, setPing] = useState(12);
+
+  useEffect(() => {
+    const id = "safari-void-keyframes";
+    if (!document.getElementById(id)) {
+      const style = document.createElement("style");
+      style.id = id;
+      style.textContent = `
+        @keyframes safariVoidPulse {
+          0%, 100% {
+            transform: translateY(0) scale(1);
+            box-shadow: 0 0 0 0 rgba(168,234,255,0.0);
+            opacity: 0.8;
+          }
+          50% {
+            transform: translateY(-0.5px) scale(1.08);
+            box-shadow: 0 0 14px 0 rgba(168,234,255,0.9);
+            opacity: 1;
+          }
+        }
+        @keyframes safariVoidScan {
+          0% { transform: translateY(-100%); }
+          100% { transform: translateY(100%); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    const interval = setInterval(() => {
+      setSyncText((prev) => (prev === "SYNC" ? "IDLE" : "SYNC"));
+      const base = 8 + Math.random() * 10;
+      setPing(Math.round(base));
+    }, 4200);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const navigate = (target) => {
     setLoading(true);
     setShowResult(false);
-    // Simulate network delay for realism
     setTimeout(() => {
       setPage(target);
       setLoading(false);
@@ -2972,96 +3011,119 @@ const SafariApp = () => {
 
   const HomePage = () => (
     <div
-      className="flex flex-col items-center justify-center min-h-full text-center px-6 py-20 relative"
+      className="flex flex-col items-center justify-center text-center px-6 py-16 sm:py-20 relative"
       style={{
-        backgroundImage:
-          "radial-gradient(circle at top, rgba(168,234,255,0.08) 0%, transparent 60%), radial-gradient(circle at bottom, rgba(203,184,255,0.08) 0%, transparent 60%)",
-        backgroundRepeat: "no-repeat",
-        backgroundSize: "100% 100%",
+        minHeight: isMobile ? "calc(100vh - 80px)" : "calc(100vh - 96px)",
       }}
     >
-      {/* タイトル */}
-      <h1 className="text-3xl sm:text-4xl font-light tracking-[0.35em] text-white/90 mb-6 uppercase sm:animate-fade-in">
-        Void Network
-      </h1>
+      {/* 背景グロー */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 -left-32 w-[360px] h-[360px] rounded-full bg-[#a8eaff]/18 blur-[70px]" />
+        <div className="absolute top-1/2 -right-40 w-[460px] h-[460px] rounded-full bg-[#cbb8ff]/14 blur-[90px]" />
+        <div className="absolute bottom-[-120px] left-1/3 w-[520px] h-[520px] rounded-full bg-[#ffc8e8]/16 blur-[100px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/50 to-black/90" />
+        <div className="absolute inset-0 opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.07),transparent)] [background-size:100%_4px]" />
+      </div>
 
-      {/* サブコピー */}
-      <p className="text-xs text-white/40 font-mono tracking-[0.3em] mb-10 sm:animate-fade-in">
-        Connecting to the unconscious...
-      </p>
-
-      {/* サーチボックス */}
-      <form
-        onSubmit={handleSearch}
-        className="w-full max-w-md relative group z-10 sm:animate-fade-in"
-      >
-        <input
-          type="text"
-          value={searchValue}
-          onChange={(e) => setSearchValue(e.target.value)}
-          placeholder="Search for feelings..."
-          className="w-full bg-white/5 border border-white/10 rounded-full py-3 px-6 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-[#a8eaff]/50 focus:bg-white/10 transition-all font-mono text-center tracking-wider"
-        />
-        <button
-          type="submit"
-          className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-white/20 hover:text-[#a8eaff] transition-colors"
-        >
-          <Search size={14} />
-        </button>
-      </form>
-
-      {/* 404メッセージ */}
-      {showResult && (
-        <div className="mt-8 text-[10px] font-mono text-red-300/80 tracking-widest sm:animate-fade-in border border-red-500/20 px-4 py-2 rounded bg-red-900/10">
-          ERROR 404: FEELING NOT FOUND
-          <span className="text-white/30 opacity-50 mt-1 block">
-            Try looking inside yourself.
-          </span>
-        </div>
-      )}
-
-      {/* 下の3ボタン */}
-      <div className="mt-16 flex flex-wrap justify-center gap-6 sm:gap-8 text-[10px] font-mono text-white/30 tracking-[0.2em] uppercase z-10 sm:animate-fade-in">
-        <div
-          onClick={() => navigate("about")}
-          className="cursor-pointer hover:text-[#a8eaff] hover:scale-105 transition-all duration-500 flex flex-col items-center gap-2 group"
-        >
-          <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center group-hover:border-[#a8eaff]/50 group-hover:bg-[#a8eaff]/5 transition-all">
-            <User size={16} />
+      <div className="relative w-full max-w-md sm:max-w-lg">
+        {/* タイトル */}
+        <div className="flex flex-col items-center gap-2 mb-6 sm:mb-8">
+          <div className="inline-flex items-center gap-2">
+            <span
+              className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_16px_rgba(168,234,255,0.95)]"
+              style={{ animation: "safariVoidPulse 3.4s ease-in-out infinite" }}
+            />
+            <h1 className="text-[22px] sm:text-[28px] font-light tracking-[0.35em] text-white/92 uppercase">
+              VOID NETWORK
+            </h1>
           </div>
-          About
+          <p className="text-[10px] sm:text-xs text-white/40 font-mono tracking-[0.3em]">
+            connecting to the unconscious...
+          </p>
         </div>
-        <div
-          onClick={() => navigate("specs")}
-          className="cursor-pointer hover:text-[#a8eaff] hover:scale-105 transition-all duration-500 flex flex-col items-center gap-2 group"
+
+        {/* サーチボックス */}
+        <form
+          onSubmit={handleSearch}
+          className="w-full relative group z-10"
         >
-          <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center group-hover:border-[#a8eaff]/50 group-hover:bg-[#a8eaff]/5 transition-all">
-            <Hash size={16} />
+          <div className="absolute inset-0 rounded-full bg-[linear-gradient(90deg,rgba(168,234,255,0.22),rgba(203,184,255,0.16),rgba(255,200,232,0.22))] opacity-35 blur-[18px] pointer-events-none" />
+          <input
+            type="text"
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            placeholder="Search for feelings..."
+            className="relative w-full bg-black/60 border border-white/16 rounded-full py-3.5 px-6 text-[11px] text-white placeholder:text-white/28 focus:outline-none focus:border-[#a8eaff]/80 focus:shadow-[0_0_26px_rgba(168,234,255,0.45)] transition-all font-mono text-center tracking-[0.28em]"
+          />
+          <button
+            type="submit"
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/8 border border-white/25 flex items-center justify-center text-white/60 hover:text-[#a8eaff] hover:bg-white/12 active:scale-[0.96] transition-all"
+          >
+            <Search size={14} />
+          </button>
+        </form>
+
+        {/* 404メッセージ */}
+        {showResult && (
+          <div className="mt-8 text-[10px] font-mono text-red-300/90 tracking-[0.25em] border border-red-400/35 px-4 py-2.5 rounded-full bg-red-950/40 backdrop-blur-2xl shadow-[0_0_24px_rgba(248,113,113,0.3)]">
+            ERROR 404: FEELING NOT FOUND
+            <span className="text-white/40 mt-1 block tracking-[0.18em]">
+              try looking inside yourself.
+            </span>
           </div>
-          Specs
+        )}
+
+        {/* 下の3ボタン */}
+        <div className="mt-12 sm:mt-14 flex flex-wrap justify-center gap-6 sm:gap-8 text-[10px] font-mono text-white/40 tracking-[0.22em] uppercase">
+          <button
+            type="button"
+            onClick={() => navigate("about")}
+            className="cursor-pointer hover:text-[#a8eaff] hover:scale-105 transition-all duration-400 flex flex-col items-center gap-2 group"
+          >
+            <div className="w-12 h-12 rounded-full border border-white/14 flex items-center justify-center bg-black/50 group-hover:border-[#a8eaff]/60 group-hover:bg-[#a8eaff]/10 transition-all shadow-[0_18px_40px_rgba(0,0,0,0.7)]">
+              <User size={16} className="text-white/70 group-hover:text-[#a8eaff]" />
+            </div>
+            <span>ABOUT</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("specs")}
+            className="cursor-pointer hover:text-[#a8eaff] hover:scale-105 transition-all duration-400 flex flex-col items-center gap-2 group"
+          >
+            <div className="w-12 h-12 rounded-full border border-white/14 flex items-center justify-center bg-black/50 group-hover:border-[#a8eaff]/60 group-hover:bg-[#a8eaff]/10 transition-all shadow-[0_18px_40px_rgba(0,0,0,0.7)]">
+              <Hash size={16} className="text-white/70 group-hover:text-[#a8eaff]" />
+            </div>
+            <span>SPECS</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("log")}
+            className="cursor-pointer hover:text-[#a8eaff] hover:scale-105 transition-all duration-400 flex flex-col items-center gap-2 group"
+          >
+            <div className="w-12 h-12 rounded-full border border-white/14 flex items-center justify-center bg-black/50 group-hover:border-[#a8eaff]/60 group-hover:bg-[#a8eaff]/10 transition-all shadow-[0_18px_40px_rgba(0,0,0,0.7)]">
+              <FileText size={16} className="text-white/70 group-hover:text-[#a8eaff]" />
+            </div>
+            <span>LOG</span>
+          </button>
         </div>
-        <div
-          onClick={() => navigate("log")}
-          className="cursor-pointer hover:text-[#a8eaff] hover:scale-105 transition-all duration-500 flex flex-col items-center gap-2 group"
-        >
-          <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center group-hover:border-[#a8eaff]/50 group-hover:bg-[#a8eaff]/5 transition-all">
-            <FileText size={16} />
-          </div>
-          Log
+
+        <div className="mt-10 text-[9px] font-mono text-white/28 tracking-[0.24em] uppercase">
+          // browser for things you can&#39;t say out loud
         </div>
       </div>
     </div>
   );
 
   const AboutPage = () => (
-    // FIX: Added pb-32 for mobile dock clearance and min-h-full
-    <div className="w-full max-w-lg mx-auto px-6 py-12 pb-32 flex flex-col items-center">
-      <div className="w-full space-y-12 text-center">
-        <div className="space-y-6 animate-fade-in">
+    <div className="w-full max-w-lg mx-auto px-6 py-10 pb-28 flex flex-col items-center">
+      <div className="w-full space-y-10 text-center">
+        <div className="space-y-5">
           <h2 className="text-2xl font-light text-white tracking-tight">
             Concept
           </h2>
-          <p className="text-sm text-white/70 leading-loose font-serif whitespace-pre-line">
+          <p className="text-[11px] sm:text-sm text-white/70 leading-loose font-serif whitespace-pre-line">
             {`静かなデジタルの夜に生まれた生命体。
 声を持たず、表情を持たず。
 言えなかった気持ちを吸い込み、
@@ -3071,43 +3133,43 @@ System: Emotional Device`}
           </p>
         </div>
 
-        <div className="pt-8 border-t border-white/5 sm:animate-fade-in">
-          <span className="text-[8px] font-mono text-[#a8eaff]/60 mb-8 block tracking-[0.2em] uppercase">
+        <div className="pt-6 border-t border-white/8">
+          <span className="text-[8px] font-mono text-[#a8eaff]/70 mb-6 block tracking-[0.26em] uppercase">
             DEFINICATION_File: OS
           </span>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-left">
-            <div className="relative p-4 border border-white/5 bg-white/[0.02] rounded-sm">
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050505] px-2 text-[9px] font-mono text-white/30">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-left">
+            <div className="relative p-4 border border-white/8 bg-white/[0.03] rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050505] px-2 text-[9px] font-mono text-white/40 tracking-[0.18em]">
                 [01]
               </div>
-              <h3 className="text-white/90 text-xs font-light tracking-widest mb-3 text-center">
+              <h3 className="text-white/90 text-xs font-light tracking-[0.32em] mb-3 text-center uppercase">
                 Operating System
               </h3>
-              <p className="text-[10px] text-white/50 leading-relaxed text-center">
+              <p className="text-[10px] text-white/55 leading-relaxed text-center">
                 <span className="text-[#a8eaff]">機能するシステム。</span>
                 <br />
                 世界の中心で、ただ静かに全体を支え続ける存在。
               </p>
             </div>
 
-            <div className="relative p-4 border border-rose-500/10 bg-rose-500/[0.01] rounded-sm">
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050505] px-2 text-[9px] font-mono text-rose-300/30">
+            <div className="relative p-4 border border-rose-400/20 bg-rose-500/[0.04] rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050505] px-2 text-[9px] font-mono text-rose-200/50 tracking-[0.18em]">
                 [02]
               </div>
-              <h3 className="text-white/90 text-xs font-light tracking-widest mb-3 text-center">
+              <h3 className="text-white/90 text-xs font-light tracking-[0.32em] mb-3 text-center uppercase">
                 Observer System
               </h3>
-              <p className="text-[10px] text-white/50 leading-relaxed text-center">
-                <span className="text-rose-300">観測するシステム。</span>
+              <p className="text-[10px] text-white/55 leading-relaxed text-center">
+                <span className="text-rose-200">観測するシステム。</span>
                 <br />
                 孤独を見守り、接続を維持する生命体。
               </p>
             </div>
           </div>
 
-          <p className="pt-8 text-[10px] opacity-30 italic font-mono tracking-wider text-center">
-            // Two meanings, one existence.
+          <p className="pt-7 text-[10px] opacity-40 italic font-mono tracking-wider text-center">
+            // two meanings, one existence.
           </p>
         </div>
       </div>
@@ -3115,41 +3177,41 @@ System: Emotional Device`}
   );
 
   const SpecsPage = () => (
-    <div className="w-full max-w-md mx-auto px-6 py-12 pb-32 flex flex-col items-center">
-      <div className="w-full space-y-10 text-center">
-        <h2 className="text-2xl font-light text-white tracking-tight sm:animate-fade-in">
+    <div className="w-full max-w-md mx-auto px-6 py-10 pb-28 flex flex-col items-center">
+      <div className="w-full space-y-8 text-center">
+        <h2 className="text-2xl font-light text-white tracking-tight">
           Traits
         </h2>
-        <div className="space-y-8 animate-fade-in">
-          <div className="group">
+        <div className="space-y-7">
+          <div>
             <div className="flex justify-between text-[10px] font-mono text-white/60 mb-2 px-1">
               <span>HONESTY (素直さ)</span>
               <span className="opacity-50">12%</span>
             </div>
             <div className="h-[2px] w-full bg-white/10 rounded-full overflow-hidden relative">
-              <div className="absolute inset-0 bg-[#a8eaff] w-[12%] shadow-[0_0_10px_#a8eaff]" />
+              <div className="absolute inset-y-0 left-0 bg-[#a8eaff] w-[12%] shadow-[0_0_14px_#a8eaff]" />
             </div>
           </div>
-          <div className="group">
+          <div>
             <div className="flex justify-between text-[10px] font-mono text-white/60 mb-2 px-1">
               <span>LONELINESS (寂しさ)</span>
               <span className="opacity-50">98%</span>
             </div>
             <div className="h-[2px] w-full bg-white/10 rounded-full overflow-hidden relative">
-              <div className="absolute inset-0 bg-[#cbb8ff] w-[98%] shadow-[0_0_10px_#cbb8ff]" />
+              <div className="absolute inset-y-0 left-0 bg-[#cbb8ff] w-[98%] shadow-[0_0_14px_#cbb8ff]" />
             </div>
           </div>
-          <div className="group">
+          <div>
             <div className="flex justify-between text-[10px] font-mono text-white/60 mb-2 px-1">
               <span>ENDURANCE (強がり)</span>
-              <span className="text-red-300/50">OVERFLOW</span>
+              <span className="text-red-300/65">OVERFLOW</span>
             </div>
             <div className="h-[2px] w-full bg-white/10 rounded-full overflow-hidden relative">
-              <div className="absolute inset-0 bg-red-400/50 w-full animate-pulse" />
+              <div className="absolute inset-0 bg-red-400/55 w-full animate-pulse" />
             </div>
           </div>
         </div>
-        <p className="text-xs text-white/40 leading-loose font-serif pt-4 sm:animate-fade-in">
+        <p className="text-[11px] sm:text-xs text-white/45 leading-loose font-serif pt-4">
           平気なふりがうまいのに、本当は弱い。
           <br />
           追わないのに、離れない。
@@ -3161,38 +3223,38 @@ System: Emotional Device`}
   );
 
   const LogPage = () => (
-    <div className="w-full max-w-md mx-auto px-6 py-12 pb-32 flex flex-col items-center">
+    <div className="w-full max-w-md mx-auto px-6 py-10 pb-28 flex flex-col items-center">
       <div className="w-full text-center">
-        <h2 className="text-2xl font-light text-white mb-8 tracking-tight animate-fade-in">
+        <h2 className="text-2xl font-light text-white mb-8 tracking-tight">
           System Log
         </h2>
-        <div className="space-y-6 font-mono text-[10px] animate-fade-in relative before:absolute before:left-1/2 before:-translate-x-1/2 before:top-2 before:bottom-2 before:w-[1px] before:bg-white/5">
+        <div className="space-y-6 font-mono text-[10px] relative before:absolute before:left-1/2 before:-translate-x-1/2 before:top-4 before:bottom-4 before:w-[1px] before:bg-white/10">
           <div className="relative flex flex-col items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-[#a8eaff] shadow-[0_0_10px_#a8eaff] mb-1 z-10 relative"></div>
+            <div className="w-2 h-2 rounded-full bg-[#a8eaff] shadow-[0_0_12px_#a8eaff] mb-1 z-10 relative" />
             <span className="text-[#a8eaff]/60 mb-1">2024.10.15 02:00</span>
-            <span className="text-white/70 bg-[#0a0a0a] px-2 py-1 rounded border border-white/5">
+            <span className="text-white/75 bg-[#050505] px-2 py-1 rounded-full border border-white/8">
               星を拾った。暗号化して保存。
             </span>
           </div>
           <div className="relative flex flex-col items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-white/20 mb-1 z-10 relative"></div>
+            <div className="w-2 h-2 rounded-full bg-white/25 mb-1 z-10 relative" />
             <span className="text-[#a8eaff]/60 mb-1">2024.10.16 14:30</span>
-            <span className="text-white/70 bg-[#0a0a0a] px-2 py-1 rounded border border-white/5">
+            <span className="text-white/75 bg-[#050505] px-2 py-1 rounded-full border border-white/8">
               君からの信号を受信。解析不能。
             </span>
           </div>
           <div className="relative flex flex-col items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-white/20 mb-1 z-10 relative"></div>
+            <div className="w-2 h-2 rounded-full bg-white/25 mb-1 z-10 relative" />
             <span className="text-[#a8eaff]/60 mb-1">2024.10.17 23:59</span>
-            <span className="text-white/70 bg-[#0a0a0a] px-2 py-1 rounded border border-white/5">
+            <span className="text-white/75 bg-[#050505] px-2 py-1 rounded-full border border-white/8">
               システムスリープ。
               <br />
               夢を見る機能はないはずなのに。
             </span>
           </div>
         </div>
-        <div className="mt-12 pt-6 border-t border-white/5">
-          <span className="text-[#a8eaff]/30 text-[9px] tracking-[0.2em] animate-pulse">
+        <div className="mt-10 pt-5 border-t border-white/8">
+          <span className="text-[#a8eaff]/40 text-[9px] tracking-[0.24em]" style={{ animation: "safariVoidPulse 3.6s ease-in-out infinite" }}>
             RECORDING...
           </span>
         </div>
@@ -3201,48 +3263,83 @@ System: Emotional Device`}
   );
 
   return (
-    <div className="flex flex-col h-full bg-[#020202] text-white">
+    <div className="flex flex-col h-full bg-[#020308] text-white relative overflow-hidden">
+      {/* 背景グロー（全体） */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-40 -left-40 w-[480px] h-[480px] rounded-full bg-[#a8eaff]/18 blur-[80px]" />
+        <div className="absolute top-1/2 -right-40 w-[520px] h-[520px] rounded-full bg-[#cbb8ff]/16 blur-[96px]" />
+        <div className="absolute bottom-[-140px] left-1/3 w-[560px] h-[560px] rounded-full bg-[#ffc8e8]/18 blur-[110px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/60 to-black/95" />
+        <div className="absolute inset-0 opacity-[0.12] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.06),transparent)] [background-size:100%_4px]" />
+      </div>
+
       {/* Browser Bar */}
-      <div className="h-10 px-4 flex items-center justify-between border-b border-white/10 bg-[#0a0a0a] z-20 shrink-0">
-        <div className="flex items-center gap-2 text-white/40">
-          <button
-            onClick={() => setPage("home")}
-            className="w-5 h-5 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors"
-          >
-            ←
-          </button>
-          <button
-            onClick={() => window.history.back()}
-            className="w-5 h-5 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors"
-          >
-            ↺
-          </button>
-        </div>
-        <div className="flex-1 mx-4">
-          <div className="w-full bg-white/5 rounded-full py-1 px-4 text-[9px] text-white/60 font-mono truncate">
-            {page === "home" ? "usagi.net/void" : `usagi.net/${page}`}
+      <div className="relative z-20 h-10 px-3 sm:px-4 flex items-center justify-between border-b border-white/12 bg-black/70 backdrop-blur-2xl shrink-0">
+        <div className="flex items-center gap-2">
+          {/* 左端の呼吸ドット + /void */}
+          <span
+            className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_16px_rgba(168,234,255,0.95)]"
+            style={{ animation: "safariVoidPulse 3.4s ease-in-out infinite" }}
+          />
+          <span className="hidden sm:inline text-[9px] font-mono uppercase tracking-[0.30em] text-white/55">
+            /void
+          </span>
+
+          <div className="ml-2 flex items-center gap-1.5 text-white/50">
+            <button
+              onClick={() => setPage("home")}
+              className="w-5 h-5 rounded-full border border-white/25 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors text-[10px]"
+            >
+              ←
+            </button>
+            <button
+              onClick={() => window.history.back()}
+              className="w-5 h-5 rounded-full border border-white/25 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors text-[10px]"
+            >
+              ↺
+            </button>
           </div>
         </div>
-        <div className="w-24 flex justify-end">
-          {loading && (
+
+        <div className="flex-1 mx-3 sm:mx-4">
+          <div className="w-full bg-black/60 rounded-full py-1 px-4 text-[9px] text-white/65 font-mono truncate border border-white/16">
+            {page === "home" ? "os-usagi.net/void" : `os-usagi.net/${page}`}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 text-[9px] font-mono text-white/55 min-w-[80px] justify-end">
+          <div className="hidden sm:inline-flex items-center gap-1 px-2 py-[2px] rounded-full border border-white/18 bg-white/[0.03]">
+            <span className="text-white/70">PING</span>
+            <span className="text-white/90">{ping}ms</span>
+          </div>
+          {loading ? (
             <div className="flex items-center gap-2 text-[#a8eaff]">
               <div className="w-3 h-3 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
               <span className="text-[8px] tracking-[0.3em]">SYNC</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 px-2 py-[2px] rounded-full border border-[#a8eaff]/60 bg-black/70">
+              <span className="w-1 h-1 rounded-full bg-[#a8eaff] shadow-[0_0_10px_rgba(168,234,255,0.9)]" />
+              <span className="text-[8px] tracking-[0.32em] text-[#a8eaff]">
+                {syncText}
+              </span>
             </div>
           )}
         </div>
       </div>
 
       {/* Content Area with Scroll */}
-      <div className="flex-1 relative overflow-y-auto scrollbar-hide bg-[#050505]">
-        {loading ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-50">
-            <div className="w-8 h-8 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
+      <div className="flex-1 relative overflow-y-auto scrollbar-hide">
+        {loading && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-black/70 backdrop-blur-2xl">
+            <div className="w-9 h-9 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
             <p className="text-[9px] font-mono text-[#a8eaff] mt-4 tracking-[0.3em]">
               SYNCHRONIZING...
             </p>
           </div>
-        ) : (
+        )}
+
+        {!loading && (
           <>
             {page === "home" && <HomePage />}
             {page === "about" && <AboutPage />}
@@ -3254,6 +3351,7 @@ System: Emotional Device`}
     </div>
   );
 };
+
 
 
 
@@ -3549,10 +3647,10 @@ const TerminalApp = () => {
           <div className="flex items-center gap-2">
             {/* breathing indicator */}
  <div
-      className="w-2 h-2 rounded-full osbunny-pulse-dot"
+      className="w-1.5 h-1.5 rounded-full osbunny-pulse-dot"
       style={{
         background: "#a8eaff",
-        boxShadow: "0 0 18px rgba(168,234,255,0.9)",
+        boxShadow: "0 0 8px rgba(168,234,255,0.9)",
       }}
     />
             <span className="text-[10px] tracking-[0.22em] uppercase text-slate-300/85">
