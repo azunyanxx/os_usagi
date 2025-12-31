@@ -1852,46 +1852,26 @@ const FinderApp = () => {
   helpers
 ------------------------------ */
 
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const mql = window.matchMedia("(max-width: 767px)");
-    const sync = () => setIsMobile(!!mql.matches);
-    sync();
+const normalize = (s) => (s || "").toString().toLowerCase().trim();
 
-    // Safari/old fallback
-    const add = mql.addEventListener ? "addEventListener" : "addListener";
-    const rem = mql.removeEventListener ? "removeEventListener" : "removeListener";
-    mql[add]?.("change", sync);
-
-    window.addEventListener("resize", sync);
-    return () => {
-      mql[rem]?.("change", sync);
-      window.removeEventListener("resize", sync);
-    };
-  }, []);
-  return isMobile;
-};
-
-const isImageLike = (url = "", meta = "") => {
-  const u = (url || "").toLowerCase();
+const isImageLike = (file = "", meta = "") => {
+  const f = String(file).toLowerCase();
+  const m = String(meta).toLowerCase();
   return (
-    u.endsWith(".png") ||
-    u.endsWith(".jpg") ||
-    u.endsWith(".jpeg") ||
-    u.endsWith(".webp") ||
-    u.endsWith(".gif") ||
-    meta === "IMG" ||
-    meta === "JPG"
+    f.endsWith(".png") ||
+    f.endsWith(".jpg") ||
+    f.endsWith(".jpeg") ||
+    f.endsWith(".webp") ||
+    f.endsWith(".gif") ||
+    ["img", "jpg", "png", "gif", "webp"].includes(m)
   );
 };
-
-const normalize = (s) => (s || "").toString().toLowerCase().trim();
 
 const clampIndex = (i, len) => {
   if (!len) return 0;
   return (i % len + len) % len;
 };
+
 
 /* -----------------------------
   double tap (mobile)
@@ -2093,141 +2073,140 @@ function GalleryCard({
   openAt,
   accentCyan,
 }) {
+  const ignoreClickRef = useRef(false);
+
   const touch = useTouchDoubleTap({
-    onSingle: () => setSelectedId(item.id),
-    onDouble: () => openAt(idx),
+    onSingle: () => {
+      ignoreClickRef.current = true;
+      setSelectedId(item.id);
+    },
+    onDouble: () => {
+      ignoreClickRef.current = true;
+      openAt(idx);
+    },
   });
+
+  const handleClick = useCallback(() => {
+    // touch由来のclickは二重発火防止
+    if (ignoreClickRef.current) {
+      ignoreClickRef.current = false;
+      return;
+    }
+    setSelectedId(item.id);
+  }, [item.id, setSelectedId]);
+
+  const img = isImageLike(item.file, item.meta);
+  const title = item.title || "untitled";
+  const meta = item.meta || "";
+  const folder = item.folder || "";
 
   return (
     <button
       type="button"
-      className="relative text-left w-full"
-      // desktop
-      onClick={() => setSelectedId(item.id)}
-      // IMPORTANT: mobileは二重発火になるので無効化
+      className="relative text-left w-full group"
+      onClick={handleClick}
       onDoubleClick={isMobile ? undefined : () => openAt(idx)}
       onPointerDown={touch.onPointerDown}
       onPointerUp={touch.onPointerUp}
-      style={{
-        WebkitTapHighlightColor: "transparent",
-        touchAction: "manipulation",
-      }}
+      style={{ WebkitTapHighlightColor: "transparent", touchAction: "pan-y" }}
       aria-selected={selected}
     >
       <div
-        className="relative overflow-hidden rounded-[28px] border bg-white/[0.03] transition-[border,box-shadow,filter] duration-500"
-        style={{
-          borderColor: selected
-            ? "rgba(255,255,255,0.24)"
-            : "rgba(255,255,255,0.10)",
-          filter: selected ? "brightness(1.10)" : "brightness(1)",
-          boxShadow: selected
-            ? "0 0 0 1px rgba(255,255,255,0.10) inset, 0 70px 170px -120px rgba(0,0,0,0.95), 0 0 110px rgba(168,234,255,0.14)"
-            : "0 0 0 1px rgba(255,255,255,0.06) inset, 0 40px 120px -110px rgba(0,0,0,0.85)",
-        }}
+        className={`relative rounded-[22px] border backdrop-blur-2xl transition-all overflow-hidden
+          ${
+            selected
+              ? "border-white/28 bg-white/[0.08] shadow-[0_0_0_1px_rgba(255,255,255,0.08)_inset,0_30px_110px_-60px_rgba(168,234,255,0.30)]"
+              : "border-white/10 bg-white/[0.04] hover:bg-white/[0.06] hover:border-white/16"
+          }`}
       >
-        {/* Media */}
-        <div className="relative aspect-[16/10] bg-[#06070a]">
-          {isImageLike(item.file, item.meta) ? (
+        {/* glow */}
+        <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute inset-0 bg-[radial-gradient(650px_240px_at_20%_0%,rgba(168,234,255,0.14),transparent_60%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(650px_240px_at_90%_100%,rgba(203,184,255,0.12),transparent_62%)]" />
+        </div>
+
+        {/* preview */}
+        <div className="relative aspect-[16/11] w-full overflow-hidden">
+          {img ? (
             <img
               src={item.file}
-              alt={item.title}
+              alt={title}
               loading="lazy"
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{
-                opacity: selected ? 0.98 : 0.86,
-                transition: "opacity 700ms ease",
-              }}
+              draggable={false}
+              className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+              style={{ filter: selected ? "none" : "saturate(0.95) contrast(1.05)" }}
             />
           ) : (
-            <div className="absolute inset-0 grid place-items-center text-white/30 font-mono">
-              PREVIEW
+            <div className="w-full h-full grid place-items-center bg-white/[0.02]">
+              <div className="flex flex-col items-center gap-2 text-white/35 font-mono text-[10px]">
+                <Maximize2 className="opacity-50" />
+                PREVIEW_UNAVAILABLE
+              </div>
             </div>
           )}
 
-          {/* aura + vignette */}
-          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(650px_360px_at_45%_18%,rgba(168,234,255,0.14),transparent_60%)]" />
-          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(650px_360px_at_55%_95%,rgba(203,184,255,0.12),transparent_62%)]" />
-          <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-          <div className="absolute inset-0 pointer-events-none opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.05),transparent)] [background-size:100%_4px]" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.00),rgba(0,0,0,0.35))]" />
 
-          {/* Meta chip */}
-          <div className="absolute top-3.5 left-3.5">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/15 bg-black/25 backdrop-blur-2xl">
-              <span
-                className="w-1.5 h-1.5 rounded-full"
-                style={{
-                  background: accentCyan,
-                  boxShadow: "0 0 16px rgba(168,234,255,0.60)",
-                }}
-              />
-              <span className="text-[9px] font-mono tracking-[0.30em] uppercase text-white/90">
-                {item.meta}
-              </span>
-            </div>
-          </div>
-
-          {/* Selected ring (NO scale / NO shift) */}
-          {selected && (
+          <div className="absolute left-3 top-3 flex items-center gap-2">
             <div
-              className="absolute inset-0 pointer-events-none"
+              className="px-2.5 py-1 rounded-full border border-white/15 bg-black/30 backdrop-blur-xl text-[9px] font-mono tracking-[0.22em] uppercase text-white/70"
               style={{
                 boxShadow:
-                  "inset 0 0 0 1px rgba(255,255,255,0.16), inset 0 0 70px rgba(168,234,255,0.11)",
+                  "0 0 0 1px rgba(255,255,255,0.05) inset, 0 18px 60px rgba(0,0,0,0.35)",
+              }}
+            >
+              {folder}
+            </div>
+
+            {meta && (
+              <div className="px-2 py-1 rounded-full border border-white/12 bg-white/10 backdrop-blur-xl text-[9px] font-mono tracking-[0.22em] uppercase text-white/70">
+                {meta}
+              </div>
+            )}
+          </div>
+
+          {selected && (
+            <div
+              className="pointer-events-none absolute inset-0 rounded-[22px]"
+              style={{
+                boxShadow:
+                  "0 0 0 1px rgba(255,255,255,0.10) inset, 0 0 0 1px rgba(168,234,255,0.18), 0 0 70px rgba(168,234,255,0.10)",
               }}
             />
           )}
         </div>
 
-        {/* Text */}
-        <div className="px-5 pt-4 pb-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div
-                className="text-[19px] sm:text-[20px] leading-snug text-white/92 font-medium tracking-wide truncate"
-                style={{ fontFamily: `"Cormorant Garamond", serif` }}
-              >
-                {item.title}
-              </div>
-              <div className="mt-1 text-[10px] font-mono tracking-[0.30em] uppercase text-white/35">
-                {item.folder}
-              </div>
-            </div>
-
-            <div
-              className="shrink-0 text-[10px] font-mono tracking-[0.30em] uppercase"
-              style={{
-                color: selected ? accentCyan : "rgba(255,255,255,0.22)",
-              }}
-            >
-              {selected ? "SELECTED" : ""}
-            </div>
-          </div>
-
-          {/* Description: layoutを占有しない（上品に出す） */}
+        {/* meta text */}
+        <div className="px-5 py-4">
           <div
-            className="overflow-hidden"
-            style={{
-              maxHeight: selected ? 56 : 0,
-              opacity: selected ? 1 : 0,
-              transition: "max-height 520ms ease, opacity 420ms ease",
-            }}
+            className="text-[18px] leading-[1.15] text-white/92 tracking-tight"
+            style={{ fontFamily: `"Cormorant Garamond", serif` }}
           >
-            <div className="mt-3 text-[12px] leading-relaxed text-white/55">
-              {item.desc || "Visual memory fragment."}
-            </div>
+            {title}
           </div>
 
-          {isMobile && (
-            <div className="mt-4 text-[9px] font-mono tracking-[0.30em] uppercase text-white/22">
-              TAP = SELECT · DOUBLE TAP = OPEN
+          <div className="mt-1 text-[11px] text-white/45 tracking-wide line-clamp-2">
+            {item.desc || "Visual memory fragment."}
+          </div>
+
+          <div className="mt-3 flex items-center justify-between">
+            <div className="text-[9px] font-mono tracking-[0.28em] uppercase text-white/30">
+              tap: select{isMobile ? " / double tap: open" : " / double click: open"}
             </div>
-          )}
+            <div
+              className="w-7 h-[2px] rounded-full opacity-70"
+              style={{
+                background: accentCyan,
+                boxShadow: "0 0 18px rgba(168,234,255,0.55)",
+              }}
+            />
+          </div>
         </div>
       </div>
     </button>
   );
 }
+
 
 /* -----------------------------
   App
@@ -3868,6 +3847,14 @@ function Scanlines({ opacity = 0.12 }) {
   background-repeat: repeat;
   background-size: 240px 240px;
   mix-blend-mode: overlay;
+}
+
+export default function AppRoot() {
+  return (
+    <MobileProvider>
+      <GalleryApp items={GALLERY_ITEMS} />
+    </MobileProvider>
+  );
 }
 
 
