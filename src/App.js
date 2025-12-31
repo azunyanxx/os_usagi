@@ -1834,7 +1834,7 @@ const FinderApp = () => {
 // -- GALLERY APP (JAPANESE EMOTION ARCHIVE) --
 
 
-/const GalleryApp = () => {
+const GalleryApp = () => {
   const [filter, setFilter] = useState("all");
   const [lightboxIndex, setLightboxIndex] = useState(null); // null = 閉じてる
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
