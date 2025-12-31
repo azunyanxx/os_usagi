@@ -1874,18 +1874,28 @@ const FinderApp = () => {
 
           <div className="relative h-full flex flex-col px-4 pt-4 pb-6 sm:px-6">
             {/* モバイルヘッダー */}
-            <div className="sm:hidden mb-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_16px_rgba(168,234,255,0.9)]" />
-                  <span className="text-[10px] font-mono uppercase tracking-[0.32em] text-white/50">
-                    /finder
-                  </span>
-                </div>
-                <div className="text-[10px] font-mono text-white/40">
-                  {filteredItems.length} items
-                </div>
-              </div>
+{/* モバイルヘッダー */}
+<div className="sm:hidden mb-4">
+  <div className="flex items-center justify-between mb-3">
+    <div className="flex items-center gap-2">
+      {/* 呼吸するドット */}
+      <span
+        className="w-1.5 h-1.5 rounded-full shadow-[0_0_12px_rgba(168,234,255,0.9)]"
+        style={{
+          background: "#a8eaff",
+          color: "#a8eaff",                  // finderPulse 用
+          animation: "finderPulse 3.4s ease-in-out infinite",
+        }}
+      />
+      <span className="text-[10px] font-mono uppercase tracking-[0.32em] text-white/50">
+        /finder
+      </span>
+    </div>
+    <div className="text-[10px] font-mono text-white/40">
+      {filteredItems.length} items
+    </div>
+  </div>
+
 
               <div className="text-[11px] text-white/55 mb-2">
                 {FOLDERS.find((f) => f.id === currentFolder)?.label}
@@ -2020,25 +2030,26 @@ const FinderApp = () => {
                             )}
 
                             {/* ✅ 右下タグ：カテゴリ色で呼吸グロー */}
-                            <div
-                              className="absolute bottom-2 right-2 rounded-full px-2 py-1 text-[9px] font-mono uppercase tracking-[0.22em] border"
-                              style={{
-                                backgroundColor: isSelected
-                                  ? "rgba(0,0,0,0.82)"
-                                  : "rgba(0,0,0,0.7)",
-                                borderColor: isSelected
-                                  ? pal.dot
-                                  : "rgba(255,255,255,0.25)",
-                                color: isSelected
-                                  ? pal.dot
-                                  : "rgba(255,255,255,0.75)",
-                                animation: isSelected
-                                  ? "finderPulse 3.4s ease-in-out infinite"
-                                  : "none",
-                              }}
-                            >
-                              {item.meta || "FILE"}
-                            </div>
+<div
+  className="absolute bottom-2 right-2 rounded-full px-2 py-1 text-[9px] font-mono uppercase tracking-[0.22em] border"
+  style={{
+    backgroundColor: isSelected
+      ? "rgba(0,0,0,0.82)"
+      : "rgba(0,0,0,0.7)",
+    borderColor: isSelected
+      ? pal.dot
+      : "rgba(255,255,255,0.25)",
+    color: isSelected
+      ? pal.dot
+      : "rgba(255,255,255,0.75)",
+    animation: isSelected
+      ? "finderPulse 3.4s ease-in-out infinite"
+      : "none",
+    transform: "translateY(1px)",   // ★ ここでほんの少しだけ下げる
+  }}
+>
+  {item.meta || "FILE"}
+</div>
 
                             {/* 左上フォルダドット */}
                             <div className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-black/65 border border-white/15">
@@ -3245,12 +3256,35 @@ System: Emotional Device`}
   );
 };
 
-// -- TERMINAL APP (INFINITE EMOTIONAL LOGS · OS USAGI EDITION) --
-// -- TERMINAL APP (INFINITE EMOTIONAL LOGS · OS USAGI EDITION) --
-// -- TERMINAL APP (INFINITE EMOTIONAL LOGS · OS USAGI CLEAN) --
-// -- TERMINAL APP (INFINITE EMOTIONAL LOGS · OS USAGI FINAL) --
+
+
+// ------------------------------------------------
+// -- 05.TERMINAL APP (たーみなる) --
+// ------------------------------------------------
+
+// -- TERMINAL APP (INFINITE EMOTIONAL LOGS · OS USAGI v9.9) --
 const TerminalApp = () => {
+  const isMobile = useIsMobile();
   const MAX_LINES = 80;
+  // ▼ 追加：galleryと同じ呼吸ドット用スタイルを注入
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const id = "osbunny-terminal-dot-style";
+    if (document.getElementById(id)) return;
+
+    const style = document.createElement("style");
+    style.id = id;
+    style.textContent = `
+      @keyframes osbunny-pulse-dot {
+        0%, 100% { opacity: 0.30; transform: scale(1); }
+        40%      { opacity: 1.00; transform: scale(1.45); }
+      }
+      .osbunny-pulse-dot {
+        animation: osbunny-pulse-dot 3.4s ease-in-out infinite;
+      }
+    `;
+    document.head.appendChild(style);
+  }, []);
 
   const logRef = useRef(null);
   const endRef = useRef(null);
@@ -3261,7 +3295,7 @@ const TerminalApp = () => {
     {
       id: Date.now(),
       type: "dim",
-      text: "os_usagi_v9.7 · inner_monologue.log mounted",
+      text: "os_usagi_v9.9 · inner_monologue.log mounted",
     },
     {
       id: Date.now() + 1,
@@ -3321,14 +3355,12 @@ const TerminalApp = () => {
   const addLine = useCallback((newLine) => {
     setLines((prev) => {
       const list = Array.isArray(newLine) ? [...prev, ...newLine] : [...prev, newLine];
-      if (list.length > MAX_LINES) {
-        return list.slice(list.length - MAX_LINES);
-      }
+      if (list.length > MAX_LINES) return list.slice(list.length - MAX_LINES);
       return list;
     });
   }, []);
 
-  // ランダムログ生成（ゆるい間隔で流れ続ける）
+  // ランダムログ生成
   useEffect(() => {
     const schedule = () => {
       const delay = 1400 + Math.random() * 2200;
@@ -3344,11 +3376,11 @@ const TerminalApp = () => {
     };
   }, [LOG_POOL, addLine]);
 
-  // スクロール（手でさかのぼってる時は追従しない）
+  // スクロール（上を読んでいる間は追従しない）
   const handleScroll = useCallback(() => {
     if (!logRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = logRef.current;
-    const nearBottom = scrollHeight - (scrollTop + clientHeight) < 40;
+    const nearBottom = scrollHeight - (scrollTop + clientHeight) < 56;
     setAutoScroll(nearBottom);
   }, []);
 
@@ -3416,7 +3448,7 @@ const TerminalApp = () => {
         return;
       }
 
-      // デフォ
+      // デフォルト
       addLine([
         baseLine,
         {
@@ -3448,7 +3480,7 @@ const TerminalApp = () => {
       case "sys":
         return {
           prefix: "[ SYS ]",
-          prefixClass: "text-cyan-200/80",
+          prefixClass: "text-cyan-200/85",
           bodyClass: "text-slate-100/80",
         };
       case "dim":
@@ -3478,7 +3510,7 @@ const TerminalApp = () => {
       case "info":
         return {
           prefix: "[INFO]",
-          prefixClass: "text-cyan-200/75",
+          prefixClass: "text-cyan-200/80",
           bodyClass: "text-slate-100/80",
         };
       case "process":
@@ -3503,21 +3535,27 @@ const TerminalApp = () => {
     }
   };
 
+  // Dock 高さと連動した余白
+  const logBottomPadding = isMobile ? "pb-40" : "pb-28"; // モバイルは大きく
+  const inputBottomClass = isMobile ? "bottom-[7.5rem]" : "bottom-6"; // h-20 + pb-4 より上
+
   return (
     <div className="relative flex h-full flex-col bg-[#050608] text-[11px] text-slate-100 overflow-hidden">
-      {/* 背景のほんのりした光 */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.18),transparent_60%)] opacity-80" />
+      {/* 背景の縦グラデーション：上は冷たい青、下は少しだけ深い影 */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.18),transparent_60%),radial-gradient(circle_at_bottom,_rgba(15,23,42,0.35),transparent_55%)] opacity-80" />
 
       <div className="relative z-10 flex h-full flex-col">
-        {/* HEADER：左上呼吸ドット＋タイトルだけ */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 bg-[#050608]/95 backdrop-blur-sm">
+        {/* HEADER：左上の呼吸ドット＋タイトルだけ */}
+        <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 bg-[#050608]/96 backdrop-blur-sm">
           <div className="flex items-center gap-2">
-            <div className="relative">
-              {/* outer breathing glow */}
-              <div className="absolute inset-0 rounded-full bg-emerald-300/30 blur-[10px] opacity-70 animate-pulse [animation-duration:3.2s]" />
-              {/* core */}
-              <div className="relative w-2 h-2 rounded-full bg-emerald-300 shadow-[0_0_14px_rgba(45,212,191,0.95)]" />
-            </div>
+            {/* breathing indicator */}
+ <div
+      className="w-2 h-2 rounded-full osbunny-pulse-dot"
+      style={{
+        background: "#a8eaff",
+        boxShadow: "0 0 18px rgba(168,234,255,0.9)",
+      }}
+    />
             <span className="text-[10px] tracking-[0.22em] uppercase text-slate-300/85">
               TERM · INNER MONOLOGUE
             </span>
@@ -3525,12 +3563,11 @@ const TerminalApp = () => {
           <span className="text-[9px] text-slate-400/70">PID: 8824</span>
         </div>
 
-        {/* MAIN：ログ＋フローティング入力バー */}
+        {/* MAIN：ログリスト + フローティング入力 */}
         <div className="relative flex-1 overflow-hidden">
-          {/* log list */}
           <div
             ref={logRef}
-            className="h-full overflow-y-auto px-3 pt-3 pb-24 space-y-2 scrollbar-hide"
+            className={`h-full overflow-y-auto px-3 pt-3 space-y-2 scrollbar-hide ${logBottomPadding}`}
             onScroll={handleScroll}
           >
             {lines.map((line) => {
@@ -3551,7 +3588,7 @@ const TerminalApp = () => {
                   key={line.id}
                   className="flex gap-3 tracking-wide leading-relaxed opacity-0 animate-fade-in [animation-duration:0.45s]"
                 >
-                  <span className="w-16 text-right text-white/18 select-none font-light">
+                  <span className="w-16 text-right text-white/20 select-none font-light">
                     {t}
                   </span>
                   <span
@@ -3568,12 +3605,12 @@ const TerminalApp = () => {
             <div ref={endRef} className="h-4" />
           </div>
 
-          {/* bottom fog → ドックとの境界をふわっと */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#050608] via-[#050608]/85 to-transparent" />
+          {/* 下フォグ：ドックとの境界をふわっと溶かす */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#050608] via-[#050608]/92 to-transparent" />
 
-          {/* FLOATING INPUT：ドックの“上”に浮かせる */}
-          <div className="absolute inset-x-3 bottom-16">
-            <div className="flex items-center gap-2 rounded-full bg-gradient-to-r from-white/8 via-white/0 to-white/8 px-3 py-1.5 shadow-[0_0_0_1px_rgba(148,163,184,0.3),0_18px_40px_rgba(15,23,42,0.95)] backdrop-blur-md">
+          {/* フローティング入力バー：ドックの上に浮かせる */}
+          <div className={`absolute inset-x-3 ${inputBottomClass}`}>
+            <div className="flex items-center gap-2 rounded-full bg-gradient-to-r from-white/9 via-white/0 to-white/9 px-3 py-1.5 shadow-[0_0_0_1px_rgba(148,163,184,0.32),0_18px_40px_rgba(15,23,42,0.95)] backdrop-blur-md">
               <span className="text-[#a8eaff]/85 text-[11px] font-mono">
                 ❯
               </span>
