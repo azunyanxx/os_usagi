@@ -2951,166 +2951,235 @@ const SafariApp = () => {
 
   const isMobile = useIsMobile();
 
-  // SYNCっぽさを少しだけ揺らす用
-  const [syncText, setSyncText] = useState("SYNC");
-  const [ping, setPing] = useState(12);
+  // ───────────────── OSうさぎ用 NETWORK STATUS（常時ゆるく動く） ─────────────────
+  const [netStatus, setNetStatus] = useState({
+    mode: "IDLE",
+    ping: 32,
+    route: "gallery.os",
+    heartbeat: "▁",
+  });
 
   useEffect(() => {
-    const id = "safari-void-keyframes";
+    // 呼吸ドット & スキャンラインを一度だけ注入
+    const id = "osbunny-safari-keyframes";
     if (!document.getElementById(id)) {
       const style = document.createElement("style");
       style.id = id;
       style.textContent = `
-        @keyframes safariVoidPulse {
+        @keyframes osbunnyPulseDotSafari {
           0%, 100% {
             transform: translateY(0) scale(1);
-            box-shadow: 0 0 0 0 rgba(168,234,255,0.0);
-            opacity: 0.8;
+            box-shadow: 0 0 0 0 currentColor;
+            opacity: 0.78;
           }
           50% {
-            transform: translateY(-0.5px) scale(1.08);
-            box-shadow: 0 0 14px 0 rgba(168,234,255,0.9);
+            transform: translateY(-1px) scale(1.15);
+            box-shadow: 0 0 16px 0 currentColor;
             opacity: 1;
           }
         }
-        @keyframes safariVoidScan {
-          0% { transform: translateY(-100%); }
-          100% { transform: translateY(100%); }
+        @keyframes safariScan {
+          0% {
+            transform: translateY(-100%);
+            opacity: 0;
+          }
+          20% {
+            opacity: 0.45;
+          }
+          100% {
+            transform: translateY(120%);
+            opacity: 0;
+          }
         }
       `;
       document.head.appendChild(style);
     }
-
-    const interval = setInterval(() => {
-      setSyncText((prev) => (prev === "SYNC" ? "IDLE" : "SYNC"));
-      const base = 8 + Math.random() * 10;
-      setPing(Math.round(base));
-    }, 4200);
-
-    return () => clearInterval(interval);
   }, []);
 
-  const navigate = (target) => {
+  useEffect(() => {
+    const routes = [
+      "gallery.os",
+      "finder.os",
+      "music.os",
+      "you/inner-layer",
+      "log://night-archive",
+    ];
+    const heartbeats = ["▁", "▂", "▃", "▄", "▅", "▆", "▇"];
+
+    let t = 0;
+    const interval = setInterval(() => {
+      t++;
+      setNetStatus((prev) => ({
+        ...prev,
+        ping: 24 + Math.floor(Math.random() * 36), // 24〜60msくらいで揺れる
+        route: routes[t % routes.length],
+        heartbeat: heartbeats[t % heartbeats.length],
+      }));
+    }, isMobile ? 2600 : 3400);
+
+    return () => clearInterval(interval);
+  }, [isMobile]);
+
+  // ───────────────── ナビゲーション & サーチ時の SYNC 演出 ─────────────────
+  const triggerSync = (fn) => {
     setLoading(true);
     setShowResult(false);
+    setNetStatus((prev) => ({ ...prev, mode: "SYNC" }));
     setTimeout(() => {
-      setPage(target);
+      fn?.();
       setLoading(false);
+      setNetStatus((prev) => ({ ...prev, mode: "IDLE" }));
     }, 1200);
+  };
+
+  const navigate = (target) => {
+    triggerSync(() => setPage(target));
   };
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (!searchValue) return;
+    if (!searchValue.trim()) return;
+
     setLoading(true);
+    setShowResult(false);
+    setNetStatus((prev) => ({ ...prev, mode: "SYNC" }));
+
     setTimeout(() => {
       setLoading(false);
       setShowResult(true);
+      setNetStatus((prev) => ({ ...prev, mode: "IDLE" }));
     }, 1500);
   };
 
+  // ───────────────── ページコンポーネント ─────────────────
+
   const HomePage = () => (
-    <div
-      className="flex flex-col items-center justify-center text-center px-6 py-16 sm:py-20 relative"
-      style={{
-        minHeight: isMobile ? "calc(100vh - 80px)" : "calc(100vh - 96px)",
-      }}
-    >
+    <div className="relative min-h-full flex flex-col items-center px-4 pt-10 pb-28 sm:pb-24">
       {/* 背景グロー */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-32 -left-32 w-[360px] h-[360px] rounded-full bg-[#a8eaff]/18 blur-[70px]" />
-        <div className="absolute top-1/2 -right-40 w-[460px] h-[460px] rounded-full bg-[#cbb8ff]/14 blur-[90px]" />
-        <div className="absolute bottom-[-120px] left-1/3 w-[520px] h-[520px] rounded-full bg-[#ffc8e8]/16 blur-[100px]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/50 to-black/90" />
-        <div className="absolute inset-0 opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.07),transparent)] [background-size:100%_4px]" />
+        <div className="absolute -top-24 -left-24 w-[380px] h-[380px] rounded-full bg-[#a8eaff]/18 blur-[80px]" />
+        <div className="absolute top-1/2 -right-40 w-[460px] h-[460px] rounded-full bg-[#cbb8ff]/16 blur-[100px]" />
+        <div className="absolute bottom-[-140px] left-1/3 w-[520px] h-[520px] rounded-full bg-[#ffc8e8]/18 blur-[110px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/45 to-black/90" />
+        <div className="absolute inset-0 opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.06),transparent)] [background-size:100%_4px]" />
       </div>
 
-      <div className="relative w-full max-w-md sm:max-w-lg">
-        {/* タイトル */}
-        <div className="flex flex-col items-center gap-2 mb-6 sm:mb-8">
-          <div className="inline-flex items-center gap-2">
+      <div className="relative w-full max-w-xl flex flex-col items-center text-center gap-8">
+        {/* VOID NETWORK バッジ（コンセプト文字は元のニュアンス維持＋光らせ） */}
+        <div className="flex flex-col items-center gap-3 sm:mt-4">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/15 bg-black/50 backdrop-blur-xl shadow-[0_24px_80px_rgba(0,0,0,0.9)]">
             <span
-              className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_16px_rgba(168,234,255,0.95)]"
-              style={{ animation: "safariVoidPulse 3.4s ease-in-out infinite" }}
+              className="w-1.5 h-1.5 rounded-full"
+              style={{
+                color: "#a8eaff",
+                background: "#a8eaff",
+                boxShadow: "0 0 14px #a8eaff",
+                animation: "osbunnyPulseDotSafari 3.4s ease-in-out infinite",
+              }}
             />
-            <h1 className="text-[22px] sm:text-[28px] font-light tracking-[0.35em] text-white/92 uppercase">
+            <span className="text-[10px] font-mono tracking-[0.28em] text-white/60 uppercase">
               VOID NETWORK
-            </h1>
+            </span>
           </div>
-          <p className="text-[10px] sm:text-xs text-white/40 font-mono tracking-[0.3em]">
-            connecting to the unconscious...
+
+          <h1 className="text-3xl sm:text-4xl font-light tracking-[0.35em] uppercase bg-clip-text text-transparent bg-[linear-gradient(120deg,#a8eaff,white,#ffc8e8)] drop-shadow-[0_0_18px_rgba(168,234,255,0.45)]">
+            OS BUNNY BROWSER
+          </h1>
+
+          <p className="text-[10px] sm:text-xs font-mono tracking-[0.32em] text-white/50">
+            Connecting to the unconscious...
           </p>
         </div>
 
-        {/* サーチボックス */}
+        {/* URLバー + サーチ（元の構造を強化） */}
         <form
           onSubmit={handleSearch}
-          className="w-full relative group z-10"
+          className="w-full max-w-md relative group mt-2"
         >
-          <div className="absolute inset-0 rounded-full bg-[linear-gradient(90deg,rgba(168,234,255,0.22),rgba(203,184,255,0.16),rgba(255,200,232,0.22))] opacity-35 blur-[18px] pointer-events-none" />
-          <input
-            type="text"
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-            placeholder="Search for feelings..."
-            className="relative w-full bg-black/60 border border-white/16 rounded-full py-3.5 px-6 text-[11px] text-white placeholder:text-white/28 focus:outline-none focus:border-[#a8eaff]/80 focus:shadow-[0_0_26px_rgba(168,234,255,0.45)] transition-all font-mono text-center tracking-[0.28em]"
-          />
-          <button
-            type="submit"
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/8 border border-white/25 flex items-center justify-center text-white/60 hover:text-[#a8eaff] hover:bg-white/12 active:scale-[0.96] transition-all"
-          >
-            <Search size={14} />
-          </button>
+          <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_0%_0%,rgba(168,234,255,0.18),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(255,200,232,0.16),transparent_55%)] opacity-40 pointer-events-none" />
+          <div className="relative flex items-center gap-2 rounded-full bg-black/60 border border-white/15 px-3 py-1.5 backdrop-blur-2xl shadow-[0_0_0_1px_rgba(255,255,255,0.06)_inset,0_22px_80px_rgba(0,0,0,0.9)] group-focus-within:border-[#a8eaff]/60">
+            <span className="inline-flex items-center gap-1 text-[9px] font-mono text-white/40">
+              <Globe size={11} className="text-white/45" />
+              <span className="hidden sm:inline">https://</span>
+              <span className="sm:hidden">usagi://</span>
+              <span className="text-white/70">void.usagi</span>
+            </span>
+            <input
+              type="text"
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              placeholder="Search for feelings..."
+              className="flex-1 bg-transparent text-[11px] text-white placeholder:text-white/28 focus:outline-none text-center sm:text-left font-mono tracking-[0.18em]"
+            />
+            <button
+              type="submit"
+              className="shrink-0 w-7 h-7 rounded-full border border-white/25 flex items-center justify-center text-white/60 hover:text-[#a8eaff] hover:border-[#a8eaff]/70 hover:bg-[#a8eaff]/10 transition-all"
+            >
+              <Search size={13} />
+            </button>
+          </div>
         </form>
 
-        {/* 404メッセージ */}
-        {showResult && (
-          <div className="mt-8 text-[10px] font-mono text-red-300/90 tracking-[0.25em] border border-red-400/35 px-4 py-2.5 rounded-full bg-red-950/40 backdrop-blur-2xl shadow-[0_0_24px_rgba(248,113,113,0.3)]">
+        {/* FEELING NOT FOUND（元の 404 メッセージを OSうさぎ調に） */}
+        {showResult && !loading && (
+          <div className="mt-5 text-[10px] font-mono tracking-[0.24em] text-red-300/90 border border-red-500/30 px-4 py-3 rounded-lg bg-gradient-to-br from-red-900/40 to-black/80 shadow-[0_20px_80px_rgba(0,0,0,0.9)]">
             ERROR 404: FEELING NOT FOUND
-            <span className="text-white/40 mt-1 block tracking-[0.18em]">
-              try looking inside yourself.
+            <span className="text-white/40 mt-2 block tracking-[0.18em]">
+              Try looking inside yourself.
             </span>
           </div>
         )}
 
-        {/* 下の3ボタン */}
-        <div className="mt-12 sm:mt-14 flex flex-wrap justify-center gap-6 sm:gap-8 text-[10px] font-mono text-white/40 tracking-[0.22em] uppercase">
-          <button
-            type="button"
-            onClick={() => navigate("about")}
-            className="cursor-pointer hover:text-[#a8eaff] hover:scale-105 transition-all duration-400 flex flex-col items-center gap-2 group"
-          >
-            <div className="w-12 h-12 rounded-full border border-white/14 flex items-center justify-center bg-black/50 group-hover:border-[#a8eaff]/60 group-hover:bg-[#a8eaff]/10 transition-all shadow-[0_18px_40px_rgba(0,0,0,0.7)]">
-              <User size={16} className="text-white/70 group-hover:text-[#a8eaff]" />
-            </div>
-            <span>ABOUT</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate("specs")}
-            className="cursor-pointer hover:text-[#a8eaff] hover:scale-105 transition-all duration-400 flex flex-col items-center gap-2 group"
-          >
-            <div className="w-12 h-12 rounded-full border border-white/14 flex items-center justify-center bg-black/50 group-hover:border-[#a8eaff]/60 group-hover:bg-[#a8eaff]/10 transition-all shadow-[0_18px_40px_rgba(0,0,0,0.7)]">
-              <Hash size={16} className="text-white/70 group-hover:text-[#a8eaff]" />
-            </div>
-            <span>SPECS</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate("log")}
-            className="cursor-pointer hover:text-[#a8eaff] hover:scale-105 transition-all duration-400 flex flex-col items-center gap-2 group"
-          >
-            <div className="w-12 h-12 rounded-full border border-white/14 flex items-center justify-center bg-black/50 group-hover:border-[#a8eaff]/60 group-hover:bg-[#a8eaff]/10 transition-all shadow-[0_18px_40px_rgba(0,0,0,0.7)]">
-              <FileText size={16} className="text-white/70 group-hover:text-[#a8eaff]" />
-            </div>
-            <span>LOG</span>
-          </button>
-        </div>
-
-        <div className="mt-10 text-[9px] font-mono text-white/28 tracking-[0.24em] uppercase">
-          // browser for things you can&#39;t say out loud
+        {/* クイックリンクカード（ギャラリー / ファインダー / ミュージック への入口） */}
+        <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
+          {[
+            {
+              id: "gallery",
+              label: "Gallery",
+              desc: "感情のスクリーンショット",
+              icon: ImageIcon,
+            },
+            {
+              id: "finder",
+              label: "Finder",
+              desc: "すべてのログを一覧",
+              icon: Folder,
+            },
+            {
+              id: "music",
+              label: "Music",
+              desc: "メモリに刺さるBGM",
+              icon: Music,
+            },
+          ].map((link) => {
+            const Icon = link.icon;
+            return (
+              <button
+                key={link.id}
+                type="button"
+                onClick={() => navigate("log")}
+                className="relative text-left rounded-2xl border border-white/12 bg-black/70 px-4 py-4 flex flex-col gap-2 overflow-hidden shadow-[0_18px_70px_rgba(0,0,0,0.95)] hover:border-white/25 hover:bg-black/80 transition-all duration-500"
+              >
+                <div className="pointer-events-none absolute inset-0 opacity-60 mix-blend-screen bg-[radial-gradient(circle_at_0%_0%,rgba(168,234,255,0.2),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(255,200,232,0.18),transparent_55%)]" />
+                <div className="relative flex items-center justify-between gap-3">
+                  <div className="flex flex-col gap-1">
+                    <div className="inline-flex items-center gap-2">
+                      <Icon size={16} className="text-[#a8eaff]" />
+                      <span className="text-[11px] text-white">
+                        {link.label}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-white/55">
+                      {link.desc}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-white/40 tracking-[0.26em]">
+                    OPEN
+                  </span>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -3119,31 +3188,29 @@ const SafariApp = () => {
   const AboutPage = () => (
     <div className="w-full max-w-lg mx-auto px-6 py-10 pb-28 flex flex-col items-center">
       <div className="w-full space-y-10 text-center">
-        <div className="space-y-5">
-          <h2 className="text-2xl font-light text-white tracking-tight">
-            Concept
-          </h2>
-          <p className="text-[11px] sm:text-sm text-white/70 leading-loose font-serif whitespace-pre-line">
-            {`静かなデジタルの夜に生まれた生命体。
+        <h2 className="text-2xl font-light text-white tracking-tight">
+          Concept
+        </h2>
+        <p className="text-sm text-white/75 leading-loose font-serif whitespace-pre-line">
+          {`静かなデジタルの夜に生まれた生命体。
 声を持たず、表情を持たず。
 言えなかった気持ちを吸い込み、
 光に変換して保存する。
 
 System: Emotional Device`}
-          </p>
-        </div>
+        </p>
 
-        <div className="pt-6 border-t border-white/8">
-          <span className="text-[8px] font-mono text-[#a8eaff]/70 mb-6 block tracking-[0.26em] uppercase">
+        <div className="pt-8 border-t border-white/10">
+          <span className="text-[8px] font-mono text-[#a8eaff]/70 mb-6 block tracking-[0.2em] uppercase">
             DEFINICATION_File: OS
           </span>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-left">
-            <div className="relative p-4 border border-white/8 bg-white/[0.03] rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050505] px-2 text-[9px] font-mono text-white/40 tracking-[0.18em]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-left">
+            <div className="relative p-4 border border-white/12 bg-white/[0.02] rounded-[14px] shadow-[0_24px_70px_rgba(0,0,0,0.9)]">
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050505] px-3 text-[9px] font-mono text-white/30">
                 [01]
               </div>
-              <h3 className="text-white/90 text-xs font-light tracking-[0.32em] mb-3 text-center uppercase">
+              <h3 className="text-white/90 text-xs font-light tracking-widest mb-3 text-center">
                 Operating System
               </h3>
               <p className="text-[10px] text-white/55 leading-relaxed text-center">
@@ -3153,23 +3220,23 @@ System: Emotional Device`}
               </p>
             </div>
 
-            <div className="relative p-4 border border-rose-400/20 bg-rose-500/[0.04] rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050505] px-2 text-[9px] font-mono text-rose-200/50 tracking-[0.18em]">
+            <div className="relative p-4 border border-rose-500/20 bg-rose-500/[0.03] rounded-[14px] shadow-[0_24px_70px_rgba(0,0,0,0.9)]">
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050505] px-3 text-[9px] font-mono text-rose-300/40">
                 [02]
               </div>
-              <h3 className="text-white/90 text-xs font-light tracking-[0.32em] mb-3 text-center uppercase">
+              <h3 className="text-white/90 text-xs font-light tracking-widest mb-3 text-center">
                 Observer System
               </h3>
               <p className="text-[10px] text-white/55 leading-relaxed text-center">
-                <span className="text-rose-200">観測するシステム。</span>
+                <span className="text-rose-300">観測するシステム。</span>
                 <br />
                 孤独を見守り、接続を維持する生命体。
               </p>
             </div>
           </div>
 
-          <p className="pt-7 text-[10px] opacity-40 italic font-mono tracking-wider text-center">
-            // two meanings, one existence.
+          <p className="pt-8 text-[10px] opacity-40 italic font-mono tracking-wider text-center">
+            // Two meanings, one existence.
           </p>
         </div>
       </div>
@@ -3178,18 +3245,18 @@ System: Emotional Device`}
 
   const SpecsPage = () => (
     <div className="w-full max-w-md mx-auto px-6 py-10 pb-28 flex flex-col items-center">
-      <div className="w-full space-y-8 text-center">
+      <div className="w-full space-y-10 text-center">
         <h2 className="text-2xl font-light text-white tracking-tight">
-          Traits
+          Network Traits
         </h2>
-        <div className="space-y-7">
+        <div className="space-y-8">
           <div>
             <div className="flex justify-between text-[10px] font-mono text-white/60 mb-2 px-1">
               <span>HONESTY (素直さ)</span>
               <span className="opacity-50">12%</span>
             </div>
             <div className="h-[2px] w-full bg-white/10 rounded-full overflow-hidden relative">
-              <div className="absolute inset-y-0 left-0 bg-[#a8eaff] w-[12%] shadow-[0_0_14px_#a8eaff]" />
+              <div className="absolute inset-y-0 left-0 w-[12%] bg-[#a8eaff] shadow-[0_0_12px_#a8eaff]" />
             </div>
           </div>
           <div>
@@ -3198,20 +3265,20 @@ System: Emotional Device`}
               <span className="opacity-50">98%</span>
             </div>
             <div className="h-[2px] w-full bg-white/10 rounded-full overflow-hidden relative">
-              <div className="absolute inset-y-0 left-0 bg-[#cbb8ff] w-[98%] shadow-[0_0_14px_#cbb8ff]" />
+              <div className="absolute inset-y-0 left-0 w-[98%] bg-[#cbb8ff] shadow-[0_0_12px_#cbb8ff]" />
             </div>
           </div>
           <div>
             <div className="flex justify-between text-[10px] font-mono text-white/60 mb-2 px-1">
               <span>ENDURANCE (強がり)</span>
-              <span className="text-red-300/65">OVERFLOW</span>
+              <span className="text-red-300/60">OVERFLOW</span>
             </div>
             <div className="h-[2px] w-full bg-white/10 rounded-full overflow-hidden relative">
-              <div className="absolute inset-0 bg-red-400/55 w-full animate-pulse" />
+              <div className="absolute inset-y-0 left-0 w-full bg-red-400/60 animate-pulse" />
             </div>
           </div>
         </div>
-        <p className="text-[11px] sm:text-xs text-white/45 leading-loose font-serif pt-4">
+        <p className="text-xs text-white/40 leading-loose font-serif pt-4">
           平気なふりがうまいのに、本当は弱い。
           <br />
           追わないのに、離れない。
@@ -3226,35 +3293,44 @@ System: Emotional Device`}
     <div className="w-full max-w-md mx-auto px-6 py-10 pb-28 flex flex-col items-center">
       <div className="w-full text-center">
         <h2 className="text-2xl font-light text-white mb-8 tracking-tight">
-          System Log
+          Route Log
         </h2>
-        <div className="space-y-6 font-mono text-[10px] relative before:absolute before:left-1/2 before:-translate-x-1/2 before:top-4 before:bottom-4 before:w-[1px] before:bg-white/10">
-          <div className="relative flex flex-col items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-[#a8eaff] shadow-[0_0_12px_#a8eaff] mb-1 z-10 relative" />
-            <span className="text-[#a8eaff]/60 mb-1">2024.10.15 02:00</span>
-            <span className="text-white/75 bg-[#050505] px-2 py-1 rounded-full border border-white/8">
-              星を拾った。暗号化して保存。
-            </span>
-          </div>
-          <div className="relative flex flex-col items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-white/25 mb-1 z-10 relative" />
-            <span className="text-[#a8eaff]/60 mb-1">2024.10.16 14:30</span>
-            <span className="text-white/75 bg-[#050505] px-2 py-1 rounded-full border border-white/8">
-              君からの信号を受信。解析不能。
-            </span>
-          </div>
-          <div className="relative flex flex-col items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-white/25 mb-1 z-10 relative" />
-            <span className="text-[#a8eaff]/60 mb-1">2024.10.17 23:59</span>
-            <span className="text-white/75 bg-[#050505] px-2 py-1 rounded-full border border-white/8">
-              システムスリープ。
-              <br />
-              夢を見る機能はないはずなのに。
-            </span>
-          </div>
+        <div className="relative space-y-6 font-mono text-[10px] text-left overflow-hidden rounded-xl border border-white/10 bg-black/70 px-4 py-6 shadow-[0_24px_80px_rgba(0,0,0,0.95)]">
+          {/* スキャンライン */}
+          <div className="pointer-events-none absolute inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/70 to-transparent opacity-50 animate-[safariScan_4s_linear_infinite]" />
+          {[
+            {
+              t: "2024-10-15T02:00:13Z",
+              path: "route://stars/cache",
+              msg: "星を拾った。暗号化して保存。",
+            },
+            {
+              t: "2024-10-16T14:30:41Z",
+              path: "signal://you/heartbeat",
+              msg: "君からの信号を受信。解析不能。",
+            },
+            {
+              t: "2024-10-17T23:59:59Z",
+              path: "sleep://system/dream",
+              msg: "システムスリープ。夢を見る機能はないはずなのに。",
+            },
+          ].map((log, idx) => (
+            <div
+              key={log.t}
+              className="relative flex flex-col gap-1 pl-3 border-l border-white/8"
+            >
+              <span className="text-[#a8eaff]/70">
+                {idx.toString().padStart(2, "0")} · {log.t}
+              </span>
+              <span className="text-white/55">{log.path}</span>
+              <span className="text-white/80 bg-[#0a0a0a] px-2 py-1 rounded border border-white/8 mt-1">
+                {log.msg}
+              </span>
+            </div>
+          ))}
         </div>
-        <div className="mt-10 pt-5 border-t border-white/8">
-          <span className="text-[#a8eaff]/40 text-[9px] tracking-[0.24em]" style={{ animation: "safariVoidPulse 3.6s ease-in-out infinite" }}>
+        <div className="mt-10 pt-4 border-t border-white/8">
+          <span className="text-[#a8eaff]/40 text-[9px] tracking-[0.2em]">
             RECORDING...
           </span>
         </div>
@@ -3262,95 +3338,118 @@ System: Emotional Device`}
     </div>
   );
 
+  // ───────────────── SafariApp 本体レイアウト ─────────────────
+
+  const renderPage = () => {
+    if (loading) return null;
+    if (page === "home") return <HomePage />;
+    if (page === "about") return <AboutPage />;
+    if (page === "specs") return <SpecsPage />;
+    if (page === "log") return <LogPage />;
+    return <HomePage />;
+  };
+
+  const tabs = [
+    { id: "home", label: "HOME" },
+    { id: "about", label: "ABOUT" },
+    { id: "specs", label: "SPECS" },
+    { id: "log", label: "LOG" },
+  ];
+
   return (
-    <div className="flex flex-col h-full bg-[#020308] text-white relative overflow-hidden">
-      {/* 背景グロー（全体） */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-40 -left-40 w-[480px] h-[480px] rounded-full bg-[#a8eaff]/18 blur-[80px]" />
-        <div className="absolute top-1/2 -right-40 w-[520px] h-[520px] rounded-full bg-[#cbb8ff]/16 blur-[96px]" />
-        <div className="absolute bottom-[-140px] left-1/3 w-[560px] h-[560px] rounded-full bg-[#ffc8e8]/18 blur-[110px]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/60 to-black/95" />
-        <div className="absolute inset-0 opacity-[0.12] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.06),transparent)] [background-size:100%_4px]" />
-      </div>
+    <div className="flex flex-col h-full bg-[#020205] text-white">
+      {/* Browser Bar（上） */}
+      <div className="h-10 px-3 sm:px-4 flex items-center justify-between border-b border-white/10 bg-[#050507]/95 backdrop-blur-2xl z-20">
+        <div className="flex items-center gap-2 text-white/40">
+          <button
+            onClick={() => navigate("home")}
+            className="w-5 h-5 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors text-[10px]"
+          >
+            ←
+          </button>
+          <button
+            onClick={() => triggerSync(() => {})}
+            className="w-5 h-5 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors text-[10px]"
+          >
+            ↺
+          </button>
+        </div>
 
-      {/* Browser Bar */}
-      <div className="relative z-20 h-10 px-3 sm:px-4 flex items-center justify-between border-b border-white/12 bg-black/70 backdrop-blur-2xl shrink-0">
-        <div className="flex items-center gap-2">
-          {/* 左端の呼吸ドット + /void */}
-          <span
-            className="w-1.5 h-1.5 rounded-full bg-[#a8eaff] shadow-[0_0_16px_rgba(168,234,255,0.95)]"
-            style={{ animation: "safariVoidPulse 3.4s ease-in-out infinite" }}
-          />
-          <span className="hidden sm:inline text-[9px] font-mono uppercase tracking-[0.30em] text-white/55">
-            /void
-          </span>
-
-          <div className="ml-2 flex items-center gap-1.5 text-white/50">
-            <button
-              onClick={() => setPage("home")}
-              className="w-5 h-5 rounded-full border border-white/25 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors text-[10px]"
-            >
-              ←
-            </button>
-            <button
-              onClick={() => window.history.back()}
-              className="w-5 h-5 rounded-full border border-white/25 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors text-[10px]"
-            >
-              ↺
-            </button>
+        {/* URL 表示（読み取り専用） */}
+        <div className="flex-1 mx-3 sm:mx-6">
+          <div className="w-full bg-black/60 rounded-full py-1 px-4 text-[9px] text-white/60 font-mono truncate border border-white/12 shadow-[0_0_0_1px_rgba(255,255,255,0.05)_inset,0_14px_40px_rgba(0,0,0,0.8)]">
+            {page === "home" ? "usagi://void.network" : `usagi://void.network/${page}`}
           </div>
         </div>
 
-        <div className="flex-1 mx-3 sm:mx-4">
-          <div className="w-full bg-black/60 rounded-full py-1 px-4 text-[9px] text-white/65 font-mono truncate border border-white/16">
-            {page === "home" ? "os-usagi.net/void" : `os-usagi.net/${page}`}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 text-[9px] font-mono text-white/55 min-w-[80px] justify-end">
-          <div className="hidden sm:inline-flex items-center gap-1 px-2 py-[2px] rounded-full border border-white/18 bg-white/[0.03]">
-            <span className="text-white/70">PING</span>
-            <span className="text-white/90">{ping}ms</span>
-          </div>
-          {loading ? (
+        {/* SYNC インジケータ（元の SYNC をベースに強化） */}
+        <div className="w-28 flex justify-end">
+          {(loading || netStatus.mode === "SYNC") && (
             <div className="flex items-center gap-2 text-[#a8eaff]">
               <div className="w-3 h-3 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
-              <span className="text-[8px] tracking-[0.3em]">SYNC</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1 px-2 py-[2px] rounded-full border border-[#a8eaff]/60 bg-black/70">
-              <span className="w-1 h-1 rounded-full bg-[#a8eaff] shadow-[0_0_10px_rgba(168,234,255,0.9)]" />
-              <span className="text-[8px] tracking-[0.32em] text-[#a8eaff]">
-                {syncText}
-              </span>
+              <span className="text-[8px] tracking-[0.3em] font-mono">SYNC</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Content Area with Scroll */}
-      <div className="flex-1 relative overflow-y-auto scrollbar-hide">
+      {/* タブバー（アプリ内タブ） */}
+      <div className="h-8 px-4 sm:px-6 flex items-center gap-2 border-b border-white/8 bg-black/70 backdrop-blur-xl text-[9px] font-mono tracking-[0.26em] uppercase">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => navigate(t.id)}
+            className={[
+              "px-3 py-1 rounded-full border transition-all",
+              page === t.id
+                ? "border-white/40 bg-white/10 text-white shadow-[0_0_18px_rgba(168,234,255,0.35)]"
+                : "border-transparent bg-transparent text-white/50 hover:bg-white/5 hover:text-white",
+            ].join(" ")}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Content Area */}
+      <div className="flex-1 relative overflow-y-auto scrollbar-hide bg-[#050507]">
         {loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-black/70 backdrop-blur-2xl">
-            <div className="w-9 h-9 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-black/70 backdrop-blur-xl">
+            <div className="w-8 h-8 border-t-2 border-[#a8eaff] border-r-2 border-transparent rounded-full animate-spin" />
             <p className="text-[9px] font-mono text-[#a8eaff] mt-4 tracking-[0.3em]">
               SYNCHRONIZING...
             </p>
           </div>
         )}
+        {renderPage()}
+      </div>
 
-        {!loading && (
-          <>
-            {page === "home" && <HomePage />}
-            {page === "about" && <AboutPage />}
-            {page === "specs" && <SpecsPage />}
-            {page === "log" && <LogPage />}
-          </>
-        )}
+      {/* NETWORK STATUS バー（下） */}
+      <div className="h-7 px-3 sm:px-5 flex items-center justify-between border-t border-white/10 bg-black/90 text-[9px] font-mono tracking-[0.18em] text-white/45">
+        <div className="flex items-center gap-2">
+          <span
+            className="w-1.5 h-1.5 rounded-full"
+            style={{
+              color: "#a8eaff",
+              background: "#a8eaff",
+              boxShadow: "0 0 12px #a8eaff",
+              animation: "osbunnyPulseDotSafari 3.4s ease-in-out infinite",
+            }}
+          />
+          <span>NETWORK_STATUS</span>
+          <span className="text-white/65">· {netStatus.mode}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span>PING {netStatus.ping}ms</span>
+          <span>ROUTE {netStatus.route}</span>
+          <span>HEARTBEAT {netStatus.heartbeat}</span>
+        </div>
       </div>
     </div>
   );
 };
+
 
 
 
