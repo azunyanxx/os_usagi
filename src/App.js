@@ -1833,7 +1833,6 @@ const FinderApp = () => {
 
 // -- GALLERY APP (JAPANESE EMOTION ARCHIVE) --
 
-
 const GalleryApp = () => {
   const [filter, setFilter] = useState("all");
   const [lightboxIndex, setLightboxIndex] = useState(null); // null = 閉じてる
@@ -1847,29 +1846,30 @@ const GalleryApp = () => {
   const touchStartRef = useRef(null);
   const isMobile = useIsMobile();
 
-  // 初期マウント & keyframes 注入
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setMounted(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
-
+  // ---------------- fonts + 自前CSS（pulse など） ----------------
   useEffect(() => {
     const id = "osbunny-gallery-style";
     if (document.getElementById(id)) return;
+
     const style = document.createElement("style");
     style.id = id;
     style.textContent = `
-      @keyframes osbunny-pulse {
-        0%, 100% { opacity: .45; transform: scale(1); }
-        50% { opacity: 1; transform: scale(1.45); }
+      @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Manrope:wght@300;400;500;600&family=Noto+Sans+JP:wght@300;400;500&display=swap');
+
+      @keyframes osbunny-pulse-dot {
+        0%, 100% { opacity: 0.40; transform: scale(1); }
+        40%      { opacity: 1.00; transform: scale(1.45); }
       }
-      @keyframes osbunny-scanline {
-        0% { transform: translateY(120%); opacity: 0; }
-        20% { opacity: .7; }
-        100% { transform: translateY(-120%); opacity: 0; }
+      .osbunny-pulse-dot {
+        animation: osbunny-pulse-dot 3.4s ease-in-out infinite;
       }
     `;
     document.head.appendChild(style);
+  }, []);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
   }, []);
 
   const CATEGORIES = [
@@ -1889,13 +1889,13 @@ const GalleryApp = () => {
         return {
           dot: "#a8eaff",
           aura1: "rgba(168,234,255,0.30)",
-          aura2: "rgba(185,168,255,0.20)",
+          aura2: "rgba(185,168,255,0.18)",
         };
       case "emotion":
         return {
           dot: "#ffc8e8",
           aura1: "rgba(255,200,232,0.32)",
-          aura2: "rgba(203,184,255,0.24)",
+          aura2: "rgba(203,184,255,0.22)",
         };
       case "magic":
         return {
@@ -1907,7 +1907,7 @@ const GalleryApp = () => {
         return {
           dot: "#b6ffe4",
           aura1: "rgba(182,255,228,0.30)",
-          aura2: "rgba(185,168,255,0.20)",
+          aura2: "rgba(185,168,255,0.18)",
         };
       case "life":
         return {
@@ -1919,7 +1919,7 @@ const GalleryApp = () => {
         return {
           dot: "#a8eaff",
           aura1: "rgba(168,234,255,0.28)",
-          aura2: "rgba(255,200,232,0.20)",
+          aura2: "rgba(255,200,232,0.18)",
         };
     }
   };
@@ -2090,7 +2090,7 @@ const GalleryApp = () => {
   const dragDistance = Math.sqrt(dragOffset.x ** 2 + dragOffset.y ** 2);
   const dragRatio = Math.min(dragDistance / 260, 1);
 
-  const overlayOpacity = hasLightbox ? 0.94 - dragRatio * 0.32 : 0;
+  const overlayOpacity = hasLightbox ? 0.96 - dragRatio * 0.32 : 0;
 
   const imageTransform = hasLightbox
     ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0) scale(${
@@ -2102,28 +2102,36 @@ const GalleryApp = () => {
     ? "none"
     : "transform 320ms cubic-bezier(0.22,1,0.36,1), opacity 320ms cubic-bezier(0.22,1,0.36,1)";
 
+  const activePalette = getPalette(
+    filter === "all" ? (filteredItems[0]?.folder || "system") : filter
+  );
+
   return (
-    <div className="flex h-full bg-[#020204] relative overflow-hidden">
+    <div className="flex h-full bg-[#020205] relative overflow-hidden">
       {/* Ambient background light */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full bg-[#a8eaff]/18 blur-[70px]" />
-        <div className="absolute top-1/3 -right-28 w-[460px] h-[460px] rounded-full bg-[#b9a8ff]/16 blur-[88px]" />
+        <div className="absolute top-1/3 -right-28 w-[460px] h-[460px] rounded-full bg-[#b9a8ff]/16 blur-[90px]" />
         <div className="absolute -bottom-24 left-1/4 w-[520px] h-[520px] rounded-full bg-[#ffc8e8]/14 blur-[96px]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/24 via-black/42 to-black/84" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/40 to-black/85" />
       </div>
 
-      {/* Left Sidebar（スマホは縦アイコンのみ） */}
-      <div className="relative z-10 w-14 sm:w-52 border-r border-white/10 bg-black/60 backdrop-blur-2xl flex flex-col">
+      {/* Left Sidebar */}
+      <div className="relative z-10 w-14 sm:w-52 border-r border-white/10 bg-black/65 backdrop-blur-2xl flex flex-col">
         {/* Sidebar Header */}
         <div className="hidden sm:flex items-center gap-2 px-4 py-4 border-b border-white/10">
-          <div className="w-2 h-2 rounded-full bg-[#a8eaff] shadow-[0_0_18px_rgba(168,234,255,0.95)]" />
+          <div
+            className="w-2 h-2 rounded-full osbunny-pulse-dot"
+            style={{
+              background: activePalette.dot,
+              boxShadow: `0 0 18px ${activePalette.dot}`,
+            }}
+          />
           <div className="flex flex-col">
-            <span className="text-[9px] uppercase tracking-[0.28em] text-white/45">
-              RABBIT OS
+            <span className="text-[9px] uppercase tracking-[0.28em] text-white/48">
+              OS_USAGI
             </span>
-            <span className="text-xs text-white/85 tracking-wide">
-              archive
-            </span>
+            <span className="text-xs text-white/85 tracking-wide">sync gallery</span>
           </div>
         </div>
 
@@ -2143,31 +2151,41 @@ const GalleryApp = () => {
                     "group relative flex items-center justify-center sm:justify-start gap-2 rounded-2xl border",
                     "text-[11px] px-0 sm:px-3.5 py-1.5 sm:py-2 w-full transition-all duration-300",
                     active
-                      ? "border-white/28 bg-[#050b11]/90 shadow-[0_0_32px_rgba(168,234,255,0.38)]"
-                      : "border-white/10 bg-white/0 hover:bg-white/5 hover:border-white/24",
+                      ? "border-white/25 bg-[#050b11]/90 shadow-[0_0_32px_rgba(0,0,0,0.95)]"
+                      : "border-white/12 bg-white/0 hover:bg-white/5 hover:border-white/24",
                   ].join(" ")}
+                  style={
+                    active
+                      ? {
+                          boxShadow: `0 0 0 1px rgba(255,255,255,0.12) inset,
+                                     0 20px 60px -40px rgba(0,0,0,0.90),
+                                     0 0 34px ${pal.aura1}`,
+                        }
+                      : undefined
+                  }
                 >
-                  <Icon
-                    size={16}
-                    className={
-                      active
-                        ? "text-[#a8eaff] drop-shadow-[0_0_10px_rgba(168,234,255,0.9)]"
-                        : "text-white/58 group-hover:text-white/90"
-                    }
-                  />
+                  <div className="relative flex items-center justify-center">
+                    <Icon
+                      size={18}
+                      className={
+                        active
+                          ? "text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.9)]"
+                          : "text-white/58 group-hover:text-white/92"
+                      }
+                    />
+                    {active && (
+                      <span
+                        className="absolute -right-1 -bottom-1 w-[6px] h-[6px] rounded-full osbunny-pulse-dot"
+                        style={{
+                          background: pal.dot,
+                          boxShadow: `0 0 12px ${pal.dot}`,
+                        }}
+                      />
+                    )}
+                  </div>
                   <span className="hidden sm:inline tracking-wide truncate">
                     {cat.label}
                   </span>
-                  {active && (
-                    <span
-                      className="hidden sm:block ml-auto w-1.5 h-1.5 rounded-full"
-                      style={{
-                        background: pal.dot,
-                        boxShadow: `0 0 14px ${pal.dot}`,
-                        animation: "osbunny-pulse 3.6s ease-in-out infinite",
-                      }}
-                    />
-                  )}
                 </button>
               );
             })}
@@ -2185,28 +2203,42 @@ const GalleryApp = () => {
         {/* Header */}
         <div className="px-4 sm:px-6 pt-4 pb-3 border-b border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-black/25">
           <div className="flex items-center gap-2">
-            <span className="w-1 h-1 rounded-full bg-[#a8eaff] shadow-[0_0_18px_rgba(168,234,255,0.95)]" />
-            <span className="text-[10px] uppercase tracking-[0.34em] text-white/48">
-              ・ /gallery
+            <span
+              className="w-1 h-1 rounded-full osbunny-pulse-dot"
+              style={{
+                background: activePalette.dot,
+                boxShadow: `0 0 14px ${activePalette.dot}`,
+              }}
+            />
+            <span className="text-[10px] uppercase tracking-[0.34em] text-white/52">
+              /gallery
             </span>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 text-[11px] text-white/45 w-full sm:w-auto">
-            <div className="relative flex-1 min-w-[160px] max-w-[280px] sm:max-w-[320px]">
-              <Search
-                size={12}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"
-              />
+            <div className="relative flex-1 min-w-[170px] max-w-[290px] sm:max-w-[340px]">
+              {/* search icon */}
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-white/40 pointer-events-none">
+                <Search size={13} />
+              </div>
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="search: title, tag, note"
-                className="w-full rounded-full pl-8 pr-3 py-2 text-[11px] text-white placeholder:text-white/28
-                  bg-black/45 border border-white/14 backdrop-blur-xl
-                  focus:outline-none focus:border-[#a8eaff]/75 focus:shadow-[0_0_26px_rgba(168,234,255,0.25)]
+                className="w-full rounded-full pl-9 pr-3 py-2 text-[11px] text-white placeholder:text-white/30
+                  bg-black/50 border border-white/14 backdrop-blur-xl
+                  focus:outline-none focus:border-transparent
+                  focus:shadow-[0_0_0_1px_rgba(255,255,255,0.35),0_0_36px_rgba(168,234,255,0.45)]
                   transition-all"
               />
-              <div className="pointer-events-none absolute inset-0 rounded-full bg-[linear-gradient(90deg,rgba(168,234,255,0.14),rgba(185,168,255,0.12),rgba(255,200,232,0.14))] opacity-60" />
+              {/* glowing edge */}
+              <div className="pointer-events-none absolute inset-[1px] rounded-full opacity-70"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(90deg,rgba(168,234,255,0.30),rgba(203,184,255,0.28),rgba(255,200,232,0.30))",
+                  mixBlendMode: "screen",
+                }}
+              />
             </div>
 
             <div className="hidden sm:flex items-center gap-2 whitespace-nowrap">
@@ -2229,11 +2261,9 @@ const GalleryApp = () => {
                 const isActive = activeId === item.id;
                 const pal = getPalette(item.folder || item.cat);
                 const rawDesc = item.desc || "";
-                const trimmed = rawDesc.trim();
-                const isVisualFragment = /visual\s*memory\s*fragment/i.test(
-                  trimmed
-                );
-                const showDesc = !!rawDesc && !isVisualFragment;
+                const showDesc =
+                  rawDesc &&
+                  !/^visual memory fragment\.?$/i.test(rawDesc.trim());
 
                 return (
                   <div
@@ -2251,26 +2281,25 @@ const GalleryApp = () => {
                       ].join(" ")}
                       style={{
                         boxShadow: isActive
-                          ? `0 0 0 1px rgba(255,255,255,0.12) inset,
-                             0 40px 120px -80px rgba(0,0,0,0.95),
-                             0 0 95px ${pal.aura1}`
-                          : "0 0 0 1px rgba(0,0,0,0.6) inset, 0 26px 80px -70px rgba(0,0,0,0.95)",
-                        filter: isActive ? "brightness(1.05)" : "brightness(0.78)",
+                          ? `0 0 0 1px rgba(255,255,255,0.16) inset,
+                             0 40px 120px -70px rgba(0,0,0,1),
+                             0 0 90px ${pal.aura1}`
+                          : "0 0 0 1px rgba(0,0,0,0.4) inset, 0 32px 90px -80px rgba(0,0,0,0.9)",
+                        filter: isActive
+                          ? "brightness(1.04)"
+                          : "brightness(0.78) grayscale(0.06)",
                         transform: isActive
-                          ? "translateY(-3px) scale(1.02)"
+                          ? "translateY(-3px) scale(1.01)"
                           : "translateY(0) scale(1)",
-                        transitionDelay: mounted ? `${idx * 34}ms` : "0ms",
+                        transitionDelay: mounted ? `${idx * 32}ms` : "0ms",
                       }}
                     >
                       <div className="aspect-[4/3] relative">
                         <img
                           src={item.file}
                           alt={item.title}
-                          className="w-full h-full object-cover object-center transform group-hover:scale-[1.04] transition-transform duration-600 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                          className="w-full h-full object-cover object-center transform group-hover:scale-[1.03] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
                           loading="lazy"
-                          style={{
-                            opacity: isActive ? 0.98 : 0.82,
-                          }}
                         />
 
                         {/* ambient aura */}
@@ -2283,20 +2312,15 @@ const GalleryApp = () => {
                             `,
                           }}
                         />
-                        <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/72 via-black/20 to-transparent" />
+                        <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/70 via-black/22 to-transparent" />
 
-                        {/* scan line（常にほんのり流れる） */}
-                        <div
-                          className="absolute inset-x-4 h-[1px] bg-gradient-to-r from-transparent via-white/80 to-transparent pointer-events-none opacity-40"
-                          style={{
-                            animation: "osbunny-scanline 6.5s linear infinite",
-                          }}
-                        />
+                        {/* scan line */}
+                        <div className="absolute inset-x-4 h-[1px] bg-gradient-to-r from-transparent via-white/85 to-transparent opacity-0 -translate-y-full group-hover:opacity-70 group-hover:translate-y-full transition-all duration-900 ease-[cubic-bezier(0.22,1,0.36,1)] pointer-events-none" />
 
                         {/* badge */}
-                        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur text-[9px] text-white/80 tracking-[0.22em] uppercase border border-white/14">
+                        <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/65 backdrop-blur text-[9px] text-white/78 tracking-[0.22em] uppercase border border-white/16">
                           <span
-                            className="w-1.5 h-1.5 rounded-full"
+                            className="w-1.5 h-1.5 rounded-full osbunny-pulse-dot"
                             style={{
                               background: pal.dot,
                               boxShadow: `0 0 12px ${pal.dot}`,
@@ -2312,7 +2336,7 @@ const GalleryApp = () => {
                               className="absolute inset-0"
                               style={{
                                 boxShadow:
-                                  "inset 0 0 0 1px rgba(255,255,255,0.24), inset 0 -46px 90px rgba(0,0,0,0.92)",
+                                  "inset 0 0 0 1px rgba(255,255,255,0.22), inset 0 -40px 80px rgba(0,0,0,0.9)",
                               }}
                             />
                           </div>
@@ -2322,29 +2346,27 @@ const GalleryApp = () => {
                       {/* text area */}
                       <div className="px-3.5 py-3 flex flex-col gap-1.5">
                         <div className="flex items-start justify-between gap-2">
-                          <span className="text-[11px] font-medium text-white/92 truncate">
+                          <span className="text-[11px] font-medium text-white/94 truncate">
                             {item.title}
                           </span>
-                          {/* 選択インジケータ：・が呼吸して光る */}
+
+                          {/* 選択インジケータ */}
                           <span
-                            className="text-[18px] leading-none"
+                            className="text-[18px] leading-none osbunny-pulse-dot"
                             style={{
                               color: isActive
                                 ? pal.dot
-                                : "rgba(255,255,255,0.26)",
+                                : "rgba(255,255,255,0.18)",
                               textShadow: isActive
-                                ? `0 0 12px ${pal.dot}`
-                                : "none",
-                              animation: isActive
-                                ? "osbunny-pulse 3.6s ease-in-out infinite"
+                                ? `0 0 14px ${pal.dot}`
                                 : "none",
                             }}
                           >
-                            ・
+                            •
                           </span>
                         </div>
 
-                        {/* desc: "Visual memory fragment" 系は出さない */}
+                        {/* desc: "Visual memory fragment" は出さない */}
                         {showDesc && (
                           <div className="text-[10px] text-white/52 leading-relaxed line-clamp-2">
                             {rawDesc}
@@ -2374,58 +2396,75 @@ const GalleryApp = () => {
         >
           {/* 背景アート */}
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute inset-0 backdrop-blur-[20px]" />
-            <div className="absolute inset-0 bg-[radial-gradient(900px_520px_at_50%_8%,rgba(168,234,255,0.20),transparent_62%)]" />
-            <div className="absolute inset-0 bg-[radial-gradient(900px_520px_at_50%_96%,rgba(255,200,232,0.22),transparent_62%)]" />
-            <div className="absolute inset-0 opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.07),transparent)] [background-size:100%_4px]" />
+            <div className="absolute inset-0 backdrop-blur-[22px]" />
+            <div className="absolute inset-0 bg-[radial-gradient(900px_520px_at_50%_6%,rgba(168,234,255,0.20),transparent_64%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(900px_520px_at_50%_94%,rgba(255,200,232,0.18),transparent_62%)]" />
+            <div className="absolute inset-0 opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.08),transparent)] [background-size:100%_4px]" />
           </div>
 
-          {/* inner frame（白枠は細く＋ガラス感） */}
+          {/* inner frame */}
           <div
             className="relative max-w-[96vw] max-h-[90vh] w-full sm:w-auto px-4 sm:px-0"
             onClick={(e) => e.stopPropagation()}
           >
             <div
-              className="relative rounded-[28px] border border-white/12 bg-white/[0.03] backdrop-blur-3xl overflow-hidden"
+              className="relative rounded-[32px] overflow-hidden bg-white/[0.02] backdrop-blur-2xl"
               style={{
                 boxShadow:
-                  "0 0 0 1px rgba(255,255,255,0.04) inset, 0 80px 220px -110px rgba(0,0,0,0.96), 0 0 160px rgba(168,234,255,0.20)",
+                  "0 0 0 1px rgba(255,255,255,0.12) inset, 0 90px 220px -120px rgba(0,0,0,1), 0 0 160px rgba(168,234,255,0.30)",
               }}
             >
-              {/* 内側ソフトライン */}
-              <div className="pointer-events-none absolute inset-[1px] rounded-[26px] border border-white/10 opacity-70 mix-blend-soft-light" />
+              {/* フレームライン */}
+              <div className="pointer-events-none absolute inset-[1px] rounded-[30px] border border-white/14 opacity-80 mix-blend-soft-light" />
 
-              {/* close（丸＋ネオン） */}
+              {/* close ボタン（右上リング） */}
               <button
-                className="absolute z-[5] right-4 top-4 w-10 h-10 rounded-full border border-white/26 bg-black/60 backdrop-blur-2xl flex items-center justify-center text-white/92 active:scale-[0.96] shadow-[0_18px_60px_rgba(0,0,0,0.75)] transition-all"
+                className="absolute z-[5] right-5 top-4 w-11 h-11 rounded-full flex items-center justify-center active:scale-[0.95] transition-transform"
                 onClick={closeLightbox}
+                aria-label="close"
               >
-                <X size={18} />
+                <div className="relative w-full h-full rounded-full bg-black/65 backdrop-blur-2xl border border-white/22 shadow-[0_16px_60px_rgba(0,0,0,0.9)]">
+                  <div className="absolute inset-[3px] rounded-full border border-white/20 opacity-70" />
+                  <div className="absolute inset-0 rounded-full"
+                    style={{
+                      backgroundImage:
+                        "conic-gradient(from 220deg,rgba(168,234,255,0.6),rgba(203,184,255,0.4),rgba(255,200,232,0.5),rgba(168,234,255,0.6))",
+                      mixBlendMode: "screen",
+                      opacity: 0.9,
+                    }}
+                  />
+                  <div className="absolute inset-[4px] rounded-full bg-black/85" />
+                  <X
+                    size={18}
+                    className="absolute inset-0 m-auto text-white/92"
+                  />
+                </div>
               </button>
 
-              {/* 右下タイトルピル */}
-              <div className="absolute z-[5] right-4 bottom-4">
-                <div className="px-4 py-2.5 rounded-full border border-white/20 bg-black/65 backdrop-blur-2xl shadow-[0_24px_90px_rgba(0,0,0,0.85)]">
-                  <div className="text-[13px] sm:text-[14px] text-white/94 tracking-wide">
-                    {activeItem.title}
-                  </div>
-                </div>
-              </div>
-
               {/* HUDメタ（左上） */}
-              <div className="absolute z-[5] left-4 top-4 text-[9px] font-mono tracking-[0.28em] uppercase text-white/60">
+              <div className="absolute z-[5] left-5 top-4 text-[9px] font-mono tracking-[0.28em] uppercase text-white/58">
                 <div>/gallery</div>
                 <div className="mt-1">
                   {lightboxIndex + 1} / {filteredItems.length}
                 </div>
               </div>
 
+              {/* 右下タイトルピル */}
+              <div className="absolute z-[5] right-5 bottom-5">
+                <div className="px-4 py-2.5 rounded-full border border-white/24 bg-black/70 backdrop-blur-2xl shadow-[0_26px_80px_rgba(0,0,0,0.85)]">
+                  <div className="text-[13px] sm:text-[14px] text-white/94 tracking-wide">
+                    {activeItem.title}
+                  </div>
+                </div>
+              </div>
+
               {/* image */}
               <div className="relative w-full h-[70vh] sm:h-[78vh] flex items-center justify-center">
-                {/* ステージ用グロー（下を強め） */}
+                {/* ライトのオーラ */}
                 <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute inset-0 bg-[radial-gradient(720px_420px_at_50%_42%,rgba(255,255,255,0.14),transparent_60%)]" />
-                  <div className="absolute inset-x-[10%] bottom-[-10%] h-[45%] bg-[radial-gradient(ellipse_at_center,rgba(168,234,255,0.55),transparent_70%)] opacity-85 mix-blend-screen" />
+                  <div className="absolute inset-0 bg-[radial-gradient(720px_440px_at_50%_40%,rgba(255,255,255,0.16),transparent_62%)]" />
+                  <div className="absolute inset-0 bg-[radial-gradient(720px_440px_at_20%_0%,rgba(168,234,255,0.24),transparent_62%)] mix-blend-screen" />
+                  <div className="absolute inset-0 bg-[radial-gradient(720px_440px_at_80%_100%,rgba(203,184,255,0.24),transparent_62%)] mix-blend-screen" />
                 </div>
 
                 <img
@@ -2439,8 +2478,8 @@ const GalleryApp = () => {
                 />
               </div>
 
-              {/* 下辺の“呼吸グロー”（ステージ影を濃く） */}
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black via-black/55 to-transparent opacity-90" />
+              {/* 下辺のグロー */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black via-black/60 to-transparent opacity-90" />
             </div>
           </div>
         </div>
@@ -2448,6 +2487,7 @@ const GalleryApp = () => {
     </div>
   );
 };
+
 
 
 
