@@ -3024,7 +3024,7 @@ const SafariApp = () => {
       arr.push({ id: `n${i}`, x, y, s, d, hue });
     }
     return arr;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line
   }, [isMobile]);
 
   const links = useMemo(() => {
