@@ -3827,7 +3827,7 @@ System: Emotional Device`}
   // ---------- render ----------
   return (
     <div className="flex flex-col h-full bg-[#020308] text-white relative overflow-hidden">
- {/* Global Background（Galleryの“高級ガラス+オーロラ”に寄せる） */}
+      {/* Global Background（Galleryの“高級ガラス+オーロラ”に寄せる） */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-40 -left-40 w-[520px] h-[520px] rounded-full bg-[#a8eaff]/16 blur-[110px]" />
         <div className="absolute top-1/2 -right-44 w-[560px] h-[560px] rounded-full bg-[#cbb8ff]/14 blur-[120px]" />
@@ -3843,8 +3843,6 @@ System: Emotional Device`}
           }}
         />
       </div>
-
-
 
       {/* Browser Bar */}
       <div className="relative z-20 h-10 px-3 sm:px-4 flex items-center justify-between border-b border-white/12 bg-black/70 backdrop-blur-2xl shrink-0">
@@ -4774,43 +4772,42 @@ const Desktop = ({ bgm }) => {
     }, 500);
   }, []);
 
-const toggleApp = (id) => {
-  setOpenApps((prev) => {
-    const isOpen = prev.includes(id);
+  const toggleApp = (id) => {
+    setOpenApps((prev) => {
+      // すでに開いている場合 → トグル動作
+      if (prev.includes(id)) {
+        // 今アクティブなら → 閉じる
+        if (activeApp === id) {
+          const next = prev.filter((a) => a !== id);
 
-    // 開いてない → 開く（最後＝最前面に積む）
-    if (!isOpen) {
+          setActiveApp(() => {
+            // 他が開いていれば最後のアプリをアクティブに
+            return next.length ? next[next.length - 1] : null;
+          });
+
+          return next;
+        }
+
+        // 裏にいるアプリを押した → 前面に出す
+        setActiveApp(id);
+        return prev;
+      }
+
+      // 開いていない場合 → 開く
+      const next = [...prev, id];
       setActiveApp(id);
-      return [...prev, id];
-    }
-
-    // 開いてる＆いまアクティブ → 閉じる
-    if (activeApp === id) {
-      const next = prev.filter((x) => x !== id);
-      setActiveApp(next.length ? next[next.length - 1] : null);
       return next;
-    }
+    });
+  };
 
-    // 開いてるけど裏 → 最前面へ（配列の最後に移動）
+  const bringToFront = (id) => {
     setActiveApp(id);
-    return [...prev.filter((x) => x !== id), id];
-  });
-};
+  };
 
-const bringToFront = (id) => {
-  setActiveApp(id);
-  setOpenApps((prev) => [...prev.filter((x) => x !== id), id]);
-};
-
-
-const closeApp = (id) => {
-  setOpenApps((prev) => {
-    const next = prev.filter((x) => x !== id);
-    setActiveApp((cur) => (cur === id ? (next[next.length - 1] ?? null) : cur));
-    return next;
-  });
-};
-
+  const closeApp = (id) => {
+    setOpenApps((prev) => prev.filter((a) => a !== id));
+    if (activeApp === id) setActiveApp(null);
+  };
 
   return (
     <div className="fixed inset-0 w-full h-full overflow-hidden select-none bg-black">
