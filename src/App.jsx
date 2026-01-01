@@ -5850,7 +5850,7 @@ const BeatSyncApp = () => {
       a.removeEventListener("loadedmetadata", onMeta);
       a.removeEventListener("ended", onEnded);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [currentTrack.url, finishRun]);
 
   useEffect(() => {
