@@ -2995,6 +2995,9 @@ const MusicApp = ({ bgm }) => {
 // ------------------------------------------------
 // -- 04.SAFARI (VOID NETWORK · OS_USAGI) --
 // ------------------------------------------------
+// ------------------------------------------------
+// -- 04.SAFARI (VOID NETWORK · OS_USAGI) --
+// ------------------------------------------------
 const SafariApp = () => {
   const [page, setPage] = useState("home");
   const [loading, setLoading] = useState(false);
@@ -3024,13 +3027,13 @@ const SafariApp = () => {
       }
       @keyframes safariScan {
         0%   { transform: translateY(-120%); opacity: 0; }
-        12%  { opacity: .38; }
+        12%  { opacity: .42; }
         100% { transform: translateY(130%); opacity: 0; }
       }
       @keyframes safariShimmer {
-        0%   { filter: drop-shadow(0 0 10px rgba(168,234,255,.20)); opacity:.90; }
-        50%  { filter: drop-shadow(0 0 22px rgba(168,234,255,.50)) drop-shadow(0 0 12px rgba(203,184,255,.22)); opacity:1; }
-        100% { filter: drop-shadow(0 0 10px rgba(168,234,255,.20)); opacity:.90; }
+        0%   { filter: drop-shadow(0 0 10px rgba(168,234,255,.22)); opacity:.92; }
+        50%  { filter: drop-shadow(0 0 22px rgba(168,234,255,.55)) drop-shadow(0 0 12px rgba(203,184,255,.25)); opacity:1; }
+        100% { filter: drop-shadow(0 0 10px rgba(168,234,255,.22)); opacity:.92; }
       }
       @keyframes safariSoftNoise {
         0%,100% { opacity:.10; }
@@ -3044,8 +3047,10 @@ const SafariApp = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       setPing((prev) => {
-        const base = 8 + Math.random() * 14; // 8〜22msくらいの静かな揺れ
-        const next = Math.round(prev * 0.55 + base * 0.45); // 急変しすぎない
+        // 8〜22msくらいの静かな揺れ
+        const base = 8 + Math.random() * 14;
+        // 前値から急変しすぎない
+        const next = Math.round(prev * 0.55 + base * 0.45);
         return Math.max(6, Math.min(28, next));
       });
       setNetText((prev) => (prev === "IDLE" ? "HEARTBEAT" : "IDLE"));
@@ -3067,6 +3072,7 @@ const SafariApp = () => {
   const navigate = (target) => {
     if (target === page) return;
     triggerSync(() => {
+      // push current to stack then move
       stackRef.current = [...stackRef.current, target].slice(-20);
       setPage(target);
     });
@@ -3102,120 +3108,25 @@ const SafariApp = () => {
     />
   );
 
-  // ---- 高級グロー（静か） ----
-  const AccentRing = ({ active = false }) => (
-    <div
-      className={[
-        "absolute -inset-[1px] rounded-full opacity-0 transition-opacity duration-500 pointer-events-none",
-        active ? "opacity-100" : "group-hover:opacity-100",
-        "bg-[linear-gradient(90deg,rgba(168,234,255,0.55),rgba(203,184,255,0.34),rgba(255,200,232,0.42))]",
-        "blur-[0.2px]",
-      ].join(" ")}
-    />
-  );
-
-  const Halo = ({ active = false }) => (
-    <div
-      className={[
-        "absolute -inset-6 rounded-full opacity-0 transition-opacity duration-700 pointer-events-none",
-        active ? "opacity-100" : "group-hover:opacity-100",
-        "bg-[radial-gradient(circle_at_center,rgba(168,234,255,0.20),rgba(203,184,255,0.10),transparent_62%)]",
-        "blur-[18px]",
-      ].join(" ")}
-    />
-  );
-
-  const QuickIconButton = ({ label, icon: Icon, onClick, active = false }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group relative flex flex-col items-center gap-2 select-none"
-      style={{ WebkitTapHighlightColor: "transparent" }}
-    >
-      <div className="relative">
-        <Halo active={active} />
-        <div className="relative p-[1px] rounded-full">
-          <AccentRing active={active} />
-          <div
-            className={[
-              "relative w-12 h-12 rounded-full",
-              "bg-black/55 backdrop-blur-2xl",
-              "border border-white/10",
-              "shadow-[0_18px_50px_rgba(0,0,0,0.75)]",
-              "transition-all duration-500",
-              "group-hover:bg-black/45 group-hover:border-white/16",
-              "active:scale-[0.98]",
-            ].join(" ")}
-          >
-            {/* inner glass sheen */}
-            <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.12),transparent_55%)] opacity-70 pointer-events-none" />
-            <div className="absolute inset-0 rounded-full bg-[linear-gradient(180deg,rgba(255,255,255,0.10),transparent_45%,rgba(0,0,0,0.40))] opacity-60 pointer-events-none" />
-            <div className="absolute inset-0 rounded-full ring-1 ring-white/5 pointer-events-none" />
-
-            <div className="w-full h-full flex items-center justify-center">
-              <Icon
-                size={16}
-                className={[
-                  "transition-all duration-500",
-                  "text-white/70",
-                  "group-hover:text-[#a8eaff]",
-                  "drop-shadow-[0_0_10px_rgba(168,234,255,0.18)]",
-                  active ? "text-[#a8eaff]" : "",
-                ].join(" ")}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <span className="text-[10px] font-mono tracking-[0.22em] uppercase text-white/40 group-hover:text-white/70 transition-colors duration-500">
-        {label}
-      </span>
-    </button>
-  );
-
-  // ✅ タブ：白枠やめて薄い虹縁 + 静かな発光
   const Tab = ({ id, label }) => {
     const active = page === id;
-
     return (
-      <div className="relative group">
-        {/* halo */}
-        <div
-          className={[
-            "pointer-events-none absolute -inset-4 rounded-full opacity-0 transition-opacity duration-700",
-            active ? "opacity-100" : "group-hover:opacity-100",
-            "bg-[radial-gradient(circle_at_center,rgba(168,234,255,0.14),rgba(203,184,255,0.07),transparent_62%)] blur-[16px]",
-          ].join(" ")}
-        />
-        <div
-          className={[
-            "relative p-[1px] rounded-full transition-all",
-            active
-              ? "bg-[linear-gradient(90deg,rgba(168,234,255,0.52),rgba(203,184,255,0.34),rgba(255,200,232,0.40))]"
-              : "bg-transparent",
-          ].join(" ")}
-        >
-          <button
-            type="button"
-            onClick={() => navigate(id)}
-            className={[
-              "relative px-3 py-[6px] rounded-full text-[9px] font-mono uppercase tracking-[0.26em] select-none",
-              "transition-all duration-500",
-              active
-                ? "bg-black/65 text-white border border-white/10 shadow-[0_0_26px_rgba(168,234,255,0.14)]"
-                : "bg-transparent text-white/55 hover:bg-white/5 hover:text-white",
-            ].join(" ")}
-            style={{ WebkitTapHighlightColor: "transparent" }}
-          >
-            {/* inner sheen */}
-            {active && (
-              <span className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.14),transparent_55%)] opacity-70" />
-            )}
-            <span className="relative">{label}</span>
-          </button>
-        </div>
-      </div>
+      <button
+        type="button"
+        onClick={() => navigate(id)}
+        className={[
+          "relative px-3 py-[6px] rounded-full border text-[9px] font-mono uppercase tracking-[0.26em] transition-all select-none",
+          active
+            ? "border-white/30 bg-white/10 text-white shadow-[0_0_24px_rgba(168,234,255,0.18)]"
+            : "border-transparent bg-transparent text-white/55 hover:bg-white/5 hover:text-white",
+        ].join(" ")}
+        style={{ WebkitTapHighlightColor: "transparent" }}
+      >
+        {label}
+        {active && (
+          <span className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-10 h-[1px] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+        )}
+      </button>
     );
   };
 
@@ -3281,11 +3192,43 @@ const SafariApp = () => {
           </div>
         )}
 
-        {/* actions（静かに発光） */}
-        <div className="mt-12 sm:mt-14 flex flex-wrap justify-center gap-7 sm:gap-10">
-          <QuickIconButton label="ABOUT" icon={User} onClick={() => navigate("about")} />
-          <QuickIconButton label="SPECS" icon={Hash} onClick={() => navigate("specs")} />
-          <QuickIconButton label="LOG" icon={FileText} onClick={() => navigate("log")} />
+        {/* actions */}
+        <div className="mt-12 sm:mt-14 flex flex-wrap justify-center gap-6 sm:gap-8 text-[10px] font-mono text-white/40 tracking-[0.22em] uppercase">
+          <button
+            type="button"
+            onClick={() => navigate("about")}
+            className="flex flex-col items-center gap-2 group"
+            style={{ WebkitTapHighlightColor: "transparent" }}
+          >
+            <div className="w-12 h-12 rounded-full border border-white/14 flex items-center justify-center bg-black/50 group-hover:border-[#a8eaff]/60 group-hover:bg-[#a8eaff]/10 transition-all shadow-[0_18px_40px_rgba(0,0,0,0.7)]">
+              <User size={16} className="text-white/70 group-hover:text-[#a8eaff]" />
+            </div>
+            <span>ABOUT</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("specs")}
+            className="flex flex-col items-center gap-2 group"
+            style={{ WebkitTapHighlightColor: "transparent" }}
+          >
+            <div className="w-12 h-12 rounded-full border border-white/14 flex items-center justify-center bg-black/50 group-hover:border-[#a8eaff]/60 group-hover:bg-[#a8eaff]/10 transition-all shadow-[0_18px_40px_rgba(0,0,0,0.7)]">
+              <Hash size={16} className="text-white/70 group-hover:text-[#a8eaff]" />
+            </div>
+            <span>SPECS</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("log")}
+            className="flex flex-col items-center gap-2 group"
+            style={{ WebkitTapHighlightColor: "transparent" }}
+          >
+            <div className="w-12 h-12 rounded-full border border-white/14 flex items-center justify-center bg-black/50 group-hover:border-[#a8eaff]/60 group-hover:bg-[#a8eaff]/10 transition-all shadow-[0_18px_40px_rgba(0,0,0,0.7)]">
+              <FileText size={16} className="text-white/70 group-hover:text-[#a8eaff]" />
+            </div>
+            <span>LOG</span>
+          </button>
         </div>
 
         <div className="mt-10 text-[9px] font-mono text-white/28 tracking-[0.24em] uppercase">
@@ -3318,36 +3261,32 @@ System: Emotional Device`}
           </span>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-left">
-            <div className="relative p-[1px] rounded-xl bg-[linear-gradient(90deg,rgba(168,234,255,0.20),rgba(203,184,255,0.12),rgba(255,200,232,0.16))] shadow-[0_22px_70px_rgba(0,0,0,0.85)]">
-              <div className="relative p-4 rounded-xl bg-black/55 backdrop-blur-2xl border border-white/8">
-                <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050509] px-2 text-[9px] font-mono text-white/40 tracking-[0.18em]">
-                  [01]
-                </div>
-                <h3 className="text-white/90 text-xs font-light tracking-[0.32em] mb-3 text-center uppercase">
-                  Operating System
-                </h3>
-                <p className="text-[10px] text-white/55 leading-relaxed text-center">
-                  <span className="text-[#a8eaff]">機能するシステム。</span>
-                  <br />
-                  世界の中心で、ただ静かに全体を支え続ける存在。
-                </p>
+            <div className="relative p-4 border border-white/8 bg-white/[0.03] rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050509] px-2 text-[9px] font-mono text-white/40 tracking-[0.18em]">
+                [01]
               </div>
+              <h3 className="text-white/90 text-xs font-light tracking-[0.32em] mb-3 text-center uppercase">
+                Operating System
+              </h3>
+              <p className="text-[10px] text-white/55 leading-relaxed text-center">
+                <span className="text-[#a8eaff]">機能するシステム。</span>
+                <br />
+                世界の中心で、ただ静かに全体を支え続ける存在。
+              </p>
             </div>
 
-            <div className="relative p-[1px] rounded-xl bg-[linear-gradient(90deg,rgba(248,113,113,0.16),rgba(203,184,255,0.12),rgba(255,200,232,0.12))] shadow-[0_22px_70px_rgba(0,0,0,0.85)]">
-              <div className="relative p-4 rounded-xl bg-black/55 backdrop-blur-2xl border border-white/8">
-                <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050509] px-2 text-[9px] font-mono text-rose-200/50 tracking-[0.18em]">
-                  [02]
-                </div>
-                <h3 className="text-white/90 text-xs font-light tracking-[0.32em] mb-3 text-center uppercase">
-                  Observer System
-                </h3>
-                <p className="text-[10px] text-white/55 leading-relaxed text-center">
-                  <span className="text-rose-200">観測するシステム。</span>
-                  <br />
-                  孤独を見守り、接続を維持する生命体。
-                </p>
+            <div className="relative p-4 border border-rose-400/20 bg-rose-500/[0.04] rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050509] px-2 text-[9px] font-mono text-rose-200/50 tracking-[0.18em]">
+                [02]
               </div>
+              <h3 className="text-white/90 text-xs font-light tracking-[0.32em] mb-3 text-center uppercase">
+                Observer System
+              </h3>
+              <p className="text-[10px] text-white/55 leading-relaxed text-center">
+                <span className="text-rose-200">観測するシステム。</span>
+                <br />
+                孤独を見守り、接続を維持する生命体。
+              </p>
             </div>
           </div>
 
@@ -3418,58 +3357,55 @@ System: Emotional Device`}
           System Log
         </h2>
 
-        {/* 白枠→ガラス縁（虹の薄いエッジ） */}
-        <div className="relative w-full rounded-2xl p-[1px] bg-[linear-gradient(90deg,rgba(168,234,255,0.22),rgba(203,184,255,0.14),rgba(255,200,232,0.18))] shadow-[0_24px_90px_rgba(0,0,0,0.85)]">
-          <div className="relative w-full rounded-2xl bg-black/50 backdrop-blur-2xl border border-white/8 overflow-hidden">
-            {/* scanline（うるさくしない） */}
-            <div className="pointer-events-none absolute inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/70 to-transparent opacity-40 animate-[safariScan_4.8s_linear_infinite]" />
-            <div
-              className="pointer-events-none absolute inset-0 mix-blend-overlay"
-              style={{
-                animation: "safariSoftNoise 5.2s ease-in-out infinite",
-                background:
-                  "linear-gradient(transparent, rgba(255,255,255,0.07), transparent)",
-                backgroundSize: "100% 4px",
-              }}
-            />
+        <div className="relative w-full rounded-2xl border border-white/10 bg-black/45 backdrop-blur-2xl overflow-hidden shadow-[0_24px_90px_rgba(0,0,0,0.85)]">
+          {/* scanline（うるさくしない） */}
+          <div className="pointer-events-none absolute inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 to-transparent opacity-45 animate-[safariScan_4.6s_linear_infinite]" />
+          <div
+            className="pointer-events-none absolute inset-0 mix-blend-overlay"
+            style={{
+              animation: "safariSoftNoise 5.2s ease-in-out infinite",
+              background:
+                "linear-gradient(transparent, rgba(255,255,255,0.07), transparent)",
+              backgroundSize: "100% 4px",
+            }}
+          />
 
-            <div className="relative p-5">
-              <div className="space-y-6 font-mono text-[10px] relative before:absolute before:left-1/2 before:-translate-x-1/2 before:top-4 before:bottom-4 before:w-[1px] before:bg-white/10">
-                <div className="relative flex flex-col items-center gap-1">
-                  <div className="w-2 h-2 rounded-full bg-[#a8eaff] shadow-[0_0_12px_#a8eaff] mb-1 z-10 relative" />
-                  <span className="text-[#a8eaff]/60 mb-1">2024.10.15 02:00</span>
-                  <span className="text-white/75 bg-[#050509] px-3 py-1 rounded-full border border-white/8">
-                    星を拾った。暗号化して保存。
-                  </span>
-                </div>
-
-                <div className="relative flex flex-col items-center gap-1">
-                  <div className="w-2 h-2 rounded-full bg-white/25 mb-1 z-10 relative" />
-                  <span className="text-[#a8eaff]/60 mb-1">2024.10.16 14:30</span>
-                  <span className="text-white/75 bg-[#050509] px-3 py-1 rounded-full border border-white/8">
-                    君からの信号を受信。解析不能。
-                  </span>
-                </div>
-
-                <div className="relative flex flex-col items-center gap-1">
-                  <div className="w-2 h-2 rounded-full bg-white/25 mb-1 z-10 relative" />
-                  <span className="text-[#a8eaff]/60 mb-1">2024.10.17 23:59</span>
-                  <span className="text-white/75 bg-[#050509] px-3 py-1 rounded-full border border-white/8">
-                    システムスリープ。
-                    <br />
-                    夢を見る機能はないはずなのに。
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-10 pt-5 border-t border-white/8">
-                <span
-                  className="text-[#a8eaff]/40 text-[9px] font-mono tracking-[0.24em]"
-                  style={{ animation: "safariVoidPulse 3.6s ease-in-out infinite" }}
-                >
-                  RECORDING...
+          <div className="relative p-5">
+            <div className="space-y-6 font-mono text-[10px] relative before:absolute before:left-1/2 before:-translate-x-1/2 before:top-4 before:bottom-4 before:w-[1px] before:bg-white/10">
+              <div className="relative flex flex-col items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-[#a8eaff] shadow-[0_0_12px_#a8eaff] mb-1 z-10 relative" />
+                <span className="text-[#a8eaff]/60 mb-1">2024.10.15 02:00</span>
+                <span className="text-white/75 bg-[#050509] px-3 py-1 rounded-full border border-white/8">
+                  星を拾った。暗号化して保存。
                 </span>
               </div>
+
+              <div className="relative flex flex-col items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-white/25 mb-1 z-10 relative" />
+                <span className="text-[#a8eaff]/60 mb-1">2024.10.16 14:30</span>
+                <span className="text-white/75 bg-[#050509] px-3 py-1 rounded-full border border-white/8">
+                  君からの信号を受信。解析不能。
+                </span>
+              </div>
+
+              <div className="relative flex flex-col items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-white/25 mb-1 z-10 relative" />
+                <span className="text-[#a8eaff]/60 mb-1">2024.10.17 23:59</span>
+                <span className="text-white/75 bg-[#050509] px-3 py-1 rounded-full border border-white/8">
+                  システムスリープ。
+                  <br />
+                  夢を見る機能はないはずなのに。
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-10 pt-5 border-t border-white/8">
+              <span
+                className="text-[#a8eaff]/40 text-[9px] font-mono tracking-[0.24em]"
+                style={{ animation: "safariVoidPulse 3.6s ease-in-out infinite" }}
+              >
+                RECORDING...
+              </span>
             </div>
           </div>
         </div>
