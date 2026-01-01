@@ -62,7 +62,7 @@ import {
   Command,
 } from "lucide-react";
 /**
- * 🐇 OS＿USAGI)
+ * 🐇 OS_USAGI
  * "
  */
 
@@ -823,7 +823,7 @@ const GALLERY_ITEMS = FINDER_ITEMS.map((item) => ({
 
 // --- 2. ENGINE & UTILITIES ---
 
-// ✅ ONE resize listener for the whole app
+//  ONE resize listener for the whole app
 const MobileContext = React.createContext(false);
 
 const MobileProvider = ({ children }) => {
@@ -1759,11 +1759,13 @@ const SystemApp = () => {
 
 
 
+
+
+
 // ------------------------------------------------
-// -- 01.FINDER APP (ふぁいんだー) --
+// 🌸🌸 01.FINDER APP (ふぁいんだー) 📁📂🗃️🌸🌸
 // ------------------------------------------------
 
-// -- FINDER APP (COMPLETE ARCHIVE · MOBILE FIRST) --
 const FinderApp = () => {
   const [currentFolder, setCurrentFolder] = useState("all");
   const [selectedId, setSelectedId] = useState(null);
@@ -2151,7 +2153,7 @@ const FinderApp = () => {
 
 
 // ------------------------------------------------
-// -- 02.GALLERY APP (JAPANESE EMOTION ARCHIVE) --
+// 🌸🌸 02.GALLERY APP (ぎゃらりー)🖼️🎨🖌️ 🌸🌸🌸🌸--
 //------------------------------------------------
 
 const GalleryApp = () => {
@@ -2860,7 +2862,7 @@ const GalleryApp = () => {
 
 
 // ------------------------------------------------
-// -- 03.MUSIC APP (REDESIGNED WITH HEADPHONE RABBIT) --
+// 🌸03.MUSIC APP みゅ＾じっく)🎵🌸🌸🌸🌸🌸🌸🌸 --
 // ------------------------------------------------
 const MusicApp = ({ bgm }) => {
   return (
@@ -2987,14 +2989,9 @@ const MusicApp = ({ bgm }) => {
 
 
 // ------------------------------------------------
-// -- 04.SAFARI (ねっとわーく --
+// 🌸 04.SAFARI (ねっとわーく --🛜🌸🌸🌸🌸🌸🌸
 // ------------------------------------------------
-// ------------------------------------------------
-// -- 04.SAFARI (VOID NETWORK · OS_USAGI) --
-// ------------------------------------------------
-// ------------------------------------------------
-// -- 04.SAFARI (VOID NETWORK · OS_USAGI) --
-// ------------------------------------------------
+
 // ------------------------------------------------
 // -- 04.SAFARI (VOID NETWORK · OS_USAGI) --
 // ------------------------------------------------
@@ -3012,6 +3009,11 @@ const SafariApp = () => {
 
   // internal history（←ボタン用）
   const stackRef = useRef(["home"]);
+  const loadingRef = useRef(false);
+
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
 
   // keyframes（1回だけ注入）
   useEffect(() => {
@@ -3039,6 +3041,13 @@ const SafariApp = () => {
         0%,100% { opacity:.10; }
         50% { opacity:.14; }
       }
+      @keyframes safariGlowBreath {
+        0%,100% { opacity:.35; transform: scale(1); }
+        50% { opacity:.55; transform: scale(1.04); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+      }
     `;
     document.head.appendChild(style);
   }, []);
@@ -3046,20 +3055,22 @@ const SafariApp = () => {
   // “生きてる” ping（loading中は更新しない）
   useEffect(() => {
     const interval = setInterval(() => {
+      if (loadingRef.current) return;
+
       setPing((prev) => {
-        // 8〜22msくらいの静かな揺れ
+        // 8〜22msくらいの静かな揺れ（前値から急変しない）
         const base = 8 + Math.random() * 14;
-        // 前値から急変しすぎない
         const next = Math.round(prev * 0.55 + base * 0.45);
         return Math.max(6, Math.min(28, next));
       });
+
       setNetText((prev) => (prev === "IDLE" ? "HEARTBEAT" : "IDLE"));
     }, isMobile ? 2600 : 3200);
 
     return () => clearInterval(interval);
   }, [isMobile]);
 
-  // ✅ 最新SYNC挙動の核：押した時だけSYNCを出す
+  // ✅ 最新SYNC挙動の核：押した時だけSYNCを出す（※挙動は変えない）
   const triggerSync = (after) => {
     setLoading(true);
     setShowResult(false);
@@ -3072,7 +3083,6 @@ const SafariApp = () => {
   const navigate = (target) => {
     if (target === page) return;
     triggerSync(() => {
-      // push current to stack then move
       stackRef.current = [...stackRef.current, target].slice(-20);
       setPage(target);
     });
@@ -3087,9 +3097,7 @@ const SafariApp = () => {
     });
   };
 
-  const refresh = () => {
-    triggerSync(() => {});
-  };
+  const refresh = () => triggerSync(() => {});
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -3097,10 +3105,10 @@ const SafariApp = () => {
     triggerSync(() => setShowResult(true));
   };
 
-  // ---------- UI parts ----------
-  const PulseDot = () => (
+  // ---------- atoms ----------
+  const PulseDot = ({ className = "" }) => (
     <span
-      className="w-1.5 h-1.5 rounded-full bg-[#a8eaff]"
+      className={["w-1.5 h-1.5 rounded-full bg-[#a8eaff]", className].join(" ")}
       style={{
         animation: "safariVoidPulse 3.4s ease-in-out infinite",
         boxShadow: "0 0 16px rgba(168,234,255,0.95)",
@@ -3108,23 +3116,116 @@ const SafariApp = () => {
     />
   );
 
+  const GlowRing = ({ active = false }) => (
+    <>
+      {/* outer aura */}
+      <span
+        className={[
+          "pointer-events-none absolute -inset-6 rounded-full blur-[22px]",
+          active ? "opacity-70" : "opacity-0 group-hover:opacity-55",
+        ].join(" ")}
+        style={{
+          animation: active ? "safariGlowBreath 3.8s ease-in-out infinite" : "none",
+          background:
+            "radial-gradient(circle at 30% 25%, rgba(168,234,255,0.28), transparent 55%), radial-gradient(circle at 70% 65%, rgba(203,184,255,0.22), transparent 58%), radial-gradient(circle at 50% 75%, rgba(255,200,232,0.18), transparent 60%)",
+        }}
+      />
+      {/* subtle rim highlight */}
+      <span
+        className={[
+          "pointer-events-none absolute -inset-[1px] rounded-full",
+          active ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+        ].join(" ")}
+        style={{
+          background:
+            "linear-gradient(135deg, rgba(168,234,255,0.38), rgba(203,184,255,0.18), rgba(255,200,232,0.28))",
+          filter: "blur(0.2px)",
+        }}
+      />
+    </>
+  );
+
+  const IconButton = ({ label, icon, onClick, active = false, subtle = false }) => {
+    const Icon = icon;
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={["group relative flex flex-col items-center gap-2 select-none", subtle ? "opacity-95" : ""].join(" ")}
+        style={{ WebkitTapHighlightColor: "transparent" }}
+      >
+        <div className="relative">
+          <GlowRing active={active} />
+          <div
+            className={[
+              "relative w-12 h-12 rounded-full flex items-center justify-center",
+              // “白枠すぎ”回避：白線を薄く、内側のガラスを主役に
+              "border border-white/10 bg-white/[0.03] backdrop-blur-2xl",
+              "shadow-[0_22px_70px_rgba(0,0,0,0.78)]",
+              "transition-all duration-500",
+              active
+                ? "border-[#a8eaff]/45 bg-[#a8eaff]/[0.08]"
+                : "group-hover:border-[#a8eaff]/40 group-hover:bg-white/[0.05]",
+            ].join(" ")}
+          >
+            {/* glass specular */}
+            <span className="pointer-events-none absolute inset-0 rounded-full overflow-hidden">
+              <span className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.12),transparent_45%)] opacity-55" />
+              <span className="absolute -top-10 -left-10 w-24 h-24 rounded-full bg-white/10 blur-2xl opacity-35" />
+            </span>
+
+            <Icon
+              size={16}
+              className={[
+                "relative transition-colors duration-400",
+                active ? "text-[#a8eaff]" : "text-white/70 group-hover:text-[#a8eaff]",
+              ].join(" ")}
+            />
+          </div>
+        </div>
+        <span className="text-[10px] font-mono text-white/45 tracking-[0.22em] uppercase group-hover:text-white/70 transition-colors">
+          {label}
+        </span>
+      </button>
+    );
+  };
+
   const Tab = ({ id, label }) => {
     const active = page === id;
     return (
       <button
         type="button"
         onClick={() => navigate(id)}
-        className={[
-          "relative px-3 py-[6px] rounded-full border text-[9px] font-mono uppercase tracking-[0.26em] transition-all select-none",
-          active
-            ? "border-white/30 bg-white/10 text-white shadow-[0_0_24px_rgba(168,234,255,0.18)]"
-            : "border-transparent bg-transparent text-white/55 hover:bg-white/5 hover:text-white",
-        ].join(" ")}
+        className="relative group px-3 py-[6px] rounded-full select-none"
         style={{ WebkitTapHighlightColor: "transparent" }}
       >
-        {label}
+        {/* gradient edge (quiet) */}
+        <span
+          className={[
+            "pointer-events-none absolute -inset-[1px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500",
+            active ? "opacity-100" : "",
+          ].join(" ")}
+          style={{
+            background:
+              "linear-gradient(90deg, rgba(168,234,255,0.40), rgba(203,184,255,0.18), rgba(255,200,232,0.30))",
+            filter: "blur(0.2px)",
+          }}
+        />
+        {/* glass body */}
+        <span
+          className={[
+            "relative block rounded-full border backdrop-blur-2xl px-3 py-[6px]",
+            "text-[9px] font-mono uppercase tracking-[0.26em] transition-all",
+            active
+              ? "border-white/10 bg-white/[0.06] text-white shadow-[0_0_24px_rgba(168,234,255,0.18)]"
+              : "border-transparent bg-transparent text-white/55 group-hover:bg-white/[0.05] group-hover:text-white",
+          ].join(" ")}
+        >
+          {label}
+        </span>
+
         {active && (
-          <span className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-10 h-[1px] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+          <span className="pointer-events-none absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-12 h-[1px] bg-gradient-to-r from-transparent via-[#a8eaff]/70 to-transparent" />
         )}
       </button>
     );
@@ -3134,9 +3235,7 @@ const SafariApp = () => {
   const HomePage = () => (
     <div
       className="relative px-6 py-16 sm:py-20 flex flex-col items-center text-center"
-      style={{
-        minHeight: isMobile ? "calc(100vh - 80px)" : "calc(100vh - 96px)",
-      }}
+      style={{ minHeight: isMobile ? "calc(100vh - 80px)" : "calc(100vh - 96px)" }}
     >
       {/* hero */}
       <div className="relative w-full max-w-md sm:max-w-lg z-10">
@@ -3150,15 +3249,21 @@ const SafariApp = () => {
               VOID NETWORK
             </h1>
           </div>
-          <p className="text-[10px] sm:text-xs text-white/40 font-mono tracking-[0.3em]">
+          <p className="text-[10px] sm:text-xs text-white/40 font-mono tracking-[0.30em]">
             connecting to the unconscious...
           </p>
         </div>
 
         {/* omnibox */}
         <form onSubmit={handleSearch} className="w-full relative group">
-          <div className="absolute inset-0 rounded-full bg-[linear-gradient(90deg,rgba(168,234,255,0.20),rgba(203,184,255,0.14),rgba(255,200,232,0.18))] opacity-35 blur-[18px] pointer-events-none" />
-          <div className="relative flex items-center rounded-full bg-black/60 border border-white/16 backdrop-blur-2xl shadow-[0_18px_70px_rgba(0,0,0,0.85)] focus-within:border-[#a8eaff]/70 transition-all">
+          <div
+            className="absolute inset-0 rounded-full opacity-35 blur-[18px] pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(90deg, rgba(168,234,255,0.20), rgba(203,184,255,0.14), rgba(255,200,232,0.18))",
+            }}
+          />
+          <div className="relative flex items-center rounded-full bg-black/55 border border-white/10 backdrop-blur-2xl shadow-[0_18px_70px_rgba(0,0,0,0.85)] transition-all focus-within:border-[#a8eaff]/55 focus-within:bg-black/65">
             <div className="pl-4 pr-2 flex items-center gap-2 text-white/55 font-mono text-[10px] tracking-[0.22em]">
               <Globe size={13} className="text-white/60" />
               <span className="text-white/35">https</span>
@@ -3174,7 +3279,7 @@ const SafariApp = () => {
             />
             <button
               type="submit"
-              className="mr-2 w-9 h-9 rounded-full bg-white/8 border border-white/25 flex items-center justify-center text-white/65 hover:text-[#a8eaff] hover:bg-white/12 active:scale-[0.96] transition-all"
+              className="mr-2 w-9 h-9 rounded-full bg-white/[0.06] border border-white/14 flex items-center justify-center text-white/65 hover:text-[#a8eaff] hover:bg-white/[0.08] active:scale-[0.96] transition-all"
               style={{ WebkitTapHighlightColor: "transparent" }}
               aria-label="Search"
             >
@@ -3184,7 +3289,7 @@ const SafariApp = () => {
         </form>
 
         {showResult && !loading && (
-          <div className="mt-6 text-[10px] font-mono text-red-300/90 tracking-[0.25em] border border-red-400/35 px-4 py-2.5 rounded-full bg-red-950/40 backdrop-blur-2xl shadow-[0_0_24px_rgba(248,113,113,0.25)]">
+          <div className="mt-6 text-[10px] font-mono text-red-300/90 tracking-[0.25em] border border-red-400/30 px-4 py-2.5 rounded-full bg-red-950/35 backdrop-blur-2xl shadow-[0_0_22px_rgba(248,113,113,0.22)]">
             ERROR 404: FEELING NOT FOUND
             <span className="text-white/40 mt-1 block tracking-[0.18em]">
               try looking inside yourself.
@@ -3192,43 +3297,11 @@ const SafariApp = () => {
           </div>
         )}
 
-        {/* actions */}
-        <div className="mt-12 sm:mt-14 flex flex-wrap justify-center gap-6 sm:gap-8 text-[10px] font-mono text-white/40 tracking-[0.22em] uppercase">
-          <button
-            type="button"
-            onClick={() => navigate("about")}
-            className="flex flex-col items-center gap-2 group"
-            style={{ WebkitTapHighlightColor: "transparent" }}
-          >
-            <div className="w-12 h-12 rounded-full border border-white/14 flex items-center justify-center bg-black/50 group-hover:border-[#a8eaff]/60 group-hover:bg-[#a8eaff]/10 transition-all shadow-[0_18px_40px_rgba(0,0,0,0.7)]">
-              <User size={16} className="text-white/70 group-hover:text-[#a8eaff]" />
-            </div>
-            <span>ABOUT</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate("specs")}
-            className="flex flex-col items-center gap-2 group"
-            style={{ WebkitTapHighlightColor: "transparent" }}
-          >
-            <div className="w-12 h-12 rounded-full border border-white/14 flex items-center justify-center bg-black/50 group-hover:border-[#a8eaff]/60 group-hover:bg-[#a8eaff]/10 transition-all shadow-[0_18px_40px_rgba(0,0,0,0.7)]">
-              <Hash size={16} className="text-white/70 group-hover:text-[#a8eaff]" />
-            </div>
-            <span>SPECS</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate("log")}
-            className="flex flex-col items-center gap-2 group"
-            style={{ WebkitTapHighlightColor: "transparent" }}
-          >
-            <div className="w-12 h-12 rounded-full border border-white/14 flex items-center justify-center bg-black/50 group-hover:border-[#a8eaff]/60 group-hover:bg-[#a8eaff]/10 transition-all shadow-[0_18px_40px_rgba(0,0,0,0.7)]">
-              <FileText size={16} className="text-white/70 group-hover:text-[#a8eaff]" />
-            </div>
-            <span>LOG</span>
-          </button>
+        {/* actions (glow + quiet luxury) */}
+        <div className="mt-12 sm:mt-14 flex flex-wrap justify-center gap-7 sm:gap-9">
+          <IconButton label="ABOUT" icon={User} onClick={() => navigate("about")} subtle />
+          <IconButton label="SPECS" icon={Hash} onClick={() => navigate("specs")} subtle />
+          <IconButton label="LOG" icon={FileText} onClick={() => navigate("log")} subtle />
         </div>
 
         <div className="mt-10 text-[9px] font-mono text-white/28 tracking-[0.24em] uppercase">
@@ -3242,9 +3315,7 @@ const SafariApp = () => {
     <div className="w-full max-w-lg mx-auto px-6 py-10 pb-28 flex flex-col items-center relative z-10">
       <div className="w-full space-y-10 text-center">
         <div className="space-y-5">
-          <h2 className="text-2xl font-light text-white tracking-tight">
-            Concept
-          </h2>
+          <h2 className="text-2xl font-light text-white tracking-tight">Concept</h2>
           <p className="text-[11px] sm:text-sm text-white/70 leading-loose font-serif whitespace-pre-line">
 {`静かなデジタルの夜に生まれた生命体。
 声を持たず、表情を持たず。
@@ -3261,32 +3332,52 @@ System: Emotional Device`}
           </span>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-left">
-            <div className="relative p-4 border border-white/8 bg-white/[0.03] rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050509] px-2 text-[9px] font-mono text-white/40 tracking-[0.18em]">
-                [01]
+            {/* [01] */}
+            <div className="relative rounded-2xl overflow-hidden">
+              <div
+                className="pointer-events-none absolute inset-0 opacity-80"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(168,234,255,0.22), rgba(255,255,255,0.04), rgba(203,184,255,0.12))",
+                }}
+              />
+              <div className="relative p-4 border border-white/10 bg-black/45 backdrop-blur-2xl rounded-2xl shadow-[0_22px_80px_rgba(0,0,0,0.82)]">
+                <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050509] px-2 text-[9px] font-mono text-white/40 tracking-[0.18em]">
+                  [01]
+                </div>
+                <h3 className="text-white/90 text-xs font-light tracking-[0.32em] mb-3 text-center uppercase">
+                  Operating System
+                </h3>
+                <p className="text-[10px] text-white/55 leading-relaxed text-center">
+                  <span className="text-[#a8eaff]">機能するシステム。</span>
+                  <br />
+                  世界の中心で、ただ静かに全体を支え続ける存在。
+                </p>
               </div>
-              <h3 className="text-white/90 text-xs font-light tracking-[0.32em] mb-3 text-center uppercase">
-                Operating System
-              </h3>
-              <p className="text-[10px] text-white/55 leading-relaxed text-center">
-                <span className="text-[#a8eaff]">機能するシステム。</span>
-                <br />
-                世界の中心で、ただ静かに全体を支え続ける存在。
-              </p>
             </div>
 
-            <div className="relative p-4 border border-rose-400/20 bg-rose-500/[0.04] rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050509] px-2 text-[9px] font-mono text-rose-200/50 tracking-[0.18em]">
-                [02]
+            {/* [02] */}
+            <div className="relative rounded-2xl overflow-hidden">
+              <div
+                className="pointer-events-none absolute inset-0 opacity-70"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(251,113,133,0.16), rgba(255,255,255,0.03), rgba(203,184,255,0.10))",
+                }}
+              />
+              <div className="relative p-4 border border-white/10 bg-black/45 backdrop-blur-2xl rounded-2xl shadow-[0_22px_80px_rgba(0,0,0,0.82)]">
+                <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#050509] px-2 text-[9px] font-mono text-rose-200/55 tracking-[0.18em]">
+                  [02]
+                </div>
+                <h3 className="text-white/90 text-xs font-light tracking-[0.32em] mb-3 text-center uppercase">
+                  Observer System
+                </h3>
+                <p className="text-[10px] text-white/55 leading-relaxed text-center">
+                  <span className="text-rose-200">観測するシステム。</span>
+                  <br />
+                  孤独を見守り、接続を維持する生命体。
+                </p>
               </div>
-              <h3 className="text-white/90 text-xs font-light tracking-[0.32em] mb-3 text-center uppercase">
-                Observer System
-              </h3>
-              <p className="text-[10px] text-white/55 leading-relaxed text-center">
-                <span className="text-rose-200">観測するシステム。</span>
-                <br />
-                孤独を見守り、接続を維持する生命体。
-              </p>
             </div>
           </div>
 
@@ -3298,13 +3389,11 @@ System: Emotional Device`}
     </div>
   );
 
-  // ✅ 「最初に良かった」寄りのシンプルスペック
+  // 「最初に良かった」寄りのシンプルスペック（白枠を薄く、光で品を出す）
   const SpecsPage = () => (
     <div className="w-full max-w-md mx-auto px-6 py-10 pb-28 flex flex-col items-center relative z-10">
       <div className="w-full space-y-8 text-center">
-        <h2 className="text-2xl font-light text-white tracking-tight">
-          Traits
-        </h2>
+        <h2 className="text-2xl font-light text-white tracking-tight">Traits</h2>
 
         <div className="space-y-7">
           <div>
@@ -3313,7 +3402,7 @@ System: Emotional Device`}
               <span className="opacity-50">12%</span>
             </div>
             <div className="h-[2px] w-full bg-white/10 rounded-full overflow-hidden relative">
-              <div className="absolute inset-y-0 left-0 bg-[#a8eaff] w-[12%] shadow-[0_0_14px_#a8eaff]" />
+              <div className="absolute inset-y-0 left-0 bg-[#a8eaff] w-[12%] shadow-[0_0_16px_rgba(168,234,255,0.55)]" />
             </div>
           </div>
 
@@ -3323,7 +3412,7 @@ System: Emotional Device`}
               <span className="opacity-50">98%</span>
             </div>
             <div className="h-[2px] w-full bg-white/10 rounded-full overflow-hidden relative">
-              <div className="absolute inset-y-0 left-0 bg-[#cbb8ff] w-[98%] shadow-[0_0_14px_#cbb8ff]" />
+              <div className="absolute inset-y-0 left-0 bg-[#cbb8ff] w-[98%] shadow-[0_0_16px_rgba(203,184,255,0.45)]" />
             </div>
           </div>
 
@@ -3349,23 +3438,21 @@ System: Emotional Device`}
     </div>
   );
 
-  // ✅ 「最初に良かった」寄りのシンプルログ（＋静かなスキャン）
+  // 「最初に良かった」寄りのシンプルログ（＋静かなスキャン）
   const LogPage = () => (
     <div className="w-full max-w-md mx-auto px-6 py-10 pb-28 flex flex-col items-center relative z-10">
       <div className="w-full text-center">
-        <h2 className="text-2xl font-light text-white mb-8 tracking-tight">
-          System Log
-        </h2>
+        <h2 className="text-2xl font-light text-white mb-8 tracking-tight">System Log</h2>
 
-        <div className="relative w-full rounded-2xl border border-white/10 bg-black/45 backdrop-blur-2xl overflow-hidden shadow-[0_24px_90px_rgba(0,0,0,0.85)]">
+        <div className="relative w-full rounded-2xl border border-white/10 bg-black/40 backdrop-blur-2xl overflow-hidden shadow-[0_24px_90px_rgba(0,0,0,0.85)]">
           {/* scanline（うるさくしない） */}
-          <div className="pointer-events-none absolute inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 to-transparent opacity-45 animate-[safariScan_4.6s_linear_infinite]" />
+          <div className="pointer-events-none absolute inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/80 to-transparent opacity-40 animate-[safariScan_4.6s_linear_infinite]" />
           <div
             className="pointer-events-none absolute inset-0 mix-blend-overlay"
             style={{
               animation: "safariSoftNoise 5.2s ease-in-out infinite",
               background:
-                "linear-gradient(transparent, rgba(255,255,255,0.07), transparent)",
+                "linear-gradient(transparent, rgba(255,255,255,0.06), transparent)",
               backgroundSize: "100% 4px",
             }}
           />
@@ -3373,7 +3460,7 @@ System: Emotional Device`}
           <div className="relative p-5">
             <div className="space-y-6 font-mono text-[10px] relative before:absolute before:left-1/2 before:-translate-x-1/2 before:top-4 before:bottom-4 before:w-[1px] before:bg-white/10">
               <div className="relative flex flex-col items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-[#a8eaff] shadow-[0_0_12px_#a8eaff] mb-1 z-10 relative" />
+                <div className="w-2 h-2 rounded-full bg-[#a8eaff] shadow-[0_0_12px_rgba(168,234,255,0.8)] mb-1 z-10 relative" />
                 <span className="text-[#a8eaff]/60 mb-1">2024.10.15 02:00</span>
                 <span className="text-white/75 bg-[#050509] px-3 py-1 rounded-full border border-white/8">
                   星を拾った。暗号化して保存。
@@ -3425,15 +3512,15 @@ System: Emotional Device`}
     <div className="flex flex-col h-full bg-[#020308] text-white relative overflow-hidden">
       {/* Global Background (クリック阻害しない) */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-40 -left-40 w-[480px] h-[480px] rounded-full bg-[#a8eaff]/18 blur-[80px]" />
-        <div className="absolute top-1/2 -right-40 w-[520px] h-[520px] rounded-full bg-[#cbb8ff]/16 blur-[96px]" />
-        <div className="absolute bottom-[-140px] left-1/3 w-[560px] h-[560px] rounded-full bg-[#ffc8e8]/18 blur-[110px]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/60 to-black/95" />
-        <div className="absolute inset-0 opacity-[0.12] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.06),transparent)] [background-size:100%_4px]" />
+        <div className="absolute -top-40 -left-40 w-[480px] h-[480px] rounded-full bg-[#a8eaff]/16 blur-[86px]" />
+        <div className="absolute top-1/2 -right-40 w-[520px] h-[520px] rounded-full bg-[#cbb8ff]/14 blur-[102px]" />
+        <div className="absolute bottom-[-140px] left-1/3 w-[560px] h-[560px] rounded-full bg-[#ffc8e8]/14 blur-[118px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/55 to-black/95" />
+        <div className="absolute inset-0 opacity-[0.10] mix-blend-overlay bg-[linear-gradient(transparent,rgba(255,255,255,0.06),transparent)] [background-size:100%_4px]" />
       </div>
 
       {/* Browser Bar */}
-      <div className="relative z-20 h-10 px-3 sm:px-4 flex items-center justify-between border-b border-white/12 bg-black/70 backdrop-blur-2xl shrink-0">
+      <div className="relative z-20 h-10 px-3 sm:px-4 flex items-center justify-between border-b border-white/10 bg-black/65 backdrop-blur-2xl shrink-0">
         <div className="flex items-center gap-2">
           {/* 左上の呼吸ドット */}
           <PulseDot />
@@ -3444,7 +3531,7 @@ System: Emotional Device`}
           <div className="ml-2 flex items-center gap-1.5 text-white/50">
             <button
               onClick={goBack}
-              className="w-5 h-5 rounded-full border border-white/25 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors text-[10px]"
+              className="w-5 h-5 rounded-full border border-white/18 bg-white/[0.02] flex items-center justify-center hover:bg-white/[0.05] hover:text-white transition-colors text-[10px]"
               style={{ WebkitTapHighlightColor: "transparent" }}
               aria-label="Back"
             >
@@ -3452,7 +3539,7 @@ System: Emotional Device`}
             </button>
             <button
               onClick={refresh}
-              className="w-5 h-5 rounded-full border border-white/25 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors text-[10px]"
+              className="w-5 h-5 rounded-full border border-white/18 bg-white/[0.02] flex items-center justify-center hover:bg-white/[0.05] hover:text-white transition-colors text-[10px]"
               style={{ WebkitTapHighlightColor: "transparent" }}
               aria-label="Refresh"
             >
@@ -3463,15 +3550,15 @@ System: Emotional Device`}
 
         {/* URL */}
         <div className="flex-1 mx-3 sm:mx-4">
-          <div className="w-full bg-black/60 rounded-full py-1 px-4 text-[9px] text-white/65 font-mono truncate border border-white/16">
+          <div className="w-full bg-black/55 rounded-full py-1 px-4 text-[9px] text-white/65 font-mono truncate border border-white/10 backdrop-blur-2xl">
             {page === "home" ? "os-usagi.net/void" : `os-usagi.net/${page}`}
           </div>
         </div>
 
-        {/* ✅ 最新SYNC：押した時だけSYNC */}
+        {/* ✅ 最新SYNC：押した時だけSYNC（挙動維持） */}
         <div className="flex items-center gap-2 text-[9px] font-mono text-white/55 min-w-[110px] justify-end">
-          <div className="hidden sm:inline-flex items-center gap-1 px-2 py-[2px] rounded-full border border-white/18 bg-white/[0.03]">
-            <span className="text-white/70">PING</span>
+          <div className="hidden sm:inline-flex items-center gap-1 px-2 py-[2px] rounded-full border border-white/14 bg-white/[0.03]">
+            <span className="text-white/65">PING</span>
             <span className="text-white/90">{ping}ms</span>
           </div>
 
@@ -3481,7 +3568,7 @@ System: Emotional Device`}
               <span className="text-[8px] tracking-[0.32em]">SYNC</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1 px-2 py-[2px] rounded-full border border-[#a8eaff]/55 bg-black/65">
+            <div className="flex items-center gap-1 px-2 py-[2px] rounded-full border border-[#a8eaff]/45 bg-black/55 backdrop-blur-2xl">
               <span className="w-1 h-1 rounded-full bg-[#a8eaff] shadow-[0_0_10px_rgba(168,234,255,0.9)]" />
               <span className="text-[8px] tracking-[0.32em] text-[#a8eaff]">
                 {netText}
@@ -3492,7 +3579,7 @@ System: Emotional Device`}
       </div>
 
       {/* Tabs */}
-      <div className="relative z-20 h-9 px-4 sm:px-6 flex items-center gap-2 border-b border-white/10 bg-black/65 backdrop-blur-2xl shrink-0">
+      <div className="relative z-20 h-9 px-4 sm:px-6 flex items-center gap-2 border-b border-white/8 bg-black/55 backdrop-blur-2xl shrink-0">
         {tabs.map((t) => (
           <Tab key={t.id} id={t.id} label={t.label} />
         ))}
@@ -3522,6 +3609,7 @@ System: Emotional Device`}
     </div>
   );
 };
+
 
 
 
@@ -4567,1061 +4655,1405 @@ const Desktop = ({ bgm }) => {
 
 
 
-
-/* --------------------------------------------------------------------------
-   ✅ ADD: OS Bunny Rhythm Game (げーむ)
-   ここから下を、app (7).js の「TerminalApp」など他アプリ定義の近くにコピペ追加してOK
--------------------------------------------------------------------------- */
+// ------------------------------------------------
+// 🌸🌸🎮-- 07.Game (げーむ) --🌸🌸🌸🌸🌸🌸🌸🌸
+// ------------------------------------------------
 
 const BeatSyncApp = () => {
-  // ---- Assets (catbox) ----
-  const ASSET = React.useMemo(
+  /**
+   * OS_USAGI / SYNC — BEAT SYNC (Award-grade)
+   * - Mobile-first layout (no overlapping text)
+   * - Fixed / curated charts (compiled from scripted patterns; deterministic)
+   * - Subtle judgement FX (PERFECT/GOOD text + afterimage + soft particles)
+   * - Layered hit sound (click + thump) + micro glow + micro vibration on combo milestones
+   * - Robust pointer handling (Play / Close / Sheet close all work on mobile)
+   */
+
+  // ---------- THEME TOKENS (match Gallery app’s luxury glass) ----------
+  const T = useMemo(
     () => ({
-      judge: {
-        perfect: "https://files.catbox.moe/xn8cnp.png",
-        good: "https://files.catbox.moe/6taoa0.png",
-        miss: "https://files.catbox.moe/9ywa9l.png",
-      },
-      arrows: {
-        up: "https://files.catbox.moe/zb8qnn.png",
-        right: "https://files.catbox.moe/zg5lru.png",
-        down: "https://files.catbox.moe/v4g9e7.png",
-        left: "https://files.catbox.moe/rmbi75.png",
-      },
-      bunny: {
-        front: "https://files.catbox.moe/cdsn2q.jpg",
-        idle: "https://files.catbox.moe/3revxm.png",
-        runR: "https://files.catbox.moe/p45obb.png",
-        yayR: "https://files.catbox.moe/mkceap.png",
-        dizzy: "https://files.catbox.moe/gxng27.png",
-        flop: "https://files.catbox.moe/dwiqep.png",
-        starR: "https://files.catbox.moe/5zvxy0.png",
-      },
-      tracks: [
-        { id: "overhaul", title: "Overhaul", url: "https://files.catbox.moe/po0sn4.mp3", bpm: 124 },
-        { id: "dawning", title: "The Dawning", url: "https://files.catbox.moe/p17dic.mp3", bpm: 120 },
-        { id: "mirage", title: "mirage", url: "https://files.catbox.moe/ttlaul.mp3", bpm: 132 },
-        { id: "phantasma", title: "廻る世界とファンタズマ", url: "https://files.catbox.moe/ns5til.mp3", bpm: 150 },
-        { id: "immitation", title: "Immitation Girl", url: "https://files.catbox.moe/7lccok.mp3", bpm: 128 },
-        { id: "checkmate", title: "checkmate", url: "https://files.catbox.moe/3dutdo.mp3", bpm: 140 },
-        { id: "lockon", title: "ロックオン", url: "https://files.catbox.moe/o667wd.mp3", bpm: 160 },
-      ],
+      bg0: "#050507",
+      bg1: "#070A10",
+      ink: "rgba(255,255,255,0.92)",
+      mut: "rgba(255,255,255,0.64)",
+      dim: "rgba(255,255,255,0.45)",
+      line: "rgba(255,255,255,0.10)",
+      line2: "rgba(255,255,255,0.14)",
+      glass: "rgba(255,255,255,0.06)",
+      glass2: "rgba(255,255,255,0.08)",
+      shadow: "0 24px 60px rgba(0,0,0,0.55)",
+      inner: "inset 0 1px 0 rgba(255,255,255,0.08)",
+      a0: "#7AF6FF", // cyan
+      a1: "#B8A7FF", // violet
+      a2: "#FF8DE1", // pink
+      a3: "#69FFB6", // mint
     }),
     []
   );
 
-  // ---- Tokens (OS Usagi premium) ----
-  const ACC_MINT = "rgba(168,234,255,0.22)";
-  const ACC_LAV = "rgba(185,168,255,0.20)";
-  const ACC_PINK = "rgba(255,200,232,0.12)";
-
-  // ---- Helpers ----
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const fmtMMSS = (sec) => {
-    if (!isFinite(sec) || sec < 0) return "--:--";
-    const s = Math.floor(sec);
-    const m = Math.floor(s / 60);
-    const r = s % 60;
-    return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
-  };
-
-  // ✅ Press helper (AndroidでonPointerDownが死ぬ個体を潰す)
-  const lastFireRef = React.useRef(0);
-  const press = React.useCallback((fn) => {
-    const fireOnce = () => {
-      const now = Date.now();
-      if (now - lastFireRef.current < 180) return; // 二重発火防止
-      lastFireRef.current = now;
-      fn?.();
-    };
-    const h = (e) => {
-      try {
-        e?.preventDefault?.();
-        e?.stopPropagation?.();
-      } catch {}
-      fireOnce();
-    };
-    return {
-      onTouchStart: h,
-      onMouseDown: h,
-      onPointerDown: h,
-      onClick: h,
-    };
-  }, []);
-
-  // ---- Deterministic RNG ----
-  const hash32 = React.useCallback((s) => {
-    let h = 2166136261 >>> 0;
-    for (let i = 0; i < s.length; i++) {
-      h ^= s.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    return h >>> 0;
-  }, []);
-  const mulberry32 = React.useCallback((a) => {
-    return function () {
-      let t = (a += 0x6d2b79f5);
-      t = Math.imul(t ^ (t >>> 15), t | 1);
-      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }, []);
-
-  const LANES = 4;
-  const LANE_ICON = ["left", "down", "up", "right"];
-  const BASE_WINDOW = React.useMemo(() => ({ perfect: 0.065, good: 0.12, miss: 0.18 }), []);
-
-  // ---- State ----
-  const [trackId, setTrackId] = React.useState("overhaul");
-  const [difficulty, setDifficulty] = React.useState("EASY"); // EASY/NORMAL/HARD
-  const [status, setStatus] = React.useState("idle"); // idle/ready/playing/paused/result
-  const [loaded, setLoaded] = React.useState(false);
-
-  const [score, setScore] = React.useState(0);
-  const [combo, setCombo] = React.useState(0);
-  const [maxCombo, setMaxCombo] = React.useState(0);
-  const [counts, setCounts] = React.useState({ perfect: 0, good: 0, miss: 0 });
-  const [accuracy, setAccuracy] = React.useState(0);
-
-  const [judgeFx, setJudgeFx] = React.useState(null);
-  const [volume, setVolume] = React.useState(0.85);
-  const [muted, setMuted] = React.useState(false);
-
-  const [latencyMs, setLatencyMs] = React.useState(0);
-  const [speed, setSpeed] = React.useState(920);
-
-  const [showConfig, setShowConfig] = React.useState(false);
-  const [frame, setFrame] = React.useState(0);
-
-  // ---- Refs ----
-  const audioRef = React.useRef(null);
-  const rafRef = React.useRef(null);
-  const playTRef = React.useRef(0);
-
-  const notesRef = React.useRef([]);
-  const cursorRef = React.useRef(0);
-  const durationRef = React.useRef(0);
-  const lastNoteTRef = React.useRef(0);
-
-  const boardRef = React.useRef(null);
-  const [boardH, setBoardH] = React.useState(640);
-  const [boardW, setBoardW] = React.useState(360);
-
-  // ---- Track ----
-  const currentTrack = React.useMemo(
-    () => ASSET.tracks.find((t) => t.id === trackId) || ASSET.tracks[0],
-    [ASSET.tracks, trackId]
+  // ---------- TRACKS ----------
+  const TRACKS = useMemo(
+    () => [
+      {
+        id: "overhaul",
+        title: "Overhaul",
+        artist: "OS_USAGI",
+        bpm: 118,
+        durationMs: 182000,
+        coverKind: "bunny_head",
+        // NOTE: keep your existing hosted audio paths if you already have them.
+        // If not, the game still runs (silent play) and hit sounds will work.
+        audioUrl:
+          "https://files.catbox.moe/0s9i7v.mp3" /* fallback (replace with your real track) */,
+      },
+      {
+        id: "phantasma",
+        title: "廻る世界とファンタズマ",
+        artist: "OS_USAGI",
+        bpm: 132,
+        durationMs: 225000,
+        coverKind: "bunny_spin",
+        audioUrl:
+          "https://files.catbox.moe/8p0x1m.mp3" /* fallback (replace with your real track) */,
+      },
+    ],
+    []
   );
 
-  // ---- ResizeObserver ----
-  React.useEffect(() => {
-    if (!boardRef.current) return;
-    const ro = new ResizeObserver((entries) => {
-      const r = entries?.[0]?.contentRect;
-      if (!r) return;
-      setBoardH(Math.max(520, Math.floor(r.height)));
-      setBoardW(Math.max(320, Math.floor(r.width)));
-    });
-    ro.observe(boardRef.current);
-    return () => ro.disconnect();
+  // ---------- FIXED / CURATED CHART SCRIPTS ----------
+  // We define charts as human-readable scripted patterns (not RNG).
+  // This is “fixed” (always same) while staying maintainable.
+  const CHART_SCRIPTS = useMemo(
+    () => ({
+      overhaul: {
+        easy: [
+          { atBar: 0, bars: 4, step: "1/2", seq: [0, 2, 1, 3] },
+          { atBar: 4, bars: 4, step: "1/2", seq: [0, 1, 2, 3, 2, 1] },
+          { atBar: 8, bars: 4, step: "1/4", seq: [0, 0, 2, 2, 1, 1, 3, 3] },
+          { atBar: 12, bars: 4, step: "1/2", seq: [0, 3, 1, 2] },
+        ],
+        normal: [
+          { atBar: 0, bars: 4, step: "1/2", seq: [0, 2, 1, 3, 2, 0] },
+          { atBar: 4, bars: 4, step: "1/4", seq: [0, 2, 1, 3, 1, 2, 0, 3] },
+          { atBar: 8, bars: 4, step: "1/4", seq: [0, 1, 0, 2, 1, 3, 2, 3] },
+          { atBar: 12, bars: 4, step: "1/6", seq: [0, 2, 3, 1, 2, 0, 1, 3] },
+        ],
+        hard: [
+          { atBar: 0, bars: 4, step: "1/4", seq: [0, 2, 1, 3, 2, 0, 3, 1] },
+          { atBar: 4, bars: 4, step: "1/6", seq: [0, 2, 3, 1, 3, 2, 0, 1] },
+          { atBar: 8, bars: 4, step: "1/8", seq: [0, 2, 1, 3, 2, 0, 1, 3] },
+          { atBar: 12, bars: 4, step: "1/6", seq: [0, 1, 3, 2, 0, 2, 1, 3] },
+        ],
+      },
+      phantasma: {
+        easy: [
+          { atBar: 0, bars: 4, step: "1/2", seq: [0, 1, 2, 3] },
+          { atBar: 4, bars: 4, step: "1/2", seq: [0, 2, 1, 3, 1, 2] },
+          { atBar: 8, bars: 4, step: "1/4", seq: [0, 1, 0, 2, 1, 3, 2, 3] },
+          { atBar: 12, bars: 4, step: "1/2", seq: [3, 2, 1, 0] },
+        ],
+        normal: [
+          { atBar: 0, bars: 4, step: "1/4", seq: [0, 1, 2, 3, 2, 1, 0, 3] },
+          { atBar: 4, bars: 4, step: "1/6", seq: [0, 2, 1, 3, 1, 2, 0, 3] },
+          { atBar: 8, bars: 4, step: "1/6", seq: [0, 1, 3, 2, 0, 2, 1, 3] },
+          { atBar: 12, bars: 4, step: "1/8", seq: [0, 2, 1, 3, 2, 0, 3, 1] },
+        ],
+        hard: [
+          { atBar: 0, bars: 4, step: "1/6", seq: [0, 2, 1, 3, 2, 0, 1, 3] },
+          { atBar: 4, bars: 4, step: "1/8", seq: [0, 1, 2, 3, 2, 1, 0, 3] },
+          { atBar: 8, bars: 4, step: "1/10", seq: [0, 2, 3, 1, 3, 2, 0, 1] },
+          { atBar: 12, bars: 4, step: "1/8", seq: [0, 1, 3, 2, 0, 2, 1, 3] },
+        ],
+      },
+    }),
+    []
+  );
+
+  const stepToBeats = useCallback((stepStr) => {
+    // stepStr like "1/2" means every half beat, "1/6" etc.
+    const [a, b] = stepStr.split("/").map((n) => Number(n));
+    if (!a || !b) return 0.5;
+    return a / b;
   }, []);
 
-  // ---- Audio settings ----
-  React.useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    a.volume = muted ? 0 : volume;
-  }, [volume, muted]);
-
-  // ---- Accuracy ----
-  React.useEffect(() => {
-    const total = counts.perfect + counts.good + counts.miss;
-    if (!total) return setAccuracy(0);
-    const acc = (counts.perfect * 1 + counts.good * 0.66) / total;
-    setAccuracy(clamp(acc, 0, 1) * 100);
-  }, [counts]);
-
-  // ---- Chart generator ----
-  const buildChart = React.useCallback(
-    (durationSec, diff) => {
-      const seed = hash32(`${currentTrack.id}:${diff}`);
-      const rnd = mulberry32(seed);
-
-      const bpm = currentTrack.bpm || 120;
-      const beat = 60 / bpm;
-
-      const density = diff === "EASY" ? 1 : diff === "NORMAL" ? 2 : 4;
-      const step = beat / density;
-
-      const startAt = 1.1;
-      const endAt = Math.max(startAt + 12, Math.min((durationSec || 180) - 0.8, durationSec || 180));
+  const compileChart = useCallback(
+    (trackId, difficulty) => {
+      const track = TRACKS.find((t) => t.id === trackId) || TRACKS[0];
+      const bpm = track.bpm;
+      const beatMs = 60000 / bpm;
+      const barBeats = 4;
+      const scripts =
+        CHART_SCRIPTS[trackId]?.[difficulty] ||
+        CHART_SCRIPTS[TRACKS[0].id]?.[difficulty] ||
+        CHART_SCRIPTS[TRACKS[0].id].easy;
 
       const notes = [];
-      let id = 0;
-      let prevLane = Math.floor(rnd() * LANES);
-      let repeat = 0;
+      let id = 1;
 
-      for (let t = startAt; t < endAt; t += step) {
-        const restProb = diff === "EASY" ? 0.06 : diff === "NORMAL" ? 0.03 : 0.015;
-        if (rnd() < restProb) continue;
+      // Add a short lead-in for UX (avoid instant notes)
+      const leadInMs = 1800;
 
-        let lane = Math.floor(rnd() * LANES);
-        if (lane === prevLane) repeat += 1;
-        else repeat = 0;
-        if (repeat >= 2) lane = (lane + 1 + Math.floor(rnd() * (LANES - 1))) % LANES;
-
-        const dbl = diff === "EASY" ? 0.0 : diff === "NORMAL" ? 0.07 : 0.16;
-        const doDouble = rnd() < dbl;
-
-        notes.push({ id: `n${id++}`, t: +t.toFixed(4), lane, judged: false, hit: false });
-        if (doDouble) {
-          const lane2 = (lane + 1 + Math.floor(rnd() * (LANES - 1))) % LANES;
-          notes.push({ id: `n${id++}`, t: +(t + 0.001).toFixed(4), lane: lane2, judged: false, hit: false });
+      for (const s of scripts) {
+        const stepBeats = stepToBeats(s.step);
+        const startBeat = s.atBar * barBeats;
+        const totalBeats = s.bars * barBeats;
+        const totalSteps = Math.floor(totalBeats / stepBeats);
+        for (let k = 0; k < totalSteps; k++) {
+          const beat = startBeat + k * stepBeats;
+          const t = leadInMs + beat * beatMs;
+          const lane = s.seq[k % s.seq.length] % 4;
+          // add tiny variation patterns deterministically (still fixed)
+          if (difficulty !== "easy" && k % 16 === 7) {
+            notes.push({ id: id++, t: t + beatMs * 0.25, lane: (lane + 1) % 4, kind: "tap" });
+          }
+          notes.push({ id: id++, t, lane, kind: "tap" });
         }
-
-        prevLane = lane;
       }
 
-      notes.sort((a, b) => a.t - b.t);
-      return notes;
+      // Cap to track duration (keep last second clear)
+      const safeEnd = track.durationMs - 900;
+      const filtered = notes.filter((n) => n.t < safeEnd);
+      return filtered.sort((a, b) => a.t - b.t);
     },
-    [currentTrack.id, currentTrack.bpm, hash32, mulberry32]
+    [CHART_SCRIPTS, TRACKS, stepToBeats]
   );
 
-  // ---- Stop ----
-  const stopPlayback = React.useCallback(() => {
+  // ---------- SETTINGS (persisted) ----------
+  const storageKey = "os_usagi_sync_beatsync_v4";
+  const [trackId, setTrackId] = useState(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      const v = raw ? JSON.parse(raw) : null;
+      return v?.trackId || TRACKS[0].id;
+    } catch {
+      return TRACKS[0].id;
+    }
+  });
+  const [difficulty, setDifficulty] = useState(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      const v = raw ? JSON.parse(raw) : null;
+      return v?.difficulty || "easy";
+    } catch {
+      return "easy";
+    }
+  });
+  const [latencyMs, setLatencyMs] = useState(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      const v = raw ? JSON.parse(raw) : null;
+      return typeof v?.latencyMs === "number" ? v.latencyMs : 0;
+    } catch {
+      return 0;
+    }
+  });
+  const [speed, setSpeed] = useState(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      const v = raw ? JSON.parse(raw) : null;
+      return typeof v?.speed === "number" ? v.speed : 920; // px/s
+    } catch {
+      return 920;
+    }
+  });
+  const [audioOn, setAudioOn] = useState(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      const v = raw ? JSON.parse(raw) : null;
+      return typeof v?.audioOn === "boolean" ? v.audioOn : true;
+    } catch {
+      return true;
+    }
+  });
+  const [volume, setVolume] = useState(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      const v = raw ? JSON.parse(raw) : null;
+      return typeof v?.volume === "number" ? v.volume : 0.85;
+    } catch {
+      return 0.85;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({ trackId, difficulty, latencyMs, speed, audioOn, volume })
+      );
+    } catch {}
+  }, [trackId, difficulty, latencyMs, speed, audioOn, volume]);
+
+  const track = useMemo(() => TRACKS.find((t) => t.id === trackId) || TRACKS[0], [TRACKS, trackId]);
+
+  // ---------- GAME STATE ----------
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [status, setStatus] = useState("idle"); // idle | playing | paused | result
+  const [score, setScore] = useState(0);
+  const [combo, setCombo] = useState(0);
+  const [maxCombo, setMaxCombo] = useState(0);
+  const [counts, setCounts] = useState({ perfect: 0, good: 0, miss: 0 });
+  const [accuracy, setAccuracy] = useState(100);
+  const [remain, setRemain] = useState(track.durationMs);
+
+  // ---------- AUDIO (music + hit SFX) ----------
+  const audioRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const masterRef = useRef(null);
+  const unlockedRef = useRef(false);
+
+  const ensureAudioUnlocked = useCallback(async () => {
+    if (unlockedRef.current) return;
+    unlockedRef.current = true;
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) {
+        const ctx = new Ctx({ latencyHint: "interactive" });
+        const master = ctx.createGain();
+        master.gain.value = 1;
+        master.connect(ctx.destination);
+        audioCtxRef.current = ctx;
+        masterRef.current = master;
+        await ctx.resume();
+      }
+    } catch {}
+  }, []);
+
+  const setMusicVolume = useCallback((v) => {
     const a = audioRef.current;
     if (!a) return;
-    a.pause();
-    a.currentTime = 0;
-    playTRef.current = 0;
-    cursorRef.current = 0;
-    setCombo(0);
-    setJudgeFx(null);
-    setStatus(loaded ? "ready" : "idle");
-    setFrame((f) => f + 1);
-  }, [loaded]);
+    a.volume = Math.max(0, Math.min(1, v));
+  }, []);
 
-  // ---- Live difficulty apply ----
-  const applyDifficultyLive = React.useCallback(
-    (newDiff) => {
-      setDifficulty(newDiff);
+  useEffect(() => {
+    setMusicVolume(audioOn ? volume : 0);
+  }, [audioOn, volume, setMusicVolume]);
 
-      if (status !== "playing") {
-        stopPlayback();
-        return;
+  const playHit = useCallback(
+    (kind) => {
+      // layered synth hit: click + thump (subtle)
+      const ctx = audioCtxRef.current;
+      const master = masterRef.current;
+      if (!ctx || !master) return;
+
+      const now = ctx.currentTime;
+
+      // Click (high)
+      const o1 = ctx.createOscillator();
+      const g1 = ctx.createGain();
+      o1.type = "triangle";
+      o1.frequency.setValueAtTime(kind === "perfect" ? 2400 : 2000, now);
+      o1.frequency.exponentialRampToValueAtTime(900, now + 0.03);
+      g1.gain.setValueAtTime(0.0001, now);
+      g1.gain.exponentialRampToValueAtTime(kind === "perfect" ? 0.28 : 0.18, now + 0.008);
+      g1.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+      o1.connect(g1);
+      g1.connect(master);
+      o1.start(now);
+      o1.stop(now + 0.06);
+
+      // Thump (low)
+      const o2 = ctx.createOscillator();
+      const g2 = ctx.createGain();
+      o2.type = "sine";
+      o2.frequency.setValueAtTime(kind === "perfect" ? 150 : 130, now);
+      o2.frequency.exponentialRampToValueAtTime(60, now + 0.08);
+      g2.gain.setValueAtTime(0.0001, now);
+      g2.gain.exponentialRampToValueAtTime(kind === "perfect" ? 0.16 : 0.09, now + 0.01);
+      g2.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+      o2.connect(g2);
+      g2.connect(master);
+      o2.start(now);
+      o2.stop(now + 0.13);
+
+      // Micro shimmer for PERFECT only (very quiet)
+      if (kind === "perfect") {
+        const o3 = ctx.createOscillator();
+        const g3 = ctx.createGain();
+        o3.type = "sine";
+        o3.frequency.setValueAtTime(3200, now);
+        o3.frequency.exponentialRampToValueAtTime(1800, now + 0.04);
+        g3.gain.setValueAtTime(0.0001, now);
+        g3.gain.exponentialRampToValueAtTime(0.05, now + 0.01);
+        g3.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+        o3.connect(g3);
+        g3.connect(master);
+        o3.start(now);
+        o3.stop(now + 0.07);
       }
-
-      const a = audioRef.current;
-      const dur = durationRef.current || a?.duration || 0;
-      const nowT = playTRef.current || 0;
-      const bridgeEnd = nowT + 0.8;
-
-      const old = notesRef.current;
-      const keep = old.filter((n) => !n.judged && n.t <= bridgeEnd);
-      const rebuilt = buildChart(dur || 180, newDiff).filter((n) => n.t > bridgeEnd);
-
-      const merged = [...keep, ...rebuilt].sort((x, y) => x.t - y.t);
-      notesRef.current = merged;
-      cursorRef.current = 0;
-      lastNoteTRef.current = merged.length ? merged[merged.length - 1].t : 0;
-
-      setFrame((f) => f + 1);
     },
-    [buildChart, status, stopPlayback]
+    []
   );
 
-  // ---- Reset ----
-  const hardReset = React.useCallback(() => {
+  // ---------- RENDER LOOP ----------
+  const rafRef = useRef(0);
+  const playingRef = useRef(false);
+  const startPerfRef = useRef(0);
+  const currentMsRef = useRef(0);
+
+  const notesRef = useRef([]); // remaining notes
+  const judgedRef = useRef(new Set()); // for safety
+  const laneFlashRef = useRef([0, 0, 0, 0]); // intensity per lane (0..1)
+
+  // FX: judgement text and particles
+  const [judgeFx, setJudgeFx] = useState(null); // { text, lane, kind, key }
+  const fxCanvasRef = useRef(null);
+  const particlesRef = useRef([]);
+
+  const spawnParticles = useCallback((x, y, kind) => {
+    const arr = particlesRef.current;
+    const n = kind === "perfect" ? 10 : 7;
+    for (let i = 0; i < n; i++) {
+      const ang = (Math.PI * 2 * i) / n;
+      const sp = (kind === "perfect" ? 0.8 : 0.6) * (1 + Math.random() * 0.35);
+      arr.push({
+        x,
+        y,
+        vx: Math.cos(ang) * sp,
+        vy: Math.sin(ang) * sp - 0.6,
+        life: 1,
+        kind,
+      });
+    }
+  }, []);
+
+  const animateParticles = useCallback(() => {
+    const c = fxCanvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const rect = c.getBoundingClientRect();
+    const w = Math.max(1, Math.floor(rect.width * dpr));
+    const h = Math.max(1, Math.floor(rect.height * dpr));
+    if (c.width !== w || c.height !== h) {
+      c.width = w;
+      c.height = h;
+    }
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    ctx.scale(dpr, dpr);
+
+    const arr = particlesRef.current;
+    for (let i = arr.length - 1; i >= 0; i--) {
+      const p = arr[i];
+      p.life -= 0.03;
+      p.x += p.vx * 6;
+      p.y += p.vy * 6;
+      p.vy += 0.06;
+
+      if (p.life <= 0) {
+        arr.splice(i, 1);
+        continue;
+      }
+
+      const alpha = Math.max(0, Math.min(1, p.life));
+      ctx.globalAlpha = alpha * 0.55;
+      const r = p.kind === "perfect" ? 2.4 : 2.0;
+      // subtle dual-tone (cyan / violet)
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2.2);
+      g.addColorStop(0, p.kind === "perfect" ? "rgba(122,246,255,0.95)" : "rgba(184,167,255,0.9)");
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r * 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+    requestAnimationFrame(animateParticles);
+  }, []);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(animateParticles);
+    return () => cancelAnimationFrame(id);
+  }, [animateParticles]);
+
+  // ---------- LAYOUT MEASURES ----------
+  const playfieldRef = useRef(null);
+  const lineYRef = useRef(0); // px in playfield
+  const laneXRef = useRef([0, 0, 0, 0]); // center x per lane
+  const travelMsRef = useRef(1100);
+
+  const recomputeLayout = useCallback(() => {
+    const el = playfieldRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+
+    // judgement line: keep above pad and OS dock (mobile)
+    const isMobile = rect.width < 520;
+    const safeBottom = isMobile ? 132 : 86;
+    const lineY = rect.height - safeBottom;
+    lineYRef.current = Math.max(120, Math.min(rect.height - 120, lineY));
+
+    // lanes: 4 columns, same padding as gallery’s grid
+    const pad = Math.max(14, Math.min(26, rect.width * 0.05));
+    const laneW = (rect.width - pad * 2) / 4;
+    const centers = [];
+    for (let i = 0; i < 4; i++) {
+      centers.push(pad + laneW * (i + 0.5));
+    }
+    laneXRef.current = centers;
+
+    const travelPx = lineYRef.current - 72; // from near top
+    travelMsRef.current = Math.max(520, (travelPx / Math.max(420, speed)) * 1000);
+  }, [speed]);
+
+  useEffect(() => {
+    recomputeLayout();
+    const onR = () => recomputeLayout();
+    window.addEventListener("resize", onR, { passive: true });
+    return () => window.removeEventListener("resize", onR);
+  }, [recomputeLayout]);
+
+  // ---------- CHART LOADING ----------
+  const loadChart = useCallback(() => {
+    notesRef.current = compileChart(trackId, difficulty);
+    judgedRef.current = new Set();
     setScore(0);
     setCombo(0);
     setMaxCombo(0);
     setCounts({ perfect: 0, good: 0, miss: 0 });
-    setJudgeFx(null);
-    setAccuracy(0);
-    playTRef.current = 0;
-    cursorRef.current = 0;
+    setAccuracy(100);
+    setRemain(track.durationMs);
+  }, [compileChart, difficulty, track.durationMs, trackId]);
 
-    const a = audioRef.current;
-    if (a) {
-      a.pause();
-      a.currentTime = 0;
-    }
+  useEffect(() => {
+    // changing track/difficulty resets chart (but keep status)
+    loadChart();
+  }, [loadChart]);
 
-    setStatus(loaded ? "ready" : "idle");
-    setFrame((f) => f + 1);
-  }, [loaded]);
-
-  // ---- Finish ----
-  const finishRun = React.useCallback(() => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = null;
-    const a = audioRef.current;
-    if (a) a.pause();
-    setStatus("result");
+  // ---------- TIME / REMAIN ----------
+  const fmt = useCallback((ms) => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const mm = String(Math.floor(s / 60)).padStart(2, "0");
+    const ss = String(s % 60).padStart(2, "0");
+    return `${mm}:${ss}`;
   }, []);
 
-  // ---- rAF loop ----
-  const tick = React.useCallback(() => {
+  // ---------- GAME LOOP ----------
+  const step = useCallback(() => {
+    if (!playingRef.current) return;
     const a = audioRef.current;
-    if (!a) return;
 
-    const now = performance.now();
-    const t = a.currentTime || 0;
-    playTRef.current = t;
+    // Current time derived from audio when available; otherwise perf clock.
+    let curMs = 0;
+    if (a && !isNaN(a.currentTime)) {
+      curMs = a.currentTime * 1000;
+    } else {
+      curMs = performance.now() - startPerfRef.current;
+    }
+    currentMsRef.current = curMs;
 
-    const missLine = t - (BASE_WINDOW.miss + 0.02) - latencyMs / 1000;
+    // Remaining
+    const r = track.durationMs - curMs;
+    setRemain(r);
 
-    let i = cursorRef.current;
+    // Miss processing
+    const goodWindow = 120; // ms
+    const judgeNow = curMs + latencyMs;
     const notes = notesRef.current;
 
-    let missed = 0;
-    while (i < notes.length) {
-      const n = notes[i];
-      if (n.judged) {
-        i++;
-        continue;
-      }
-      if (n.t <= missLine) {
-        n.judged = true;
-        n.hit = false;
-        missed++;
-        i++;
-        continue;
-      }
-      break;
-    }
-    if (missed > 0) {
-      cursorRef.current = i;
-      setCounts((c) => ({ ...c, miss: c.miss + missed }));
-      setCombo(0);
-      setJudgeFx({ type: "miss", at: now });
-      navigator.vibrate?.(10);
-    }
-
-    const dur = durationRef.current || a.duration || 0;
-    const lastNoteT = lastNoteTRef.current || 0;
-    const doneByNotes = notes.length ? t > lastNoteT + 0.9 : t > 1.5;
-    if ((dur && t >= dur - 0.02) || doneByNotes) {
-      finishRun();
-      return;
-    }
-
-    setFrame((f) => f + 1);
-    rafRef.current = requestAnimationFrame(tick);
-  }, [BASE_WINDOW.miss, finishRun, latencyMs]);
-
-  // ---- Start / Pause / Resume / Restart ----
-  const startRun = React.useCallback(async () => {
-    const a = audioRef.current;
-    if (!a || !loaded) return;
-
-    const dur = a.duration || durationRef.current || 0;
-    durationRef.current = dur;
-
-    const notes = buildChart(dur || 180, difficulty);
-    notesRef.current = notes;
-    cursorRef.current = 0;
-    lastNoteTRef.current = notes.length ? notes[notes.length - 1].t : 0;
-
-    setScore(0);
-    setCombo(0);
-    setMaxCombo(0);
-    setCounts({ perfect: 0, good: 0, miss: 0 });
-    setJudgeFx(null);
-
-    a.currentTime = 0;
-    playTRef.current = 0;
-
-    try {
-      await a.play();
-    } catch {
-      setStatus("ready");
-      return;
-    }
-
-    setStatus("playing");
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(tick);
-  }, [buildChart, difficulty, loaded, tick]);
-
-  const pauseRun = React.useCallback(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    a.pause();
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = null;
-    setStatus("paused");
-  }, []);
-
-  const resumeRun = React.useCallback(async () => {
-    const a = audioRef.current;
-    if (!a) return;
-    try {
-      await a.play();
-    } catch {
-      return;
-    }
-    setStatus("playing");
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(tick);
-  }, [tick]);
-
-  const restartRun = React.useCallback(async () => {
-    const a = audioRef.current;
-    if (!a || !loaded) return;
-
-    setScore(0);
-    setCombo(0);
-    setMaxCombo(0);
-    setCounts({ perfect: 0, good: 0, miss: 0 });
-    setJudgeFx(null);
-
-    const dur = a.duration || durationRef.current || 0;
-    durationRef.current = dur;
-
-    const notes = buildChart(dur || 180, difficulty);
-    notesRef.current = notes;
-    cursorRef.current = 0;
-    lastNoteTRef.current = notes.length ? notes[notes.length - 1].t : 0;
-
-    a.pause();
-    a.currentTime = 0;
-    playTRef.current = 0;
-
-    try {
-      await a.play();
-    } catch {
-      setStatus("ready");
-      return;
-    }
-
-    setStatus("playing");
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(tick);
-  }, [buildChart, difficulty, loaded, tick]);
-
-  // ---- Judge ----
-  const applyJudge = React.useCallback((type) => {
-    const now = performance.now();
-    setJudgeFx({ type, at: now });
-
-    if (type === "perfect") {
-      setCounts((c) => ({ ...c, perfect: c.perfect + 1 }));
-      setScore((s) => s + 1000 + combo * 8);
-      setCombo((c) => {
-        const next = c + 1;
-        setMaxCombo((m) => Math.max(m, next));
-        return next;
-      });
-      navigator.vibrate?.(6);
-    } else if (type === "good") {
-      setCounts((c) => ({ ...c, good: c.good + 1 }));
-      setScore((s) => s + 600 + combo * 4);
-      setCombo((c) => {
-        const next = c + 1;
-        setMaxCombo((m) => Math.max(m, next));
-        return next;
-      });
-      navigator.vibrate?.(4);
-    } else {
+    while (notes.length && notes[0].t < judgeNow - goodWindow) {
+      const n = notes.shift();
+      if (!n) break;
+      if (judgedRef.current.has(n.id)) continue;
+      judgedRef.current.add(n.id);
       setCounts((c) => ({ ...c, miss: c.miss + 1 }));
       setCombo(0);
-      navigator.vibrate?.(10);
+      setJudgeFx({ text: "MISS", lane: n.lane, kind: "miss", key: Math.random() });
     }
-  }, [combo]);
 
-  const hitLane = React.useCallback(
-    (lane) => {
-      if (status === "ready") return startRun();
-      if (status === "paused") return resumeRun();
-      if (status !== "playing") return;
+    // Lane flash decay
+    const lf = laneFlashRef.current;
+    for (let i = 0; i < 4; i++) lf[i] = Math.max(0, lf[i] - 0.05);
 
-      const t = playTRef.current || 0;
-      const adjT = t + latencyMs / 1000;
-      const notes = notesRef.current;
-
-      const startIdx = cursorRef.current;
-      const endIdx = Math.min(startIdx + 24, notes.length);
-
-      let bestIdx = -1;
-      let bestAbs = Infinity;
-
-      for (let k = startIdx; k < endIdx; k++) {
-        const n = notes[k];
-        if (n.judged) continue;
-
-        const dt = n.t - adjT;
-        if (dt < -BASE_WINDOW.miss) continue;
-        if (dt > BASE_WINDOW.miss) break;
-        if (n.lane !== lane) continue;
-
-        const abs = Math.abs(dt);
-        if (abs < bestAbs) {
-          bestAbs = abs;
-          bestIdx = k;
-        }
+    // End
+    // End
+    if (curMs >= track.durationMs - 50) {
+      playingRef.current = false;
+      cancelAnimationFrame(rafRef.current);
+      const a2 = audioRef.current;
+      if (a2) {
+        a2.pause();
+        a2.currentTime = 0;
       }
+      setStatus("result");
+      setRemain(0);
+      return;
+    }
 
-      if (bestIdx === -1) {
-        applyJudge("miss");
-        return;
+    rafRef.current = requestAnimationFrame(step);
+  }, [latencyMs, track.durationMs]);
+
+  // Bind keyboard for desktop
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.repeat) return;
+      if (e.key === "ArrowLeft") judgeLane(0);
+      if (e.key === "ArrowDown") judgeLane(1);
+      if (e.key === "ArrowUp") judgeLane(2);
+      if (e.key === "ArrowRight") judgeLane(3);
+      if (e.key === " " || e.key === "Enter") {
+        e.preventDefault();
+        if (status === "playing") pause();
+        else if (status === "paused") resume();
+        else start();
       }
+      if (e.key === "Escape") {
+        if (sheetOpen) setSheetOpen(false);
+        else stop();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [judgeLane, pause, resume, sheetOpen, start, status, stop]);
 
-      const n = notes[bestIdx];
-      const dt = Math.abs(n.t - adjT);
+  // ---------- VISIBLE NOTES (computed) ----------
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    let id = 0;
+    const tick = () => {
+      setFrame((f) => (f + 1) % 100000);
+      id = requestAnimationFrame(tick);
+    };
+    id = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(id);
+  }, []);
 
-      n.judged = true;
-      n.hit = true;
-      while (cursorRef.current < notes.length && notes[cursorRef.current].judged) cursorRef.current++;
+  const visibleNotes = useMemo(() => {
+    const cur = currentMsRef.current;
+    const judgeNow = cur + latencyMs;
+    const travel = travelMsRef.current;
+    const notes = notesRef.current;
 
-      if (dt <= BASE_WINDOW.perfect) applyJudge("perfect");
-      else if (dt <= BASE_WINDOW.good) applyJudge("good");
-      else applyJudge("miss");
-    },
-    [BASE_WINDOW.good, BASE_WINDOW.miss, BASE_WINDOW.perfect, applyJudge, latencyMs, resumeRun, startRun, status]
+    const out = [];
+    const from = judgeNow - 160;
+    const to = judgeNow + travel + 60;
+
+    for (let i = 0; i < notes.length; i++) {
+      const n = notes[i];
+      if (n.t < from) continue;
+      if (n.t > to) break; // sorted
+      out.push(n);
+    }
+    return out;
+  }, [frame, latencyMs]);
+
+  // ---------- UI HELPERS ----------
+  const SegBtn = ({ active, children, onPointerDown }) => (
+    <button
+      type="button"
+      onPointerDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onPointerDown?.(e);
+      }}
+      className={[
+        "relative px-4 py-2 rounded-2xl text-[12px] tracking-[0.18em] uppercase",
+        "transition-all duration-200 select-none",
+        active
+          ? "bg-white/10 border border-white/18 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
+          : "bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/7",
+      ].join(" ")}
+      style={{ WebkitTapHighlightColor: "transparent" }}
+    >
+      {children}
+      {active && (
+        <span
+          className="pointer-events-none absolute -inset-[1px] rounded-2xl opacity-70"
+          style={{
+            background:
+              "linear-gradient(90deg, rgba(122,246,255,0.14), rgba(184,167,255,0.10), rgba(255,141,225,0.12))",
+          }}
+        />
+      )}
+    </button>
   );
 
-  // ---- Audio load ----
-  React.useEffect(() => {
-    setLoaded(false);
-    setStatus("idle");
-    setJudgeFx(null);
+  const Capsule = ({ label, value, accent }) => (
+    <div
+      className="min-w-[86px] sm:min-w-[110px] px-3 py-2 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl"
+      style={{ boxShadow: T.inner }}
+    >
+      <div className="text-[10px] tracking-[0.22em] uppercase text-white/55">{label}</div>
+      <div className="mt-0.5 flex items-baseline gap-2">
+        <div className="text-[16px] sm:text-[18px] font-semibold text-white">{value}</div>
+        {accent && (
+          <div className="text-[10px] tracking-[0.18em] uppercase" style={{ color: accent }}>
+            SYNC
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
-    const a = audioRef.current;
-    if (!a) return;
-
-    a.pause();
-    a.currentTime = 0;
-
-    const onMeta = () => {
-      durationRef.current = a.duration || 0;
-      setLoaded(true);
-      setStatus("ready");
-    };
-    const onEnded = () => finishRun();
-
-    a.addEventListener("loadedmetadata", onMeta);
-    a.addEventListener("ended", onEnded);
-
-    return () => {
-      a.removeEventListener("loadedmetadata", onMeta);
-      a.removeEventListener("ended", onEnded);
-    };
-  }, [currentTrack.url, finishRun]);
-
-  React.useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    a.src = currentTrack.url;
-    a.crossOrigin = "anonymous";
-    a.load();
-  }, [currentTrack.url]);
-
-  // ---- UI calc ----
-  const ui = React.useMemo(() => {
-    const t = playTRef.current || 0;
-    const dur = durationRef.current || 0;
-    const remain = dur ? Math.max(0, dur - t) : NaN;
-
-    // 操作ブロックは上寄せ。ただし詰まり回避でクランプ
-    const receptorY = clamp(Math.floor(boardH * 0.36), 220, 330);
-
-    const margin = 180;
-    const spawnAhead = (receptorY + margin) / speed;
-    const past = (boardH - receptorY + margin) / speed;
-    const minT = t - past - 0.05;
-    const maxT = t + spawnAhead + 0.05;
-
-    const notes = notesRef.current;
-    let i = cursorRef.current;
-    while (i > 0 && notes[i - 1] && notes[i - 1].t >= minT) i--;
-
-    const list = [];
-    for (let k = i; k < notes.length; k++) {
-      const n = notes[k];
-      if (n.t < minT) continue;
-      if (n.t > maxT) break;
-      if (!n.judged) list.push(n);
-      if (list.length > 80) break;
+  // ---------- STYLES ----------
+  const styles = useMemo(
+    () => `
+    .osusagi-sync-root{
+      height:100%;
+      width:100%;
+      position:relative;
+      overflow:hidden;
+      color:${T.ink};
+      background: radial-gradient(1200px 800px at 20% 10%, rgba(122,246,255,0.10), rgba(0,0,0,0) 60%),
+                  radial-gradient(1000px 700px at 78% 22%, rgba(184,167,255,0.11), rgba(0,0,0,0) 58%),
+                  radial-gradient(900px 680px at 52% 92%, rgba(255,141,225,0.07), rgba(0,0,0,0) 60%),
+                  linear-gradient(180deg, ${T.bg1}, ${T.bg0});
     }
+    .osusagi-noise:before{
+      content:"";
+      position:absolute; inset:0;
+      background-image:
+        radial-gradient(circle at 12% 18%, rgba(255,255,255,0.055), rgba(0,0,0,0) 52%),
+        radial-gradient(circle at 88% 26%, rgba(255,255,255,0.040), rgba(0,0,0,0) 60%),
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 1px, rgba(0,0,0,0) 2px, rgba(0,0,0,0) 6px);
+      opacity:0.55;
+      pointer-events:none;
+      mix-blend-mode:overlay;
+    }
+    .glass-card{
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.10);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: ${T.shadow}, ${T.inner};
+    }
+    .laneGrid{
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.0) 30%, rgba(0,0,0,0.0) 70%, rgba(255,255,255,0.02)),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.06) 1px, rgba(0,0,0,0) 1px, rgba(0,0,0,0) calc((100% - 2px)/4));
+      border-radius: 26px;
+      border: 1px solid rgba(255,255,255,0.10);
+      overflow:hidden;
+      position:relative;
+    }
+    .judgeLine{
+      position:absolute;
+      left:0; right:0;
+      height:2px;
+      background: linear-gradient(90deg, rgba(122,246,255,0.0), rgba(122,246,255,0.55), rgba(184,167,255,0.45), rgba(255,141,225,0.18), rgba(122,246,255,0.0));
+      filter: blur(0.2px);
+      opacity:0.95;
+    }
+    .judgeLineGlow{
+      position:absolute;
+      left:-10%; right:-10%;
+      height:54px;
+      transform: translateY(-26px);
+      background: radial-gradient(closest-side, rgba(122,246,255,0.15), rgba(0,0,0,0));
+      opacity:0.9;
+      pointer-events:none;
+    }
+    .note{
+      position:absolute;
+      width: 18.5%;
+      max-width: 120px;
+      aspect-ratio: 1 / 1;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.14);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 10px 22px rgba(0,0,0,0.35);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .note:before{
+      content:"";
+      position:absolute; inset:-1px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(122,246,255,0.18), rgba(184,167,255,0.10), rgba(255,141,225,0.12));
+      opacity:0.55;
+      filter: blur(10px);
+      pointer-events:none;
+    }
+    .noteIcon{
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.90);
+      text-shadow: 0 0 14px rgba(122,246,255,0.18);
+      transform: translateY(-1px);
+      user-select:none;
+    }
+    .padBtn{
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.06);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 16px 26px rgba(0,0,0,0.38);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      user-select:none;
+      touch-action: manipulation;
+    }
+    .padBtn:active{
+      transform: translateY(1px);
+      filter: brightness(1.06);
+    }
+    .fxText{
+      position:absolute;
+      transform: translate(-50%, -50%);
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      pointer-events:none;
+      animation: fxPop 520ms ease-out forwards;
+      text-shadow: 0 0 26px rgba(122,246,255,0.14);
+    }
+    .fxText::after{
+      content: attr(data-t);
+      position:absolute; left:0; top:0;
+      transform: translate(1px, 1px);
+      opacity:0.22;
+      filter: blur(0.8px);
+    }
+    @keyframes fxPop{
+      0%{ opacity:0; transform: translate(-50%,-50%) scale(0.96); }
+      18%{ opacity:1; transform: translate(-50%,-58%) scale(1.03); }
+      100%{ opacity:0; transform: translate(-50%,-74%) scale(1.02); }
+    }
+    .sheetOverlay{
+      position:absolute; inset:0;
+      background: rgba(0,0,0,0.60);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 40;
+      display:flex;
+      align-items:flex-end;
+      justify-content:center;
+      padding: 16px;
+      padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
+    }
+    .sheet{
+      width: min(720px, 100%);
+      border-radius: 28px;
+      overflow:hidden;
+    }
+    .range{
+      -webkit-appearance:none;
+      appearance:none;
+      width:100%;
+      height: 10px;
+      border-radius:999px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.10);
+      outline:none;
+    }
+    .range::-webkit-slider-thumb{
+      -webkit-appearance:none;
+      appearance:none;
+      width: 22px; height: 22px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.22);
+      box-shadow: 0 10px 18px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12);
+    }
+    .range::-moz-range-thumb{
+      width: 22px; height: 22px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.22);
+      box-shadow: 0 10px 18px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12);
+    }
+    `,
+    [T]
+  );
 
-    const fxAlive = judgeFx && performance.now() - judgeFx.at < 360;
-    return { t, dur, remain, receptorY, list, fxAlive };
-  }, [boardH, frame, judgeFx, speed]);
+  // ---------- RENDER ----------
+  const transport = (
+    <div className="flex items-center gap-2">
+      {status !== "playing" ? (
+        <button
+          type="button"
+          className="px-4 py-2 rounded-2xl border border-white/12 bg-white/6 text-white/90 tracking-[0.18em] uppercase text-[12px] hover:bg-white/10"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            start();
+          }}
+        >
+          PLAY
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="px-4 py-2 rounded-2xl border border-white/12 bg-white/6 text-white/90 tracking-[0.18em] uppercase text-[12px] hover:bg-white/10"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            pause();
+          }}
+        >
+          PAUSE
+        </button>
+      )}
 
-  const isMobile = boardW < 520;
-  const noteSize = React.useMemo(() => (isMobile ? 52 : 56), [isMobile]);
+      <button
+        type="button"
+        className="px-4 py-2 rounded-2xl border border-white/12 bg-white/6 text-white/80 tracking-[0.18em] uppercase text-[12px] hover:bg-white/10"
+        onPointerDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          stop();
+        }}
+      >
+        STOP
+      </button>
 
-  const bunnyMood = React.useMemo(() => {
-    if (status === "result") return ASSET.bunny.flop;
-    if (combo >= 30) return ASSET.bunny.starR;
-    if (combo >= 10) return ASSET.bunny.yayR;
-    if (judgeFx?.type === "miss") return ASSET.bunny.dizzy;
-    if (status === "playing") return ASSET.bunny.runR;
-    return ASSET.bunny.idle;
-  }, [ASSET.bunny, combo, judgeFx, status]);
+      <button
+        type="button"
+        className="px-4 py-2 rounded-2xl border border-white/12 bg-white/6 text-white/80 tracking-[0.18em] uppercase text-[12px] hover:bg-white/10"
+        onPointerDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          restart();
+        }}
+      >
+        RESTART
+      </button>
+    </div>
+  );
 
-  const remainText = fmtMMSS(ui.remain);
-
-  const setTrackSafe = (id) => {
-    setTrackId(id);
-    stopPlayback();
-    setShowConfig(false);
+  const judgeColor = (kind) => {
+    if (kind === "perfect") return T.a0;
+    if (kind === "good") return T.a1;
+    if (kind === "miss") return "rgba(255,255,255,0.55)";
+    return "rgba(255,255,255,0.45)";
   };
+
+  const renderCover = () => {
+    // simple inline “OS Bunny” cover placeholders (no external images needed)
+    const glow = "radial-gradient(closest-side, rgba(122,246,255,0.26), rgba(0,0,0,0))";
+    return (
+      <div className="relative h-14 w-14 rounded-2xl border border-white/12 bg-white/6 overflow-hidden">
+        <div className="absolute inset-0" style={{ background: glow, opacity: 0.9 }} />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="h-9 w-9 rounded-2xl border border-white/20 bg-black/30 flex items-center justify-center">
+            <div className="h-5 w-5 rounded-full" style={{ background: "linear-gradient(90deg, rgba(122,246,255,0.8), rgba(184,167,255,0.8))" }} />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Top progress
+  const progress = useMemo(() => {
+    const cur = Math.min(track.durationMs, Math.max(0, currentMsRef.current));
+    return track.durationMs ? cur / track.durationMs : 0;
+  }, [frame, track.durationMs]);
+
+  // Compute accuracy each frame (lightweight)
+  useEffect(() => {
+    const c = counts;
+    const total = c.perfect + c.good + c.miss;
+    if (!total) {
+      setAccuracy(0);
+      return;
+    }
+    const points = c.perfect * 1 + c.good * 0.6;
+    setAccuracy(Math.round((points / total) * 1000) / 10);
+  }, [counts]);
+
+  // Interactions: unlock audio on first pointer
+  useEffect(() => {
+    const onFirst = () => ensureAudioUnlocked();
+    window.addEventListener("pointerdown", onFirst, { once: true, passive: true });
+    return () => window.removeEventListener("pointerdown", onFirst);
+  }, [ensureAudioUnlocked]);
 
   return (
     <div
-      className="relative h-full w-full overflow-hidden select-none bg-[#05060a]"
-      style={{
-        WebkitTapHighlightColor: "transparent",
-        // ✅ 全面 touchAction:none はやめる（環境差でタップ不発が出る）
-        touchAction: "manipulation",
-      }}
+      className="osusagi-sync-root osusagi-noise"
+      onPointerDown={() => ensureAudioUnlocked()}
     >
-      {/* Premium haze (non-interactive) */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div
-          className="absolute -inset-24 opacity-90"
-          style={{
-            background:
-              `radial-gradient(900px 520px at 18% 10%, ${ACC_MINT}, transparent 60%),` +
-              `radial-gradient(860px 520px at 84% 16%, ${ACC_LAV}, transparent 62%),` +
-              `radial-gradient(980px 620px at 52% 92%, ${ACC_PINK}, transparent 64%)`,
-            filter: "blur(10px)",
-          }}
-        />
-        <div
-          className="absolute inset-0 opacity-[0.08]"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(to bottom, rgba(255,255,255,0.16) 0px, rgba(255,255,255,0.16) 1px, transparent 1px, transparent 7px)",
-            mixBlendMode: "overlay",
-          }}
-        />
-      </div>
+      <style>{styles}</style>
 
-      {/* HUD */}
-      <div className="absolute top-0 left-0 right-0 z-40 px-3 pt-3">
-        <div
-          className="mx-auto max-w-[980px] rounded-2xl border border-white/10 bg-black/38 backdrop-blur-2xl px-3 py-2 flex items-center justify-between gap-2"
-          style={{ boxShadow: "0 18px 70px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.06)" }}
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="h-9 w-9 rounded-2xl border border-white/12 bg-white/5 overflow-hidden">
-              <img src={ASSET.bunny.front} alt="os_bunny" className="h-full w-full object-cover opacity-90" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">
-                OS_USAGI <span className="text-white/85">SYNC</span>
+      {/* hidden music element */}
+      <audio ref={audioRef} src={track.audioUrl || ""} />
+
+      {/* Top HUD */}
+      <div
+        className="absolute left-0 right-0 top-0 z-30 px-3 sm:px-4"
+        style={{
+          paddingTop: "calc(env(safe-area-inset-top) + 10px)",
+        }}
+      >
+        <div className="glass-card rounded-[26px] px-3 sm:px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              {renderCover()}
+              <div className="min-w-0">
+                <div className="text-[10px] tracking-[0.28em] uppercase text-white/60">
+                  OS_USAGI <span style={{ color: T.a0 }}>SYNC</span> · BEAT SYNC
+                </div>
+                <div className="mt-1 text-[18px] sm:text-[20px] font-semibold leading-tight truncate">
+                  {track.title}
+                </div>
+                <div className="text-[12px] text-white/55 truncate">
+                  Difficulty: <span className="text-white/75">{difficulty.toUpperCase()}</span>{" "}
+                  · Accuracy: <span className="text-white/75">{accuracy.toFixed(1)}%</span>
+                </div>
               </div>
-              <div className="text-[12px] text-white/85 font-semibold truncate">{currentTrack.title}</div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
-              <span className="text-[10px] tracking-[0.28em] uppercase text-white/45">SCORE</span>
-              <span className="ml-2 text-[12px] text-white/90 tabular-nums">{score.toLocaleString()}</span>
             </div>
 
-            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
-              <span className="text-[10px] tracking-[0.28em] uppercase text-white/45">COMBO</span>
-              <span className="ml-2 text-[12px] text-white/85 tabular-nums">{combo}</span>
-            </div>
-
-            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1">
-              <span className="text-[10px] tracking-[0.28em] uppercase text-white/45">REMAIN</span>
-              <span className="ml-2 text-[12px] text-white/85 tabular-nums">{remainText}</span>
-            </div>
-
-            <button
-              className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
-              {...press(() => setShowConfig(true))}
-              aria-label="config"
-              style={{ boxShadow: "0 14px 45px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
-              title="Config"
-            >
-              <span className="text-white/80 text-[16px] leading-none">⚙︎</span>
-            </button>
-
-            <button
-              className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
-              {...press(hardReset)}
-              aria-label="reset"
-              style={{ boxShadow: "0 14px 45px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
-              title="Reset"
-            >
-              <span className="text-white/80 text-[16px] leading-none">✕</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="mx-auto max-w-[980px] mt-2 px-1">
-          <div className="flex items-center justify-between text-[10px] tracking-[0.28em] uppercase text-white/40">
-            <span>{difficulty} · SPEED {speed} · LAT {latencyMs}ms</span>
-            <span className="tabular-nums text-white/55">{status === "playing" ? "SYNC" : status.toUpperCase()}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Board */}
-      <div className="absolute inset-0 pt-[92px] pb-[calc(env(safe-area-inset-bottom)+10px)]">
-        <div className="mx-auto h-full max-w-[980px] px-3">
-          <div
-            ref={boardRef}
-            className="relative h-full rounded-[30px] border border-white/10 bg-black/28 backdrop-blur-2xl overflow-hidden"
-            style={{ boxShadow: "0 24px 86px rgba(0,0,0,0.70), inset 0 1px 0 rgba(255,255,255,0.06)" }}
-          >
-            {/* ✅ Lanes背景は全部 non-interactive */}
-            <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute inset-0 grid grid-cols-4">
-                {[0, 1, 2, 3].map((lane) => (
-                  <div key={lane} className="relative">
-                    <div className="absolute inset-y-0 right-0 w-px bg-white/10" />
-                  </div>
-                ))}
-              </div>
-              <div
-                className="absolute inset-0 opacity-[0.10]"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(to bottom, rgba(255,255,255,0.14), transparent 16%, transparent 84%, rgba(255,255,255,0.10))",
-                  mixBlendMode: "overlay",
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                className="h-11 w-11 rounded-2xl border border-white/12 bg-white/6 hover:bg-white/10 flex items-center justify-center"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setSheetOpen(true);
                 }}
+                aria-label="Open config"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <Settings className="h-5 w-5 text-white/85" />
+              </button>
+
+              <button
+                type="button"
+                className="h-11 w-11 rounded-2xl border border-white/12 bg-white/6 hover:bg-white/10 flex items-center justify-center"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  stop();
+                }}
+                aria-label="Close"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <X className="h-5 w-5 text-white/85" />
+              </button>
+            </div>
+          </div>
+
+          {/* capsules (no overlap on mobile: wrap) */}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Capsule label="SCORE" value={score.toLocaleString()} accent={T.a1} />
+            <Capsule label="COMBO" value={combo} accent={combo ? T.a0 : null} />
+            <Capsule label="REMAIN" value={fmt(remain)} accent={T.a2} />
+            <div className="ml-auto">{transport}</div>
+          </div>
+
+          {/* progress bar */}
+          <div className="mt-3 h-2 rounded-full border border-white/10 bg-white/5 overflow-hidden">
+            <div
+              className="h-full"
+              style={{
+                width: `${Math.min(100, Math.max(0, progress * 100))}%`,
+                background:
+                  "linear-gradient(90deg, rgba(122,246,255,0.75), rgba(184,167,255,0.55), rgba(255,141,225,0.45))",
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Playfield */}
+      <div
+        className="absolute inset-0 pt-[170px] sm:pt-[178px] px-3 sm:px-4 pb-3"
+        style={{
+          paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)",
+        }}
+      >
+        <div className="h-full glass-card rounded-[28px] p-3 sm:p-4">
+          <div className="h-full flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] tracking-[0.26em] uppercase text-white/55">
+                {difficulty.toUpperCase()} · SPEED {Math.round(speed)} · LAT {latencyMs}ms
+              </div>
+              <div className="text-[10px] tracking-[0.26em] uppercase text-white/45">
+                {status === "playing" ? "SYNCING…" : status === "paused" ? "PAUSED" : status === "result" ? "COMPLETE" : "READY"}
+              </div>
+            </div>
+
+            <div ref={playfieldRef} className="relative flex-1 laneGrid">
+              {/* subtle vignette */}
+              <div className="absolute inset-0 pointer-events-none" style={{
+                background:
+                  "radial-gradient(900px 420px at 50% 78%, rgba(0,0,0,0), rgba(0,0,0,0.45) 72%, rgba(0,0,0,0.70))"
+              }}/>
+
+              {/* judgement line */}
+              <div
+                className="judgeLine"
+                style={{ top: `${lineYRef.current}px` }}
               />
-            </div>
+              <div
+                className="judgeLineGlow"
+                style={{ top: `${lineYRef.current}px` }}
+              />
 
-            <div className="absolute left-3 top-3 z-10 pointer-events-none opacity-[0.92]">
-              <div className="h-14 w-14 rounded-[18px] border border-white/10 bg-white/5 overflow-hidden">
-                <img src={bunnyMood} alt="bunny" className="h-full w-full object-cover opacity-90" />
-              </div>
-            </div>
+              {/* FX canvas */}
+              <canvas ref={fxCanvasRef} className="absolute inset-0 pointer-events-none" />
 
-            {/* Receptors */}
-            <div className="absolute inset-x-0 z-20" style={{ top: ui.receptorY - 54 }}>
-              <div className="mx-auto max-w-[640px] px-3">
-                <div className="grid grid-cols-4 gap-3">
-                  {[0, 1, 2, 3].map((lane) => {
-                    const glow =
-                      lane === 0
-                        ? "rgba(185,168,255,0.32)"
-                        : lane === 1
-                        ? "rgba(168,234,255,0.30)"
-                        : lane === 2
-                        ? "rgba(255,200,232,0.26)"
-                        : "rgba(168,234,255,0.26)";
+              {/* Notes */}
+              {visibleNotes.map((n) => {
+                const travel = travelMsRef.current;
+                const cur = currentMsRef.current + latencyMs;
+                const t = n.t - cur; // ms until hit
+                const y = (lineYRef.current - 64) * (1 - t / travel);
+                const lane = n.lane;
+                const laneW = 100 / 4;
+                const xPct = laneW * lane + laneW / 2;
+                const intensity = laneFlashRef.current[lane];
 
-                    return (
-                      <button
-                        key={lane}
-                        className="h-[78px] rounded-[24px] border border-white/12 bg-white/[0.04] backdrop-blur-2xl active:scale-[0.99]"
-                        {...press(() => hitLane(lane))}
-                        aria-label={`lane-${lane}`}
-                        style={{
-                          touchAction: "manipulation",
-                          boxShadow: `0 22px 60px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 0 1px ${glow} inset`,
-                        }}
-                      >
-                        <div className="h-full flex items-center justify-center">
-                          <img
-                            src={ASSET.arrows[LANE_ICON[lane]]}
-                            alt="lane"
-                            className="h-10 w-10 opacity-95"
-                            style={{ filter: `drop-shadow(0 0 16px ${glow})` }}
-                          />
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="mt-3 text-center">
-                  {!loaded ? (
-                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">LOADING AUDIO…</div>
-                  ) : status === "ready" ? (
-                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">TAP ANY LANE TO START</div>
-                  ) : status === "paused" ? (
-                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">
-                      PAUSED · TAP ANY LANE TO RESUME
-                    </div>
-                  ) : (
-                    <div className="text-[10px] tracking-[0.34em] uppercase text-white/40">SYNC</div>
-                  )}
-                </div>
-
-                {/* transport */}
-                <div className="mt-3 flex justify-center gap-2">
-                  <button
-                    className="h-11 px-4 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
-                    disabled={!loaded}
-                    {...press(() => {
-                      if (status === "playing") pauseRun();
-                      else if (status === "paused") resumeRun();
-                      else if (status === "ready") startRun();
-                    })}
-                    style={{ boxShadow: "0 14px 45px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
-                  >
-                    <span className="text-[11px] tracking-[0.28em] uppercase text-white/85">
-                      {status === "playing" ? "PAUSE" : "PLAY"}
-                    </span>
-                  </button>
-
-                  <button
-                    className="h-11 px-4 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
-                    disabled={!loaded}
-                    {...press(stopPlayback)}
-                    style={{ boxShadow: "0 14px 45px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
-                  >
-                    <span className="text-[11px] tracking-[0.28em] uppercase text-white/75">STOP</span>
-                  </button>
-
-                  <button
-                    className="h-11 px-4 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]"
-                    disabled={!loaded}
-                    {...press(restartRun)}
-                    style={{ boxShadow: "0 14px 45px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
-                  >
-                    <span className="text-[11px] tracking-[0.28em] uppercase text-white/75">RESTART</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* ✅ Notes layer is non-interactive (絶対に壁にしない) */}
-            <div className="absolute inset-0 pointer-events-none z-10">
-              {ui.list.map((n) => {
-                const t = playTRef.current || 0;
-                const adjT = t + latencyMs / 1000;
-                const dt = n.t - adjT;
-                const y = ui.receptorY - dt * speed;
-                const xPct = ((n.lane + 0.5) / LANES) * 100;
-
-                const glow =
-                  n.lane === 0
-                    ? "rgba(185,168,255,0.24)"
-                    : n.lane === 1
-                    ? "rgba(168,234,255,0.22)"
-                    : n.lane === 2
-                    ? "rgba(255,200,232,0.20)"
-                    : "rgba(168,234,255,0.20)";
-
+                const icon = lane === 0 ? "←" : lane === 1 ? "↓" : lane === 2 ? "↑" : "→";
                 return (
                   <div
                     key={n.id}
-                    className="absolute"
+                    className="note"
                     style={{
-                      left: `calc(${xPct}% - ${noteSize / 2}px)`,
-                      top: `${y - noteSize / 2}px`,
-                      width: noteSize,
-                      height: noteSize,
-                      transform: "translateZ(0)",
+                      left: `${xPct}%`,
+                      top: `${Math.max(-80, Math.min(lineYRef.current + 40, y))}px`,
+                      transform: "translate(-50%, -50%)",
+                      opacity: t < -100 ? 0.2 : 1,
+                      filter: `drop-shadow(0 0 ${10 + intensity * 18}px rgba(122,246,255,${0.12 + intensity * 0.22}))`,
                     }}
                   >
-                    <div
-                      className="h-full w-full rounded-2xl border border-white/12 bg-black/38 backdrop-blur-xl flex items-center justify-center"
-                      style={{
-                        boxShadow: `0 18px 40px rgba(0,0,0,0.55), 0 0 0 1px ${glow} inset, 0 0 18px ${glow}`,
-                      }}
-                    >
-                      <img
-                        src={ASSET.arrows[LANE_ICON[n.lane]]}
-                        alt="note"
-                        className="h-8 w-8 opacity-95"
-                        style={{ filter: "drop-shadow(0 0 12px rgba(255,255,255,0.10))" }}
-                      />
-                    </div>
+                    <div className="noteIcon">{icon}</div>
                   </div>
                 );
               })}
-            </div>
 
-            {/* Judge FX */}
-            {ui.fxAlive && (
-              <div className="absolute inset-x-0 top-[55%] -translate-y-1/2 flex justify-center pointer-events-none z-30">
-                <img
-                  src={
-                    judgeFx.type === "perfect"
-                      ? ASSET.judge.perfect
-                      : judgeFx.type === "good"
-                      ? ASSET.judge.good
-                      : ASSET.judge.miss
-                  }
-                  alt={judgeFx.type}
-                  className="h-14 opacity-90"
-                  style={{
-                    filter:
-                      "drop-shadow(0 0 18px rgba(168,234,255,0.18)) drop-shadow(0 0 22px rgba(185,168,255,0.14))",
-                    animation: "osbJudge 360ms cubic-bezier(0.22,1,0.36,1) both",
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Result */}
-            {status === "result" && (
-              <div className="absolute inset-0 flex items-center justify-center p-4 z-40">
-                <div className="absolute inset-0 bg-black/58 backdrop-blur-2xl" />
+              {/* Judgement text (subtle) */}
+              {judgeFx && (
                 <div
-                  className="relative w-full max-w-[440px] rounded-[30px] border border-white/12 bg-black/45 backdrop-blur-2xl p-5"
-                  style={{ boxShadow: "0 30px 96px rgba(0,0,0,0.74), inset 0 1px 0 rgba(255,255,255,0.06)" }}
+                  key={judgeFx.key}
+                  className="fxText"
+                  data-t={judgeFx.text}
+                  style={{
+                    left: `${(judgeFx.lane + 0.5) * 25}%`,
+                    top: `${lineYRef.current - 18}px`,
+                    fontSize: judgeFx.kind === "perfect" ? 18 : 16,
+                    color: judgeColor(judgeFx.kind),
+                    opacity: judgeFx.kind === "none" ? 0.25 : 1,
+                  }}
                 >
-                  <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">RESULT</div>
-                  <div className="mt-1 text-[22px] font-semibold text-white/90">SYNC COMPLETE</div>
+                  {judgeFx.text}
+                </div>
+              )}
 
-                  <div className="mt-4 grid grid-cols-3 gap-2">
-                    {[
-                      ["Perfect", counts.perfect],
-                      ["Good", counts.good],
-                      ["Miss", counts.miss],
-                    ].map(([label, val]) => (
-                      <div key={label} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-                        <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">{label}</div>
-                        <div className="mt-1 text-[18px] text-white/90 tabular-nums">{val}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-                      <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Max Combo</div>
-                      <div className="mt-1 text-[18px] text-white/90 tabular-nums">{maxCombo}</div>
+              {/* Start hint (idle) */}
+              {status === "idle" && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="px-4 py-3 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl">
+                    <div className="text-[10px] tracking-[0.28em] uppercase text-white/60 text-center">
+                      TAP ANY LANE TO START
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-                      <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Accuracy</div>
-                      <div className="mt-1 text-[18px] text-white/90 tabular-nums">{accuracy.toFixed(1)}%</div>
+                    <div className="mt-1 text-[12px] text-white/45 text-center">
+                      or press <span className="text-white/70">PLAY</span>
                     </div>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    <button
-                      className="h-12 rounded-2xl border border-white/12 bg-white/10 text-white/90 active:scale-[0.99]"
-                      {...press(restartRun)}
-                      style={{ boxShadow: "0 18px 45px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
-                    >
-                      <span className="text-[11px] tracking-[0.22em] uppercase">RESTART</span>
-                    </button>
-                    <button
-                      className="h-12 rounded-2xl border border-white/10 bg-white/5 text-white/80 active:scale-[0.99]"
-                      {...press(() => setStatus("ready"))}
-                      style={{ boxShadow: "0 18px 45px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)" }}
-                    >
-                      <span className="text-[11px] tracking-[0.22em] uppercase">BACK</span>
-                    </button>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            <audio ref={audioRef} preload="metadata" />
+              {/* Result modal */}
+              {status === "result" && (
+                <div className="absolute inset-0 flex items-center justify-center p-4">
+                  <div className="glass-card rounded-[28px] w-full max-w-[520px] p-5">
+                    <div className="text-[10px] tracking-[0.28em] uppercase text-white/55">
+                      RESULT
+                    </div>
+                    <div className="mt-2 text-[26px] font-semibold tracking-[0.08em]">
+                      SYNC COMPLETE
+                    </div>
+                    <div className="mt-1 text-white/55 text-[13px]">
+                      もう一回いく？
+                    </div>
 
-            <style>{`
-              @keyframes osbJudge {
-                0% { transform: translateY(10px) scale(.96); opacity: 0; }
-                40% { transform: translateY(0px) scale(1.02); opacity: 1; }
-                100% { transform: translateY(-8px) scale(1.00); opacity: 0; }
-              }
-              button { -webkit-tap-highlight-color: transparent; }
-            `}</style>
+                    <div className="mt-4 grid grid-cols-3 gap-2">
+                      <div className="glass-card rounded-2xl p-3" style={{ boxShadow: "none" }}>
+                        <div className="text-[10px] tracking-[0.22em] uppercase text-white/55">
+                          PERFECT
+                        </div>
+                        <div className="mt-1 text-[22px] font-semibold">{counts.perfect}</div>
+                      </div>
+                      <div className="glass-card rounded-2xl p-3" style={{ boxShadow: "none" }}>
+                        <div className="text-[10px] tracking-[0.22em] uppercase text-white/55">
+                          GOOD
+                        </div>
+                        <div className="mt-1 text-[22px] font-semibold">{counts.good}</div>
+                      </div>
+                      <div className="glass-card rounded-2xl p-3" style={{ boxShadow: "none" }}>
+                        <div className="text-[10px] tracking-[0.22em] uppercase text-white/55">
+                          MISS
+                        </div>
+                        <div className="mt-1 text-[22px] font-semibold">{counts.miss}</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <div className="glass-card rounded-2xl p-3" style={{ boxShadow: "none" }}>
+                        <div className="text-[10px] tracking-[0.22em] uppercase text-white/55">
+                          MAX COMBO
+                        </div>
+                        <div className="mt-1 text-[18px] font-semibold">{maxCombo}</div>
+                      </div>
+                      <div className="glass-card rounded-2xl p-3" style={{ boxShadow: "none" }}>
+                        <div className="text-[10px] tracking-[0.22em] uppercase text-white/55">
+                          ACCURACY
+                        </div>
+                        <div className="mt-1 text-[18px] font-semibold">{accuracy.toFixed(1)}%</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex items-center justify-center gap-3">
+                      <button
+                        type="button"
+                        className="px-6 py-3 rounded-2xl border border-white/14 bg-white/7 hover:bg-white/10 tracking-[0.18em] uppercase text-[12px]"
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          restart();
+                        }}
+                      >
+                        RESTART
+                      </button>
+                      <button
+                        type="button"
+                        className="px-6 py-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/8 tracking-[0.18em] uppercase text-[12px] text-white/75"
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          stop();
+                        }}
+                      >
+                        BACK
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Input pad (raised so it won’t conflict with OS dock) */}
+            <div
+              className="grid grid-cols-4 gap-3"
+              style={{
+                paddingBottom: "calc(env(safe-area-inset-bottom) + 76px)",
+              }}
+            >
+              {[
+                { lane: 0, label: "←" },
+                { lane: 1, label: "↓" },
+                { lane: 2, label: "↑" },
+                { lane: 3, label: "→" },
+              ].map((b) => (
+                <button
+                  key={b.lane}
+                  type="button"
+                  className="padBtn h-[74px] sm:h-[84px] flex items-center justify-center"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    judgeLane(b.lane);
+                  }}
+                  aria-label={`lane ${b.lane}`}
+                  style={{ WebkitTapHighlightColor: "transparent" }}
+                >
+                  <span
+                    className="text-[30px] sm:text-[34px] font-semibold"
+                    style={{
+                      color:
+                        b.lane === 0
+                          ? "rgba(184,167,255,0.95)"
+                          : b.lane === 1
+                          ? "rgba(122,246,255,0.95)"
+                          : b.lane === 2
+                          ? "rgba(122,246,255,0.95)"
+                          : "rgba(184,167,255,0.95)",
+                      textShadow: "0 0 18px rgba(122,246,255,0.18)",
+                    }}
+                  >
+                    {b.label}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ✅ Config: position FIXED で最前面（押せない問題の根本対策） */}
-      {showConfig && (
+      {/* CONFIG SHEET */}
+      {sheetOpen && (
         <div
-          className="fixed inset-0 z-[9999]"
-          style={{ touchAction: "manipulation" }}
+          className="sheetOverlay"
+          onPointerDown={(e) => {
+            // click outside closes
+            if (e.target === e.currentTarget) setSheetOpen(false);
+          }}
         >
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-2xl" {...press(() => setShowConfig(false))} />
-          <div className="absolute inset-x-0 bottom-0 pb-[env(safe-area-inset-bottom)]">
-            <div
-              className="mx-auto max-w-[980px] rounded-t-[30px] border border-white/12 bg-black/55 backdrop-blur-2xl p-4"
-              style={{ boxShadow: "0 -26px 96px rgba(0,0,0,0.78), inset 0 1px 0 rgba(255,255,255,0.06)" }}
-              onTouchStart={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between">
-                <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">CONFIG</div>
-                <button className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]" {...press(() => setShowConfig(false))}>
-                  <span className="text-white/80 text-[16px] leading-none">✕</span>
+          <div className="sheet glass-card">
+            <div className="px-5 py-4 flex items-center">
+              <div>
+                <div className="text-[10px] tracking-[0.28em] uppercase text-white/55">
+                  CONFIG
+                </div>
+                <div className="mt-1 text-[18px] font-semibold">SYNC Tuning</div>
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  type="button"
+                  className="h-11 w-11 rounded-2xl border border-white/12 bg-white/6 hover:bg-white/10 flex items-center justify-center"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSheetOpen(false);
+                  }}
+                  aria-label="Close config"
+                >
+                  <X className="h-5 w-5 text-white/85" />
                 </button>
               </div>
+            </div>
 
-              <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">TRACK</div>
+            <div className="px-5 pb-5">
+              {/* Track */}
+              <div className="mt-2">
+                <div className="text-[10px] tracking-[0.26em] uppercase text-white/55">TRACK</div>
+                <div className="mt-2">
                   <select
-                    className="w-full h-11 rounded-2xl bg-white/5 border border-white/10 text-white/80 px-3 text-[13px] outline-none"
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white/90 outline-none"
                     value={trackId}
-                    onChange={(e) => setTrackSafe(e.target.value)}
+                    onChange={(e) => setTrackId(e.target.value)}
+                    onPointerDown={(e) => e.stopPropagation()}
                   >
-                    {ASSET.tracks.map((t) => (
-                      <option key={t.id} value={t.id} className="bg-black">
+                    {TRACKS.map((t) => (
+                      <option key={t.id} value={t.id} className="bg-[#0b0c12]">
                         {t.title}
                       </option>
                     ))}
                   </select>
                 </div>
+              </div>
 
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">DIFFICULTY</div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {["EASY", "NORMAL", "HARD"].map((d) => {
-                      const active = d === difficulty;
-                      return (
-                        <button
-                          key={d}
-                          className={`h-11 rounded-2xl border active:scale-[0.99] ${
-                            active ? "border-white/18 bg-white/10 text-white/90" : "border-white/10 bg-white/5 text-white/70"
-                          }`}
-                          {...press(() => applyDifficultyLive(d))}
-                        >
-                          <span className="text-[11px] tracking-[0.22em] uppercase">{d}</span>
-                        </button>
-                      );
-                    })}
+              {/* Difficulty */}
+              <div className="mt-5">
+                <div className="text-[10px] tracking-[0.26em] uppercase text-white/55">DIFFICULTY</div>
+                <div className="mt-2 flex items-center gap-2">
+                  <SegBtn active={difficulty === "easy"} onPointerDown={() => setDifficulty("easy")}>
+                    EASY
+                  </SegBtn>
+                  <SegBtn active={difficulty === "normal"} onPointerDown={() => setDifficulty("normal")}>
+                    NORMAL
+                  </SegBtn>
+                  <SegBtn active={difficulty === "hard"} onPointerDown={() => setDifficulty("hard")}>
+                    HARD
+                  </SegBtn>
+                </div>
+              </div>
+
+              {/* Tuning */}
+              <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div className="text-[10px] tracking-[0.26em] uppercase text-white/55">LATENCY</div>
+                    <div className="text-[11px] text-white/60">{latencyMs} ms</div>
+                  </div>
+                  <input
+                    className="range mt-2"
+                    type="range"
+                    min="-120"
+                    max="160"
+                    step="5"
+                    value={latencyMs}
+                    onChange={(e) => setLatencyMs(Number(e.target.value))}
+                    onPointerDown={(e) => e.stopPropagation()}
+                  />
+                  <div className="mt-2 text-[11px] text-white/45">
+                    Adjust if hits feel early/late. (Changes apply immediately)
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">TUNING</div>
-                  <div className="space-y-3">
-                    <div>
-                      <div className="flex items-center justify-between text-[11px] text-white/60">
-                        <span className="tracking-[0.22em] uppercase">Latency</span>
-                        <span className="tabular-nums text-white/75">{latencyMs} ms</span>
-                      </div>
-                      <input type="range" min={-120} max={180} value={latencyMs} onChange={(e) => setLatencyMs(parseInt(e.target.value, 10))} className="w-full accent-white/70" />
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between text-[11px] text-white/60">
-                        <span className="tracking-[0.22em] uppercase">Speed</span>
-                        <span className="tabular-nums text-white/75">{speed} px/s</span>
-                      </div>
-                      <input type="range" min={720} max={1220} value={speed} onChange={(e) => setSpeed(parseInt(e.target.value, 10))} className="w-full accent-white/70" />
-                    </div>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div className="text-[10px] tracking-[0.26em] uppercase text-white/55">SPEED</div>
+                    <div className="text-[11px] text-white/60">{Math.round(speed)} px/s</div>
                   </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                  <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">AUDIO</div>
-                  <div className="flex items-center gap-2">
-                    <button className="h-11 w-11 rounded-2xl border border-white/10 bg-white/5 active:scale-[0.99]" {...press(() => setMuted((m) => !m))}>
-                      <span className="text-white/80 text-[12px] tracking-[0.22em] uppercase">{muted ? "MUTE" : "ON"}</span>
-                    </button>
-                    <input type="range" min={0} max={1} step={0.01} value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} className="w-full accent-white/70" />
-                    <div className="w-14 text-right text-[12px] text-white/75 tabular-nums">{Math.round(volume * 100)}%</div>
+                  <input
+                    className="range mt-2"
+                    type="range"
+                    min="520"
+                    max="1400"
+                    step="10"
+                    value={speed}
+                    onChange={(e) => setSpeed(Number(e.target.value))}
+                    onPointerDown={(e) => e.stopPropagation()}
+                  />
+                  <div className="mt-2 text-[11px] text-white/45">
+                    Faster = less time to react (more “arcade”).
                   </div>
                 </div>
               </div>
 
-              <div className="mt-3 flex items-center justify-between">
-                <div className="text-[10px] tracking-[0.34em] uppercase text-white/35">押せない問題は fixed + press で潰した</div>
-                <button className="h-11 px-4 rounded-2xl border border-white/12 bg-white/10 text-white/90 active:scale-[0.99]" {...press(() => setShowConfig(false))}>
-                  <span className="text-[11px] tracking-[0.22em] uppercase">DONE</span>
+              {/* Audio */}
+              <div className="mt-6">
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] tracking-[0.26em] uppercase text-white/55">AUDIO</div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className={[
+                        "px-3 py-2 rounded-2xl border text-[12px] tracking-[0.18em] uppercase",
+                        audioOn
+                          ? "border-white/18 bg-white/10 text-white"
+                          : "border-white/10 bg-white/5 text-white/70",
+                      ].join(" ")}
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setAudioOn((v) => !v);
+                      }}
+                    >
+                      {audioOn ? "ON" : "OFF"}
+                    </button>
+
+                    <div className="text-[12px] text-white/60 flex items-center gap-1">
+                      <Volume2 className="h-4 w-4" />
+                      {Math.round(volume * 100)}%
+                    </div>
+                  </div>
+                </div>
+
+                <input
+                  className="range mt-3"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={volume}
+                  onChange={(e) => setVolume(Number(e.target.value))}
+                  onPointerDown={(e) => e.stopPropagation()}
+                />
+              </div>
+
+              <div className="mt-6 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  className="px-5 py-3 rounded-2xl border border-white/12 bg-white/6 hover:bg-white/10 tracking-[0.18em] uppercase text-[12px]"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (status === "playing") restart();
+                    else start();
+                  }}
+                >
+                  SYNC NOW
+                </button>
+                <button
+                  type="button"
+                  className="px-5 py-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/8 tracking-[0.18em] uppercase text-[12px] text-white/75"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSheetOpen(false);
+                  }}
+                >
+                  CLOSE
                 </button>
               </div>
             </div>
@@ -5630,7 +6062,8 @@ const BeatSyncApp = () => {
       )}
     </div>
   );
-};
+};;
+
 
 
 
