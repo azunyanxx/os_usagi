@@ -3827,41 +3827,23 @@ System: Emotional Device`}
   // ---------- render ----------
   return (
     <div className="flex flex-col h-full bg-[#020308] text-white relative overflow-hidden">
-{/* Global Background（Galleryの“高級ガラス+オーロラ”に寄せる） */}
-<div className="pointer-events-none absolute inset-0">
-  <div
-    className={`absolute -top-40 -left-40 rounded-full ${
-      isMobile ? "w-[420px] h-[420px] blur-[80px] bg-[#a8eaff]/10"
-               : "w-[520px] h-[520px] blur-[110px] bg-[#a8eaff]/16"
-    }`}
-  />
-  <div
-    className={`absolute top-1/2 -right-44 rounded-full ${
-      isMobile ? "w-[440px] h-[440px] blur-[86px] bg-[#cbb8ff]/10"
-               : "w-[560px] h-[560px] blur-[120px] bg-[#cbb8ff]/14"
-    }`}
-  />
-  <div
-    className={`absolute bottom-[-180px] left-1/3 rounded-full ${
-      isMobile ? "w-[480px] h-[480px] blur-[92px] bg-[#ffc8e8]/10"
-               : "w-[620px] h-[620px] blur-[130px] bg-[#ffc8e8]/14"
-    }`}
-  />
-  <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/60 to-black/95" />
+ {/* Global Background（Galleryの“高級ガラス+オーロラ”に寄せる） */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-40 -left-40 w-[520px] h-[520px] rounded-full bg-[#a8eaff]/16 blur-[110px]" />
+        <div className="absolute top-1/2 -right-44 w-[560px] h-[560px] rounded-full bg-[#cbb8ff]/14 blur-[120px]" />
+        <div className="absolute bottom-[-180px] left-1/3 w-[620px] h-[620px] rounded-full bg-[#ffc8e8]/14 blur-[130px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/60 to-black/95" />
+        <div
+          className="absolute inset-0 opacity-[0.12] mix-blend-overlay"
+          style={{
+            background:
+              "linear-gradient(transparent, rgba(255,255,255,0.08), transparent)",
+            backgroundSize: "100% 4px",
+            animation: "osbNoise 5.4s ease-in-out infinite",
+          }}
+        />
+      </div>
 
-  {/* ノイズはモバイルは“静止”に寄せる（合成落ち防止） */}
-  <div
-    className={`absolute inset-0 ${isMobile ? "opacity-[0.06]" : "opacity-[0.12]"} ${
-      isMobile ? "" : "mix-blend-overlay"
-    }`}
-    style={{
-      background:
-        "linear-gradient(transparent, rgba(255,255,255,0.08), transparent)",
-      backgroundSize: "100% 4px",
-      animation: isMobile ? "none" : "osbNoise 5.4s ease-in-out infinite",
-    }}
-  />
-</div>
 
 
       {/* Browser Bar */}
