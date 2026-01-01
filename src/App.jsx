@@ -3827,22 +3827,42 @@ System: Emotional Device`}
   // ---------- render ----------
   return (
     <div className="flex flex-col h-full bg-[#020308] text-white relative overflow-hidden">
-      {/* Global Background（Galleryの“高級ガラス+オーロラ”に寄せる） */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-40 -left-40 w-[520px] h-[520px] rounded-full bg-[#a8eaff]/16 blur-[110px]" />
-        <div className="absolute top-1/2 -right-44 w-[560px] h-[560px] rounded-full bg-[#cbb8ff]/14 blur-[120px]" />
-        <div className="absolute bottom-[-180px] left-1/3 w-[620px] h-[620px] rounded-full bg-[#ffc8e8]/14 blur-[130px]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/60 to-black/95" />
-        <div
-          className="absolute inset-0 opacity-[0.12] mix-blend-overlay"
-          style={{
-            background:
-              "linear-gradient(transparent, rgba(255,255,255,0.08), transparent)",
-            backgroundSize: "100% 4px",
-            animation: "osbNoise 5.4s ease-in-out infinite",
-          }}
-        />
-      </div>
+{/* Global Background（Galleryの“高級ガラス+オーロラ”に寄せる） */}
+<div className="pointer-events-none absolute inset-0">
+  <div
+    className={`absolute -top-40 -left-40 rounded-full ${
+      isMobile ? "w-[420px] h-[420px] blur-[80px] bg-[#a8eaff]/10"
+               : "w-[520px] h-[520px] blur-[110px] bg-[#a8eaff]/16"
+    }`}
+  />
+  <div
+    className={`absolute top-1/2 -right-44 rounded-full ${
+      isMobile ? "w-[440px] h-[440px] blur-[86px] bg-[#cbb8ff]/10"
+               : "w-[560px] h-[560px] blur-[120px] bg-[#cbb8ff]/14"
+    }`}
+  />
+  <div
+    className={`absolute bottom-[-180px] left-1/3 rounded-full ${
+      isMobile ? "w-[480px] h-[480px] blur-[92px] bg-[#ffc8e8]/10"
+               : "w-[620px] h-[620px] blur-[130px] bg-[#ffc8e8]/14"
+    }`}
+  />
+  <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/60 to-black/95" />
+
+  {/* ノイズはモバイルは“静止”に寄せる（合成落ち防止） */}
+  <div
+    className={`absolute inset-0 ${isMobile ? "opacity-[0.06]" : "opacity-[0.12]"} ${
+      isMobile ? "" : "mix-blend-overlay"
+    }`}
+    style={{
+      background:
+        "linear-gradient(transparent, rgba(255,255,255,0.08), transparent)",
+      backgroundSize: "100% 4px",
+      animation: isMobile ? "none" : "osbNoise 5.4s ease-in-out infinite",
+    }}
+  />
+</div>
+
 
       {/* Browser Bar */}
       <div className="relative z-20 h-10 px-3 sm:px-4 flex items-center justify-between border-b border-white/12 bg-black/70 backdrop-blur-2xl shrink-0">
@@ -4772,42 +4792,43 @@ const Desktop = ({ bgm }) => {
     }, 500);
   }, []);
 
-  const toggleApp = (id) => {
-    setOpenApps((prev) => {
-      // すでに開いている場合 → トグル動作
-      if (prev.includes(id)) {
-        // 今アクティブなら → 閉じる
-        if (activeApp === id) {
-          const next = prev.filter((a) => a !== id);
+const toggleApp = (id) => {
+  setOpenApps((prev) => {
+    const isOpen = prev.includes(id);
 
-          setActiveApp(() => {
-            // 他が開いていれば最後のアプリをアクティブに
-            return next.length ? next[next.length - 1] : null;
-          });
-
-          return next;
-        }
-
-        // 裏にいるアプリを押した → 前面に出す
-        setActiveApp(id);
-        return prev;
-      }
-
-      // 開いていない場合 → 開く
-      const next = [...prev, id];
+    // 開いてない → 開く（最後＝最前面に積む）
+    if (!isOpen) {
       setActiveApp(id);
+      return [...prev, id];
+    }
+
+    // 開いてる＆いまアクティブ → 閉じる
+    if (activeApp === id) {
+      const next = prev.filter((x) => x !== id);
+      setActiveApp(next.length ? next[next.length - 1] : null);
       return next;
-    });
-  };
+    }
 
-  const bringToFront = (id) => {
+    // 開いてるけど裏 → 最前面へ（配列の最後に移動）
     setActiveApp(id);
-  };
+    return [...prev.filter((x) => x !== id), id];
+  });
+};
 
-  const closeApp = (id) => {
-    setOpenApps((prev) => prev.filter((a) => a !== id));
-    if (activeApp === id) setActiveApp(null);
-  };
+const bringToFront = (id) => {
+  setActiveApp(id);
+  setOpenApps((prev) => [...prev.filter((x) => x !== id), id]);
+};
+
+
+const closeApp = (id) => {
+  setOpenApps((prev) => {
+    const next = prev.filter((x) => x !== id);
+    setActiveApp((cur) => (cur === id ? (next[next.length - 1] ?? null) : cur));
+    return next;
+  });
+};
+
 
   return (
     <div className="fixed inset-0 w-full h-full overflow-hidden select-none bg-black">
