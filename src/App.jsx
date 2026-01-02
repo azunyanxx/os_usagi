@@ -5000,82 +5000,22 @@ const Desktop = ({ bgm }) => {
 // ------------------------------------------------
 
 
-/* ---------------- ASSET ---------------- */
 
-const ASSET = {
-  judge: {
-    perfect: "https://files.catbox.moe/xn8cnp.png",
-    good: "https://files.catbox.moe/6taoa0.png",
-    miss: "https://files.catbox.moe/9ywa9l.png",
-  },
-  arrows: {
-    up: "https://files.catbox.moe/zb8qnn.png",
-    right: "https://files.catbox.moe/zg5lru.png",
-    down: "https://files.catbox.moe/v4g9e7.png",
-    left: "https://files.catbox.moe/rmbi75.png",
-  },
-  bunny: {
-    front: "https://files.catbox.moe/cdsn2q.jpg",
-    idle: "https://files.catbox.moe/3revxm.png",
-    runR: "https://files.catbox.moe/p45obb.png",
-    yayR: "https://files.catbox.moe/mkceap.png",
-    dizzy: "https://files.catbox.moe/gxng27.png",
-    flop: "https://files.catbox.moe/dwiqep.png",
-    starR: "https://files.catbox.moe/5zvxy0.png",
-  },
-  tracks: [
-    { id: "overhaul", title: "Overhaul", url: "https://files.catbox.moe/po0sn4.mp3", bpm: 124 },
-    { id: "dawning", title: "The Dawning", url: "https://files.catbox.moe/p17dic.mp3", bpm: 120 },
-    { id: "mirage", title: "mirage", url: "https://files.catbox.moe/ttlaul.mp3", bpm: 132 },
-    { id: "phantasma", title: "廻る世界とファンタズマ", url: "https://files.catbox.moe/ns5til.mp3", bpm: 150 },
-    { id: "immitation", title: "Immitation Girl", url: "https://files.catbox.moe/7lccok.mp3", bpm: 128 },
-    { id: "checkmate", title: "checkmate", url: "https://files.catbox.moe/3dutdo.mp3", bpm: 140 },
-    { id: "lockon", title: "ロックオン", url: "https://files.catbox.moe/o667wd.mp3", bpm: 160 },
-  ],
-};
-
-/* ---------------- CONST ---------------- */
-
-const TRACKS = ASSET.tracks.map((t, i) => ({
-  ...t,
-  artist: "OS_USAGI",
-  cover: ASSET.bunny.idle,
-  accent: i % 2 === 0 ? ["#7df9ff", "#e1b3ff"] : ["#9efcff", "#ff9ad6"],
-}));
-
-const DIFF = {
-  easy: { name: "EASY", density: 0.7 },
-  normal: { name: "NORMAL", density: 1.0 },
-  hard: { name: "HARD", density: 1.25 },
-};
-
-const HIT_WINDOWS = {
-  perfect: 0.06,
-  good: 0.12,
-};
-
-const DEFAULTS = {
-  latencyMs: 80,
-  speed: 1050,
-  musicVol: 0.86,
-  sfxVol: 0.55,
-  sfxOn: true,
-  reduceFlash: true,
-};
+/**
+ * OS_USAGI SYNC — Mobile-first premium rewrite (single-file)
+ * Replace src/App.jsx with this.
+ *
+ * Fixes:
+ * - Lobby swipe reaches true ends (spacers) + no “pulled back” snap fights
+ * - START always visible (mobile fixed CTA + safe-area + dock padding)
+ * - Settings fully scrollable, footer fixed, no jump-to-top
+ * - Music preview inside Settings (with error surface)
+ * - Play layout never clipped under dock, better tap zones
+ * - Optional judge/result images via ASSETS (fallback to text)
+ */
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
-
-function seededRng(seed) {
-  let t = seed >>> 0;
-  return () => {
-    t += 0x6d2b79f5;
-    let x = t;
-    x = Math.imul(x ^ (x >>> 15), x | 1);
-    x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
-    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 function formatTime(sec) {
   const s = Math.max(0, Math.floor(sec));
@@ -5084,12 +5024,74 @@ function formatTime(sec) {
   return `${m}:${r}`;
 }
 
+function seededRng(seed) {
+  // mulberry32
+  let t = seed >>> 0;
+  return () => {
+    t += 0x6D2B79F5;
+    let x = t;
+    x = Math.imul(x ^ (x >>> 15), x | 1);
+    x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** =========================
+ *  CONFIG
+ *  ========================= */
+
+/** 🔥 Put YOUR tracks here */
+const TRACKS = [
+   {
+     id: "dawning",
+     title: "The Dawning",
+     artist: "OS_USAGI",
+     bpm: 120,
+     url: "https://files.catbox.moe/o667wd.mp3",
+     cover: "/covers/dawning.png",
+     accent: ["#66e3ff", "#c084ff"],
+   },
+];
+
+/** Optional images (place in /public and set path) */
+const ASSETS = {
+  judge: {
+    PERFECT: "/judge/perfect.png",
+    GOOD: "/judge/good.png",
+    MISS: "/judge/miss.png",
+  },
+  result: {
+    // e.g. badge images etc (optional)
+  },
+};
+
+const DEFAULTS = {
+  latencyMs: 70,
+  speedPxPerSec: 980, // note fall speed
+  musicVol: 0.86,
+  sfxVol: 0.55,
+  sfxOn: true,
+  reduceFlash: true,
+  dockH: 92, // reserve for your OS dock (adjust if needed)
+};
+
+const HIT_WINDOWS = {
+  perfect: 0.06,
+  good: 0.12,
+};
+
+const DIFF = {
+  easy: { name: "EASY", density: 0.75, lanes: 4 },
+  normal: { name: "NORMAL", density: 1.0, lanes: 4 },
+  hard: { name: "HARD", density: 1.25, lanes: 4 },
+};
+
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
     if (!mq) return;
-    const on = () => setReduced(mq.matches);
+    const on = () => setReduced(!!mq.matches);
     on();
     mq.addEventListener?.("change", on);
     return () => mq.removeEventListener?.("change", on);
@@ -5097,160 +5099,210 @@ function usePrefersReducedMotion() {
   return reduced;
 }
 
-/* ---------------- APP ---------------- */
-
+/** =========================
+ *  APP
+ *  ========================= */
 export default function App() {
+  const prefersReducedMotion = usePrefersReducedMotion();
+
   const [view, setView] = useState("lobby"); // lobby | play | result
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   const [trackIndex, setTrackIndex] = useState(0);
   const [difficulty, setDifficulty] = useState("normal");
 
-  const [settingsOpen, setSettingsOpen] = useState(false);
-
   const [latencyMs, setLatencyMs] = useState(DEFAULTS.latencyMs);
-  const [speed, setSpeed] = useState(DEFAULTS.speed);
+  const [speed, setSpeed] = useState(DEFAULTS.speedPxPerSec);
   const [musicVol, setMusicVol] = useState(DEFAULTS.musicVol);
   const [sfxVol, setSfxVol] = useState(DEFAULTS.sfxVol);
   const [sfxOn, setSfxOn] = useState(DEFAULTS.sfxOn);
   const [reduceFlash, setReduceFlash] = useState(DEFAULTS.reduceFlash);
 
-  const prefersReducedMotion = usePrefersReducedMotion();
-
   const hasTracks = TRACKS.length > 0;
   const track = hasTracks ? TRACKS[clamp(trackIndex, 0, TRACKS.length - 1)] : null;
 
-  const accent = useMemo(() => track?.accent || ["#7df9ff", "#e1b3ff"], [track]);
+  const accent = useMemo(() => {
+    if (!track?.accent) return ["#66e3ff", "#c084ff"];
+    return track.accent;
+  }, [track]);
 
-  // audio
+  // Audio
   const musicRef = useRef(null);
   const beepCtxRef = useRef(null);
 
-  // lobby scroll
-  const railRef = useRef(null);
+  const [audioError, setAudioError] = useState("");
+  const [previewing, setPreviewing] = useState(false);
 
-  // game runtime
-  const notesRef = useRef([]);
-  const statsRef = useRef({
-    perfect: 0,
-    good: 0,
-    miss: 0,
-    combo: 0,
-    maxCombo: 0,
-    score: 0,
-  });
-  const [hud, setHud] = useState({
-    score: 0,
-    combo: 0,
-    remain: 0,
-    status: "READY", // READY | PLAY | PAUSED
-  });
-  const [lastJudge, setLastJudge] = useState(null); // PERFECT | GOOD | MISS
+  // Lobby rail
+  const railRef = useRef(null);
+  const snapTimerRef = useRef(0);
+
+  // Game runtime
+  const rafRef = useRef(0);
+  const runningRef = useRef(false);
+  const seedRef = useRef(1);
+  const notesRef = useRef([]); // {t,lane,hit,judged}
+  const statsRef = useRef({ perfect: 0, good: 0, miss: 0, combo: 0, maxCombo: 0, score: 0 });
+
+  const [hud, setHud] = useState({ score: 0, combo: 0, remain: 0, status: "READY" });
+  const [lastJudge, setLastJudge] = useState(null);
   const [result, setResult] = useState(null);
 
   const pressedLaneRef = useRef([0, 0, 0, 0]);
   const laneFlashRef = useRef([0, 0, 0, 0]);
-  const rafRef = useRef(0);
-  const runningRef = useRef(false);
-  const seedRef = useRef(1);
 
-  // volume
+  const [needsUserStart, setNeedsUserStart] = useState(true); // hide “tap to start” after first valid gesture
+
+  const breathe = (reduceFlash || prefersReducedMotion) ? 0.25 : 1.0;
+
+  // Live volume update
   useEffect(() => {
     if (musicRef.current) musicRef.current.volume = clamp(musicVol, 0, 1);
   }, [musicVol]);
 
-  // inject CSS
+  // Prevent background scroll when settings open
   useEffect(() => {
-    const style = document.createElement("style");
-    style.innerHTML = makeCss(accent, reduceFlash || prefersReducedMotion);
-    document.head.appendChild(style);
-    return () => document.head.removeChild(style);
-  }, [accent, reduceFlash, prefersReducedMotion]);
-
-  // Prevent page scroll jump / keep app-contained
-  useEffect(() => {
-    const prevHtml = document.documentElement.style.overflow;
-    const prevBody = document.body.style.overflow;
-    document.documentElement.style.overflow = "hidden";
+    if (!settingsOpen) return;
+    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => {
-      document.documentElement.style.overflow = prevHtml;
-      document.body.style.overflow = prevBody;
-    };
+    return () => { document.body.style.overflow = prev; };
+  }, [settingsOpen]);
+
+  // Beep (SFX test)
+  const playBeep = useCallback((freq = 880, dur = 0.06) => {
+    if (!sfxOn) return;
+    try {
+      if (!beepCtxRef.current) beepCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = beepCtxRef.current;
+      const now = ctx.currentTime;
+
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "sine";
+      o.frequency.value = freq;
+
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(clamp(sfxVol, 0, 1) * 0.35 + 0.0001, now + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+      o.connect(g).connect(ctx.destination);
+      o.start(now);
+      o.stop(now + dur + 0.02);
+    } catch {}
+  }, [sfxOn, sfxVol]);
+
+  /** -------------------------
+   *  Lobby helpers
+   *  ------------------------- */
+  const getNearestIndex = useCallback(() => {
+    const el = railRef.current;
+    if (!el) return 0;
+    const cards = Array.from(el.querySelectorAll("[data-card='track']"));
+    if (!cards.length) return 0;
+
+    const center = el.scrollLeft + el.clientWidth / 2;
+    let best = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < cards.length; i++) {
+      const c = cards[i];
+      const cx = c.offsetLeft + c.clientWidth / 2;
+      const d = Math.abs(cx - center);
+      if (d < bestDist) { bestDist = d; best = i; }
+    }
+    return best;
   }, []);
 
-  // ------ audio beep (for SFX) ------
-  const playBeep = useCallback(
-    (freq = 880, dur = 0.06) => {
-      if (!sfxOn) return;
-      try {
-        if (!beepCtxRef.current) {
-          beepCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        const ctx = beepCtxRef.current;
-        const t = ctx.currentTime;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(clamp(sfxVol, 0, 1) * 0.42 + 0.0001, t + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-        osc.connect(gain).connect(ctx.destination);
-        osc.start(t);
-        osc.stop(t + dur + 0.03);
-      } catch {
-        // ignore
-      }
-    },
-    [sfxOn, sfxVol]
-  );
+  const scrollToIndex = useCallback((idx, smooth = true) => {
+    const el = railRef.current;
+    if (!el) return;
+    const cards = el.querySelectorAll("[data-card='track']");
+    const card = cards[idx];
+    if (!card) return;
+    const left = card.offsetLeft - (el.clientWidth - card.clientWidth) / 2;
+    el.scrollTo({ left, behavior: smooth ? "smooth" : "auto" });
+  }, []);
 
-  // ------ chart generator ------
+  const onRailScroll = useCallback(() => {
+    // Do not fight the swipe. Only “snap” after user stops.
+    window.clearTimeout(snapTimerRef.current);
+    snapTimerRef.current = window.setTimeout(() => {
+      const idx = getNearestIndex();
+      setTrackIndex(idx);
+      scrollToIndex(idx, true);
+    }, 120);
+  }, [getNearestIndex, scrollToIndex]);
+
+  const nextTrack = useCallback(() => {
+    const ni = clamp(trackIndex + 1, 0, Math.max(0, TRACKS.length - 1));
+    setTrackIndex(ni);
+    scrollToIndex(ni, true);
+  }, [trackIndex, scrollToIndex]);
+
+  const prevTrack = useCallback(() => {
+    const ni = clamp(trackIndex - 1, 0, Math.max(0, TRACKS.length - 1));
+    setTrackIndex(ni);
+    scrollToIndex(ni, true);
+  }, [trackIndex, scrollToIndex]);
+
+  useEffect(() => {
+    if (view !== "lobby") return;
+    if (!hasTracks) return;
+    requestAnimationFrame(() => scrollToIndex(trackIndex, false));
+  }, [view, hasTracks, trackIndex, scrollToIndex]);
+
+  /** -------------------------
+   *  Chart
+   *  ------------------------- */
   const buildChart = useCallback((bpm, seconds, diffKey) => {
     const diff = DIFF[diffKey] || DIFF.normal;
-    const seed = seedRef.current;
-    const rnd = seededRng(seed);
-    const beat = 60 / (bpm || 120);
+    const rnd = seededRng(seedRef.current);
+
+    const beat = 60 / bpm;
     const density = diff.density;
 
     const notes = [];
-    let t = 1.2;
+    let t = 1.4;
     const end = seconds;
+
     while (t < end) {
       const count = rnd() < 0.18 ? 2 : 1;
       for (let i = 0; i < count; i++) {
-        const lane = Math.floor(rnd() * 4);
+        const lane = Math.floor(rnd() * diff.lanes);
         const off = (rnd() - 0.5) * beat * 0.18;
         notes.push({ t: t + off, lane, hit: false, judged: false });
       }
-      const step = (beat / density) * (rnd() < 0.12 ? 1.5 : 1);
+      const step = beat / density * (rnd() < 0.12 ? 1.5 : 1.0);
       t += step;
     }
+
     notes.sort((a, b) => a.t - b.t);
     return notes;
   }, []);
 
-  // ------ game stop ------
+  /** -------------------------
+   *  Game control
+   *  ------------------------- */
   const stopGame = useCallback(() => {
     runningRef.current = false;
     cancelAnimationFrame(rafRef.current);
     const audio = musicRef.current;
     if (audio) {
-      try {
-        audio.pause();
-      } catch {}
+      try { audio.pause(); } catch {}
     }
   }, []);
 
-  // ------ game end ------
   const endGame = useCallback(() => {
     const s = statsRef.current;
     const total = s.perfect + s.good + s.miss;
-    const acc = total ? (s.perfect + s.good * 0.6) / total : 0;
+    const acc = total > 0 ? (s.perfect + s.good * 0.6) / total : 0;
     const grade =
-      acc >= 0.95 ? "S" : acc >= 0.9 ? "A" : acc >= 0.8 ? "B" : acc >= 0.7 ? "C" : "D";
+      acc >= 0.95 ? "S" :
+      acc >= 0.88 ? "A" :
+      acc >= 0.78 ? "B" :
+      acc >= 0.65 ? "C" : "D";
 
     setResult({
-      title: track?.title || "",
+      title: track?.title || "UNKNOWN",
       artist: track?.artist || "",
       diff: DIFF[difficulty]?.name || "NORMAL",
       perfect: s.perfect,
@@ -5266,35 +5318,36 @@ export default function App() {
     setView("result");
   }, [difficulty, stopGame, track]);
 
-  // ------ game start (MUST play music on Start tap) ------
   const startGame = useCallback(async () => {
     if (!track?.url) return;
+
+    setAudioError("");
+    setPreviewing(false);
+
+    setResult(null);
+    setLastJudge(null);
+    setNeedsUserStart(true);
+
+    statsRef.current = { perfect: 0, good: 0, miss: 0, combo: 0, maxCombo: 0, score: 0 };
+    pressedLaneRef.current = [0, 0, 0, 0];
+    laneFlashRef.current = [0, 0, 0, 0];
+
+    const seedStr = `${track.id || track.title}-${difficulty}`;
+    let seed = 2166136261;
+    for (let i = 0; i < seedStr.length; i++) seed = Math.imul(seed ^ seedStr.charCodeAt(i), 16777619);
+    seedRef.current = seed >>> 0;
+
     const audio = musicRef.current;
     if (!audio) return;
 
-    statsRef.current = {
-      perfect: 0,
-      good: 0,
-      miss: 0,
-      combo: 0,
-      maxCombo: 0,
-      score: 0,
-    };
-    setHud({ score: 0, combo: 0, remain: 0, status: "READY" });
-    setLastJudge(null);
-    setResult(null);
-
-    try {
-      audio.pause();
-    } catch {}
-    audio.src = track.url;
-    audio.load();
+    try { audio.pause(); } catch {}
     audio.currentTime = 0;
     audio.volume = clamp(musicVol, 0, 1);
 
     setView("play");
+    setHud({ score: 0, combo: 0, remain: 0, status: "READY" });
 
-    // ensure canplay
+    // Ensure metadata
     if (audio.readyState < 2) {
       await new Promise((res) => {
         const on = () => res();
@@ -5303,23 +5356,158 @@ export default function App() {
     }
 
     const duration = Number.isFinite(audio.duration) ? audio.duration : 180;
-    const key = `${track.id || track.title}-${difficulty}`;
-    let h = 2166136261;
-    for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 16777619);
-    seedRef.current = (h >>> 0) || 1;
     notesRef.current = buildChart(track.bpm || 120, duration, difficulty);
 
-    // IMPORTANT: play now (Start button is user gesture)
+    runningRef.current = true;
+    rafRef.current = requestAnimationFrame(() => {});
+  }, [track, difficulty, musicVol, buildChart]);
+
+  const startPlaybackIfNeeded = useCallback(async () => {
+    const audio = musicRef.current;
+    if (!audio) return;
+
+    if (!audio.paused) return;
     try {
-      await audio.play();
-      setHud((p) => ({ ...p, status: "PLAY" }));
-    } catch {
-      // In rare cases still blocked: user will start on first lane tap
-      setHud((p) => ({ ...p, status: "READY" }));
+      await audio.play(); // user gesture required (lane tap / preview button is OK)
+      setHud((h) => ({ ...h, status: "LIVE" }));
+      setNeedsUserStart(false);
+    } catch (e) {
+      setAudioError("音声の再生に失敗しました（URL / 404 / CORS / 自動再生制限の可能性）");
+      setHud((h) => ({ ...h, status: "ERROR" }));
+    }
+  }, []);
+
+  const judgeLane = useCallback((lane) => {
+    const audio = musicRef.current;
+    if (!audio) return;
+
+    startPlaybackIfNeeded();
+
+    const nowT = audio.currentTime + (latencyMs / 1000);
+    const notes = notesRef.current;
+
+    let bestIdx = -1;
+    let bestDt = Infinity;
+
+    for (let i = 0; i < notes.length; i++) {
+      const n = notes[i];
+      if (n.judged || n.lane !== lane) continue;
+      const dt = n.t - nowT;
+      const adt = Math.abs(dt);
+      if (adt < bestDt) {
+        bestDt = adt;
+        bestIdx = i;
+      }
+      if (n.t > nowT + HIT_WINDOWS.good) break;
     }
 
+    const s = statsRef.current;
+
+    if (bestIdx >= 0 && bestDt <= HIT_WINDOWS.good) {
+      const n = notes[bestIdx];
+      n.judged = true;
+      n.hit = true;
+
+      if (bestDt <= HIT_WINDOWS.perfect) {
+        s.perfect += 1;
+        s.combo += 1;
+        s.score += 1200;
+        setLastJudge("PERFECT");
+        playBeep(1046, 0.045);
+        laneFlashRef.current[lane] = 1.0;
+      } else {
+        s.good += 1;
+        s.combo += 1;
+        s.score += 700;
+        setLastJudge("GOOD");
+        playBeep(880, 0.04);
+        laneFlashRef.current[lane] = 0.65;
+      }
+      s.maxCombo = Math.max(s.maxCombo, s.combo);
+    } else {
+      s.combo = 0;
+      setLastJudge("MISS");
+      if (sfxOn) playBeep(220, 0.03);
+    }
+  }, [latencyMs, playBeep, sfxOn, startPlaybackIfNeeded]);
+
+  const onLaneDown = useCallback((lane, e) => {
+    if (e?.preventDefault) e.preventDefault();
+    pressedLaneRef.current[lane] = 1;
+    judgeLane(lane);
+  }, [judgeLane]);
+
+  const onLaneUp = useCallback((lane) => {
+    pressedLaneRef.current[lane] = 0;
+  }, []);
+
+  // Tick loop (throttled HUD updates)
+  useEffect(() => {
+    if (view !== "play") return;
+    const audio = musicRef.current;
+    if (!audio) return;
+
+    let lastHudAt = 0;
+
+    const tick = (ts) => {
+      if (!runningRef.current) return;
+
+      // End
+      if (!audio.paused && Number.isFinite(audio.duration) && audio.currentTime >= audio.duration - 0.02) {
+        endGame();
+        return;
+      }
+
+      const s = statsRef.current;
+      const notes = notesRef.current;
+      const nowT = audio.currentTime + (latencyMs / 1000);
+      const remain = Number.isFinite(audio.duration) ? Math.max(0, audio.duration - audio.currentTime) : 0;
+
+      // Auto miss overdue
+      for (let i = 0; i < notes.length; i++) {
+        const n = notes[i];
+        if (n.judged) continue;
+        if (n.t < nowT - HIT_WINDOWS.good) {
+          n.judged = true;
+          n.hit = false;
+          s.miss += 1;
+          s.combo = 0;
+        } else break;
+      }
+
+      // Decay flash
+      for (let l = 0; l < 4; l++) laneFlashRef.current[l] = Math.max(0, laneFlashRef.current[l] - 0.06);
+
+      // Throttle HUD state (avoid “cheap” flicker + perf)
+      if (ts - lastHudAt > 80) {
+        lastHudAt = ts;
+        setHud((h) => ({ ...h, remain, score: s.score, combo: s.combo }));
+      }
+
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
     runningRef.current = true;
-  }, [buildChart, difficulty, musicVol, track]);
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [view, latencyMs, endGame]);
+
+  const togglePause = useCallback(async () => {
+    const audio = musicRef.current;
+    if (!audio) return;
+
+    if (audio.paused) {
+      try {
+        await audio.play();
+        setHud((h) => ({ ...h, status: "LIVE" }));
+      } catch {
+        setAudioError("再生できませんでした（URL / CORS / 制限の可能性）");
+      }
+    } else {
+      audio.pause();
+      setHud((h) => ({ ...h, status: "PAUSED" }));
+    }
+  }, []);
 
   const restart = useCallback(() => {
     stopGame();
@@ -5331,209 +5519,100 @@ export default function App() {
     setView("lobby");
   }, [stopGame]);
 
-  // ------ tap & judge ------
-  const ensureAudioPlaying = useCallback(() => {
-    const audio = musicRef.current;
-    if (!audio) return;
-    if (audio.paused) {
-      audio.play().catch(() => {});
-      setHud((h) => ({ ...h, status: "PLAY" }));
-    }
-  }, []);
-
-  const judgeLane = useCallback(
-    (lane) => {
-      const audio = musicRef.current;
-      if (!audio) return;
-
-      ensureAudioPlaying();
-
-      const nowT = audio.currentTime + latencyMs / 1000;
-      const notes = notesRef.current;
-      let bestIdx = -1;
-      let bestDt = Infinity;
-
-      for (let i = 0; i < notes.length; i++) {
-        const n = notes[i];
-        if (n.judged || n.lane !== lane) continue;
-        const dt = n.t - nowT;
-        const adt = Math.abs(dt);
-        if (adt < bestDt) {
-          bestDt = adt;
-          bestIdx = i;
-        }
-        if (n.t > nowT + HIT_WINDOWS.good) break;
-      }
-
-      const s = statsRef.current;
-
-      if (bestIdx >= 0 && bestDt <= HIT_WINDOWS.good) {
-        const n = notes[bestIdx];
-        n.judged = true;
-        n.hit = true;
-
-        if (bestDt <= HIT_WINDOWS.perfect) {
-          s.perfect++;
-          s.combo++;
-          s.score += 1200;
-          setLastJudge("PERFECT");
-          playBeep(1100, 0.05);
-          laneFlashRef.current[lane] = 1;
-        } else {
-          s.good++;
-          s.combo++;
-          s.score += 700;
-          setLastJudge("GOOD");
-          playBeep(880, 0.05);
-          laneFlashRef.current[lane] = 0.6;
-        }
-        s.maxCombo = Math.max(s.maxCombo, s.combo);
-      } else {
-        s.combo = 0;
-        setLastJudge("MISS");
-        if (sfxOn) playBeep(260, 0.04);
-      }
-
-      // fade judge after a moment (so it doesn't get stuck)
-      window.clearTimeout(judgeLane._t);
-      judgeLane._t = window.setTimeout(() => setLastJudge(null), 260);
-
-      setHud((h) => ({ ...h, score: s.score, combo: s.combo }));
-    },
-    [ensureAudioPlaying, latencyMs, playBeep, sfxOn]
-  );
-
-  const onLaneDown = useCallback(
-    (lane) => {
-      pressedLaneRef.current[lane] = 1;
-      judgeLane(lane);
-    },
-    [judgeLane]
-  );
-
-  const onLaneUp = useCallback((lane) => {
-    pressedLaneRef.current[lane] = 0;
-  }, []);
-
-  // ------ main loop (auto miss / remain) ------
-  useEffect(() => {
-    if (view !== "play") return;
-    const audio = musicRef.current;
-    if (!audio) return;
-    runningRef.current = true;
-
-    const travel = 0.9;
-
-    const loop = () => {
-      if (!runningRef.current) return;
-
-      const nowAudio = audio.currentTime;
-      const nowT = nowAudio + latencyMs / 1000;
-      const duration = Number.isFinite(audio.duration) ? audio.duration : 180;
-
-      const s = statsRef.current;
-      const notes = notesRef.current;
-
-      for (let i = 0; i < notes.length; i++) {
-        const n = notes[i];
-        if (n.judged) continue;
-        if (n.t < nowT - HIT_WINDOWS.good) {
-          n.judged = true;
-          n.hit = false;
-          s.miss++;
-          s.combo = 0;
-        } else if (n.t > nowT + travel) break;
-      }
-
-      for (let i = 0; i < 4; i++) {
-        laneFlashRef.current[i] = Math.max(0, laneFlashRef.current[i] - 0.055);
-      }
-
-      const remain = Math.max(0, duration - nowAudio);
-      setHud((h) => ({
-        ...h,
-        remain,
-        score: s.score,
-        combo: s.combo,
-      }));
-
-      if (!audio.paused && nowAudio >= duration - 0.02) {
-        endGame();
-        return;
-      }
-
-      rafRef.current = requestAnimationFrame(loop);
-    };
-
-    rafRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [endGame, latencyMs, view]);
-
-  // ------ pause ------
-  const togglePause = useCallback(() => {
-    const audio = musicRef.current;
-    if (!audio) return;
-    if (audio.paused) {
-      audio.play().catch(() => {});
-      setHud((h) => ({ ...h, status: "PLAY" }));
-    } else {
-      audio.pause();
-      setHud((h) => ({ ...h, status: "PAUSED" }));
-    }
-  }, []);
-
   // ESC/back
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key !== "Escape") return;
-      if (settingsOpen) setSettingsOpen(false);
-      else if (view === "play") backToLobby();
-      else if (view === "result") setView("lobby");
+      if (e.key === "Escape") {
+        if (settingsOpen) setSettingsOpen(false);
+        else if (view === "play") backToLobby();
+        else if (view === "result") setView("lobby");
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [backToLobby, settingsOpen, view]);
+  }, [settingsOpen, view, backToLobby]);
 
-  const playMeta = useMemo(
-    () => ({
-      title: track?.title || "",
-      diff: DIFF[difficulty]?.name || "NORMAL",
-      bpm: track?.bpm || 120,
-    }),
-    [difficulty, track]
-  );
+  // Audio error hook
+  const onAudioError = useCallback(() => {
+    setAudioError("音声読み込みに失敗しました（URLが404 / CORS / https混在 の可能性）");
+  }, []);
+
+  // Music preview in settings
+  const togglePreview = useCallback(async () => {
+    const audio = musicRef.current;
+    if (!audio) return;
+    setAudioError("");
+
+    try {
+      if (audio.paused) {
+        audio.currentTime = clamp(audio.currentTime, 0, Math.max(0, (audio.duration || 9999) - 0.2));
+        await audio.play();
+        setPreviewing(true);
+      } else {
+        audio.pause();
+        setPreviewing(false);
+      }
+    } catch {
+      setAudioError("プレビュー再生できませんでした（URL / CORS / 制限の可能性）");
+      setPreviewing(false);
+    }
+  }, []);
+
+  const playRender = useMemo(() => {
+    if (view !== "play") return null;
+    return { title: track?.title || "", diff: DIFF[difficulty]?.name || "NORMAL" };
+  }, [view, track, difficulty]);
 
   return (
-    <div className="osu-app" data-view={view}>
-      <audio ref={musicRef} src={track?.url || ""} preload="auto" playsInline />
+    <div className="app" data-view={view}>
+      <style>{css(accent, breathe, DEFAULTS.dockH)}</style>
 
-      <header className="osu-topbar">
-        <div className="osu-brand">
-          <div className="osu-bunny" style={{ backgroundImage: `url(${ASSET.bunny.front})` }} />
-          <div className="osu-brandText">
-            <div className="osu-brandTitle">
-              OS_USAGI <span>SYNC</span>
-            </div>
-            <div className="osu-brandSub">BEAT PORTAL / NIGHT SESSION</div>
+      <audio
+        ref={musicRef}
+        src={track?.url || ""}
+        preload="auto"
+        onError={onAudioError}
+      />
+
+      <header className="topbar">
+        <div className="brand">
+          <div className="brandMark" aria-hidden />
+          <div className="brandText">
+            <div className="brandTitle">OS_USAGI <span>SYNC</span></div>
+            <div className="brandSub">beat tuning • glass minimal • mobile-first</div>
           </div>
         </div>
-        <div className="osu-topRight">
+
+        <div className="topActions">
           {view !== "lobby" && (
-            <button className="osu-iconBtn" onClick={() => (view === "play" ? backToLobby() : setView("lobby"))}>
+            <button className="iconBtn" type="button" onClick={() => (view === "play" ? backToLobby() : setView("lobby"))} aria-label="Back">
               <ArrowLeft size={18} />
             </button>
           )}
-          <button className="osu-iconBtn" onClick={() => setSettingsOpen(true)}>
+          <button className="iconBtn" type="button" onClick={() => setSettingsOpen(true)} aria-label="Settings">
             <Settings size={18} />
           </button>
         </div>
       </header>
 
-      <main className="osu-main">
-        <div className="osu-bgLayer" />
+      <main className="stage">
+        <div className="bg" aria-hidden>
+          <div className="bgNoise" />
+          <div className="bgGlow a" />
+          <div className="bgGlow b" />
+          <div className="bgGrid" />
+        </div>
 
         {!hasTracks ? (
-          <EmptyTrackHint />
+          <div className="empty">
+            <div className="card emptyCard">
+              <div className="emptyTitle">TRACKS が未設定</div>
+              <div className="emptyBody">
+                <div>この <code>App.jsx</code> の <code>TRACKS</code> に <b>mp3 URL</b> と <b>cover</b> を入れてください。</div>
+                <div className="emptyHint">（今のプレイリスト配列をコピペでOK）</div>
+              </div>
+            </div>
+          </div>
         ) : (
           <>
             {view === "lobby" && (
@@ -5544,36 +5623,42 @@ export default function App() {
                 difficulty={difficulty}
                 setDifficulty={setDifficulty}
                 railRef={railRef}
-                setTrackIndex={setTrackIndex}
-                onPrev={() => setTrackIndex((i) => clamp(i - 1, 0, TRACKS.length - 1))}
-                onNext={() => setTrackIndex((i) => clamp(i + 1, 0, TRACKS.length - 1))}
+                onRailScroll={onRailScroll}
+                onPrev={prevTrack}
+                onNext={nextTrack}
                 onStart={startGame}
               />
             )}
 
             {view === "play" && (
-              <PlayView
-                musicRef={musicRef}
-                meta={playMeta}
-                speed={speed}
+              <Play
+                meta={playRender}
                 hud={hud}
                 notesRef={notesRef}
                 laneFlashRef={laneFlashRef}
                 pressedLaneRef={pressedLaneRef}
-                lastJudge={lastJudge}
-                reduceFlash={reduceFlash || prefersReducedMotion}
+                speed={speed}
                 latencyMs={latencyMs}
+                reduceFlash={reduceFlash || prefersReducedMotion}
                 onLaneDown={onLaneDown}
                 onLaneUp={onLaneUp}
                 onPause={togglePause}
                 onRestart={restart}
-                onEnd={endGame}
-                asset={ASSET}
+                onFinish={endGame}
+                lastJudge={lastJudge}
+                assets={ASSETS}
+                needsUserStart={needsUserStart}
+                audioError={audioError}
               />
             )}
 
             {view === "result" && (
-              <ResultView result={result} onRestart={restart} onBack={() => setView("lobby")} asset={ASSET} />
+              <Result
+                result={result}
+                assets={ASSETS}
+                onRestart={restart}
+                onBack={() => setView("lobby")}
+              />
             )}
           </>
         )}
@@ -5597,129 +5682,136 @@ export default function App() {
           setSfxOn={setSfxOn}
           reduceFlash={reduceFlash}
           setReduceFlash={setReduceFlash}
-          onTestSfx={() => {
+          onTest={() => {
             playBeep(880, 0.05);
-            setTimeout(() => playBeep(1175, 0.05), 140);
+            setTimeout(() => playBeep(1174, 0.05), 120);
           }}
-          onPreviewMusic={() => {
-            const a = musicRef.current;
-            if (!a) return;
-            try {
-              a.currentTime = Math.min(a.currentTime || 0, 2);
-              a.play().catch(() => {});
-              setTimeout(() => {
-                try {
-                  a.pause();
-                } catch {}
-              }, 2200);
-            } catch {}
-          }}
+          onTogglePreview={togglePreview}
+          previewing={previewing}
+          audioError={audioError}
         />
       )}
     </div>
   );
 }
 
-/* ------------ sub components ------------ */
-
-function Lobby({ track, trackIndex, total, difficulty, setDifficulty, railRef, setTrackIndex, onPrev, onNext, onStart }) {
+/** =========================
+ *  LOBBY
+ *  ========================= */
+function Lobby({
+  track,
+  trackIndex,
+  total,
+  difficulty,
+  setDifficulty,
+  railRef,
+  onRailScroll,
+  onPrev,
+  onNext,
+  onStart,
+}) {
   return (
-    <section className="osu-lobby">
-      <div className="osu-card osu-lobbyCard">
-        <div className="osu-lobbyScroll">
-          <div className="osu-lobbyHead">
-            <div className="osu-lobbyCaps">
-              OS_USAGI <span>BEAT SYNC</span>
-            </div>
-            <div className="osu-lobbyTitle">{track.title}</div>
-            <div className="osu-lobbyMeta">
-              <span className="pill">{track.artist || "OS_USAGI"}</span>
-              <span className="dot" />
-              <span className="pill">{DIFF[difficulty]?.name || "NORMAL"}</span>
-              <span className="dot" />
-              <span className="pill">BPM {track.bpm || 120}</span>
-            </div>
+    <section className="lobby">
+      <div className="heroCard">
+        <div className="heroTop">
+          <div className="heroNow">PORTAL</div>
+          <div className="heroTitle">BEAT SYNC</div>
+          <div className="heroMeta">
+            <span className="pill strong">{track.title}</span>
+            <span className="pill">{DIFF[difficulty]?.name || "NORMAL"}</span>
+            <span className="pill">BPM {track.bpm || 120}</span>
           </div>
-
-          <div className="osu-portalRow">
-            <div className="osu-portalCopy">
-              <div className="osu-portalLabel">PORTAL</div>
-              <div className="osu-portalTitle">
-                B<span>E</span>A<span>T</span>
-                <br />
-                SYNC
-              </div>
-              <div className="osu-portalSub">tap pads · connect · keep the signal alive</div>
-            </div>
-
-            <div className="osu-portalStatus">
-              <div className="osu-statusBadge">
-                STATUS <span>READY</span>
-              </div>
-              <div className="osu-statusBadge">
-                SPD <span>—</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="osu-trackStrip">
-            <div className="osu-stripHead">
-              <span>TRACK</span>
-              <span>SWIPE</span>
-            </div>
-
-            <div className="osu-stripRow">
-              <button className="osu-arrowBtn" onClick={onPrev} aria-label="prev">
-                <ChevronLeft size={16} />
-              </button>
-
-              <div className="osu-trackRail" ref={railRef}>
-                {TRACKS.map((t, i) => (
-                  <button
-                    key={t.id || `${t.title}-${i}`}
-                    className={`osu-trackChip ${i === trackIndex ? "active" : ""}`}
-                    onClick={() => setTrackIndex(i)}
-                    type="button"
-                  >
-                    <div className="osu-trackTitle">{t.title}</div>
-                    <div className="osu-trackSub">
-                      <span>{t.artist || "OS_USAGI"}</span>
-                      <span className="sep">•</span>
-                      <span>BPM {t.bpm || 120}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              <button className="osu-arrowBtn" onClick={onNext} aria-label="next">
-                <ChevronRight size={16} />
-              </button>
-            </div>
-
-            <div className="osu-trackDots">
-              {Array.from({ length: total }).map((_, i) => (
-                <span key={i} className={`osu-dotSmall ${i === trackIndex ? "on" : ""}`} />
-              ))}
-            </div>
+          <div className="heroDesc">
+            tap pads • connect • keep the signal alive
           </div>
         </div>
 
-        {/* Sticky footer (Start always visible) */}
-        <div className="osu-lobbySticky">
+        <div className="carousel">
+          <button className="navBtn" type="button" onClick={onPrev} aria-label="Previous track">
+            <ChevronLeft size={18} />
+          </button>
+
+          <div className="rail" ref={railRef} onScroll={onRailScroll}>
+            {/* spacers (critical for reaching end) */}
+            <div className="railSpacer" aria-hidden />
+            {TRACKS.map((t, i) => (
+              <div className={`trackCard ${i === trackIndex ? "isActive" : ""}`} data-card="track" key={t.id || `${t.title}-${i}`}>
+                <div className="cover" style={t.cover ? { backgroundImage: `url(${t.cover})` } : undefined}>
+                  {!t.cover && <div className="coverFallback" />}
+                </div>
+
+                <div className="trackInfo">
+                  <div className="trackTitle">{t.title}</div>
+                  <div className="trackSub">
+                    <span>{t.artist || "OS_USAGI"}</span>
+                    <span className="sep">•</span>
+                    <span>BPM {t.bpm || 120}</span>
+                  </div>
+                </div>
+
+                <div className={`selectedBadge ${i === trackIndex ? "on" : ""}`}>{i === trackIndex ? "SELECTED" : "SELECT"}</div>
+              </div>
+            ))}
+            <div className="railSpacer" aria-hidden />
+          </div>
+
+          <button className="navBtn" type="button" onClick={onNext} aria-label="Next track">
+            <ChevronRight size={18} />
+          </button>
+        </div>
+
+        <div className="pageDots" aria-hidden>
+          {Array.from({ length: total }).map((_, i) => (
+            <span key={i} className={`pDot ${i === trackIndex ? "on" : ""}`} />
+          ))}
+        </div>
+
+        {/* Desktop controls */}
+        <div className="controls desktopOnly">
           <div className="seg">
             {["easy", "normal", "hard"].map((k) => (
               <button
                 key={k}
+                type="button"
                 className={`segBtn ${difficulty === k ? "active" : ""}`}
                 onClick={() => setDifficulty(k)}
-                type="button"
               >
                 {DIFF[k].name}
               </button>
             ))}
           </div>
 
-          <button className="startBtn" onClick={onStart} type="button">
+          <button className="startBtn" type="button" onClick={onStart}>
+            <Play size={18} />
+            START
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile fixed CTA (START never disappears) */}
+      <div className="mobileCta">
+        <div className="ctaInner">
+          <div className="ctaLeft">
+            <div className="ctaLabel">STATUS</div>
+            <div className="ctaValue">READY</div>
+          </div>
+
+          <div className="ctaMid">
+            <div className="seg mini">
+              {["easy", "normal", "hard"].map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={`segBtn ${difficulty === k ? "active" : ""}`}
+                  onClick={() => setDifficulty(k)}
+                >
+                  {DIFF[k].name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button className="startBtn ctaStart" type="button" onClick={onStart} aria-label="Start">
             <Play size={18} />
             START
           </button>
@@ -5729,214 +5821,234 @@ function Lobby({ track, trackIndex, total, difficulty, setDifficulty, railRef, s
   );
 }
 
-function PlayView({
-  musicRef,
+/** =========================
+ *  PLAY
+ *  ========================= */
+function Play({
   meta,
-  speed,
   hud,
   notesRef,
   laneFlashRef,
   pressedLaneRef,
-  lastJudge,
-  reduceFlash,
+  speed,
   latencyMs,
+  reduceFlash,
   onLaneDown,
   onLaneUp,
   onPause,
   onRestart,
-  onEnd,
-  asset,
+  onFinish,
+  lastJudge,
+  assets,
+  needsUserStart,
+  audioError,
 }) {
   const lanes = 4;
-  const [t, setT] = useState(0);
+  const audioEl = useRef(null);
+  const noteLayerRef = useRef(null);
+
+  const [now, setNow] = useState(0);
+  const [layerH, setLayerH] = useState(420);
+
+  useEffect(() => {
+    audioEl.current = document.querySelector("audio");
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = noteLayerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      setLayerH(el.clientHeight || 420);
+    });
+    ro.observe(el);
+    setLayerH(el.clientHeight || 420);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     let raf = 0;
     const tick = () => {
-      const a = musicRef.current;
-      setT(a ? a.currentTime : 0);
+      const a = audioEl.current;
+      setNow(a ? a.currentTime : 0);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [musicRef]);
+  }, []);
 
-  const nowT = t + latencyMs / 1000;
-  const travelSec = 0.9;
-  const spawnY = -120;
-  const hitY = 0;
+  const nowT = now + (latencyMs / 1000);
   const notes = notesRef.current;
 
-  const judgeImg =
-    lastJudge === "PERFECT" ? asset.judge.perfect : lastJudge === "GOOD" ? asset.judge.good : lastJudge === "MISS" ? asset.judge.miss : null;
+  // Geometry
+  const hitY = layerH - 16; // px
+  const spawnY = -48;
 
-  const laneDirs = ["left", "down", "up", "right"];
-  const arrowMap = {
-    left: asset.arrows.left,
-    down: asset.arrows.down,
-    up: asset.arrows.up,
-    right: asset.arrows.right,
-  };
+  const judgeIcon = assets?.judge?.[lastJudge || ""] || "";
 
   return (
-    <section className="osu-play">
-      <div className="osu-card osu-playCard">
-        <div className="osu-playHead">
-          <div>
-            <div className="osu-playTitle">{meta.title}</div>
-            <div className="osu-playMeta">
-              <span className="pill">{meta.diff}</span>
-              <span className="dot" />
-              <span className="pill">BPM {meta.bpm}</span>
-            </div>
-          </div>
-          <div className="osu-playStats">
-            <div className="osu-hudCol">
-              <div className="osu-hudLabel">SCORE</div>
-              <div className="osu-hudValue">{Math.floor(hud.score || 0).toLocaleString()}</div>
-            </div>
-            <div className="osu-hudCol">
-              <div className="osu-hudLabel">COMBO</div>
-              <div className="osu-hudValue">{hud.combo || 0}</div>
-            </div>
-            <div className="osu-hudCol">
-              <div className="osu-hudLabel">REMAIN</div>
-              <div className="osu-hudValue">{formatTime(hud.remain || 0)}</div>
-            </div>
+    <section className={`play ${reduceFlash ? "reduceFlash" : ""}`}>
+      <div className="playHud">
+        <div className="hudLeft">
+          <div className="hudTitle">{meta?.title || ""}</div>
+          <div className="hudSub">
+            <span className="pill">{meta?.diff || "NORMAL"}</span>
+            <span className="dot" />
+            <span className="pill">SYNC</span>
           </div>
         </div>
 
-        <div className={`osu-laneStage ${reduceFlash ? "reduceFlash" : ""}`}>
-          <div className="osu-laneLines">
+        <div className="hudRight">
+          <div className="hudStat">
+            <div className="hudLabel">SCORE</div>
+            <div className="hudValue">{Math.floor(hud.score || 0).toLocaleString()}</div>
+          </div>
+          <div className="hudStat">
+            <div className="hudLabel">COMBO</div>
+            <div className="hudValue">{hud.combo || 0}</div>
+          </div>
+          <div className="hudStat">
+            <div className="hudLabel">REMAIN</div>
+            <div className="hudValue">{formatTime(hud.remain || 0)}</div>
+          </div>
+        </div>
+      </div>
+
+      {audioError ? (
+        <div className="toast error">
+          <AlertTriangle size={16} />
+          <span>{audioError}</span>
+        </div>
+      ) : null}
+
+      <div className="laneStage">
+        <div className="laneFrame">
+          <div className="laneLines" aria-hidden>
             {Array.from({ length: lanes + 1 }).map((_, i) => (
-              <div key={i} className="osu-laneLine" style={{ left: `${(i / lanes) * 100}%` }} />
+              <div key={i} className="laneLine" style={{ left: `${(i / lanes) * 100}%` }} />
             ))}
           </div>
 
-          <div className="osu-noteLayer">
-            {notes.slice(0, 500).map((n, idx) => {
+          <div className="noteLayer" ref={noteLayerRef}>
+            {/* Notes */}
+            {notes.slice(0, 520).map((n, idx) => {
               const dt = n.t - nowT;
-              const visible = dt < travelSec && dt > -0.25;
+              const y = hitY - dt * speed; // px/s => px
+              const xPct = ((n.lane + 0.5) / lanes) * 100;
+
+              const visible = y > spawnY && y < hitY + 80;
               if (!visible) return null;
-              const y = lerp(hitY, spawnY, clamp(dt / travelSec, 0, 1));
-              const x = ((n.lane + 0.5) / lanes) * 100;
-              const alpha = clamp(1 - Math.abs(dt) * 1.8, 0, 1);
+
+              const alpha = clamp(1 - Math.abs(dt) * 2.2, 0.05, 1);
               return (
                 <div
                   key={`${idx}-${n.t}`}
-                  className={`osu-note ${n.hit ? "hit" : ""}`}
+                  className={`note ${n.hit ? "hit" : ""}`}
                   style={{
-                    transform: `translate3d(${x}%, ${y}px, 0)`,
+                    left: `${xPct}%`,
+                    transform: `translate3d(-50%, ${y}px, 0)`,
                     opacity: alpha,
                   }}
                 />
               );
             })}
+
+            <div className="hitLine" />
           </div>
 
-          <div className="osu-hitLine" />
+          {needsUserStart && (
+            <div className="tapToStart" aria-hidden>
+              <div className="tapPill">Tap any lane to start</div>
+            </div>
+          )}
 
-          <div className="osu-bunnyOverlay">
-            <img src={ASSET.bunny.idle} alt="bunny" className="osu-bunnyIdle" />
-          </div>
-
-          <div className="osu-tapHint">
-            <span className="osu-tapPill">tap lanes to sync</span>
-          </div>
-
-          <div className={`osu-judgeImgWrap ${lastJudge ? "on" : ""}`}>
-            {judgeImg && <img src={judgeImg} alt={lastJudge || "judge"} className="osu-judgeImg" />}
+          <div className={`judge ${lastJudge ? "on" : ""}`}>
+            {judgeIcon ? (
+              <img className="judgeImg" src={judgeIcon} alt={lastJudge || ""} />
+            ) : (
+              <div className={`judgeText ${lastJudge || ""}`}>{lastJudge || ""}</div>
+            )}
           </div>
         </div>
+      </div>
 
-        <div className="osu-touchBar">
-          {laneDirs.map((dir, lane) => {
-            const pressed = pressedLaneRef.current[lane] > 0;
-            const flash = laneFlashRef.current[lane];
-            return (
-              <button
-                key={lane}
-                className={`osu-touchLane ${pressed ? "pressed" : ""}`}
-                style={{ "--flash": flash }}
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  e.currentTarget.setPointerCapture?.(e.pointerId);
-                  onLaneDown(lane);
-                }}
-                onPointerUp={(e) => {
-                  e.preventDefault();
-                  onLaneUp(lane);
-                }}
-                onPointerCancel={() => onLaneUp(lane)}
-                type="button"
-              >
-                <span className="osu-touchGlow" />
-                <img src={arrowMap[dir]} alt={dir} className="osu-touchIcon" />
-              </button>
-            );
-          })}
-        </div>
+      <div className="touchBar" role="group" aria-label="Lanes">
+        {Array.from({ length: lanes }).map((_, lane) => {
+          const pressed = pressedLaneRef.current[lane] > 0;
+          const flash = laneFlashRef.current[lane];
+          return (
+            <button
+              key={lane}
+              type="button"
+              className={`laneTouch ${pressed ? "pressed" : ""}`}
+              style={{ "--flash": flash }}
+              onPointerDown={(e) => {
+                e.currentTarget.setPointerCapture?.(e.pointerId);
+                onLaneDown(lane, e);
+              }}
+              onPointerUp={() => onLaneUp(lane)}
+              onPointerCancel={() => onLaneUp(lane)}
+            >
+              <span className="laneGlow" aria-hidden />
+              <span className="laneHint" aria-hidden>{lane === 0 ? "LEFT" : lane === 1 ? "DOWN" : lane === 2 ? "UP" : "RIGHT"}</span>
+            </button>
+          );
+        })}
+      </div>
 
-        <div className="osu-playSpeed">SPEED {speed} px/s</div>
-
-        <div className="osu-playActions">
-          <button className="ghostBtn" onClick={onPause} type="button">
-            <Pause size={18} />
-            {hud.status === "PAUSED" ? "RESUME" : "PAUSE"}
-          </button>
-          <button className="ghostBtn" onClick={onRestart} type="button">
-            <RotateCcw size={18} />
-            RESTART
-          </button>
-          <button className="ghostBtn danger" onClick={onEnd} type="button">
-            <X size={18} />
-            END
-          </button>
-        </div>
+      <div className="playActions">
+        <button className="ghostBtn" type="button" onClick={onPause}>
+          {hud.status === "PAUSED" ? <Play size={18} /> : <Pause size={18} />}
+          {hud.status === "PAUSED" ? "RESUME" : "PAUSE"}
+        </button>
+        <button className="ghostBtn" type="button" onClick={onRestart}>
+          <RotateCcw size={18} /> RESTART
+        </button>
+        <button className="ghostBtn danger" type="button" onClick={onFinish}>
+          <X size={18} /> END
+        </button>
       </div>
     </section>
   );
 }
 
-function ResultView({ result, onRestart, onBack, asset }) {
+/** =========================
+ *  RESULT
+ *  ========================= */
+function Result({ result, assets, onRestart, onBack }) {
   const accPct = Math.round((result?.accuracy || 0) * 1000) / 10;
 
-  let gradeImg = asset.judge.miss;
-  if (result?.accuracy >= 0.8) gradeImg = asset.judge.good;
-  if (result?.accuracy >= 0.93) gradeImg = asset.judge.perfect;
-
   return (
-    <section className="osu-result">
-      <div className="osu-card osu-resultCard">
-        <div className="osu-resultHead">
-          <div className="osu-resultLabel">RESULT</div>
-          <div className="osu-resultTitle">{result?.title || "NEON SYNC"}</div>
-          <div className="osu-resultMeta">
+    <section className="result">
+      <div className="resultCard">
+        <div className="resultHead">
+          <div className="rLabel">RESULT</div>
+          <div className="rTitle">{result?.title || "NEON SYNC"}</div>
+          <div className="rSub">
             <span className="pill">{result?.diff || "NORMAL"}</span>
             <span className="dot" />
             <span className="pill">{result?.artist || "OS_USAGI"}</span>
           </div>
 
-          <div className="osu-grade">
-            <img src={gradeImg} alt={result?.grade || "D"} className="osu-gradeImg" />
+          <div className={`grade ${result?.grade || "D"}`}>
+            <span>{result?.grade || "D"}</span>
           </div>
         </div>
 
-        <div className="osu-statGrid">
-          <Stat label="PERFECT" value={result?.perfect ?? 0} />
-          <Stat label="GOOD" value={result?.good ?? 0} />
-          <Stat label="MISS" value={result?.miss ?? 0} />
+        <div className="statsGrid">
+          <Stat label="PERFECT" value={result?.perfect ?? 0} icon={assets?.judge?.PERFECT} />
+          <Stat label="GOOD" value={result?.good ?? 0} icon={assets?.judge?.GOOD} />
+          <Stat label="MISS" value={result?.miss ?? 0} icon={assets?.judge?.MISS} />
           <Stat label="MAX COMBO" value={result?.maxCombo ?? 0} />
           <Stat label="ACCURACY" value={`${accPct}%`} />
           <Stat label="SCORE" value={(result?.score ?? 0).toLocaleString()} />
         </div>
 
-        <div className="osu-resultActions">
-          <button className="startBtn" onClick={onRestart} type="button">
+        <div className="resultActions">
+          <button className="startBtn" type="button" onClick={onRestart}>
             <RotateCcw size={18} />
             RESTART
           </button>
-          <button className="ghostBtn" onClick={onBack} type="button">
+          <button className="ghostBtn" type="button" onClick={onBack}>
             <ArrowLeft size={18} />
             BACK
           </button>
@@ -5946,26 +6058,21 @@ function ResultView({ result, onRestart, onBack, asset }) {
   );
 }
 
-function Stat({ label, value }) {
+function Stat({ label, value, icon }) {
   return (
-    <div className="osu-statCard">
-      <div className="osu-statLabel">{label}</div>
-      <div className="osu-statValue">{value}</div>
+    <div className="statCard">
+      <div className="statTop">
+        <div className="statLabel">{label}</div>
+        {icon ? <img className="statIcon" src={icon} alt="" /> : null}
+      </div>
+      <div className="statValue">{value}</div>
     </div>
   );
 }
 
-function EmptyTrackHint() {
-  return (
-    <section className="osu-empty">
-      <div className="osu-card osu-emptyCard">
-        <div className="osu-emptyTitle">TRACKS not set</div>
-        <div className="osu-emptyBody">ASSET.tracks に BGM を登録してください。</div>
-      </div>
-    </section>
-  );
-}
-
+/** =========================
+ *  SETTINGS
+ *  ========================= */
 function SettingsSheet({
   onClose,
   track,
@@ -5983,69 +6090,88 @@ function SettingsSheet({
   setSfxOn,
   reduceFlash,
   setReduceFlash,
-  onTestSfx,
-  onPreviewMusic,
+  onTest,
+  onTogglePreview,
+  previewing,
+  audioError,
 }) {
+  const bodyRef = useRef(null);
+
   return (
-    <div className="osu-sheetWrap" role="dialog" aria-modal="true">
-      <div className="osu-sheetBackdrop" onClick={onClose} />
-      <div className="osu-sheet" onPointerDown={(e) => e.stopPropagation()}>
-        <div className="osu-sheetHead">
+    <div className="sheetWrap" role="dialog" aria-modal="true">
+      <div className="sheetBackdrop" onClick={onClose} />
+      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="sheetHead">
           <div>
-            <div className="osu-sheetTitle">Sync tuning</div>
-            <div className="osu-sheetSub">{track?.title || "—"}</div>
+            <div className="sheetTitle">Sync tuning</div>
+            <div className="sheetSub">{track?.title || "—"}</div>
           </div>
-          <button className="osu-iconBtn" onClick={onClose} type="button">
+          <button className="iconBtn" type="button" onClick={onClose} aria-label="Close">
             <X size={18} />
           </button>
         </div>
 
-        <div className="osu-sheetBody">
+        <div className="sheetBody" ref={bodyRef}>
+          {audioError ? (
+            <div className="toast error">
+              <AlertTriangle size={16} />
+              <span>{audioError}</span>
+            </div>
+          ) : null}
+
           <div className="group">
-            <div className="groupTitle">DIFFICULTY</div>
-            <div className="seg">
-              {["easy", "normal", "hard"].map((k) => (
-                <button
-                  key={k}
-                  className={`segBtn ${difficulty === k ? "active" : ""}`}
-                  onClick={() => setDifficulty(k)}
-                  type="button"
-                >
-                  {DIFF[k].name}
+            <div className="groupTitle">TRACK</div>
+            <div className="row">
+              <div className="rowHead">
+                <div className="rowLabel">NOW</div>
+                <div className="rowValue">{track?.title || "—"}</div>
+              </div>
+              <div className="rowHint">プレビューでURL不備（404/CORS）がわかります</div>
+              <div className="btnRow">
+                <button className={`chip on`} type="button" onClick={onTogglePreview}>
+                  <Music2 size={16} style={{ marginRight: 8, verticalAlign: "middle" }} />
+                  {previewing ? "STOP PREVIEW" : "MUSIC PREVIEW"}
                 </button>
-              ))}
+                <button className="chip" type="button" onClick={onTest}>
+                  <Volume2 size={16} style={{ marginRight: 8, verticalAlign: "middle" }} />
+                  SFX TEST
+                </button>
+              </div>
             </div>
           </div>
 
           <div className="group">
             <div className="groupTitle">TUNING</div>
 
-            <Row label="LATENCY" value={`${latencyMs} ms`} hint="タップタイミング補正">
-              <input type="range" min={-120} max={240} value={latencyMs} onChange={(e) => setLatencyMs(Number(e.target.value))} />
+            <Row label="LATENCY" value={`${latencyMs} ms`} hint="Tap timing compensation">
+              <input
+                className="range"
+                type="range"
+                min={-120}
+                max={240}
+                value={latencyMs}
+                onChange={(e) => setLatencyMs(Number(e.target.value))}
+              />
             </Row>
 
-            <Row label="SPEED" value={`${speed} px/s`} hint="ノーツの落下速度">
-              <input type="range" min={750} max={1400} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} />
+            <Row label="SPEED" value={`${speed} px/s`} hint="Note fall speed (feel)">
+              <input
+                className="range"
+                type="range"
+                min={700}
+                max={1500}
+                value={speed}
+                onChange={(e) => setSpeed(Number(e.target.value))}
+              />
             </Row>
           </div>
 
           <div className="group">
             <div className="groupTitle">AUDIO</div>
 
-            <div className="btnRow">
-              <button className={`chip ${sfxOn ? "on" : ""}`} onClick={() => setSfxOn((v) => !v)} type="button">
-                SFX {sfxOn ? "ON" : "OFF"}
-              </button>
-              <button className="chip" onClick={onTestSfx} type="button">
-                TEST SFX
-              </button>
-              <button className="chip on" onClick={onPreviewMusic} type="button">
-                PREVIEW MUSIC
-              </button>
-            </div>
-
             <Row label="MUSIC" value={`${Math.round(musicVol * 100)}%`}>
               <input
+                className="range"
                 type="range"
                 min={0}
                 max={100}
@@ -6055,35 +6181,65 @@ function SettingsSheet({
             </Row>
 
             <Row label="SFX" value={`${Math.round(sfxVol * 100)}%`}>
-              <input type="range" min={0} max={100} value={Math.round(sfxVol * 100)} onChange={(e) => setSfxVol(Number(e.target.value) / 100)} />
+              <input
+                className="range"
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(sfxVol * 100)}
+                onChange={(e) => setSfxVol(Number(e.target.value) / 100)}
+              />
             </Row>
+
+            <div className="btnRow">
+              <button className={`chip ${sfxOn ? "on" : ""}`} type="button" onClick={() => setSfxOn((v) => !v)}>
+                SFX {sfxOn ? "ON" : "OFF"}
+              </button>
+            </div>
           </div>
 
           <div className="group">
             <div className="groupTitle">VISUAL</div>
+
             <div className="btnRow">
-              <button className={`chip ${reduceFlash ? "on" : ""}`} onClick={() => setReduceFlash((v) => !v)} type="button">
+              <button className={`chip ${reduceFlash ? "on" : ""}`} type="button" onClick={() => setReduceFlash((v) => !v)}>
                 Reduce flash
               </button>
+              <div className="seg mini">
+                {["easy", "normal", "hard"].map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    className={`segBtn ${difficulty === k ? "active" : ""}`}
+                    onClick={() => setDifficulty(k)}
+                  >
+                    {DIFF[k].name}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
+
+          {/* Bottom padding to ensure last control can be reached */}
+          <div style={{ height: 14 }} />
         </div>
 
-        <div className="osu-sheetFoot">
-          <button className="startBtn" onClick={onClose} type="button">
-            DONE
-          </button>
+        {/* Footer fixed (no jump-to-top) */}
+        <div className="sheetFootFixed">
+          <button className="startBtn" type="button" onClick={onClose}>DONE</button>
           <button
             className="ghostBtn"
+            type="button"
             onClick={() => {
               setLatencyMs(DEFAULTS.latencyMs);
-              setSpeed(DEFAULTS.speed);
+              setSpeed(DEFAULTS.speedPxPerSec);
               setMusicVol(DEFAULTS.musicVol);
               setSfxVol(DEFAULTS.sfxVol);
               setSfxOn(DEFAULTS.sfxOn);
               setReduceFlash(DEFAULTS.reduceFlash);
+              // keep scroll position stable
+              requestAnimationFrame(() => bodyRef.current?.scrollTo({ top: 0, behavior: "smooth" }));
             }}
-            type="button"
           >
             RESET
           </button>
@@ -6106,477 +6262,745 @@ function Row({ label, value, hint, children }) {
   );
 }
 
-/* ------------ CSS ------------ */
-
-function makeCss(accent, reduceFlash) {
-  const [a0, a1] = accent;
-  const motionOff = reduceFlash ? "paused" : "running";
+/** =========================
+ *  CSS
+ *  ========================= */
+function css(accent, breathe, dockH) {
+  const a0 = accent?.[0] || "#66e3ff";
+  const a1 = accent?.[1] || "#c084ff";
 
   return `
   :root{
+    --bg:#06070b;
+    --panel: rgba(255,255,255,.05);
+    --panel2: rgba(255,255,255,.07);
+    --stroke: rgba(255,255,255,.10);
+    --stroke2: rgba(255,255,255,.14);
+    --txt: rgba(255,255,255,.92);
+    --muted: rgba(255,255,255,.62);
+    --muted2: rgba(255,255,255,.44);
+    --shadow: rgba(0,0,0,.55);
     --a0:${a0};
     --a1:${a1};
-    --bg:#05060a;
-    --card:rgba(18,19,28,.94);
-    --border:rgba(255,255,255,.08);
-    --text:rgba(255,255,255,.94);
-    --safeT:env(safe-area-inset-top);
-    --safeB:env(safe-area-inset-bottom);
-  }
-  *{box-sizing:border-box;}
-  html,body{
-    margin:0;padding:0;height:100%;
-    background: radial-gradient(1200px 680px at 10% -10%, rgba(102,227,255,.18), transparent 60%),
-               radial-gradient(1000px 620px at 90% -10%, rgba(192,132,255,.20), transparent 60%),
-               #02030a;
-    color:var(--text);
-    font-family:system-ui,-apple-system,"SF Pro Text","Segoe UI",sans-serif;
-    -webkit-font-smoothing:antialiased;
-    overscroll-behavior: none;
+    --r: 24px;
+    --r2: 18px;
+    --safeB: env(safe-area-inset-bottom);
+    --safeT: env(safe-area-inset-top);
+    --breathe:${breathe};
+    --dockH:${dockH}px;
+    --cardW:min(320px, 78vw);
   }
 
-  .osu-app{height:100vh; display:flex; flex-direction:column;}
-  .osu-topbar{
-    position:relative; z-index:20;
-    padding: calc(10px + var(--safeT)) 16px 10px;
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ height:100%; background:var(--bg); }
+  body{
+    margin:0;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    color:var(--txt);
+    overflow-x:hidden;
+  }
+  button{ font: inherit; }
+
+  .app{
+    min-height:100dvh;
+    background: radial-gradient(1200px 600px at 20% 0%, rgba(102,227,255,.10), transparent 60%),
+                radial-gradient(900px 500px at 85% 10%, rgba(192,132,255,.12), transparent 55%),
+                var(--bg);
+  }
+
+  .topbar{
+    position: sticky; top:0; z-index:30;
+    padding: calc(14px + var(--safeT)) 16px 12px;
     display:flex; align-items:center; justify-content:space-between;
-    backdrop-filter: blur(12px);
-    background: linear-gradient(to bottom, rgba(5,6,10,.96), rgba(5,6,10,.60));
-    border-bottom:1px solid rgba(255,255,255,.10);
-    flex: 0 0 auto;
-  }
-  .osu-brand{display:flex;align-items:center;gap:10px;min-width:0;}
-  .osu-bunny{
-    width:32px;height:32px;border-radius:12px;
-    background-size:cover;background-position:center;
-    box-shadow:0 18px 55px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.12) inset;
-    overflow:hidden; position:relative;
-  }
-  .osu-bunny::after{
-    content:""; position:absolute; inset:0; border-radius:inherit;
-    background: radial-gradient(circle at 50% 40%, rgba(255,255,255,.26), transparent 60%);
-    opacity:.85;
-    animation: osu-breathe 7s ease-in-out infinite;
-    animation-play-state:${motionOff};
-  }
-  @keyframes osu-breathe{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.06);opacity:1}}
-  .osu-brandText{min-width:0;}
-  .osu-brandTitle{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:rgba(255,255,255,.78)}
-  .osu-brandTitle span{color:rgba(255,255,255,.98)}
-  .osu-brandSub{font-size:11px;color:rgba(255,255,255,.46);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .osu-topRight{display:flex;gap:8px;}
-  .osu-iconBtn{
-    width:36px;height:36px;border-radius:14px;
-    border:1px solid rgba(255,255,255,.12);
-    background: rgba(15,16,26,.92);
-    color: rgba(255,255,255,.88);
-    display:grid; place-items:center;
-    box-shadow: 0 18px 60px rgba(0,0,0,.55);
+    backdrop-filter: blur(16px);
+    background: linear-gradient(to bottom, rgba(6,7,11,.92), rgba(6,7,11,.45));
+    border-bottom: 1px solid rgba(255,255,255,.08);
   }
 
-  .osu-main{
+  .brand{ display:flex; gap:12px; align-items:center; min-width:0; }
+  .brandMark{
+    width:34px; height:34px; border-radius:12px;
+    background:
+      radial-gradient(circle at 35% 35%, rgba(255,255,255,.65), transparent 38%),
+      radial-gradient(circle at 65% 65%, rgba(255,255,255,.18), transparent 45%),
+      linear-gradient(135deg, rgba(102,227,255,.38), rgba(192,132,255,.34));
+    box-shadow: 0 18px 50px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.10) inset;
     position:relative;
-    flex: 1 1 auto;
-    padding: 14px 16px calc(16px + var(--safeB));
-    overflow: hidden;
   }
-  .osu-bgLayer{
+  .brandMark:after{
+    content:"";
     position:absolute; inset:0;
-    border-radius: 28px;
-    background:
-      radial-gradient(900px 460px at 20% 0%, rgba(102,227,255,.20), transparent 60%),
-      radial-gradient(900px 460px at 90% 0%, rgba(192,132,255,.20), transparent 60%),
-      radial-gradient(1400px 960px at 50% 100%, rgba(0,0,0,.85), transparent 65%);
-    opacity:.6; pointer-events:none;
+    border-radius:12px;
+    background: radial-gradient(circle at 50% 45%, rgba(255,255,255,.22), transparent 55%);
+    opacity: .9;
+    animation: breathe 6.6s ease-in-out infinite;
+    animation-play-state: calc(var(--breathe)) > 0 ? running : paused;
   }
+  @keyframes breathe{ 0%,100%{ transform:scale(1); opacity:.55; } 50%{ transform:scale(1.06); opacity:.95; } }
 
-  .osu-lobby,.osu-play,.osu-result,.osu-empty{
-    position:relative; z-index:1;
-    height: 100%;
-    display:flex; justify-content:center;
+  .brandText{ min-width:0; }
+  .brandTitle{ letter-spacing:.24em; font-weight:800; font-size:12px; color:rgba(255,255,255,.78); }
+  .brandTitle span{ color:rgba(255,255,255,.95); text-shadow:0 0 18px rgba(255,255,255,.18); }
+  .brandSub{ font-size:12px; color:rgba(255,255,255,.40); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  .topActions{ display:flex; gap:10px; }
+  .iconBtn{
+    width:40px; height:40px; border-radius:14px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.10);
+    color: rgba(255,255,255,.85);
+    display:grid; place-items:center;
+    box-shadow: 0 16px 50px rgba(0,0,0,.35);
   }
+  .iconBtn:active{ transform: translateY(1px); }
 
-  .osu-card{
-    width:min(980px,100%);
-    height: 100%;
-    max-height: 100%;
-    border-radius:28px;
-    background:
-      radial-gradient(circle at 0% 0%, rgba(255,255,255,.06), transparent 55%),
-      radial-gradient(circle at 100% 0%, rgba(255,255,255,.06), transparent 55%),
-      rgba(18,19,28,.94);
-    border:1px solid rgba(255,255,255,.08);
-    box-shadow: 0 32px 120px rgba(0,0,0,.75);
+  .stage{
     position:relative;
-    overflow:hidden;
-    display:flex; flex-direction:column;
+    padding: 18px 16px calc(22px + var(--safeB) + var(--dockH));
+    min-height: calc(100dvh - 76px);
   }
-  .osu-card::before{
-    content:""; position:absolute; inset:-1px;
+
+  .bg{ position:absolute; inset:0; pointer-events:none; overflow:hidden; border-radius: 34px; }
+  .bgNoise{
+    position:absolute; inset:-40px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
+    opacity:.10;
+    mix-blend-mode: overlay;
+  }
+  .bgGlow{
+    position:absolute; width:720px; height:720px; border-radius:50%;
+    filter: blur(44px);
+    opacity: .9;
+  }
+  .bgGlow.a{ left:-280px; top:-240px; background: radial-gradient(circle at 30% 30%, rgba(102,227,255,.24), transparent 60%); }
+  .bgGlow.b{ right:-320px; top:-260px; background: radial-gradient(circle at 55% 40%, rgba(192,132,255,.20), transparent 60%); }
+  .bgGrid{
+    position:absolute; inset:0;
     background:
-      radial-gradient(800px 280px at 15% 0%, rgba(102,227,255,.18), transparent 60%),
-      radial-gradient(800px 280px at 85% 0%, rgba(192,132,255,.18), transparent 60%);
-    opacity:.75; pointer-events:none;
+      linear-gradient(to bottom, rgba(255,255,255,.06), transparent 40%),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0, rgba(255,255,255,.05) 1px, transparent 1px, transparent 44px),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.04) 0, rgba(255,255,255,.04) 1px, transparent 1px, transparent 44px);
+    opacity:.08;
+    mask-image: radial-gradient(620px 620px at 50% 26%, black 0, black 56%, transparent 78%);
   }
 
   .pill{
-    padding:6px 10px;border-radius:999px;
-    background: rgba(255,255,255,.05);
-    border:1px solid rgba(255,255,255,.12);
-    font-size:11px; letter-spacing:.18em;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.10);
+    color: rgba(255,255,255,.80);
+    font-size:12px;
+    letter-spacing:.08em;
     text-transform:uppercase;
-    color: rgba(255,255,255,.86);
   }
-  .dot{width:4px;height:4px;border-radius:999px;background:rgba(255,255,255,.30);}
+  .pill.strong{
+    background: linear-gradient(135deg, rgba(102,227,255,.12), rgba(192,132,255,.10));
+    border-color: rgba(255,255,255,.14);
+    color: rgba(255,255,255,.92);
+  }
+  .dot{ width:4px; height:4px; border-radius:50%; background: rgba(255,255,255,.30); }
+
+  .toast{
+    display:flex; align-items:center; gap:10px;
+    padding: 10px 12px;
+    border-radius: 16px;
+    background: rgba(0,0,0,.28);
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 26px 90px rgba(0,0,0,.45);
+    margin: 0 auto 10px;
+    width: min(980px, 100%);
+    color: rgba(255,255,255,.86);
+    backdrop-filter: blur(14px);
+  }
+  .toast.error{
+    background: linear-gradient(180deg, rgba(255,70,70,.12), rgba(0,0,0,.22));
+    border-color: rgba(255,255,255,.14);
+  }
 
   /* LOBBY */
-  .osu-lobbyCard{padding:0;}
-  .osu-lobbyScroll{
-    position:relative; z-index:1;
-    padding: 16px 14px 10px;
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .osu-lobbyHead{padding:6px 4px 10px;}
-  .osu-lobbyCaps{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:rgba(255,255,255,.60)}
-  .osu-lobbyCaps span{color:rgba(255,255,255,.90)}
-  .osu-lobbyTitle{font-size:24px;font-weight:900;margin-top:6px;}
-  .osu-lobbyMeta{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;}
-  .osu-portalRow{display:flex;justify-content:space-between;gap:12px;padding:2px 4px 12px;}
-  .osu-portalLabel{font-size:11px;letter-spacing:.30em;text-transform:uppercase;color:rgba(255,255,255,.55)}
-  .osu-portalTitle{margin-top:4px;font-size:22px;font-weight:900;letter-spacing:.32em}
-  .osu-portalTitle span{opacity:.6}
-  .osu-portalSub{margin-top:6px;font-size:11px;color:rgba(255,255,255,.48);letter-spacing:.16em;text-transform:uppercase}
-  .osu-portalStatus{display:flex;flex-direction:column;gap:6px}
-  .osu-statusBadge{
-    padding:7px 10px;border-radius:999px;
-    border:1px solid rgba(255,255,255,.16);
-    background: rgba(10,11,20,.8);
-    font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.65);
-    display:flex;justify-content:space-between;gap:10px;
-  }
-  .osu-statusBadge span{color:rgba(255,255,255,.90)}
-
-  .osu-trackStrip{margin-top:8px;}
-  .osu-stripHead{padding:2px 4px 6px;display:flex;justify-content:space-between;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.48)}
-  .osu-stripRow{display:flex;align-items:center;gap:8px;}
-  .osu-arrowBtn{
-    width:36px;height:36px;border-radius:14px;
-    border:1px solid rgba(255,255,255,.12);
-    background: rgba(10,11,18,.9);
-    color: rgba(255,255,255,.88);
-    display:grid;place-items:center;
-    flex: 0 0 auto;
-  }
-
-  .osu-trackRail{
-    flex:1 1 auto;
-    display:flex;gap:10px;
-    overflow-x:auto;
-    scroll-snap-type:x mandatory;
-    scroll-snap-stop: always;
-    -webkit-overflow-scrolling: touch;
-    padding: 4px 2px 8px;
-    scrollbar-width:none;
-    overscroll-behavior-x: contain;
-    touch-action: pan-x;
-  }
-  .osu-trackRail::-webkit-scrollbar{display:none}
-
-  .osu-trackChip{
-    scroll-snap-align:center;
-    flex:0 0 min(280px, 72vw);
-    border-radius:20px;
-    padding:10px 12px;
-    background: rgba(0,0,0,.28);
-    border:1px solid rgba(255,255,255,.12);
-    text-align:left;color:var(--text);
-    touch-action: pan-x;
-  }
-  .osu-trackChip.active{
-    background: linear-gradient(135deg, rgba(102,227,255,.24), rgba(192,132,255,.20));
-    box-shadow: 0 18px 60px rgba(0,0,0,.55);
-  }
-  .osu-trackTitle{font-weight:900;font-size:14px;}
-  .osu-trackSub{margin-top:6px;font-size:11px;color:rgba(255,255,255,.60);display:flex;gap:8px;align-items:center;}
-  .sep{opacity:.7;}
-  .osu-trackDots{display:flex;justify-content:center;gap:6px;padding-top:4px;}
-  .osu-dotSmall{width:5px;height:5px;border-radius:999px;background:rgba(255,255,255,.18);}
-  .osu-dotSmall.on{width:16px;background:linear-gradient(90deg, rgba(102,227,255,.80), rgba(192,132,255,.80));box-shadow:0 10px 30px rgba(0,0,0,.45);}
-
-  .osu-lobbySticky{
-    position: sticky;
-    bottom: 0;
-    z-index: 5;
-    padding: 12px 14px 14px;
-    border-top: 1px solid rgba(255,255,255,.10);
-    background: linear-gradient(to top, rgba(18,19,28,.96), rgba(18,19,28,.50));
-    display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;
-  }
-  .seg{
-    display:flex;gap:4px;padding:4px;border-radius:999px;
-    background:rgba(255,255,255,.05);
-    border:1px solid rgba(255,255,255,.12);
-  }
-  .segBtn{
-    border-radius:999px;border:0;padding:8px 10px;
-    background:transparent;
-    font-size:11px;letter-spacing:.22em;text-transform:uppercase;
-    color:rgba(255,255,255,.58);
-  }
-  .segBtn.active{
-    background: linear-gradient(135deg, rgba(102,227,255,.24), rgba(192,132,255,.22));
-    color:rgba(255,255,255,.96);
-    box-shadow: 0 14px 40px rgba(0,0,0,.45);
-  }
-  .startBtn{
-    border-radius:18px;
-    border:1px solid rgba(255,255,255,.18);
-    background: linear-gradient(135deg, rgba(102,227,255,.86), rgba(192,132,255,.86));
-    color:#020308;
-    font-weight:900;
-    letter-spacing:.22em;text-transform:uppercase;
-    padding:12px 18px;
-    display:flex;align-items:center;gap:10px;
-    box-shadow: 0 26px 80px rgba(0,0,0,.75);
-  }
-
-  /* PLAY */
-  .osu-playCard{padding: 16px 14px 14px; gap: 10px;}
-  .osu-playHead{
-    position:relative; z-index:1;
-    display:flex; justify-content:space-between; gap:10px;
-    padding: 4px 4px 0;
-    flex: 0 0 auto;
-  }
-  .osu-playTitle{font-size:20px;font-weight:900;}
-  .osu-playMeta{margin-top:6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
-  .osu-playStats{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;justify-content:flex-end;}
-  .osu-hudCol{
-    min-width:96px;
-    padding:8px 10px;border-radius:18px;
-    background: rgba(0,0,0,.30);
-    border:1px solid rgba(255,255,255,.12);
-    text-align:right;
-    box-shadow:0 18px 55px rgba(0,0,0,.55);
-  }
-  .osu-hudLabel{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.60);}
-  .osu-hudValue{margin-top:4px;font-size:16px;font-weight:900;}
-
-  .osu-laneStage{
+  .lobby{ position:relative; z-index:2; display:flex; justify-content:center; padding-top: 10px; }
+  .heroCard{
+    width: min(980px, 100%);
+    border-radius: 32px;
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    border: 1px solid rgba(255,255,255,.10);
+    box-shadow: 0 44px 140px rgba(0,0,0,.58);
+    padding: 18px 16px 16px;
     position:relative;
-    flex: 1 1 auto;
-    border-radius:24px;
-    background: rgba(0,0,0,.36);
-    border:1px solid rgba(255,255,255,.16);
-    box-shadow: 0 26px 90px rgba(0,0,0,.70);
-    overflow:hidden;
-    min-height: 280px;
-  }
-  .osu-laneStage.reduceFlash *{animation:none !important;}
-  .osu-laneLines{position:absolute; inset: 10px 12px 52px; pointer-events:none;}
-  .osu-laneLine{position:absolute;top:0;bottom:0;width:1px;background:linear-gradient(to bottom, transparent, rgba(255,255,255,.26), transparent);opacity:.7;}
-
-  .osu-noteLayer{
-    position:relative;
-    height: 100%;
-    padding: 16px 12px 52px;
     overflow:hidden;
   }
-  .osu-note{
-    position:absolute; left:0; top: 48%;
-    width:40px;height:9px;border-radius:999px;margin-left:-20px;
-    background: linear-gradient(90deg, rgba(102,227,255,.96), rgba(192,132,255,.96));
-    box-shadow: 0 12px 40px rgba(0,0,0,.45), 0 0 18px rgba(255,255,255,.18);
-    will-change: transform, opacity;
-  }
-  .osu-note.hit{opacity:.2; filter: blur(1px);}
-
-  .osu-hitLine{
-    position:absolute; left:12px; right:12px; bottom:52px;
-    height:1px;background:linear-gradient(90deg, transparent, rgba(255,255,255,.32), transparent);
-    box-shadow: 0 0 26px rgba(255,255,255,.18);
-  }
-  .osu-bunnyOverlay{position:absolute; right:12px; bottom:52px; pointer-events:none;}
-  .osu-bunnyIdle{
-    width:64px;height:64px;border-radius:24px;object-fit:cover;opacity:.9;
-    box-shadow: 0 18px 60px rgba(0,0,0,.85);
-  }
-  .osu-tapHint{position:absolute;left:0;right:0;bottom:74px;display:flex;justify-content:center;pointer-events:none;}
-  .osu-tapPill{
-    padding:8px 14px;border-radius:999px;
-    background: rgba(2,3,10,.80);
-    border:1px solid rgba(255,255,255,.18);
-    font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.86);
-    box-shadow: 0 18px 60px rgba(0,0,0,.65);
-    animation: osu-float 3s ease-in-out infinite;
-    animation-play-state:${motionOff};
-  }
-  @keyframes osu-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
-
-  .osu-judgeImgWrap{
-    position:absolute; left:0; right:0; top: 14px;
-    text-align:center;
-    opacity:0;
-    transform: translateY(-6px);
-    transition: opacity .16s ease, transform .16s ease;
+  .heroCard:before{
+    content:"";
+    position:absolute; inset:-1px;
+    background: radial-gradient(900px 400px at 20% 0%, rgba(102,227,255,.16), transparent 65%),
+                radial-gradient(800px 420px at 90% 0%, rgba(192,132,255,.16), transparent 60%);
+    opacity:.72;
     pointer-events:none;
   }
-  .osu-judgeImgWrap.on{opacity:1; transform:translateY(0);}
-  .osu-judgeImg{height: 44px; object-fit: contain; filter: drop-shadow(0 18px 60px rgba(0,0,0,.80));}
+  .heroTop{ position:relative; z-index:2; padding: 6px 6px 14px; }
+  .heroNow{ font-size:11px; letter-spacing:.34em; color: rgba(255,255,255,.50); }
+  .heroTitle{ font-size:30px; font-weight:900; letter-spacing:.08em; margin-top:8px; }
+  .heroMeta{ display:flex; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap; }
+  .heroDesc{
+    margin-top: 12px;
+    color: rgba(255,255,255,.42);
+    letter-spacing:.22em;
+    text-transform: lowercase;
+    font-size: 12px;
+  }
 
-  .osu-touchBar{
+  .carousel{ position:relative; z-index:2; display:flex; align-items:center; gap:10px; margin-top: 12px; }
+  .navBtn{
+    width:42px; height:42px; border-radius:16px;
+    border: 1px solid rgba(255,255,255,.10);
+    background: rgba(255,255,255,.06);
+    color: rgba(255,255,255,.85);
+    display:grid; place-items:center;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
     flex: 0 0 auto;
-    display:grid; grid-template-columns: repeat(4, minmax(0,1fr));
-    gap: 8px;
   }
-  .osu-touchLane{
-    position:relative;height:68px;border-radius:22px;
-    border:1px solid rgba(255,255,255,.14);
-    background: rgba(0,0,0,.40);
+
+  .rail{
+    flex: 1 1 auto;
+    display:flex;
+    gap:12px;
+    overflow-x:auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px 2px 12px;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+  .rail::-webkit-scrollbar{ display:none; }
+
+  .railSpacer{
+    flex: 0 0 calc((100% - var(--cardW)) / 2);
+  }
+
+  .trackCard{
+    scroll-snap-align: center;
+    flex: 0 0 var(--cardW);
+    border-radius: 24px;
+    background: rgba(0,0,0,.22);
+    border: 1px solid rgba(255,255,255,.10);
+    box-shadow: 0 24px 80px rgba(0,0,0,.45);
+    padding: 14px;
+    position:relative;
     overflow:hidden;
-    touch-action: manipulation;
-    box-shadow: 0 24px 80px rgba(0,0,0,.72);
+    transform: translateZ(0);
   }
-  .osu-touchGlow{
+  .trackCard:after{
+    content:"";
+    position:absolute; inset:-1px;
+    background: radial-gradient(420px 220px at 20% 0%, rgba(102,227,255,.14), transparent 65%),
+                radial-gradient(420px 220px at 90% 0%, rgba(192,132,255,.14), transparent 60%);
+    opacity:.55;
+    pointer-events:none;
+  }
+  .trackCard.isActive{
+    border-color: rgba(255,255,255,.16);
+    box-shadow: 0 30px 110px rgba(0,0,0,.55);
+  }
+
+  .cover{
+    width:100%;
+    aspect-ratio: 16/9;
+    border-radius: 18px;
+    background-size: cover;
+    background-position: center;
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 18px 60px rgba(0,0,0,.45);
+    position:relative;
+    overflow:hidden;
+  }
+  .coverFallback{
+    position:absolute; inset:0;
+    background:
+      radial-gradient(circle at 35% 35%, rgba(255,255,255,.18), transparent 45%),
+      linear-gradient(135deg, rgba(102,227,255,.18), rgba(192,132,255,.16));
+  }
+
+  .trackInfo{ position:relative; z-index:2; padding-top: 12px; }
+  .trackTitle{ font-weight:900; font-size:18px; letter-spacing:.02em; }
+  .trackSub{ color: rgba(255,255,255,.56); font-size:12px; margin-top:6px; display:flex; gap:8px; align-items:center; }
+  .sep{ opacity:.5; }
+
+  .selectedBadge{
+    position:absolute; right:14px; top:14px;
+    font-size:11px; letter-spacing:.22em;
+    padding: 6px 10px; border-radius:999px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.10);
+    color: rgba(255,255,255,.55);
+    text-transform: uppercase;
+    z-index:3;
+  }
+  .selectedBadge.on{
+    color: rgba(255,255,255,.92);
+    border-color: rgba(255,255,255,.16);
+    background: linear-gradient(135deg, rgba(102,227,255,.14), rgba(192,132,255,.12));
+    box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset;
+  }
+
+  .pageDots{
+    position:relative; z-index:2;
+    display:flex; justify-content:center; gap:6px;
+    margin-top: 12px;
+    padding-bottom: 2px;
+  }
+  .pDot{
+    width:6px; height:6px; border-radius:999px;
+    background: rgba(255,255,255,.16);
+  }
+  .pDot.on{
+    width:18px;
+    background: linear-gradient(90deg, rgba(102,227,255,.70), rgba(192,132,255,.70));
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  .controls{
+    position:relative; z-index:2;
+    display:flex; gap:12px; align-items:center;
+    margin-top: 14px;
+    flex-wrap:wrap;
+    justify-content: space-between;
+  }
+
+  .seg{
+    display:flex; background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 999px;
+    padding: 4px;
+    gap: 4px;
+  }
+  .seg.mini{ padding:3px; }
+  .segBtn{
+    border: 0;
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: transparent;
+    color: rgba(255,255,255,.60);
+    letter-spacing:.18em;
+    font-size:12px;
+    text-transform: uppercase;
+  }
+  .seg.mini .segBtn{ padding:8px 10px; font-size:11px; letter-spacing:.14em; }
+  .segBtn.active{
+    color: rgba(255,255,255,.92);
+    background: linear-gradient(135deg, rgba(102,227,255,.18), rgba(192,132,255,.16));
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  .startBtn{
+    border: 0;
+    display:flex; align-items:center; gap:10px;
+    padding: 14px 18px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(102,227,255,.22), rgba(192,132,255,.20));
+    color: rgba(255,255,255,.95);
+    font-weight:900;
+    letter-spacing:.18em;
+    text-transform: uppercase;
+    box-shadow: 0 26px 80px rgba(0,0,0,.55);
+    border: 1px solid rgba(255,255,255,.12);
+  }
+  .startBtn:active{ transform: translateY(1px); }
+
+  .desktopOnly{ display:none; }
+  @media(min-width:900px){
+    .desktopOnly{ display:flex; }
+  }
+
+  .mobileCta{
+    position: fixed;
+    left: 0; right: 0;
+    bottom: calc(var(--dockH) + var(--safeB) + 10px);
+    z-index: 25;
+    padding: 0 12px;
+    display: block;
+  }
+  @media(min-width:900px){
+    .mobileCta{ display:none; }
+  }
+  .ctaInner{
+    width: min(980px, 100%);
+    margin: 0 auto;
+    border-radius: 22px;
+    background: rgba(10,11,16,.72);
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 30px 120px rgba(0,0,0,.55);
+    backdrop-filter: blur(16px);
+    padding: 10px 10px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .ctaLeft{ padding: 0 6px; }
+  .ctaLabel{ font-size:11px; letter-spacing:.26em; color: rgba(255,255,255,.46); }
+  .ctaValue{ margin-top: 3px; font-weight:900; letter-spacing:.12em; }
+  .ctaMid{ flex: 1 1 auto; display:flex; justify-content:center; }
+  .ctaStart{ flex: 0 0 auto; padding: 12px 14px; border-radius: 18px; }
+
+  /* PLAY */
+  .play{ position:relative; z-index:2; width: min(980px, 100%); margin: 0 auto; }
+  .play.reduceFlash *{ animation: none !important; }
+
+  .playHud{
+    display:flex; justify-content:space-between; gap:12px;
+    padding: 10px 6px 12px;
+    flex-wrap:wrap;
+  }
+  .hudTitle{ font-size:18px; font-weight:900; letter-spacing:.02em; }
+  .hudSub{ display:flex; gap:10px; align-items:center; margin-top:8px; }
+
+  .hudRight{ display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; justify-content:flex-end; }
+  .hudStat{
+    padding: 10px 12px;
+    border-radius: 16px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.10);
+    box-shadow: 0 20px 60px rgba(0,0,0,.32);
+    min-width: 120px;
+    text-align:right;
+  }
+  .hudLabel{ font-size:11px; color: rgba(255,255,255,.45); letter-spacing:.22em; text-transform: uppercase; }
+  .hudValue{ font-size:18px; font-weight:900; margin-top:4px; }
+
+  .laneStage{
+    border-radius: 30px;
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.10);
+    box-shadow: 0 44px 140px rgba(0,0,0,.58);
+    overflow:hidden;
+    position:relative;
+  }
+  .laneFrame{
+    height: min(52vh, 520px);
+    min-height: 360px;
+    position:relative;
+    padding: 14px 14px 14px;
+  }
+  .laneLines{ position:absolute; inset:0; pointer-events:none; }
+  .laneLine{
+    position:absolute; top:0; bottom:0;
+    width:1px;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,.10), transparent);
+    opacity:.85;
+  }
+
+  .noteLayer{
+    position:absolute; left:0; right:0; top:14px; bottom:14px;
+    overflow:hidden;
+  }
+
+  .note{
+    position:absolute;
+    width: 42px;
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(102,227,255,.95), rgba(192,132,255,.95));
+    box-shadow: 0 10px 40px rgba(0,0,0,.35), 0 0 18px rgba(255,255,255,.12);
+    will-change: transform, opacity;
+  }
+  .note.hit{ opacity:.12; filter: blur(1px); }
+
+  .hitLine{
+    position:absolute; left:0; right:0; bottom: 16px;
+    height:1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.32), transparent);
+    box-shadow: 0 0 26px rgba(255,255,255,.10);
+  }
+
+  .tapToStart{
+    position:absolute; left:0; right:0; bottom: 48px;
+    display:flex; justify-content:center;
+    pointer-events:none;
+  }
+  .tapPill{
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: rgba(0,0,0,.30);
+    border: 1px solid rgba(255,255,255,.12);
+    color: rgba(255,255,255,.82);
+    letter-spacing:.18em;
+    text-transform: uppercase;
+    font-size:12px;
+    box-shadow: 0 24px 80px rgba(0,0,0,.45);
+    animation: float 2.8s ease-in-out infinite;
+    opacity: calc(.35 + .45 * var(--breathe));
+  }
+  @keyframes float{ 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(-6px);} }
+
+  .judge{
+    position:absolute; left:0; right:0; top: 18px;
+    display:flex; justify-content:center;
+    opacity:0; transform: translateY(-6px);
+    transition: .18s ease;
+    pointer-events:none;
+    text-shadow: 0 18px 60px rgba(0,0,0,.65);
+  }
+  .judge.on{ opacity: 1; transform: translateY(0); }
+  .judgeImg{ height: 42px; width:auto; filter: drop-shadow(0 18px 36px rgba(0,0,0,.6)); }
+  .judgeText{
+    font-weight:1000;
+    letter-spacing:.26em;
+    text-transform: uppercase;
+  }
+  .judgeText.PERFECT{ color: rgba(255,255,255,.96); }
+  .judgeText.GOOD{ color: rgba(255,255,255,.84); }
+  .judgeText.MISS{ color: rgba(255,255,255,.55); }
+
+  .touchBar{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .laneTouch{
+    border: 1px solid rgba(255,255,255,.10);
+    background: rgba(255,255,255,.03);
+    height: 78px;
+    border-radius: 22px;
+    position:relative;
+    overflow:hidden;
+    box-shadow: 0 26px 90px rgba(0,0,0,.45);
+    touch-action: manipulation;
+  }
+  .laneGlow{
     position:absolute; inset:-1px;
     background:
-      radial-gradient(240px 90px at 50% 110%, rgba(255,255,255,.25), transparent 62%),
-      radial-gradient(260px 140px at 50% 115%, rgba(102,227,255,.30), transparent 64%),
-      radial-gradient(260px 140px at 50% 115%, rgba(192,132,255,.26), transparent 64%);
-    opacity: calc(.16 + .52 * var(--flash, 0));
+      radial-gradient(220px 90px at 50% 110%, rgba(255,255,255,.18), transparent 62%),
+      radial-gradient(240px 140px at 50% 110%, rgba(102,227,255,.18), transparent 64%),
+      radial-gradient(240px 140px at 50% 110%, rgba(192,132,255,.14), transparent 64%);
+    opacity: calc(.14 + .54 * var(--flash));
     transition: opacity .18s ease;
   }
-  .osu-touchLane.pressed .osu-touchGlow{opacity:.92;}
-  .osu-touchIcon{
-    position:relative; z-index:1;
-    width: 28px; height: 28px; object-fit: contain;
-    filter: drop-shadow(0 8px 26px rgba(0,0,0,.85));
+  .laneTouch.pressed .laneGlow{ opacity: .92; }
+  .laneHint{
+    position:absolute; left:0; right:0; bottom: 10px;
+    text-align:center;
+    font-size: 11px;
+    letter-spacing:.22em;
+    color: rgba(255,255,255,.40);
+    text-transform: uppercase;
   }
 
-  .osu-playSpeed{
-    flex:0 0 auto;
-    font-size:11px;color:rgba(255,255,255,.56);
-    letter-spacing:.20em;text-transform:uppercase;
-    text-align:right;padding: 0 4px;
-  }
-  .osu-playActions{
-    flex:0 0 auto;
-    display:flex;gap:8px;flex-wrap:wrap;justify-content:center;
+  .playActions{
+    display:flex; gap:10px;
+    margin-top: 12px;
+    flex-wrap:wrap;
+    justify-content: center;
   }
   .ghostBtn{
-    border-radius:16px;border:1px solid rgba(255,255,255,.14);
-    background: rgba(0,0,0,.42);
-    padding:10px 12px;
-    color: rgba(255,255,255,.86);
-    display:flex;align-items:center;gap:8px;
-    font-size:11px;letter-spacing:.20em;text-transform:uppercase;
-    box-shadow: 0 22px 70px rgba(0,0,0,.70);
+    border-radius: 16px;
+    padding: 12px 14px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.10);
+    color: rgba(255,255,255,.85);
+    display:flex; align-items:center; gap:10px;
+    letter-spacing:.16em;
+    text-transform: uppercase;
+    box-shadow: 0 22px 70px rgba(0,0,0,.38);
   }
+  .ghostBtn.danger{ color: rgba(255,255,255,.88); border-color: rgba(255,255,255,.12); }
+  .ghostBtn:active{ transform: translateY(1px); }
 
   /* RESULT */
-  .osu-resultCard{padding: 16px 14px 14px; overflow:auto; -webkit-overflow-scrolling: touch;}
-  .osu-resultHead{position:relative; z-index:1; padding: 6px 4px 10px;}
-  .osu-resultLabel{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:rgba(255,255,255,.58);}
-  .osu-resultTitle{margin-top:6px;font-size:24px;font-weight:900;}
-  .osu-resultMeta{margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-  .osu-grade{
-    position:absolute; right:14px; top: 16px;
-    width:64px;height:64px;border-radius:22px;
-    display:grid;place-items:center;
-    background: rgba(0,0,0,.42);
-    border:1px solid rgba(255,255,255,.18);
-    box-shadow: 0 26px 90px rgba(0,0,0,.75);
-  }
-  .osu-gradeImg{width:48px;height:48px;object-fit:contain;}
-  .osu-statGrid{
-    position:relative; z-index:1;
-    display:grid; grid-template-columns: repeat(2, minmax(0,1fr));
-    gap:10px; margin-top: 8px;
-  }
-  @media (min-width:720px){.osu-statGrid{grid-template-columns: repeat(3, minmax(0,1fr));}}
-  .osu-statCard{
-    border-radius:20px;
-    background: rgba(0,0,0,.32);
-    border:1px solid rgba(255,255,255,.16);
-    box-shadow: 0 22px 70px rgba(0,0,0,.70);
-    padding: 10px 10px;
-  }
-  .osu-statLabel{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.60);}
-  .osu-statValue{margin-top:6px;font-size:20px;font-weight:900;}
-  .osu-resultActions{margin-top:12px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
-
-  /* SETTINGS SHEET */
-  .osu-sheetWrap{position:fixed; inset:0; z-index:40; display:flex; justify-content:center; align-items:flex-end;}
-  .osu-sheetBackdrop{position:absolute; inset:0; background: rgba(0,0,0,.60);}
-  .osu-sheet{
+  .result{ position:relative; z-index:2; display:flex; justify-content:center; padding-top: 14px; }
+  .resultCard{
+    width: min(860px, 100%);
+    border-radius: 32px;
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    border: 1px solid rgba(255,255,255,.10);
+    box-shadow: 0 44px 140px rgba(0,0,0,.58);
+    padding: 18px 16px 16px;
     position:relative;
-    width:min(960px, 100%);
-    max-height: calc(100vh - 14px);
-    border-radius:24px 24px 0 0;
-    background: rgba(3,4,10,.96);
-    border:1px solid rgba(255,255,255,.16);
-    box-shadow: 0 -36px 120px rgba(0,0,0,.85);
     overflow:hidden;
-    display:flex; flex-direction:column;
   }
-  .osu-sheetHead{padding:12px 16px 10px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,.10);}
-  .osu-sheetTitle{font-size:13px;letter-spacing:.22em;text-transform:uppercase;font-weight:900;}
-  .osu-sheetSub{margin-top:4px;font-size:12px;color:rgba(255,255,255,.60);}
-  .osu-sheetBody{
-    padding:10px 16px 12px;
-    overflow-y:auto;
+  .resultCard:before{
+    content:"";
+    position:absolute; inset:-1px;
+    background: radial-gradient(700px 320px at 20% 0%, rgba(102,227,255,.16), transparent 60%),
+                radial-gradient(700px 320px at 90% 0%, rgba(192,132,255,.16), transparent 60%);
+    opacity:.75;
+    pointer-events:none;
+  }
+  .resultHead{ position:relative; z-index:2; padding: 8px 6px 14px; }
+  .rLabel{ font-size:11px; letter-spacing:.34em; color: rgba(255,255,255,.52); }
+  .rTitle{ font-size:28px; font-weight:1000; margin-top:6px; }
+  .rSub{ display:flex; gap:10px; align-items:center; margin-top:10px; flex-wrap:wrap; }
+
+  .grade{
+    position:absolute; right:16px; top:18px;
+    width:56px; height:56px;
+    border-radius: 18px;
+    display:grid; place-items:center;
+    font-weight:1000;
+    font-size:22px;
+    letter-spacing:.06em;
+    background: rgba(0,0,0,.26);
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 26px 90px rgba(0,0,0,.52);
+  }
+  .grade.S{ background: linear-gradient(135deg, rgba(102,227,255,.22), rgba(192,132,255,.22)); }
+  .grade.A{ background: linear-gradient(135deg, rgba(102,227,255,.18), rgba(255,255,255,.10)); }
+  .grade.B{ background: rgba(255,255,255,.06); }
+  .grade.C{ background: rgba(255,255,255,.05); }
+  .grade.D{ background: rgba(255,255,255,.04); }
+
+  .statsGrid{
+    position:relative; z-index:2;
+    display:grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-top: 6px;
+  }
+  @media(min-width:720px){
+    .statsGrid{ grid-template-columns: repeat(3, 1fr); }
+  }
+  .statCard{
+    border-radius: 22px;
+    background: rgba(0,0,0,.22);
+    border: 1px solid rgba(255,255,255,.10);
+    box-shadow: 0 22px 70px rgba(0,0,0,.38);
+    padding: 12px 12px;
+    overflow:hidden;
+  }
+  .statTop{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .statLabel{
+    font-size:11px;
+    letter-spacing:.26em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.52);
+  }
+  .statIcon{ height: 18px; width:auto; opacity:.85; }
+  .statValue{
+    font-size:22px;
+    font-weight:1000;
+    margin-top: 8px;
+  }
+  .resultActions{
+    position:relative; z-index:2;
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    margin-top: 14px;
+    flex-wrap:wrap;
+  }
+
+  /* SETTINGS */
+  .sheetWrap{ position:fixed; inset:0; z-index:60; display:flex; justify-content:center; align-items:flex-end; }
+  .sheetBackdrop{ position:absolute; inset:0; background: rgba(0,0,0,.55); }
+  .sheet{
+    width: min(920px, 100%);
+    max-height: calc(100dvh - 12px);
+    border-radius: 28px 28px 0 0;
+    background: rgba(10,11,16,.92);
+    border: 1px solid rgba(255,255,255,.10);
+    box-shadow: 0 -40px 140px rgba(0,0,0,.65);
+    backdrop-filter: blur(18px);
+    position:relative;
+    overflow:hidden;
+  }
+  .sheetHead{
+    padding: 16px 16px 12px;
+    display:flex; justify-content:space-between; align-items:center;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .sheetTitle{ font-weight:1000; font-size:16px; letter-spacing:.12em; text-transform: uppercase; }
+  .sheetSub{ color: rgba(255,255,255,.45); font-size:12px; margin-top:4px; }
+
+  .sheetBody{
+    padding: 12px 16px 18px;
+    overflow:auto;
     -webkit-overflow-scrolling: touch;
+    max-height: calc(100dvh - 170px);
     overscroll-behavior: contain;
   }
-  .group{margin-bottom:12px;}
-  .groupTitle{font-size:11px;letter-spacing:.30em;text-transform:uppercase;color:rgba(255,255,255,.52); padding:6px 2px 8px;}
+
+  .group{ margin-bottom: 14px; }
+  .groupTitle{
+    font-size:11px;
+    letter-spacing:.34em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.44);
+    padding: 10px 6px 8px;
+  }
   .row{
-    border-radius:20px;
-    background: rgba(255,255,255,.03);
-    border:1px solid rgba(255,255,255,.14);
-    padding:10px 12px;
-    box-shadow: 0 20px 70px rgba(0,0,0,.70);
-    margin-bottom: 8px;
+    border-radius: 22px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.10);
+    box-shadow: 0 22px 70px rgba(0,0,0,.35);
+    padding: 12px 12px;
+    margin-bottom: 10px;
   }
-  .rowHead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
-  .rowLabel{font-size:11px;letter-spacing:.20em;text-transform:uppercase;font-weight:800;}
-  .rowValue{font-size:12px;font-weight:800;}
-  .rowHint{margin-top:4px;font-size:11px;color:rgba(255,255,255,.52);}
-  .rowBody{margin-top:8px;}
-  .row input[type="range"]{width:100%; -webkit-appearance:none; height:26px; background: transparent;}
-  .row input[type="range"]::-webkit-slider-runnable-track{
-    height:7px;border-radius:999px;
-    background: linear-gradient(90deg, rgba(102,227,255,.70), rgba(192,132,255,.70));
+  .rowHead{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+  .rowLabel{ font-weight:900; letter-spacing:.22em; font-size:12px; color: rgba(255,255,255,.78); }
+  .rowValue{ font-weight:1000; color: rgba(255,255,255,.92); }
+  .rowHint{ margin-top:6px; font-size:12px; color: rgba(255,255,255,.42); line-height:1.5; }
+  .rowBody{ margin-top: 10px; }
+
+  input[type="range"]{ -webkit-appearance:none; height: 26px; background: transparent; width:100%; }
+  input[type="range"]::-webkit-slider-runnable-track{
+    height: 8px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(102,227,255,.55), rgba(192,132,255,.55));
+    opacity:.9;
   }
-  .row input[type="range"]::-webkit-slider-thumb{
+  input[type="range"]::-webkit-slider-thumb{
     -webkit-appearance:none;
-    width:20px;height:20px;border-radius:999px;
-    background:#fff;border:1px solid rgba(0,0,0,.30);
-    margin-top:-6px;
-    box-shadow: 0 14px 40px rgba(0,0,0,.6);
-  }
-  .btnRow{display:flex; gap:8px; flex-wrap:wrap; padding: 0 2px 8px;}
-  .chip{
-    border-radius:999px;
-    border:1px solid rgba(255,255,255,.14);
-    background: rgba(10,11,20,.92);
-    padding:8px 12px;
-    font-size:11px; letter-spacing:.20em; text-transform:uppercase;
-    color: rgba(255,255,255,.78);
-  }
-  .chip.on{
-    background: linear-gradient(135deg, rgba(102,227,255,.26), rgba(192,132,255,.24));
-    color: rgba(255,255,255,.96);
-  }
-  .osu-sheetFoot{
-    padding:10px 16px calc(12px + var(--safeB));
-    border-top:1px solid rgba(255,255,255,.10);
-    display:flex; justify-content:space-between; gap:8px;
+    width: 22px; height: 22px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.92);
+    border: 1px solid rgba(0,0,0,.25);
+    margin-top: -7px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.45);
   }
 
-  @media (max-width:420px){
-    .osu-lobbyTitle,.osu-resultTitle{font-size:22px}
+  .btnRow{ display:flex; gap:10px; flex-wrap:wrap; padding: 0 2px 10px; align-items:center; }
+  .chip{
+    padding: 10px 12px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.10);
+    color: rgba(255,255,255,.78);
+    letter-spacing:.18em;
+    text-transform: uppercase;
+    font-size:12px;
+    display:flex;
+    align-items:center;
+  }
+  .chip.on{
+    background: linear-gradient(135deg, rgba(102,227,255,.18), rgba(192,132,255,.16));
+    color: rgba(255,255,255,.92);
+  }
+
+  .sheetFootFixed{
+    padding: 10px 16px calc(10px + var(--safeB));
+    border-top: 1px solid rgba(255,255,255,.08);
+    background: rgba(10,11,16,.92);
+    display:flex;
+    gap:10px;
+    justify-content:space-between;
+  }
+
+  /* EMPTY */
+  .empty{ position:relative; z-index:2; display:flex; justify-content:center; padding-top: 40px; }
+  .emptyCard{
+    width: min(820px, 100%);
+    border-radius: 28px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.10);
+    box-shadow: 0 40px 120px rgba(0,0,0,.55);
+    padding: 18px 16px;
+  }
+  .emptyTitle{ font-weight:1000; font-size:18px; letter-spacing:.08em; }
+  .emptyBody{ color: rgba(255,255,255,.55); margin-top:10px; line-height:1.7; }
+  .emptyHint{ margin-top:6px; color: rgba(255,255,255,.42); }
+
+  @media(max-width:420px){
+    .hudStat{ min-width: 106px; }
+    .heroTitle{ font-size: 26px; }
+    .rTitle{ font-size: 24px; }
   }
   `;
 }
