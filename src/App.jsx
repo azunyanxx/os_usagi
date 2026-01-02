@@ -4998,1722 +4998,1360 @@ const Desktop = ({ bgm }) => {
 // ------------------------------------------------
 // 🌸🌸🎮-- 07.Game (げーむ) --🌸🌸🌸🌸🌸🌸🌸🌸
 // ------------------------------------------------
-
-// 🎮 -- 07.Game (げーむ)  BeatSyncApp
+// ------------------------------------------------
+// 🌸🌸🎮-- 07.Game : BeatSync (OS Bunny pure app) --🎮🌸🌸
+// ------------------------------------------------
 const BeatSyncApp = () => {
-  // ----------------------------- ASSETS -----------------------------
+  // ----------------------------- ASSET
   const ASSET = React.useMemo(
     () => ({
-      judge: {
-        perfect: "https://files.catbox.moe/xn8cnp.png",
-        good: "https://files.catbox.moe/6taoa0.png",
-        miss: "https://files.catbox.moe/9ywa9l.png",
-      },
-      arrows: {
-        up: "https://files.catbox.moe/zb8qnn.png",
-        right: "https://files.catbox.moe/zg5lru.png",
-        down: "https://files.catbox.moe/v4g9e7.png",
-        left: "https://files.catbox.moe/rmbi75.png",
-      },
-      bunny: {
-        idle: "https://files.catbox.moe/3revxm.png",
-        runR: "https://files.catbox.moe/p45obb.png",
-        yayR: "https://files.catbox.moe/mkceap.png",
-        dizzy: "https://files.catbox.moe/gxng27.png",
-        flop: "https://files.catbox.moe/dwiqep.png",
-        starR: "https://files.catbox.moe/5zvxy0.png",
-      },
+      appId: "beatsync",
+      name: "BeatSync",
+      icon: Radio,
+      accent: { a: "rgba(120,210,255,.95)", b: "rgba(198,145,255,.95)" },
       tracks: [
-        { id: "overhaul", title: "Overhaul", url: "https://files.catbox.moe/po0sn4.mp3", bpm: 124 },
-        { id: "dawning", title: "The Dawning", url: "https://files.catbox.moe/p17dic.mp3", bpm: 120 },
-        { id: "mirage", title: "mirage", url: "https://files.catbox.moe/ttlaul.mp3", bpm: 132 },
-        { id: "phantasma", title: "廻る世界とファンタズマ", url: "https://files.catbox.moe/ns5til.mp3", bpm: 150 },
-        { id: "immitation", title: "Immitation Girl", url: "https://files.catbox.moe/7lccok.mp3", bpm: 128 },
-        { id: "checkmate", title: "checkmate", url: "https://files.catbox.moe/3dutdo.mp3", bpm: 140 },
-        { id: "lockon", title: "ロックオン", url: "https://files.catbox.moe/o667wd.mp3", bpm: 160 },
+        {
+          id: "dawning",
+          title: "Dawning Protocol",
+          artist: "Signal Youth",
+          bpm: 122,
+          url: "https://files.catbox.moe/roxy4t.mp3",
+          mood: "glassy / warm",
+        },
+        {
+          id: "afterclass",
+          title: "Virtual After Class",
+          artist: "A.S. Protocol",
+          bpm: 136,
+          url: "https://files.catbox.moe/5ikild.mp3",
+          mood: "neon / clean",
+        },
+        {
+          id: "shadow",
+          title: "Black Bunny Dreamtime",
+          artist: "Shadow Bunny Ensemble",
+          bpm: 110,
+          url: "https://files.catbox.moe/3ehh4t.mp3",
+          mood: "midnight / soft",
+        },
+        {
+          id: "courier",
+          title: "Night Gift",
+          artist: "Midnight Courier",
+          bpm: 128,
+          url: "https://files.catbox.moe/rn1wn8.mp3",
+          mood: "pulse / calm",
+        },
+        {
+          id: "retry",
+          title: "Continue",
+          artist: "Retry & Heart",
+          bpm: 140,
+          url: "https://files.catbox.moe/46v22y.mp3",
+          mood: "spark / cute",
+        },
       ],
     }),
     []
   );
 
-  // ----------------------------- TOKENS (App(11)系：ガラス/余白/タイポ) -----------------------------
-  const TOK = React.useMemo(
-    () => ({
-      bg0: "#04050a",
-      bg1: "#070817",
-      ink: "rgba(255,255,255,0.92)",
-      sub: "rgba(255,255,255,0.62)",
-      faint: "rgba(255,255,255,0.42)",
-      line: "rgba(255,255,255,0.12)",
-      line2: "rgba(255,255,255,0.08)",
-      glass: "rgba(10,12,20,0.58)",
-      glass2: "rgba(255,255,255,0.055)",
-      lane0: "rgba(198,164,255,0.78)",
-      lane1: "rgba(122,226,255,0.78)",
-      lane2: "rgba(255,156,222,0.70)",
-      lane3: "rgba(170,255,214,0.66)",
-      aurA: "rgba(122,226,255,0.38)",
-      aurB: "rgba(198,164,255,0.34)",
-      aurC: "rgba(255,156,222,0.26)",
-      aurD: "rgba(170,255,214,0.24)",
-      danger: "rgba(255,120,170,0.60)",
-    }),
-    []
-  );
-
-  const laneGlow = React.useCallback((lane) => (lane === 0 ? TOK.lane0 : lane === 1 ? TOK.lane1 : lane === 2 ? TOK.lane2 : TOK.lane3), [TOK]);
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const fmtMMSS = (sec) => {
-    if (!isFinite(sec) || sec < 0) return "--:--";
-    const s = Math.floor(sec);
-    const m = Math.floor(s / 60);
-    const r = s % 60;
-    return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
-  };
-
-  // ----------------------------- STATE -----------------------------
-  const [view, setView] = React.useState("lobby"); // lobby | play | pause | result
+  // ----------------------------- STATE
+  const [view, setView] = React.useState("lobby"); // lobby | play | result
   const [trackId, setTrackId] = React.useState("dawning");
-  const [difficulty, setDifficulty] = React.useState("EASY");
-
   const [ready, setReady] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
 
-  const [musicVol, setMusicVol] = React.useState(0.86);
-  const [sfxVol, setSfxVol] = React.useState(0.55);
+  const [difficulty, setDifficulty] = React.useState("normal"); // easy | normal | hard
+  const [speed, setSpeed] = React.useState(1.0); // 0.8..1.4
+  const [volume, setVolume] = React.useState(0.9);
   const [muted, setMuted] = React.useState(false);
-  const [sfxOn, setSfxOn] = React.useState(true);
-  const [latencyMs, setLatencyMs] = React.useState(0);
-  const [speed, setSpeed] = React.useState(980);
 
   const [score, setScore] = React.useState(0);
   const [combo, setCombo] = React.useState(0);
   const [maxCombo, setMaxCombo] = React.useState(0);
-  const [counts, setCounts] = React.useState({ perfect: 0, good: 0, miss: 0 });
-  const [accuracy, setAccuracy] = React.useState(0);
+  const [judge, setJudge] = React.useState(null); // { lane, kind, t }
+  const [result, setResult] = React.useState(null);
 
-  const [judgeFx, setJudgeFx] = React.useState(null); // { type, at }
-  const [pressedLane, setPressedLane] = React.useState(-1);
-
-  // 低頻度 UI tick（時間表示・remain 等）
-  const [uiTick, setUiTick] = React.useState(0);
-
-  // ----------------------------- REFS -----------------------------
-  const rootRef = React.useRef(null);
-  const fieldRef = React.useRef(null);
-  const canvasRef = React.useRef(null);
-  const audioRef = React.useRef(null);
-
-  const rafRef = React.useRef(null);
-  const lastUiAtRef = React.useRef(0);
-
-  const notesRef = React.useRef([]);
-  const cursorRef = React.useRef(0);
-  const lastNoteTRef = React.useRef(0);
-
-  const durationRef = React.useRef(0);
-
-  const actxRef = React.useRef(null);
-  const sfxGainRef = React.useRef(null);
-
-  const audioModeRef = React.useRef("idle"); // idle | preview | run
-  const previewTimerRef = React.useRef(null);
-  const volFadeRafRef = React.useRef(null);
-
-  // time base（音が出なくても落ちる）
-  const runPerf0Ref = React.useRef(0);
-  const runningRef = React.useRef(false);
-
-  // ループ内参照を安定化（closureズレ/再生成で破綻しない）
-  const viewRef = React.useRef(view);
-  const latencyRef = React.useRef(latencyMs);
-  const speedRef = React.useRef(speed);
-  const windowRef = React.useRef({ perfect: 0.11, good: 0.2, miss: 0.28 });
-  const comboRef = React.useRef(combo);
-
-  React.useEffect(() => void (viewRef.current = view), [view]);
-  React.useEffect(() => void (latencyRef.current = latencyMs), [latencyMs]);
-  React.useEffect(() => void (speedRef.current = speed), [speed]);
-  React.useEffect(() => void (comboRef.current = combo), [combo]);
-
-  // image cache for canvas
-  const imgRef = React.useRef({}); // url -> HTMLImageElement
-
-  // ----------------------------- LAYOUT -----------------------------
-  const [rootW, setRootW] = React.useState(360);
+  const [rootW, setRootW] = React.useState(420);
   const isMobile = rootW < 560;
 
-  const dockPad = isMobile ? 86 : 18;
-  const safeBottom = React.useMemo(() => `calc(env(safe-area-inset-bottom) + ${dockPad}px)`, [dockPad]);
+  // ----------------------------- REFS
+  const rootRef = React.useRef(null);
+  const audioRef = React.useRef(null);
+  const audioCtxRef = React.useRef(null);
+  const masterGainRef = React.useRef(null);
 
-  React.useEffect(() => {
-    const r = rootRef.current;
-    if (!r || !window.ResizeObserver) return;
-    const ro = new ResizeObserver(() => setRootW(Math.max(320, Math.floor(r.clientWidth || 360))));
-    ro.observe(r);
-    setRootW(Math.max(320, Math.floor(r.clientWidth || 360)));
-    return () => ro.disconnect();
-  }, []);
+  const rafRef = React.useRef(0);
+  const runningRef = React.useRef(false);
+  const endedRef = React.useRef(false);
 
-  // Field size cache（Canvas毎フレームreflow禁止）
-  const fieldSizeRef = React.useRef({ w: 360, h: 420, dpr: 1 });
-  React.useEffect(() => {
-    const host = fieldRef.current;
-    const canvas = canvasRef.current;
-    if (!host || !canvas || !window.ResizeObserver) return;
+  const durRef = React.useRef(0);
+  const t0PerfRef = React.useRef(0);
 
-    const apply = () => {
-      const w = Math.max(1, Math.floor(host.clientWidth || 360));
-      const h = Math.max(1, Math.floor(host.clientHeight || 420));
-      const dpr = Math.max(1, Math.min(2.25, window.devicePixelRatio || 1));
-      fieldSizeRef.current = { w, h, dpr };
+  const notesRef = React.useRef([]);
+  const hitRef = React.useRef(new Set());
+  const lastJudgeRef = React.useRef(null);
 
-      const cw = Math.floor(w * dpr);
-      const ch = Math.floor(h * dpr);
-      if (canvas.width !== cw || canvas.height !== ch) {
-        canvas.width = cw;
-        canvas.height = ch;
-        canvas.style.width = `${w}px`;
-        canvas.style.height = `${h}px`;
-      }
+  const canvasRef = React.useRef(null);
+  const fieldSizeRef = React.useRef({ w: 0, h: 0, dpr: 1 });
+
+  const pressedLaneRef = React.useRef(-1);
+  const [pressedLane, setPressedLane] = React.useState(-1);
+
+  // ----------------------------- COMPUTED
+  const currentTrack = React.useMemo(
+    () => ASSET.tracks.find((t) => t.id === trackId) || ASSET.tracks[0],
+    [ASSET.tracks, trackId]
+  );
+
+  const dockPad = isMobile ? 86 : 0;
+  const safeBottom =
+    "calc(env(safe-area-inset-bottom, 0px) + " + dockPad + "px)";
+
+  const DIFF = React.useMemo(() => {
+    const base = difficulty === "easy" ? 0.78 : difficulty === "hard" ? 1.18 : 1;
+    return {
+      density: base,
+      windowPerfect: 0.06,
+      windowGood: 0.12,
+      windowOk: 0.19,
+      missAfter: 0.24,
     };
-
-    apply();
-    const ro = new ResizeObserver(apply);
-    ro.observe(host);
-    window.addEventListener("orientationchange", apply);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("orientationchange", apply);
-    };
-  }, []);
-
-  const receptorY = React.useMemo(() => {
-    const h = fieldSizeRef.current?.h || 420;
-    return clamp(Math.floor(h * 0.78), 190, Math.max(210, h - 76));
-  }, [rootW, isMobile]); // rootW変化で再計算
-
-  // ----------------------------- DERIVED -----------------------------
-  const currentTrack = React.useMemo(() => ASSET.tracks.find((t) => t.id === trackId) || ASSET.tracks[0], [ASSET.tracks, trackId]);
-
-  React.useEffect(() => {
-    const w =
-      difficulty === "EASY"
-        ? { perfect: 0.11, good: 0.2, miss: 0.28 }
-        : difficulty === "NORMAL"
-        ? { perfect: 0.09, good: 0.16, miss: 0.24 }
-        : { perfect: 0.08, good: 0.15, miss: 0.22 };
-    windowRef.current = w;
   }, [difficulty]);
 
-  // ----------------------------- ACCURACY -----------------------------
-  React.useEffect(() => {
-    const total = counts.perfect + counts.good + counts.miss;
-    if (!total) return setAccuracy(0);
-    const acc = (counts.perfect * 1 + counts.good * 0.66) / total;
-    setAccuracy(clamp(acc, 0, 1) * 100);
-  }, [counts]);
+  const lanes = 4;
 
-  // ----------------------------- AUDIO (music) -----------------------------
-  const setAudioVolume = React.useCallback(() => {
+  // ----------------------------- UTILS
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const nowPerf = () => performance.now();
+
+  const fmtTime = (sec) => {
+    const s = Math.max(0, sec || 0);
+    const m = Math.floor(s / 60);
+    const r = Math.floor(s % 60);
+    return `${m}:${String(r).padStart(2, "0")}`;
+  };
+
+  // ----------------------------- AUDIO ENGINE
+  const ensureAudioContext = React.useCallback(() => {
+    if (audioCtxRef.current) return;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+
+    const ctx = new Ctx();
+    const master = ctx.createGain();
+    master.gain.value = 1.0;
+    master.connect(ctx.destination);
+
+    audioCtxRef.current = ctx;
+    masterGainRef.current = master;
+  }, []);
+
+  const setMasterVolume = React.useCallback(
+    (v) => {
+      const a = audioRef.current;
+      if (a) a.volume = clamp(v, 0, 1);
+    },
+    [volume]
+  );
+
+  React.useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
-    const base = muted ? 0 : clamp(musicVol, 0, 1);
-    const k = audioModeRef.current === "preview" ? 0.58 : 1.0;
-    a.volume = clamp(base * k, 0, 1);
-  }, [musicVol, muted]);
+    a.volume = muted ? 0 : clamp(volume, 0, 1);
+  }, [volume, muted]);
 
-  React.useEffect(() => setAudioVolume(), [setAudioVolume]);
+  const playSfx = React.useCallback((kind, gain = 0.3) => {
+    ensureAudioContext();
+    const ctx = audioCtxRef.current;
+    const master = masterGainRef.current;
+    if (!ctx || !master) return;
 
-  const cancelVolFade = React.useCallback(() => {
-    if (volFadeRafRef.current) cancelAnimationFrame(volFadeRafRef.current);
-    volFadeRafRef.current = null;
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+
+    const base =
+      kind === "hit" ? 420 : kind === "tap" ? 260 : kind === "miss" ? 140 : 300;
+    osc.type = kind === "hit" ? "triangle" : "sine";
+    osc.frequency.setValueAtTime(base, t);
+    osc.frequency.exponentialRampToValueAtTime(base * 0.7, t + 0.06);
+
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(gain, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+
+    osc.connect(g);
+    g.connect(master);
+
+    osc.start(t);
+    osc.stop(t + 0.12);
+  }, [ensureAudioContext]);
+
+  // ----------------------------- TRACK LOAD / PREVIEW
+  const stopRaf = React.useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = 0;
   }, []);
 
-  const fadeVolumeTo = React.useCallback(
-    (to, ms = 160) => {
-      const a = audioRef.current;
-      if (!a) return;
-      cancelVolFade();
-      const from = a.volume ?? 0;
-      const t0 = performance.now();
-      const dur = Math.max(60, ms);
-      const step = () => {
-        const p = clamp((performance.now() - t0) / dur, 0, 1);
-        const eased = 1 - Math.pow(1 - p, 3);
-        a.volume = from + (to - from) * eased;
-        if (p < 1) volFadeRafRef.current = requestAnimationFrame(step);
-        else volFadeRafRef.current = null;
-      };
-      volFadeRafRef.current = requestAnimationFrame(step);
-    },
-    [cancelVolFade]
-  );
-
-  const stopPreview = React.useCallback(
-    (fadeMs = 120) => {
-      const a = audioRef.current;
-      if (!a) return;
-      if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
-      previewTimerRef.current = null;
-
-      if (audioModeRef.current === "preview") {
-        fadeVolumeTo(0, fadeMs);
-        setTimeout(() => {
-          try {
-            a.pause();
-          } catch {}
-          audioModeRef.current = "idle";
-          setAudioVolume();
-        }, fadeMs + 20);
-      }
-    },
-    [fadeVolumeTo, setAudioVolume]
-  );
-
-  // ----------------------------- AUDIO (sfx webaudio) -----------------------------
-  const ensureAudioContext = React.useCallback(() => {
-    if (actxRef.current) return actxRef.current;
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return null;
-    const actx = new AC();
-    const g = actx.createGain();
-    g.gain.value = 0.7;
-    g.connect(actx.destination);
-    actxRef.current = actx;
-    sfxGainRef.current = g;
-    return actx;
+  const stopPreview = React.useCallback((fadeMs = 180) => {
+    const a = audioRef.current;
+    if (!a) return;
+    try {
+      a.pause();
+    } catch {}
+    try {
+      a.currentTime = 0;
+    } catch {}
   }, []);
 
-  React.useEffect(() => {
-    const g = sfxGainRef.current;
-    if (!g) return;
-    g.gain.value = muted || !sfxOn ? 0 : clamp(sfxVol, 0, 1);
-  }, [muted, sfxOn, sfxVol]);
+  const loadTrack = React.useCallback((id, { preview = true } = {}) => {
+    const a = audioRef.current;
+    if (!a) return;
 
-  const playSfx = React.useCallback(
-    (kind, intensity = 1) => {
-      if (muted || !sfxOn) return;
-      const actx = ensureAudioContext();
-      if (!actx) return;
-      if (actx.state === "suspended") actx.resume?.().catch(() => {});
-      const out = sfxGainRef.current;
-      if (!out) return;
+    const t = ASSET.tracks.find((x) => x.id === id) || ASSET.tracks[0];
+    setTrackId(t.id);
 
-      const t0 = actx.currentTime;
-      const dur = kind === "miss" ? 0.08 : kind === "good" ? 0.1 : 0.12;
+    setLoading(true);
+    setReady(false);
 
-      const o = actx.createOscillator();
-      const g = actx.createGain();
-      o.type = kind === "miss" ? "sine" : "triangle";
-      o.frequency.setValueAtTime(kind === "perfect" ? 760 : kind === "good" ? 520 : 160, t0);
+    try {
+      a.pause();
+    } catch {}
 
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.16 * intensity, t0 + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    try {
+      a.src = t.url;
+      a.load();
+    } catch {}
 
-      o.connect(g);
-      g.connect(out);
-      o.start(t0);
-      o.stop(t0 + dur);
-    },
-    [ensureAudioContext, muted, sfxOn]
-  );
+    const onCanPlay = () => {
+      setLoading(false);
+      setReady(true);
 
-  // ----------------------------- CHART -----------------------------
-  const CHART = React.useMemo(() => {
-    const mapTok = (t) => {
-      if (!t || t === ".") return null;
-      const m = { L: 0, D: 1, U: 2, R: 3 };
-      if (t.includes("|")) {
-        const parts = t
-          .split("|")
-          .map((x) => x.trim())
-          .filter(Boolean);
-        const lanes = parts.map((p) => m[p]).filter((v) => v !== undefined);
-        return lanes.length ? lanes : null;
-      }
-      return m[t] !== undefined ? [m[t]] : null;
-    };
+      // duration capture（NaN対策）
+      const d = (isFinite(a.duration) ? a.duration : 0) || durRef.current || 180;
+      durRef.current = d;
 
-    const compile = ({ bpm, offsetSec, subdiv, motifs }) => {
-      const beat = 60 / (bpm || 120);
-      const stepSec = beat * (4 / subdiv);
-      const notes = [];
-      let t = offsetSec ?? 1.0;
-      let id = 0;
-
-      for (const block of motifs) {
-        const rep = block.r || 1;
-        for (let rr = 0; rr < rep; rr++) {
-          for (const tok of block.toks) {
-            const lanes = mapTok(tok);
-            if (lanes) for (const lane of lanes) notes.push({ id: `n${id++}`, t: +t.toFixed(4), lane, judged: false, hit: false });
-            t += stepSec;
-          }
+      if (preview) {
+        try {
+          a.currentTime = 0;
+        } catch {}
+        const p = a.play();
+        if (p && typeof p.then === "function") {
+          p.catch(() => {
+            // autoplay block: ignore (still "ready")
+          });
         }
       }
+    };
+
+    a.addEventListener("canplay", onCanPlay, { once: true });
+
+    // metadata fallback
+    const onMeta = () => {
+      const d = (isFinite(a.duration) ? a.duration : 0) || durRef.current || 180;
+      durRef.current = d;
+    };
+    a.addEventListener("loadedmetadata", onMeta, { once: true });
+  }, [ASSET.tracks]);
+
+  React.useEffect(() => {
+    // initial preload
+    loadTrack(trackId, { preview: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ----------------------------- CHART BUILD
+  const CHART = React.useMemo(() => {
+    const build = ({ bpm, dur, density, seed = 1 }) => {
+      const sec = Math.max(1, dur || 180);
+      const beat = 60 / Math.max(60, bpm || 120);
+      const step = beat / 2; // 8th
+      const totalSteps = Math.floor(sec / step);
+
+      const rng = (n) => {
+        // deterministic tiny rng
+        let x = (n * 1103515245 + seed * 12345) >>> 0;
+        x = (x ^ (x >>> 16)) >>> 0;
+        return (x % 1000) / 1000;
+      };
+
+      const notes = [];
+      let lastLane = 0;
+      for (let i = 8; i < totalSteps - 8; i++) {
+        const t = i * step;
+        const chance = clamp(0.22 * density, 0.14, 0.36);
+        const r = rng(i);
+        if (r > chance) continue;
+
+        // avoid repeats too much
+        let lane = Math.floor(rng(i + 77) * lanes);
+        if (lane === lastLane && rng(i + 9) < 0.65) lane = (lane + 1) % lanes;
+        lastLane = lane;
+
+        // occasional double note
+        const dbl = rng(i + 333) < 0.085 * density;
+        notes.push({ id: `${i}-${lane}`, t, lane });
+
+        if (dbl) {
+          const lane2 = (lane + 2) % lanes;
+          notes.push({ id: `${i}-${lane2}-d`, t, lane: lane2 });
+        }
+      }
+
+      // sort by time
       notes.sort((a, b) => a.t - b.t);
       return notes;
     };
 
-    const MR = (s, r) => ({ toks: s.split(" ").map((x) => x.trim()), r });
-
-    const pack = {
-      overhaul: {
-        EASY: { subdiv: 8, offsetSec: 1.1, motifs: [MR("L . . D . . U .", 5), MR("L . . . R . . .", 4)] },
-        NORMAL: { subdiv: 16, offsetSec: 1.05, motifs: [MR("L . D . . U . . R . . . D . . .", 4)] },
-        HARD: { subdiv: 16, offsetSec: 1.0, motifs: [MR("L D . U . R . D . U . R . . . .", 4)] },
-      },
-      dawning: {
-        EASY: { subdiv: 8, offsetSec: 1.15, motifs: [MR("L . . D . . U .", 5), MR("L . U . . . D .", 4)] },
-        NORMAL: { subdiv: 16, offsetSec: 1.1, motifs: [MR("L . D . . U . . R . U . . . . .", 4)] },
-        HARD: { subdiv: 16, offsetSec: 1.04, motifs: [MR("L D . U . R . D . U . . L . D .", 4)] },
-      },
-      mirage: {
-        EASY: { subdiv: 8, offsetSec: 1.05, motifs: [MR("L . . U . . R .", 5), MR("L . D . . U . .", 4)] },
-        NORMAL: { subdiv: 16, offsetSec: 1.0, motifs: [MR("L . U . R . . . L . D . . U . .", 4)] },
-        HARD: { subdiv: 16, offsetSec: 0.98, motifs: [MR("L . U R . . . D L . U . R . . .", 4)] },
-      },
-      phantasma: {
-        EASY: { subdiv: 8, offsetSec: 1.0, motifs: [MR("L . D . U . R .", 5), MR("L . . U . . R .", 4)] },
-        NORMAL: { subdiv: 16, offsetSec: 0.98, motifs: [MR("L . D . U . R . L . D . . U . .", 4)] },
-        HARD: { subdiv: 16, offsetSec: 0.95, motifs: [MR("L D U R . . U . D . R . U . . .", 4)] },
-      },
-      immitation: {
-        EASY: { subdiv: 8, offsetSec: 1.1, motifs: [MR("L . U . . D . .", 5), MR("L . . R . U . .", 4)] },
-        NORMAL: { subdiv: 16, offsetSec: 1.05, motifs: [MR("L . U . D . . . L . D . U . . .", 4)] },
-        HARD: { subdiv: 16, offsetSec: 1.0, motifs: [MR("L . U R . . . D L . U . R . . .", 4)] },
-      },
-      checkmate: {
-        EASY: { subdiv: 8, offsetSec: 1.05, motifs: [MR("L . . D . . U .", 5), MR("L . . R . U . .", 4)] },
-        NORMAL: { subdiv: 16, offsetSec: 1.0, motifs: [MR("L . D . U . . . L . U . D . . .", 4)] },
-        HARD: { subdiv: 16, offsetSec: 0.97, motifs: [MR("L D U R . . . D L . U . . . . .", 4)] },
-      },
-      lockon: {
-        EASY: { subdiv: 8, offsetSec: 1.0, motifs: [MR("L . U . R . . .", 5), MR("L . D . U . . .", 4)] },
-        NORMAL: { subdiv: 16, offsetSec: 0.98, motifs: [MR("L . U . R . . . L . D . U . . .", 4)] },
-        HARD: { subdiv: 16, offsetSec: 0.94, motifs: [MR("L D U R . . U . D . R . . . . .", 4)] },
-      },
-    };
-
-    const build = (durationSec, trackId, diff, bpm) => {
-      const base = pack?.[trackId]?.[diff] || pack?.[ASSET.tracks[0].id]?.[diff];
-      const notes = compile({
-        bpm: bpm || 120,
-        offsetSec: base?.offsetSec ?? 1.0,
-        subdiv: base?.subdiv ?? 8,
-        motifs: base?.motifs ?? [],
-      });
-      const dur = durationSec || 180;
-      const endAt = Math.max(10, Math.min(dur - 0.85, dur));
-      return notes.filter((n) => n.t < endAt).sort((a, b) => a.t - b.t);
-    };
-
     return { build };
-  }, [ASSET.tracks]);
+  }, [lanes]);
 
-  // ----------------------------- CANVAS IMAGES -----------------------------
-  const warmImage = React.useCallback((url) => {
-    if (!url) return null;
-    if (imgRef.current[url]) return imgRef.current[url];
-    const im = new Image();
-    im.crossOrigin = "anonymous";
-    im.decoding = "async";
-    im.src = url;
-    imgRef.current[url] = im;
-    return im;
+  // ----------------------------- FIELD MEASURE
+  React.useEffect(() => {
+    const r = rootRef.current;
+    if (!r) return;
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const next = Math.max(320, Math.floor(r.clientWidth || 360));
+        setRootW((prev) => (Math.abs(prev - next) > 1 ? next : prev));
+      });
+    });
+    ro.observe(r);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, []);
+
+  const measureField = React.useCallback(() => {
+    const c = canvasRef.current;
+    if (!c) return;
+
+    const rect = c.getBoundingClientRect();
+    const dpr = Math.max(1, Math.min(2.25, window.devicePixelRatio || 1));
+
+    const w = Math.max(240, rect.width);
+    const h = Math.max(260, rect.height);
+
+    fieldSizeRef.current = { w, h, dpr };
+    c.width = Math.floor(w * dpr);
+    c.height = Math.floor(h * dpr);
   }, []);
 
   React.useEffect(() => {
-    warmImage(ASSET.arrows.left);
-    warmImage(ASSET.arrows.down);
-    warmImage(ASSET.arrows.up);
-    warmImage(ASSET.arrows.right);
-  }, [ASSET.arrows, warmImage]);
+    measureField();
+    const onR = () => measureField();
+    window.addEventListener("resize", onR);
+    return () => window.removeEventListener("resize", onR);
+  }, [measureField]);
 
-  // ----------------------------- STOP / CLEANUP -----------------------------
-  const stopRaf = React.useCallback(() => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = null;
-  }, []);
-
-  const stopRun = React.useCallback(() => {
-    stopRaf();
-    runningRef.current = false;
-    notesRef.current = [];
-    cursorRef.current = 0;
-    lastNoteTRef.current = 0;
-  }, [stopRaf]);
-
-  const stopAudio = React.useCallback(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
-    previewTimerRef.current = null;
-    cancelVolFade();
-    try {
-      a.pause();
-      a.currentTime = 0;
-    } catch {}
-    durationRef.current = 0;
-    audioModeRef.current = "idle";
-    setReady(false);
-  }, [cancelVolFade]);
-
-  const stopAll = React.useCallback(() => {
-    stopRun();
-    stopAudio();
-    setJudgeFx(null);
-    setPressedLane(-1);
-    setCombo(0);
-    setView("lobby");
-  }, [stopAudio, stopRun]);
-
-  React.useEffect(() => () => stopRaf(), [stopRaf]);
-
-  // ----------------------------- LOAD TRACK (tap-to-select, auto preview) -----------------------------
-  const loadTrack = React.useCallback(
-    (id, { preview = true } = {}) => {
-      const a = audioRef.current;
-      if (!a) return;
-
-      const t = ASSET.tracks.find((x) => x.id === id) || ASSET.tracks[0];
-
-      // プレイ中に変えたら安全に停止してロビーへ（勝手に別画面へは行かない）
-      if (viewRef.current === "play" || viewRef.current === "pause") {
-        stopRun();
-        setView("lobby");
-      }
-
-      setTrackId(t.id);
-      setReady(false);
-
-      stopPreview(90);
-      cancelVolFade();
-
-      try {
-        a.pause();
-      } catch {}
-
-      a.src = t.url;
-      a.crossOrigin = "anonymous";
-      a.preload = "auto";
-
-      const onMeta = () => {
-        durationRef.current = a.duration || durationRef.current || 0;
-        if (preview && audioModeRef.current === "preview") {
-          try {
-            const dur = a.duration || 0;
-            if (dur > 12) a.currentTime = Math.min(dur * 0.12, Math.max(0, dur - 7));
-          } catch {}
-        }
-      };
-      const onCanPlay = () => {
-        durationRef.current = a.duration || durationRef.current || 0;
-        setReady(true);
-      };
-
-      a.addEventListener("loadedmetadata", onMeta, { once: true });
-      a.addEventListener("canplay", onCanPlay, { once: true });
-
-      try {
-        a.load();
-      } catch {}
-
-      if (!preview) {
-        audioModeRef.current = "idle";
-        setAudioVolume();
-        return;
-      }
-
-      audioModeRef.current = "preview";
-      setAudioVolume();
-
-      const p = a.play();
-      if (p && typeof p.then === "function") p.catch(() => {});
-      previewTimerRef.current = setTimeout(() => stopPreview(140), 6200);
-    },
-    [ASSET.tracks, cancelVolFade, setAudioVolume, stopPreview, stopRun]
-  );
-
-  // 初回ロード（自動再生はしない）
-  React.useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    loadTrack(trackId, { preview: false });
-
-  }, []);
-
-  // ----------------------------- GAME LOOP (logic + canvas draw) -----------------------------
+  // ----------------------------- GAME TIME
   const getRunTimeSec = React.useCallback(() => {
     const a = audioRef.current;
-    if (a && !a.paused && isFinite(a.currentTime)) return a.currentTime || 0;
-    if (!runPerf0Ref.current) return 0;
-    return Math.max(0, (performance.now() - runPerf0Ref.current) / 1000);
+    if (a && !Number.isNaN(a.currentTime) && a.currentTime > 0) return a.currentTime;
+    const t = nowPerf();
+    return (t - t0PerfRef.current) / 1000;
   }, []);
 
-  const drawFrame = React.useCallback(
-    (tNow) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const { w, h, dpr } = fieldSizeRef.current || { w: 360, h: 420, dpr: 1 };
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // ----------------------------- DRAW
+  const drawFrame = React.useCallback(() => {
+    const c = canvasRef.current;
+    if (!c) return;
 
-      ctx.clearRect(0, 0, w, h);
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
 
-      // background veil (glass)
-      ctx.globalAlpha = 1;
-      const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.18, 20, w * 0.5, h * 0.18, Math.max(w, h) * 0.95);
-      bgGrad.addColorStop(0, "rgba(255,255,255,0.08)");
-      bgGrad.addColorStop(0.55, "rgba(0,0,0,0.10)");
-      bgGrad.addColorStop(1, "rgba(0,0,0,0.42)");
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, w, h);
+    const { w, h, dpr } = fieldSizeRef.current;
+    const W = Math.floor(w * dpr);
+    const H = Math.floor(h * dpr);
 
-      // lanes
-      for (let lane = 0; lane < 4; lane++) {
-        const x0 = (w * lane) / 4;
-        const x1 = (w * (lane + 1)) / 4;
-        const g = laneGlow(lane);
+    ctx.clearRect(0, 0, W, H);
 
-        const col = ctx.createLinearGradient(0, 0, 0, h);
-        col.addColorStop(0, g.replace("0.", "0.18").replace("0)", "0.18)"));
-        col.addColorStop(0.65, "rgba(0,0,0,0)");
-        col.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.globalAlpha = 0.75;
-        ctx.fillStyle = col;
-        ctx.fillRect(x0, 0, x1 - x0, h);
+    const t = getRunTimeSec();
+    const notes = notesRef.current;
 
-        if (lane < 3) {
-          ctx.globalAlpha = 0.35;
-          ctx.fillStyle = "rgba(255,255,255,0.12)";
-          ctx.fillRect(x1 - 0.5, 0, 1, h);
-        }
-      }
+    const padH = 54 * dpr;
+    const topPad = 22 * dpr;
 
-      // receptor line glow
-      ctx.globalAlpha = 0.92;
-      const line = ctx.createLinearGradient(0, 0, w, 0);
-      line.addColorStop(0, "rgba(255,255,255,0)");
-      line.addColorStop(0.22, "rgba(122,226,255,0.64)");
-      line.addColorStop(0.5, "rgba(198,164,255,0.60)");
-      line.addColorStop(0.72, "rgba(255,156,222,0.42)");
-      line.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.fillStyle = line;
-      const yLine = receptorY + 34;
-      ctx.fillRect(0, yLine, w, 3);
+    const laneGap = 10 * dpr;
+    const laneW = (W - laneGap * (lanes + 1)) / lanes;
 
-      // receptor targets (ghost rings)
-      for (let lane = 0; lane < 4; lane++) {
-        const g = laneGlow(lane);
-        const cx = (w * (lane + 0.5)) / 4;
-        const cy = receptorY + 16;
+    const hitY = H - padH - 18 * dpr;
 
-        ctx.globalAlpha = 0.7;
-        ctx.beginPath();
-        ctx.arc(cx, cy, isMobile ? 18 : 19, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(255,255,255,0.18)";
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
+    // background subtle glass
+    const grd = ctx.createLinearGradient(0, 0, 0, H);
+    grd.addColorStop(0, "rgba(255,255,255,0.05)");
+    grd.addColorStop(0.55, "rgba(255,255,255,0.02)");
+    grd.addColorStop(1, "rgba(255,255,255,0.04)");
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, W, H);
 
-        ctx.globalAlpha = 0.45;
-        ctx.beginPath();
-        ctx.arc(cx, cy, isMobile ? 22 : 23, 0, Math.PI * 2);
-        ctx.strokeStyle = g.replace("0.", "0.22").replace("0)", "0.22)");
-        ctx.lineWidth = 1.0;
-        ctx.stroke();
-      }
+    // lanes
+    for (let i = 0; i < lanes; i++) {
+      const x = laneGap + i * (laneW + laneGap);
+      ctx.fillStyle = "rgba(255,255,255,0.06)";
+      ctx.fillRect(x, topPad, laneW, H - topPad - 12 * dpr);
 
-      // notes
-      const notes = notesRef.current || [];
-      const spd = speedRef.current || 980;
-      const lat = latencyRef.current || 0;
-
-      const margin = 220;
-      const spawnAhead = (receptorY + margin) / spd;
-      const past = (h - receptorY + margin) / spd;
-
-      const minT = tNow - past - 0.08;
-      const maxT = tNow + spawnAhead + 0.08;
-
-      let i = cursorRef.current;
-      while (i > 0 && notes[i - 1] && notes[i - 1].t >= minT) i--;
-
-      const sizeBase = isMobile ? 34 : 38;
-      const adjT = tNow + lat / 1000;
-
-      for (let k = i; k < notes.length; k++) {
-        const n = notes[k];
-        if (n.t < minT) continue;
-        if (n.t > maxT) break;
-        if (n.judged) continue;
-
-        const dt = n.t - adjT;
-        const y = receptorY - dt * spd;
-
-        const depth = clamp(y / Math.max(1, h), 0, 1);
-        const sc = 0.86 + depth * 0.26;
-        const op = clamp(0.28 + depth * 0.70, 0, 1);
-
-        const cx = (w * (n.lane + 0.5)) / 4;
-        const cy = y;
-
-        const g = laneGlow(n.lane);
-        const glowAlpha = 0.65 * op;
-
-        ctx.globalAlpha = glowAlpha;
-        const halo = ctx.createRadialGradient(cx, cy, 2, cx, cy, sizeBase * 1.25);
-        halo.addColorStop(0, g.replace("0.", "0.32").replace("0)", "0.32)"));
-        halo.addColorStop(0.55, g.replace("0.", "0.14").replace("0)", "0.14)"));
-        halo.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = halo;
-        ctx.beginPath();
-        ctx.arc(cx, cy, sizeBase * 1.25, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.globalAlpha = 0.22 * op;
-        ctx.fillStyle = "rgba(255,255,255,0.9)";
-        ctx.beginPath();
-        ctx.arc(cx, cy, 6 * sc, 0, Math.PI * 2);
-        ctx.fill();
-
-        const iconUrl = n.lane === 0 ? ASSET.arrows.left : n.lane === 1 ? ASSET.arrows.down : n.lane === 2 ? ASSET.arrows.up : ASSET.arrows.right;
-        const im = imgRef.current[iconUrl];
-        if (im && im.complete && im.naturalWidth) {
-          const s = sizeBase * sc;
-          ctx.globalAlpha = 0.92 * op;
-          ctx.save();
-          ctx.translate(cx, cy);
-          ctx.drawImage(im, -s / 2, -s / 2, s, s);
-          ctx.restore();
-        }
-      }
-    },
-    [ASSET.arrows.down, ASSET.arrows.left, ASSET.arrows.right, ASSET.arrows.up, isMobile, laneGlow, receptorY]
-  );
-
-  const finishRun = React.useCallback(() => {
-    stopRaf();
-    runningRef.current = false;
-    const a = audioRef.current;
-    if (a) {
-      try {
-        a.pause();
-      } catch {}
+      // inner gloss
+      const g = ctx.createLinearGradient(x, topPad, x + laneW, topPad);
+      g.addColorStop(0, "rgba(120,210,255,0.0)");
+      g.addColorStop(0.5, "rgba(198,145,255,0.08)");
+      g.addColorStop(1, "rgba(120,210,255,0.0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(x, topPad, laneW, H - topPad - 12 * dpr);
     }
-    audioModeRef.current = "idle";
-    setView("result");
-  }, [stopRaf]);
 
-  const tick = React.useCallback(() => {
+    // hit line
+    ctx.fillStyle = "rgba(255,255,255,0.14)";
+    ctx.fillRect(0, hitY, W, 1.5 * dpr);
+
+    // notes fall
+    const travel = (H - topPad - padH - 50 * dpr) / speed;
+    const appearBefore = 1.8; // seconds visible
+    const noteH = 16 * dpr;
+    const r = 12 * dpr;
+
+    for (let i = 0; i < notes.length; i++) {
+      const n = notes[i];
+      if (hitRef.current.has(n.id)) continue;
+
+      const dt = n.t - t; // positive if upcoming
+      if (dt < -DIFF.missAfter - 0.08) continue;
+      if (dt > appearBefore) continue;
+
+      const p = clamp(1 - dt / appearBefore, 0, 1);
+      const y = topPad + p * travel;
+      const x = laneGap + n.lane * (laneW + laneGap) + laneW / 2;
+
+      // soft core glow
+      const glow = ctx.createRadialGradient(
+        x,
+        y,
+        0,
+        x,
+        y,
+        52 * dpr
+      );
+      glow.addColorStop(0, "rgba(120,210,255,0.22)");
+      glow.addColorStop(0.55, "rgba(198,145,255,0.10)");
+      glow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(x, y, 34 * dpr, 0, Math.PI * 2);
+      ctx.fill();
+
+      // note capsule
+      ctx.fillStyle = "rgba(255,255,255,0.82)";
+      ctx.strokeStyle = "rgba(255,255,255,0.20)";
+      ctx.lineWidth = 1 * dpr;
+
+      const rx = x - laneW * 0.32;
+      const rw = laneW * 0.64;
+      const ry = y - noteH / 2;
+
+      // rounded rect
+      ctx.beginPath();
+      const rr = r;
+      ctx.moveTo(rx + rr, ry);
+      ctx.lineTo(rx + rw - rr, ry);
+      ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rr);
+      ctx.lineTo(rx + rw, ry + noteH - rr);
+      ctx.quadraticCurveTo(rx + rw, ry + noteH, rx + rw - rr, ry + noteH);
+      ctx.lineTo(rx + rr, ry + noteH);
+      ctx.quadraticCurveTo(rx, ry + noteH, rx, ry + noteH - rr);
+      ctx.lineTo(rx, ry + rr);
+      ctx.quadraticCurveTo(rx, ry, rx + rr, ry);
+      ctx.closePath();
+
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // pads
+    for (let i = 0; i < lanes; i++) {
+      const x = laneGap + i * (laneW + laneGap);
+      const y = H - padH;
+      const active = pressedLaneRef.current === i;
+
+      const bg = ctx.createLinearGradient(0, y, 0, y + padH);
+      bg.addColorStop(0, active ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.10)");
+      bg.addColorStop(1, active ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.06)");
+      ctx.fillStyle = bg;
+      ctx.fillRect(x, y, laneW, padH);
+
+      const g = ctx.createLinearGradient(x, y, x + laneW, y);
+      g.addColorStop(0, "rgba(120,210,255,0.12)");
+      g.addColorStop(0.5, active ? "rgba(198,145,255,0.22)" : "rgba(198,145,255,0.12)");
+      g.addColorStop(1, "rgba(120,210,255,0.12)");
+      ctx.fillStyle = g;
+      ctx.fillRect(x, y, laneW, 2.5 * dpr);
+
+      if (active) {
+        const glow = ctx.createRadialGradient(
+          x + laneW / 2,
+          y + padH * 0.35,
+          0,
+          x + laneW / 2,
+          y + padH * 0.35,
+          60 * dpr
+        );
+        glow.addColorStop(0, "rgba(198,145,255,0.25)");
+        glow.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(x + laneW / 2, y + padH * 0.35, 44 * dpr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // judge flash
+    if (judge) {
+      const age = (nowPerf() - judge.t) / 1000;
+      if (age < 0.35) {
+        const alpha = (1 - age / 0.35) * 0.9;
+        const cx = laneGap + judge.lane * (laneW + laneGap) + laneW / 2;
+        const cy = hitY - 18 * dpr;
+        const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 90 * dpr);
+        glow.addColorStop(0, `rgba(120,210,255,${0.25 * alpha})`);
+        glow.addColorStop(0.55, `rgba(198,145,255,${0.18 * alpha})`);
+        glow.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 64 * dpr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }, [DIFF.missAfter, getRunTimeSec, judge, lanes, speed]);
+
+  // ----------------------------- HIT / JUDGE
+  const evalHit = React.useCallback((lane) => {
     if (!runningRef.current) return;
 
-    const now = performance.now();
     const t = getRunTimeSec();
-
-    // miss judge
     const notes = notesRef.current;
-    const W = windowRef.current;
-    const missLine = t - (W.miss + 0.02) - (latencyRef.current || 0) / 1000;
 
-    let i = cursorRef.current;
-    let missed = 0;
+    let best = null;
+    let bestAbs = Infinity;
 
-    while (i < notes.length) {
+    for (let i = 0; i < notes.length; i++) {
       const n = notes[i];
-      if (n.judged) {
-        i++;
-        continue;
+      if (n.lane !== lane) continue;
+      if (hitRef.current.has(n.id)) continue;
+
+      const dt = t - n.t;
+      const ad = Math.abs(dt);
+      if (ad < bestAbs) {
+        bestAbs = ad;
+        best = { n, dt };
       }
-      if (n.t <= missLine) {
-        n.judged = true;
-        n.hit = false;
-        missed++;
-        i++;
-        continue;
-      }
-      break;
+      if (n.t > t + DIFF.windowOk) break;
     }
 
-    if (missed > 0) {
-      cursorRef.current = i;
-      setCounts((c) => ({ ...c, miss: c.miss + missed }));
+    if (!best || bestAbs > DIFF.windowOk) {
+      // miss tap
       setCombo(0);
-      setJudgeFx({ type: "miss", at: now });
-      playSfx("miss", 0.9);
-      navigator.vibrate?.(8);
-    }
-
-    // finish
-    const dur = durationRef.current || (audioRef.current?.duration || 0);
-    const lastNoteT = lastNoteTRef.current || 0;
-    const doneByNotes = notes.length ? t > lastNoteT + 0.95 : t > 1.5;
-
-    if ((dur && t >= dur - 0.02) || doneByNotes) {
-      finishRun();
+      playSfx("miss", 0.18);
+      setJudge({ lane, kind: "MISS", t: nowPerf() });
       return;
     }
 
-    // draw every frame
-    drawFrame(t);
+    const { n, dt } = best;
+    hitRef.current.add(n.id);
 
-    // UI tick 4fps
-    if (now - (lastUiAtRef.current || 0) >= 250) {
-      lastUiAtRef.current = now;
-      setUiTick((x) => (x + 1) % 1000000);
+    let add = 0;
+    let kind = "OK";
+    const ad = Math.abs(dt);
+
+    if (ad <= DIFF.windowPerfect) {
+      add = 300;
+      kind = "PERF";
+      playSfx("hit", 0.34);
+    } else if (ad <= DIFF.windowGood) {
+      add = 180;
+      kind = "GOOD";
+      playSfx("hit", 0.26);
+    } else {
+      add = 90;
+      kind = "OK";
+      playSfx("tap", 0.22);
+    }
+
+    setScore((s) => s + add);
+    setCombo((c) => {
+      const nc = c + 1;
+      setMaxCombo((m) => Math.max(m, nc));
+      return nc;
+    });
+
+    lastJudgeRef.current = kind;
+    setJudge({ lane, kind, t: nowPerf() });
+  }, [DIFF.windowGood, DIFF.windowOk, DIFF.windowPerfect, getRunTimeSec, playSfx]);
+
+  const checkMiss = React.useCallback(() => {
+    if (!runningRef.current) return;
+
+    const t = getRunTimeSec();
+    const notes = notesRef.current;
+
+    let missed = false;
+    for (let i = 0; i < notes.length; i++) {
+      const n = notes[i];
+      if (hitRef.current.has(n.id)) continue;
+      if (t - n.t > DIFF.missAfter) {
+        hitRef.current.add(n.id);
+        missed = true;
+      } else {
+        break;
+      }
+    }
+
+    if (missed) {
+      setCombo(0);
+      setJudge({ lane: 0, kind: "MISS", t: nowPerf() });
+    }
+  }, [DIFF.missAfter, getRunTimeSec]);
+
+  // ----------------------------- LOOP
+  const tick = React.useCallback(() => {
+    if (!runningRef.current) return;
+
+    checkMiss();
+    drawFrame();
+
+    // end detection
+    const t = getRunTimeSec();
+    const dur = durRef.current || 0;
+    const done =
+      dur > 0
+        ? t > dur + 0.35
+        : hitRef.current.size >= notesRef.current.length;
+
+    if (done && !endedRef.current) {
+      endedRef.current = true;
+      runningRef.current = false;
+
+      stopRaf();
+      stopPreview(0);
+
+      const total = notesRef.current.length || 1;
+      const hit = hitRef.current.size;
+      const acc = Math.round((hit / total) * 1000) / 10;
+
+      setResult({
+        score,
+        maxCombo,
+        acc,
+        track: currentTrack,
+        diff: difficulty,
+        speed,
+      });
+      setView("result");
+      return;
     }
 
     rafRef.current = requestAnimationFrame(tick);
-  }, [drawFrame, finishRun, getRunTimeSec, playSfx]);
+  }, [
+    checkMiss,
+    currentTrack,
+    difficulty,
+    drawFrame,
+    maxCombo,
+    score,
+    speed,
+    stopPreview,
+    stopRaf,
+    tick,
+    getRunTimeSec,
+  ]);
 
-  // ----------------------------- START / PAUSE / RESUME / RESTART -----------------------------
+  // ----------------------------- START / RESTART
   const startRun = React.useCallback(() => {
     const a = audioRef.current;
-    if (!a || !ready) return;
+    if (!a) return;
 
-    ensureAudioContext();
+    // audio may still be buffering; we start the loop anyway (no "started but nothing happens")
+    if (!a.src || a.src !== currentTrack.url) {
+      try {
+        a.src = currentTrack.url;
+      } catch {}
+    }
+    try {
+      a.load();
+    } catch {}
+
     stopPreview(140);
 
-    const dur = a.duration || durationRef.current || 0;
-    durationRef.current = dur;
+    endedRef.current = false;
+    runningRef.current = true;
 
-    const chart = CHART.build(dur || 180, currentTrack.id, difficulty, currentTrack.bpm);
-    notesRef.current = chart;
-    cursorRef.current = 0;
-    lastNoteTRef.current = chart.length ? chart[chart.length - 1].t : 0;
-
+    setView("play");
     setScore(0);
     setCombo(0);
     setMaxCombo(0);
-    setCounts({ perfect: 0, good: 0, miss: 0 });
-    setJudgeFx(null);
-    setPressedLane(-1);
+    setJudge(null);
+    setResult(null);
 
-    runPerf0Ref.current = performance.now();
-    runningRef.current = true;
+    hitRef.current = new Set();
 
+    // duration fallback (NaN対策)
+    const dur = (isFinite(a.duration) ? a.duration : 0) || durRef.current || 180;
+    durRef.current = dur;
+
+    // build chart
+    notesRef.current = CHART.build({
+      bpm: currentTrack.bpm,
+      dur,
+      density: DIFF.density,
+      seed: currentTrack.bpm,
+    });
+
+    // time base
+    t0PerfRef.current = nowPerf();
     try {
-      a.pause();
       a.currentTime = 0;
     } catch {}
 
-    audioModeRef.current = "run";
-    setAudioVolume();
+    // play (gesture started here)
+    const p = a.play();
+    if (p && typeof p.then === "function") {
+      p.catch(() => {
+        // if blocked, we still run via perf clock
+      });
+    }
 
-    // ★音が拒否されてもゲームは成立（必ずRAF開始）
-    setView("play");
     stopRaf();
     rafRef.current = requestAnimationFrame(tick);
-
-    const p = a.play();
-    if (p && typeof p.then === "function") p.catch(() => {});
-  }, [CHART, currentTrack.bpm, currentTrack.id, difficulty, ensureAudioContext, ready, setAudioVolume, stopPreview, stopRaf, tick]);
-
-  const pauseRun = React.useCallback(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    try {
-      a.pause();
-    } catch {}
-    stopRaf();
-    setView("pause");
-  }, [stopRaf]);
-
-  const resumeRun = React.useCallback(() => {
-    const a = audioRef.current;
-    if (!a) return;
-
-    ensureAudioContext();
-    audioModeRef.current = "run";
-    setAudioVolume();
-
-    // time base：pause中は内部クロック継続しない（再開時にオーディオ優先）
-    if (!runPerf0Ref.current) runPerf0Ref.current = performance.now();
-    runningRef.current = true;
-
-    setView("play");
-    stopRaf();
-    rafRef.current = requestAnimationFrame(tick);
-
-    const p = a.play();
-    if (p && typeof p.then === "function") p.catch(() => {});
-  }, [ensureAudioContext, setAudioVolume, stopRaf, tick]);
+  }, [CHART, DIFF.density, currentTrack, stopPreview, stopRaf, tick]);
 
   const restartRun = React.useCallback(() => {
     const a = audioRef.current;
-    if (!a || !ready) return;
+    if (!a) return;
 
     stopPreview(120);
 
-    const dur = a.duration || durationRef.current || 0;
-    durationRef.current = dur;
-
-    const chart = CHART.build(dur || 180, currentTrack.id, difficulty, currentTrack.bpm);
-    notesRef.current = chart;
-    cursorRef.current = 0;
-    lastNoteTRef.current = chart.length ? chart[chart.length - 1].t : 0;
+    endedRef.current = false;
+    runningRef.current = true;
 
     setScore(0);
     setCombo(0);
     setMaxCombo(0);
-    setCounts({ perfect: 0, good: 0, miss: 0 });
-    setJudgeFx(null);
-    setPressedLane(-1);
+    setJudge(null);
+    setResult(null);
 
-    runPerf0Ref.current = performance.now();
-    runningRef.current = true;
+    hitRef.current = new Set();
 
-    try {
-      a.pause();
-      a.currentTime = 0;
-    } catch {}
+    if (!a.src || a.src !== currentTrack.url) {
+      try { a.src = currentTrack.url; } catch {}
+    }
+    try { a.load(); } catch {}
 
-    ensureAudioContext();
-    audioModeRef.current = "run";
-    setAudioVolume();
+    const dur = (isFinite(a.duration) ? a.duration : 0) || durRef.current || 180;
+    durRef.current = dur;
 
-    setView("play");
-    stopRaf();
-    rafRef.current = requestAnimationFrame(tick);
+    notesRef.current = CHART.build({
+      bpm: currentTrack.bpm,
+      dur,
+      density: DIFF.density,
+      seed: currentTrack.bpm + 7,
+    });
+
+    t0PerfRef.current = nowPerf();
+    try { a.currentTime = 0; } catch {}
 
     const p = a.play();
-    if (p && typeof p.then === "function") p.catch(() => {});
-  }, [CHART, currentTrack.bpm, currentTrack.id, difficulty, ensureAudioContext, ready, setAudioVolume, stopPreview, stopRaf, tick]);
+    if (p && typeof p.then === "function") {
+      p.catch(() => {});
+    }
 
-  // ----------------------------- INPUT / JUDGE -----------------------------
-  const applyJudge = React.useCallback(
-    (type) => {
-      const now = performance.now();
-      setJudgeFx({ type, at: now });
+    stopRaf();
+    rafRef.current = requestAnimationFrame(tick);
+  }, [CHART, DIFF.density, currentTrack, stopPreview, stopRaf, tick]);
 
-      const curCombo = comboRef.current || 0;
-
-      if (type === "perfect") {
-        setCounts((c) => ({ ...c, perfect: c.perfect + 1 }));
-        setScore((s) => s + 1000 + curCombo * 10);
-        setCombo((c) => {
-          const n = c + 1;
-          setMaxCombo((m) => Math.max(m, n));
-          return n;
-        });
-        playSfx("perfect", curCombo >= 20 ? 1.05 : 1.0);
-        navigator.vibrate?.(6);
-      } else if (type === "good") {
-        setCounts((c) => ({ ...c, good: c.good + 1 }));
-        setScore((s) => s + 650 + curCombo * 5);
-        setCombo((c) => {
-          const n = c + 1;
-          setMaxCombo((m) => Math.max(m, n));
-          return n;
-        });
-        playSfx("good", 0.95);
-        navigator.vibrate?.(5);
-      } else {
-        setCounts((c) => ({ ...c, miss: c.miss + 1 }));
-        setCombo(0);
-        playSfx("miss", 0.9);
-        navigator.vibrate?.(8);
-      }
-    },
-    [playSfx]
-  );
-
-  const hitLane = React.useCallback(
-    (lane) => {
-      if (viewRef.current === "lobby") return startRun();
-      if (viewRef.current === "pause") return resumeRun();
-      if (viewRef.current !== "play") return;
-
-      const t = getRunTimeSec();
-      const adjT = t + (latencyRef.current || 0) / 1000;
-
-      const notes = notesRef.current;
-      const startIdx = cursorRef.current;
-      const endIdx = Math.min(startIdx + 34, notes.length);
-
-      let bestIdx = -1;
-      let bestAbs = Infinity;
-
-      const W = windowRef.current;
-
-      for (let k = startIdx; k < endIdx; k++) {
-        const n = notes[k];
-        if (n.judged) continue;
-
-        const dt = n.t - adjT;
-        if (dt < -W.miss) continue;
-        if (dt > W.miss) break;
-        if (n.lane !== lane) continue;
-
-        const abs = Math.abs(dt);
-        if (abs < bestAbs) {
-          bestAbs = abs;
-          bestIdx = k;
-        }
-      }
-
-      if (bestIdx === -1) return applyJudge("miss");
-
-      const n = notes[bestIdx];
-      const dt = Math.abs(n.t - adjT);
-      n.judged = true;
-      n.hit = true;
-
-      while (cursorRef.current < notes.length && notes[cursorRef.current].judged) cursorRef.current++;
-
-      if (dt <= W.perfect) applyJudge("perfect");
-      else if (dt <= W.good) applyJudge("good");
-      else applyJudge("miss");
-    },
-    [applyJudge, getRunTimeSec, resumeRun, startRun]
-  );
-
-  // 入力は pointer のみに統一（touch/click 併用廃止：二重発火ゼロ）
+  // ----------------------------- INPUT (PADS)
   const bindPad = React.useCallback(
     (lane) => ({
       onPointerDown: (e) => {
         e.preventDefault();
-        e.stopPropagation();
+        ensureAudioContext();
+        pressedLaneRef.current = lane;
         setPressedLane(lane);
-        hitLane(lane);
+        evalHit(lane);
       },
       onPointerUp: (e) => {
         e.preventDefault();
-        e.stopPropagation();
-        setPressedLane((x) => (x === lane ? -1 : x));
+        if (pressedLaneRef.current === lane) {
+          pressedLaneRef.current = -1;
+          setPressedLane(-1);
+        }
       },
-      onPointerCancel: (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setPressedLane((x) => (x === lane ? -1 : x));
+      onPointerCancel: () => {
+        if (pressedLaneRef.current === lane) {
+          pressedLaneRef.current = -1;
+          setPressedLane(-1);
+        }
       },
-      onPointerLeave: (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setPressedLane((x) => (x === lane ? -1 : x));
+      onPointerLeave: () => {
+        if (pressedLaneRef.current === lane) {
+          pressedLaneRef.current = -1;
+          setPressedLane(-1);
+        }
       },
     }),
-    [hitLane]
+    [ensureAudioContext, evalHit]
   );
 
   // ----------------------------- TAP vs SCROLL (曲選択の“戻る/選べない”根絶) -----------------------------
-  const tapRef = React.useRef({ active: false, moved: false, x: 0, y: 0, id: -1 });
-  const TAP_SLOP = 10;
+  // scroll中は絶対に選択を発火しない（iOSの“慣性止まりクリック”もガード）
+  const trackListRef = React.useRef(null);
+  const gestureRef = React.useRef({ active: false, pointerId: -1, x: 0, y: 0, startScrollTop: 0, moved: false });
 
   const trackItemHandlers = React.useCallback(
     (id) => ({
+      role: "button",
+      tabIndex: 0,
       onPointerDown: (e) => {
-        // ★スクロールを殺さない：preventDefault禁止
-        tapRef.current = { active: true, moved: false, x: e.clientX, y: e.clientY, id: e.pointerId };
+        const sc = trackListRef.current;
+        gestureRef.current = {
+          active: true,
+          pointerId: typeof e.pointerId === "number" ? e.pointerId : -1,
+          x: e.clientX || 0,
+          y: e.clientY || 0,
+          startScrollTop: sc ? sc.scrollTop : 0,
+          moved: false,
+        };
       },
       onPointerMove: (e) => {
-        const t = tapRef.current;
-        if (!t.active || t.id !== e.pointerId) return;
-        if (t.moved) return;
-        const dx = Math.abs(e.clientX - t.x);
-        const dy = Math.abs(e.clientY - t.y);
-        if (dx + dy > TAP_SLOP) t.moved = true;
+        const g = gestureRef.current;
+        if (!g.active) return;
+
+        const dx = Math.abs((e.clientX || 0) - g.x);
+        const dy = Math.abs((e.clientY || 0) - g.y);
+        if (dx + dy > 12) g.moved = true;
+
+        const sc = trackListRef.current;
+        if (sc && Math.abs(sc.scrollTop - g.startScrollTop) > 2) g.moved = true;
       },
       onPointerUp: (e) => {
-        const t = tapRef.current;
-        if (!t.active || t.id !== e.pointerId) return;
-        tapRef.current.active = false;
-        if (t.moved) return; // scroll
+        const g = gestureRef.current;
+        if (g.pointerId !== -1 && e.pointerId !== g.pointerId) return;
+        g.active = false;
+      },
+      onPointerCancel: () => {
+        gestureRef.current.active = false;
+      },
+      onClick: () => {
+        const g = gestureRef.current;
+        const sc = trackListRef.current;
+        if (g.moved) return;
+        if (sc && Math.abs(sc.scrollTop - g.startScrollTop) > 2) return;
+        ensureAudioContext();
+        playSfx("tap", 0.26);
         loadTrack(id, { preview: true });
       },
-      onPointerCancel: (e) => {
-        const t = tapRef.current;
-        if (t.id === e.pointerId) tapRef.current.active = false;
+      onKeyDown: (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          ensureAudioContext();
+          playSfx("tap", 0.26);
+          loadTrack(id, { preview: true });
+        }
       },
     }),
-    [loadTrack]
+    [ensureAudioContext, loadTrack, playSfx]
   );
 
-  // ----------------------------- UI COMPUTE -----------------------------
-  const tNow = (view === "play" || view === "pause") ? getRunTimeSec() : 0;
-  const durNow = durationRef.current || 0;
-  const remain = durNow ? Math.max(0, durNow - tNow) : NaN;
-  const remainText = fmtMMSS(remain);
-
-  const bunnyMood = React.useMemo(() => {
-    if (view === "result") return ASSET.bunny.flop;
-    if (combo >= 34) return ASSET.bunny.starR;
-    if (combo >= 14) return ASSET.bunny.yayR;
-    if (judgeFx?.type === "miss") return ASSET.bunny.dizzy;
-    if (view === "play") return ASSET.bunny.runR;
-    return ASSET.bunny.idle;
-  }, [ASSET.bunny, combo, judgeFx, view]);
-
-  const grade = React.useMemo(() => {
-    const a = accuracy;
-    if (a >= 95) return { label: "S", glow: "rgba(122,226,255,0.40)" };
-    if (a >= 88) return { label: "A", glow: "rgba(198,164,255,0.36)" };
-    if (a >= 78) return { label: "B", glow: "rgba(255,156,222,0.30)" };
-    if (a >= 65) return { label: "C", glow: "rgba(170,255,214,0.24)" };
-    return { label: "D", glow: "rgba(255,120,170,0.26)" };
-  }, [accuracy]);
-
-  // ----------------------------- UI PRIMITIVES -----------------------------
-  const Frame = ({ children, subtleMotion }) => (
+  // ----------------------------- UI COMPONENTS (OS Bunny tone)
+  const Glass = ({ className = "", children }) => (
     <div
-      className="relative h-full w-full overflow-hidden rounded-[28px] border"
-      style={{
-        borderColor: TOK.line,
-        background: TOK.glass,
-        boxShadow: "0 26px 120px rgba(0,0,0,0.86), inset 0 1px 0 rgba(255,255,255,0.08)",
-        backdropFilter: "blur(20px)",
-      }}
+      className={
+        "rounded-[22px] border border-white/10 bg-white/[0.045] backdrop-blur-[14px] shadow-[0_16px_55px_rgba(0,0,0,.55)] " +
+        className
+      }
     >
-      <div className="absolute inset-0 pointer-events-none">
-        <div
-          className={subtleMotion ? "osb-aurora-subtle" : ""}
-          style={{
-            position: "absolute",
-            inset: "-22%",
-            background:
-              `radial-gradient(900px 560px at 18% 10%, ${TOK.aurA}, transparent 64%),` +
-              `radial-gradient(840px 560px at 86% 12%, ${TOK.aurB}, transparent 66%),` +
-              `radial-gradient(900px 620px at 52% 98%, ${TOK.aurC}, transparent 72%),` +
-              `radial-gradient(860px 620px at 72% 60%, ${TOK.aurD}, transparent 70%)`,
-            filter: "blur(34px)",
-            opacity: 0.56,
-            transform: "translate3d(0,0,0)",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "radial-gradient(980px 600px at 50% -6%, rgba(255,255,255,0.14), transparent 62%)," +
-              "radial-gradient(1400px 980px at 50% 118%, rgba(0,0,0,0.84), transparent 58%)",
-            opacity: 0.98,
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            opacity: 0.06,
-            mixBlendMode: "overlay",
-            backgroundImage:
-              "repeating-radial-gradient(circle at 20% 18%, rgba(255,255,255,0.18) 0px, rgba(255,255,255,0.18) 1px, transparent 1px, transparent 4px)",
-          }}
-        />
-      </div>
       {children}
     </div>
   );
 
-  const IconBtn = ({ label, onDown, tone = "soft", children }) => (
-    <button
-      aria-label={label}
-      onPointerDown={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onDown?.();
-      }}
-      className="h-10 w-10 rounded-2xl border active:scale-[0.99]"
-      style={{
-        borderColor: tone === "danger" ? "rgba(255,120,170,0.22)" : "rgba(255,255,255,0.12)",
-        background: tone === "danger" ? "rgba(255,120,170,0.10)" : "rgba(255,255,255,0.05)",
-        boxShadow: "0 18px 70px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.08)",
-        WebkitTapHighlightColor: "transparent",
-      }}
-    >
-      {children}
-    </button>
-  );
-
-  const Chip = ({ label, value, glow }) => (
+  const Chip = ({ children, tone = "a" }) => (
     <div
-      className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5"
+      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[11px] text-white/80"
       style={{
-        borderColor: "rgba(255,255,255,0.10)",
-        background: "rgba(255,255,255,0.045)",
-        boxShadow: glow ? `0 0 0 1px ${glow} inset, 0 0 50px rgba(255,255,255,0.04)` : "none",
+        boxShadow:
+          tone === "a"
+            ? "0 0 0 1px rgba(120,210,255,.12) inset"
+            : "0 0 0 1px rgba(198,145,255,.12) inset",
       }}
     >
-      <span className="text-[10px] tracking-[0.30em] uppercase text-white/45">{label}</span>
-      <span className="text-[12px] text-white/92 tabular-nums">{value}</span>
+      <span className="h-1.5 w-1.5 rounded-full bg-white/60" />
+      {children}
     </div>
   );
 
-  const Seg = ({ value, options, onChange }) => (
-    <div className="grid grid-cols-3 rounded-[18px] border p-1" style={{ borderColor: TOK.line2, background: TOK.glass2 }}>
-      {options.map((opt) => {
-        const active = opt.value === value;
+  const Seg = ({ value, onChange, items }) => (
+    <div className="grid grid-cols-3 gap-2">
+      {items.map((it) => {
+        const active = value === it.value;
         return (
           <button
-            key={opt.value}
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onChange(opt.value);
+            key={it.value}
+            type="button"
+            onClick={() => {
+              ensureAudioContext();
+              playSfx("tap", 0.22);
+              onChange(it.value);
             }}
-            className="h-11 rounded-[16px] active:scale-[0.99]"
-            style={{
-              background: active ? "rgba(255,255,255,0.10)" : "transparent",
-              boxShadow: active ? "0 0 0 1px rgba(255,255,255,0.08) inset, 0 12px 44px rgba(0,0,0,0.35)" : "none",
-            }}
+            className={
+              "h-10 rounded-[16px] border px-3 text-[12px] tracking-wide transition-transform active:scale-[0.99] " +
+              (active
+                ? "border-white/18 bg-white/10 text-white"
+                : "border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/[0.06]")
+            }
           >
-            <div className="text-[11px] tracking-[0.28em] uppercase text-white/92">{opt.label}</div>
-            {opt.sub ? <div className="text-[10px] tracking-[0.30em] uppercase text-white/38">{opt.sub}</div> : null}
+            {it.label}
           </button>
         );
       })}
     </div>
   );
 
-  const TopBar = ({ right }) => (
-    <div className="relative z-30 px-4 pt-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="h-10 w-10 rounded-2xl border border-white/12 bg-white/5 overflow-hidden shrink-0">
-            <img src={bunnyMood} alt="bunny" className="h-full w-full object-cover opacity-92" />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">
-              OS_USAGI <span className="text-white/90">SYNC</span>
-            </div>
-            <div className="text-[12px] text-white/92 font-semibold truncate">
-              {currentTrack.title} <span className="text-white/45">· {difficulty}</span>
-              <span className="ml-2 text-white/35">BPM {currentTrack.bpm}</span>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">{right}</div>
-      </div>
-    </div>
-  );
-
-  const Pad = ({ lane, showIcon }) => {
-    const glow = laneGlow(lane);
-    const active = pressedLane === lane;
-    const icon = lane === 0 ? ASSET.arrows.left : lane === 1 ? ASSET.arrows.down : lane === 2 ? ASSET.arrows.up : ASSET.arrows.right;
-
-    return (
-      <button
-        aria-label={`pad-${lane}`}
-        {...bindPad(lane)}
-        className="relative h-full w-full rounded-[22px] border overflow-hidden active:scale-[0.995]"
-        style={{
-          borderColor: "rgba(255,255,255,0.14)",
-          background: "rgba(255,255,255,0.045)",
-          touchAction: "none",
-          WebkitTapHighlightColor: "transparent",
-          boxShadow:
-            `0 22px 70px rgba(0,0,0,0.70),` +
-            `inset 0 1px 0 rgba(255,255,255,0.08),` +
-            `0 0 0 1px ${glow}55 inset,` +
-            `0 0 20px ${glow}28` +
-            (active ? `, 0 0 46px ${glow}70` : ""),
-        }}
-      >
-        <div
-          className="absolute inset-0"
-          style={{
-            background: `radial-gradient(240px 170px at 30% 18%, ${glow}46, transparent 62%)`,
-            filter: "blur(10px)",
-            opacity: 0.72,
-          }}
-        />
-        <div className="relative h-full w-full flex flex-col items-center justify-center gap-1">
-          {showIcon ? (
-            <img
-              src={icon}
-              alt=""
-              className="h-8 w-8 opacity-95"
-              draggable={false}
-              style={{
-                filter: `drop-shadow(0 0 18px ${glow}) drop-shadow(0 0 16px rgba(255,255,255,0.08))`,
-                userSelect: "none",
-              }}
-            />
-          ) : (
-            <div
-              className="h-2.5 w-2.5 rounded-full"
-              style={{
-                background: "rgba(255,255,255,0.86)",
-                boxShadow: `0 0 20px ${glow}, 0 0 26px ${glow}`,
-                opacity: 0.72,
-              }}
-            />
-          )}
-        </div>
-      </button>
-    );
-  };
-
-  // ----------------------------- LOBBY (Config廃止 → ここに統合) -----------------------------
+  // ----------------------------- LOBBY / PLAY / RESULT
   const Lobby = () => (
-    <div className="relative h-full w-full flex flex-col" style={{ paddingBottom: safeBottom }}>
-      <TopBar
-        right={
-          <>
-            <IconBtn label="mute" onDown={() => setMuted((m) => !m)}>
-              <span className="text-white/88 text-[15px]">{muted ? "⦿" : "◦"}</span>
-            </IconBtn>
-          </>
-        }
-      />
-
+    <div className="relative z-10 flex h-full w-full flex-col">
       <div className="relative z-20 px-4 pt-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Chip label="STATUS" value={ready ? "READY" : "LOADING"} glow={ready ? "rgba(122,226,255,0.18)" : ""} />
-          <Chip label="LAT" value={`${latencyMs}ms`} />
-          <Chip label="SPD" value={`${speed}`} />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div
+              className="grid h-10 w-10 place-items-center rounded-[16px] border border-white/10 bg-white/[0.05]"
+              style={{
+                boxShadow:
+                  "0 0 40px rgba(120,210,255,.10), 0 0 50px rgba(198,145,255,.08)",
+              }}
+            >
+              <Radio size={18} className="text-white/85" />
+            </div>
+            <div className="leading-tight">
+              <div className="text-[13px] font-medium text-white/92 tracking-wide">
+                BeatSync
+              </div>
+              <div className="text-[11px] text-white/55 tracking-[0.08em]">
+                OS Bunny • Pure App
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Chip tone="a">
+              BPM <span className="text-white/92">{currentTrack.bpm}</span>
+            </Chip>
+            <Chip tone="b">
+              {loading ? "LOADING" : ready ? "READY" : "SYNC"}
+            </Chip>
+          </div>
         </div>
       </div>
 
-      {/* track list */}
-      <div className="relative z-20 px-4 pt-3 flex-1 min-h-0">
-        <div className="h-full rounded-[22px] border border-white/10 bg-black/22 overflow-hidden flex flex-col">
-          <div className="px-4 pt-4 pb-3 flex items-center justify-between">
-            <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">TRACK</div>
-            <div className="text-[10px] tracking-[0.30em] uppercase text-white/28" />
-          </div>
+      <div className="relative z-20 mt-3 flex-1 min-h-0 px-4">
+        <Glass className="h-full p-3">
+          <div className="flex h-full min-h-0 flex-col">
+            <div className="flex items-center justify-between gap-3 pb-2">
+              <div className="text-[11px] text-white/60 tracking-[0.22em] uppercase">
+                Tracks
+              </div>
+              <div className="text-[11px] text-white/45">
+                {fmtTime(durRef.current)}
+              </div>
+            </div>
 
-          <div className="px-4 pb-4 flex-1 min-h-0">
             <div
+              ref={trackListRef}
               className="flex flex-col gap-3 h-full overflow-y-auto osb-scroll"
               style={{ WebkitOverflowScrolling: "touch", overscrollBehaviorY: "contain", touchAction: "pan-y" }}
             >
-              {ASSET.tracks.map((t, idx) => {
+              {ASSET.tracks.map((t) => {
                 const active = t.id === trackId;
-                const accent = laneGlow(idx % 4);
                 const h = trackItemHandlers(t.id);
-
                 return (
-                  <div key={t.id} className="w-full" style={{ touchAction: "pan-y" }} {...h}>
-                    <div
-                      className="w-full rounded-[20px] border p-4 text-left"
-                      style={{
-                        borderColor: active ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.10)",
-                        background: active ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)",
-                        boxShadow: active
-                          ? `0 0 0 1px ${accent}70 inset, 0 0 88px rgba(255,255,255,0.05), 0 28px 96px rgba(0,0,0,0.56)`
-                          : "0 24px 88px rgba(0,0,0,0.46)",
-                        transform: "translate3d(0,0,0)",
-                      }}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="text-[14px] text-white/92 font-semibold truncate">{t.title}</div>
-                          <div className="mt-1 text-[10px] tracking-[0.28em] uppercase text-white/45">BPM {t.bpm}</div>
+                  <div
+                    key={t.id}
+                    className={
+                      "group relative rounded-[18px] border px-3 py-3 transition-transform active:scale-[0.995] " +
+                      (active
+                        ? "border-white/18 bg-white/[0.08]"
+                        : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]")
+                    }
+                    style={{
+                      boxShadow: active
+                        ? "0 0 0 1px rgba(120,210,255,.10) inset, 0 0 55px rgba(198,145,255,.08)"
+                        : "none",
+                      userSelect: "none",
+                      WebkitUserSelect: "none",
+                    }}
+                    {...h}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-[13px] font-medium text-white/92">
+                          {t.title}
                         </div>
-                        <div className="flex flex-col items-end gap-1">
-                          <span className="text-[10px] tracking-[0.34em] uppercase text-white/60">{active ? "NOW" : "SELECT"}</span>
-                          {active && (
-                            <span className="text-[9px] tracking-[0.24em] uppercase text-white/40">
-                              {audioModeRef.current === "preview" ? "PREVIEW" : ready ? "READY" : "LOAD"}
-                            </span>
-                          )}
+                        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-white/55">
+                          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-[2px]">
+                            {t.artist}
+                          </span>
+                          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-[2px]">
+                            {t.mood}
+                          </span>
                         </div>
                       </div>
 
-                      <div
-                        className="mt-3 h-[2px] rounded-full"
-                        style={{
-                          background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
-                          opacity: active ? 0.98 : 0.45,
-                          boxShadow: active ? `0 0 18px ${accent}` : "none",
-                        }}
-                      />
+                      <div className="shrink-0 text-right">
+                        <div className="text-[11px] text-white/60 tracking-[0.14em] uppercase">
+                          bpm
+                        </div>
+                        <div className="text-[13px] font-medium text-white/90">
+                          {t.bpm}
+                        </div>
+                      </div>
                     </div>
+
+                    <div
+                      className="pointer-events-none absolute inset-0 rounded-[18px] opacity-0 transition-opacity group-hover:opacity-100"
+                      style={{
+                        background:
+                          "radial-gradient(120px 60px at 18% 20%, rgba(120,210,255,.18), rgba(0,0,0,0)), radial-gradient(160px 80px at 80% 70%, rgba(198,145,255,.16), rgba(0,0,0,0))",
+                      }}
+                    />
                   </div>
                 );
               })}
             </div>
           </div>
-        </div>
+        </Glass>
       </div>
 
-      {/* settings (統合) */}
-      <div className="relative z-30 px-4 pt-3 pb-4" style={{ paddingBottom: safeBottom }}>
-        <Seg
-          value={difficulty}
-          onChange={setDifficulty}
-          options={[
-            { value: "EASY", label: "EASY", sub: "SOFT" },
-            { value: "NORMAL", label: "NORMAL", sub: "MID" },
-            { value: "HARD", label: "HARD", sub: "TIGHT" },
-          ]}
-        />
-
-        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
-          <div className="rounded-[20px] border border-white/10 bg-white/5 p-3">
-            <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">TUNING</div>
-
-            <div className="mb-4">
-              <div className="flex items-center justify-between text-[11px] text-white/60">
-                <span className="tracking-[0.22em] uppercase">Latency</span>
-                <span className="tabular-nums text-white/80">{latencyMs} ms</span>
+      <div className="relative z-30 px-4 pt-3 pb-3">
+        <div className="max-h-[38vh] overflow-y-auto osb-scroll pr-1" style={{ WebkitOverflowScrolling: "touch", overscrollBehaviorY: "contain" }}>
+          <Glass className="p-3">
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] text-white/60 tracking-[0.22em] uppercase">
+                Tune
               </div>
-              <input type="range" min={-120} max={180} value={latencyMs} onChange={(e) => setLatencyMs(parseInt(e.target.value, 10))} className="w-full osb-range" />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between text-[11px] text-white/60">
-                <span className="tracking-[0.22em] uppercase">Speed</span>
-                <span className="tabular-nums text-white/80">{speed} px/s</span>
+              <div className="text-[11px] text-white/50">
+                {difficulty.toUpperCase()} • x{speed.toFixed(1)}
               </div>
-              <input type="range" min={720} max={1240} value={speed} onChange={(e) => setSpeed(parseInt(e.target.value, 10))} className="w-full osb-range" />
-            </div>
-          </div>
-
-          <div className="rounded-[20px] border border-white/10 bg-white/5 p-3">
-            <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">AUDIO</div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                className="h-11 rounded-[16px] border border-white/10 bg-white/5 active:scale-[0.99]"
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setMuted((m) => !m);
-                }}
-              >
-                <span className="text-[11px] tracking-[0.22em] uppercase text-white/88">{muted ? "MUTE" : "ON"}</span>
-              </button>
-
-              <button
-                className="h-11 rounded-[16px] border border-white/10 bg-white/5 active:scale-[0.99]"
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setSfxOn((v) => !v);
-                }}
-              >
-                <span className="text-[11px] tracking-[0.22em] uppercase text-white/88">{sfxOn ? "SFX" : "OFF"}</span>
-              </button>
             </div>
 
-            <div className="mt-4">
-              <div className="flex items-center justify-between text-[11px] text-white/60">
-                <span className="tracking-[0.22em] uppercase">Music</span>
-                <span className="tabular-nums text-white/80">{Math.round(musicVol * 100)}%</span>
+            <div className="mt-3 grid gap-3">
+              <Seg
+                value={difficulty}
+                onChange={setDifficulty}
+                items={[
+                  { value: "easy", label: "EASY" },
+                  { value: "normal", label: "NORMAL" },
+                  { value: "hard", label: "HARD" },
+                ]}
+              />
+
+              <div className="rounded-[20px] border border-white/10 bg-white/5 p-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-[11px] text-white/55 tracking-[0.18em] uppercase">
+                    Speed
+                  </div>
+                  <div className="text-[12px] text-white/85">{speed.toFixed(1)}</div>
+                </div>
+                <input
+                  type="range"
+                  min="0.8"
+                  max="1.4"
+                  step="0.1"
+                  value={speed}
+                  onChange={(e) => setSpeed(parseFloat(e.target.value))}
+                  className="mt-2 w-full"
+                />
               </div>
-              <input type="range" min={0} max={1} step={0.01} value={musicVol} onChange={(e) => setMusicVol(parseFloat(e.target.value))} className="w-full osb-range" />
-            </div>
 
-            <div className="mt-4">
-              <div className="flex items-center justify-between text-[11px] text-white/60">
-                <span className="tracking-[0.22em] uppercase">SFX</span>
-                <span className="tabular-nums text-white/80">{Math.round(sfxVol * 100)}%</span>
+              <div className="rounded-[20px] border border-white/10 bg-white/5 p-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-[11px] text-white/55 tracking-[0.18em] uppercase">
+                    Audio
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setMuted((m) => !m)}
+                    className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[11px] text-white/75"
+                  >
+                    {muted ? "MUTED" : "LIVE"}
+                  </button>
+                </div>
+
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="text-[11px] text-white/55 w-10">VOL</div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={volume}
+                    onChange={(e) => setVolume(parseFloat(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
               </div>
-              <input type="range" min={0} max={1} step={0.01} value={sfxVol} onChange={(e) => setSfxVol(parseFloat(e.target.value))} className="w-full osb-range" />
             </div>
-          </div>
+          </Glass>
         </div>
+        <div className="pt-3" style={{ paddingBottom: safeBottom }}>
 
         <button
-          disabled={!ready}
+          type="button"
           onPointerDown={(e) => {
             e.preventDefault();
-            e.stopPropagation();
+            ensureAudioContext();
+            playSfx("tap", 0.22);
             startRun();
           }}
-          className="mt-3 h-12 w-full rounded-[18px] border border-white/14 bg-white/10 text-white/92 active:scale-[0.99] disabled:opacity-50"
+          className="mt-3 h-12 w-full rounded-[18px] border border-white/10 bg-white/[0.07] text-white/92 transition-transform active:scale-[0.99]"
           style={{
-            boxShadow: "0 26px 104px rgba(0,0,0,0.78), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 70px rgba(122,226,255,0.14)",
+            boxShadow:
+              "0 0 0 1px rgba(120,210,255,.10) inset, 0 10px 40px rgba(0,0,0,.55)",
           }}
         >
-          <span className="text-[11px] tracking-[0.34em] uppercase">{ready ? "START" : "LOADING"}</span>
+          <span className="text-[11px] tracking-[0.34em] uppercase">START</span>
         </button>
+        </div>
       </div>
     </div>
   );
 
-  // ----------------------------- PLAY -----------------------------
-  const Play = () => {
-    const fxAlive = judgeFx && performance.now() - judgeFx.at < 420;
+  const Play = () => (
+    <div className="relative z-10 flex h-full w-full flex-col">
+      <div className="relative z-20 px-4 pt-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="truncate text-[13px] font-medium text-white/92">
+              {currentTrack.title}
+            </div>
+            <div className="mt-0.5 flex items-center gap-2 text-[11px] text-white/55">
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-[2px]">
+                {difficulty.toUpperCase()}
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-[2px]">
+                x{speed.toFixed(1)}
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-[2px]">
+                {combo} combo
+              </span>
+            </div>
+          </div>
 
-    return (
-      <div className="relative h-full w-full flex flex-col" style={{ paddingBottom: safeBottom }}>
-        <TopBar
-          right={
-            <>
-              <IconBtn label="stop" onDown={stopAll} tone="danger">
-                <span className="text-white/92 text-[16px]">✕</span>
-              </IconBtn>
-            </>
-          }
-        />
-
-        <div className="relative z-20 px-4 pt-2 flex flex-wrap items-center gap-2">
-          <Chip label="SCORE" value={score.toLocaleString()} />
-          <Chip label="COMBO" value={combo} glow={combo >= 10 ? "rgba(198,164,255,0.18)" : ""} />
-          <Chip label="REMAIN" value={remainText} />
+          <div className="shrink-0 text-right">
+            <div className="text-[11px] text-white/60 tracking-[0.14em] uppercase">
+              score
+            </div>
+            <div className="text-[14px] font-medium text-white/92 tabular-nums">
+              {score}
+            </div>
+          </div>
         </div>
+      </div>
 
-        {/* Field (Canvas) */}
-        <div className="relative z-10 px-4 pt-3 flex-1 min-h-0">
-          <div className="h-full rounded-[22px] border border-white/10 bg-black/22 overflow-hidden">
-            <div ref={fieldRef} className="relative h-full w-full">
-              <canvas ref={canvasRef} className="absolute inset-0" style={{ width: "100%", height: "100%" }} />
+      <div className="relative z-20 mt-3 flex-1 min-h-0 px-4">
+        <Glass className="h-full overflow-hidden">
+          <div className="h-full w-full p-3">
+            <div className="relative h-full w-full overflow-hidden rounded-[18px] border border-white/10 bg-black/20">
+              <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
 
-              {/* judge overlay */}
-              {fxAlive && judgeFx && (
-                <div className="absolute inset-x-0 top-[42%] -translate-y-1/2 flex justify-center pointer-events-none z-40">
-                  <img
-                    src={judgeFx.type === "perfect" ? ASSET.judge.perfect : judgeFx.type === "good" ? ASSET.judge.good : ASSET.judge.miss}
-                    alt=""
-                    className="h-14 opacity-95"
-                    draggable={false}
-                    style={{
-                      filter: "drop-shadow(0 0 26px rgba(122,226,255,0.14)) drop-shadow(0 0 26px rgba(198,164,255,0.12))",
-                      animation: "osbJudge 420ms cubic-bezier(0.22,1,0.36,1) both",
-                      userSelect: "none",
-                    }}
+              {/* pads overlay (hit area) */}
+              <div className="absolute inset-x-0 bottom-0 grid grid-cols-4 gap-2 p-3">
+                {Array.from({ length: lanes }).map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className={
+                      "h-14 rounded-[18px] border border-white/10 bg-white/[0.04] active:scale-[0.99] " +
+                      (pressedLane === i ? "bg-white/[0.09]" : "")
+                    }
+                    {...bindPad(i)}
                   />
+                ))}
+              </div>
+
+              {/* judge label */}
+              {judge && (
+                <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                  <div
+                    className="rounded-full border border-white/10 bg-white/[0.08] px-4 py-2 text-[12px] tracking-[0.18em] text-white/90"
+                    style={{
+                      boxShadow:
+                        "0 0 0 1px rgba(198,145,255,.10) inset, 0 18px 60px rgba(0,0,0,.65)",
+                    }}
+                  >
+                    {judge.kind}
+                  </div>
                 </div>
               )}
             </div>
           </div>
-        </div>
+        </Glass>
+      </div>
 
-        {/* Controls + Pads */}
-        <div className="relative z-20 px-4 pt-3 pb-4" style={{ paddingBottom: safeBottom }}>
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">{view === "play" ? "SYNC" : "PAUSE"}</div>
+      <div className="relative z-30 px-4 pt-3 pb-3" style={{ paddingBottom: safeBottom }}>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              ensureAudioContext();
+              playSfx("tap", 0.22);
+              restartRun();
+            }}
+            className="h-11 rounded-[18px] border border-white/10 bg-white/[0.05] text-[11px] tracking-[0.28em] uppercase text-white/86 active:scale-[0.99]"
+          >
+            RESTART
+          </button>
 
-            <div className="flex items-center gap-2">
-              <button
-                className="h-10 px-4 rounded-[18px] border border-white/12 bg-white/10 text-white/92 active:scale-[0.99]"
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  view === "play" ? pauseRun() : resumeRun();
-                }}
-                style={{ boxShadow: "0 18px 70px rgba(0,0,0,0.66), inset 0 1px 0 rgba(255,255,255,0.08)" }}
-              >
-                <span className="text-[11px] tracking-[0.26em] uppercase">{view === "play" ? "PAUSE" : "RESUME"}</span>
-              </button>
-
-              <button
-                className="h-10 px-4 rounded-[18px] border border-white/10 bg-white/5 text-white/80 active:scale-[0.99]"
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  restartRun();
-                }}
-                style={{ boxShadow: "0 18px 64px rgba(0,0,0,0.58), inset 0 1px 0 rgba(255,255,255,0.07)" }}
-              >
-                <span className="text-[11px] tracking-[0.26em] uppercase">RESTART</span>
-              </button>
-            </div>
-          </div>
-
-          {/* ※ラベル撤去（LEFT/DOWN/UP/RIGHT表記ゼロ） */}
-          <div className={`mt-2 grid grid-cols-4 ${isMobile ? "gap-2" : "gap-3"}`} style={{ touchAction: "none" }}>
-            <div className={isMobile ? "h-[92px]" : "h-[96px]"}><Pad lane={0} showIcon /></div>
-            <div className={isMobile ? "h-[92px]" : "h-[96px]"}><Pad lane={1} showIcon /></div>
-            <div className={isMobile ? "h-[92px]" : "h-[96px]"}><Pad lane={2} showIcon /></div>
-            <div className={isMobile ? "h-[92px]" : "h-[96px]"}><Pad lane={3} showIcon /></div>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              ensureAudioContext();
+              playSfx("tap", 0.18);
+              runningRef.current = false;
+              stopRaf();
+              stopPreview(120);
+              setView("lobby");
+            }}
+            className="h-11 rounded-[18px] border border-white/10 bg-white/[0.03] text-[11px] tracking-[0.28em] uppercase text-white/70 active:scale-[0.99]"
+          >
+            EXIT
+          </button>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
 
-  // ----------------------------- RESULT -----------------------------
   const Result = () => (
-    <div className="absolute inset-0 z-50 flex items-center justify-center p-4" style={{ paddingBottom: safeBottom }}>
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-2xl" />
-      <div
-        className="relative w-full max-w-[560px] rounded-[26px] border p-5"
-        style={{
-          borderColor: TOK.line,
-          background: "rgba(0,0,0,0.58)",
-          boxShadow: `0 36px 170px rgba(0,0,0,0.92), inset 0 1px 0 rgba(255,255,255,0.07), 0 0 98px ${grade.glow}`,
-          animation: "osbSheetIn 240ms cubic-bezier(0.22,1,0.36,1) both",
-        }}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl border border-white/12 bg-white/5 overflow-hidden">
-              <img src={bunnyMood} alt="" className="h-full w-full object-cover opacity-90" />
+    <div className="relative z-10 flex h-full w-full flex-col">
+      <div className="relative z-20 px-4 pt-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="truncate text-[13px] font-medium text-white/92">
+              {result?.track?.title || currentTrack.title}
             </div>
-            <div>
-              <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">OS_USAGI SYNC</div>
-              <div className="mt-1 text-[18px] font-semibold text-white/92">MEMORY RESULT</div>
-              <div className="mt-1 text-[11px] tracking-[0.22em] uppercase text-white/50">
-                {currentTrack.title} · {difficulty}
+            <div className="mt-0.5 text-[11px] text-white/55 tracking-[0.08em]">
+              {result?.diff?.toUpperCase?.() || difficulty.toUpperCase()} • x{(result?.speed ?? speed).toFixed(1)}
+            </div>
+          </div>
+          <Chip tone="b">RESULT</Chip>
+        </div>
+      </div>
+
+      <div className="relative z-20 mt-3 flex-1 min-h-0 px-4">
+        <Glass className="h-full p-4">
+          <div className="grid gap-3">
+            <div className="rounded-[22px] border border-white/10 bg-white/[0.04] p-4">
+              <div className="text-[11px] text-white/55 tracking-[0.22em] uppercase">
+                Score
+              </div>
+              <div className="mt-1 text-[28px] font-medium text-white/92 tabular-nums">
+                {result?.score ?? score}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-[22px] border border-white/10 bg-white/[0.04] p-4">
+                <div className="text-[11px] text-white/55 tracking-[0.22em] uppercase">
+                  Max Combo
+                </div>
+                <div className="mt-1 text-[18px] font-medium text-white/90 tabular-nums">
+                  {result?.maxCombo ?? maxCombo}
+                </div>
+              </div>
+
+              <div className="rounded-[22px] border border-white/10 bg-white/[0.04] p-4">
+                <div className="text-[11px] text-white/55 tracking-[0.22em] uppercase">
+                  Accuracy
+                </div>
+                <div className="mt-1 text-[18px] font-medium text-white/90 tabular-nums">
+                  {(result?.acc ?? 0).toFixed(1)}%
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="rounded-[22px] border border-white/10 bg-white/[0.04] p-4"
+              style={{
+                background:
+                  "radial-gradient(220px 120px at 20% 0%, rgba(120,210,255,.10), rgba(0,0,0,0)), radial-gradient(260px 140px at 90% 80%, rgba(198,145,255,.10), rgba(0,0,0,0))",
+              }}
+            >
+              <div className="text-[11px] text-white/55 tracking-[0.22em] uppercase">
+                Save-worthy glow
+              </div>
+              <div className="mt-2 text-[12px] text-white/70 leading-relaxed">
+                高級×かわいい。OSうさぎ純正の“触り心地”だけ残して、派手さは削ってます。
               </div>
             </div>
           </div>
-          <div
-            className="h-12 w-12 rounded-2xl border flex items-center justify-center"
-            style={{
-              borderColor: "rgba(255,255,255,0.14)",
-              background: "rgba(255,255,255,0.05)",
-              boxShadow: `0 0 0 1px rgba(255,255,255,0.06) inset, 0 0 70px ${grade.glow}`,
-            }}
-          >
-            <div className="text-[18px] font-semibold text-white/92">{grade.label}</div>
-          </div>
-        </div>
+        </Glass>
+      </div>
 
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          {[
-            ["Perfect", counts.perfect, "rgba(122,226,255,0.22)"],
-            ["Good", counts.good, "rgba(198,164,255,0.20)"],
-            ["Miss", counts.miss, "rgba(255,120,170,0.22)"],
-          ].map(([label, val, glow]) => (
-            <div
-              key={label}
-              className="rounded-[20px] border px-3 py-3"
-              style={{
-                borderColor: "rgba(255,255,255,0.10)",
-                background: "rgba(255,255,255,0.04)",
-                boxShadow: `0 0 0 1px rgba(255,255,255,0.04) inset, 0 0 54px ${glow}`,
-              }}
-            >
-              <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">{label}</div>
-              <div className="mt-1 text-[18px] text-white/92 tabular-nums">{val}</div>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <div className="rounded-[20px] border border-white/10 bg-white/4 px-3 py-3">
-            <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Max Combo</div>
-            <div className="mt-1 text-[18px] text-white/92 tabular-nums">{maxCombo}</div>
-          </div>
-          <div className="rounded-[20px] border border-white/10 bg-white/4 px-3 py-3">
-            <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Accuracy</div>
-            <div className="mt-1 text-[18px] text-white/92 tabular-nums">{accuracy.toFixed(1)}%</div>
-          </div>
-        </div>
-
-        <div className="mt-4 flex items-center justify-between text-[10px] tracking-[0.28em] uppercase text-white/40">
-          <span>OS_USAGI · SYNC LOG</span>
-          <span>{new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-        </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="relative z-30 px-4 pt-3 pb-3" style={{ paddingBottom: safeBottom }}>
+        <div className="grid grid-cols-2 gap-2">
           <button
-            className="h-11 rounded-[18px] border border-white/12 bg-white/10 text-white/92 active:scale-[0.99]"
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
+            type="button"
+            onClick={() => {
+              ensureAudioContext();
+              playSfx("tap", 0.22);
               restartRun();
+              setView("play");
             }}
-            style={{ boxShadow: "0 18px 70px rgba(0,0,0,0.74), inset 0 1px 0 rgba(255,255,255,0.07)" }}
+            className="h-11 rounded-[18px] border border-white/10 bg-white/[0.05] text-[11px] tracking-[0.28em] uppercase text-white/86 active:scale-[0.99]"
           >
-            <span className="text-[11px] tracking-[0.22em] uppercase">RESTART</span>
+            PLAY AGAIN
           </button>
+
           <button
-            className="h-11 rounded-[18px] border border-white/10 bg-white/5 text-white/80 active:scale-[0.99]"
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              stopAll();
+            type="button"
+            onClick={() => {
+              ensureAudioContext();
+              playSfx("tap", 0.18);
+              setView("lobby");
             }}
-            style={{ boxShadow: "0 18px 64px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.07)" }}
+            className="h-11 rounded-[18px] border border-white/10 bg-white/[0.03] text-[11px] tracking-[0.28em] uppercase text-white/70 active:scale-[0.99]"
           >
-            <span className="text-[11px] tracking-[0.22em] uppercase">BACK</span>
+            BACK
           </button>
         </div>
       </div>
     </div>
   );
 
-  // ----------------------------- ROOT -----------------------------
+  // ----------------------------- ROOT
   return (
-    <div
-      ref={rootRef}
-      className="relative h-full w-full overflow-hidden select-none"
-      style={{
-        background: `radial-gradient(1200px 860px at 50% 0%, ${TOK.bg1}, ${TOK.bg0})`,
-        WebkitTapHighlightColor: "transparent",
-        overscrollBehavior: "none",
-      }}
-    >
-      <audio ref={audioRef} preload="auto" />
+    <div ref={rootRef} className="relative h-full w-full select-none p-3">
+      <audio ref={audioRef} preload="auto" crossOrigin="anonymous" />
+      <div
+        className="absolute inset-0 rounded-[26px] border border-white/10"
+        style={{
+          background:
+            "radial-gradient(260px 120px at 12% 10%, rgba(120,210,255,.10), rgba(0,0,0,0)), radial-gradient(320px 150px at 85% 85%, rgba(198,145,255,.09), rgba(0,0,0,0)), rgba(255,255,255,.02)",
+          boxShadow:
+            "0 0 0 1px rgba(255,255,255,.05) inset, 0 20px 90px rgba(0,0,0,.75)",
+        }}
+      />
 
-      <div className="absolute inset-0 p-3">
-        <Frame subtleMotion={view !== "play"}>
-          {view === "lobby" && <Lobby />}
-          {(view === "play" || view === "pause") && <Play />}
-          {view === "result" && <Result />}
-        </Frame>
+      <div className="relative z-10 h-full w-full">
+        {view === "lobby" && <Lobby />}
+        {view === "play" && <Play />}
+        {view === "result" && <Result />}
       </div>
-
-      <style>{`
-        @keyframes osbAuroraSubtle {
-          0%   { transform: translate3d(-6px,-4px,0) scale(1.03); }
-          50%  { transform: translate3d(6px,4px,0) scale(1.03); }
-          100% { transform: translate3d(-6px,-4px,0) scale(1.03); }
-        }
-        .osb-aurora-subtle { animation: osbAuroraSubtle 14s ease-in-out infinite; }
-
-        @keyframes osbJudge {
-          0%   { transform: translateY(10px) scale(.98); opacity: 0; }
-          36%  { transform: translateY(0px)  scale(1.03); opacity: 1; }
-          100% { transform: translateY(-10px) scale(1.00); opacity: 0; }
-        }
-
-        @keyframes osbSheetIn {
-          0% { transform: translateY(10px) scale(.985); opacity: 0; }
-          100% { transform: translateY(0px) scale(1); opacity: 1; }
-        }
-
-        .osb-scroll { scrollbar-width: none; }
-        .osb-scroll::-webkit-scrollbar { display: none; }
-
-        input.osb-range {
-          -webkit-appearance: none;
-          appearance: none;
-          height: 28px;
-          background: transparent;
-          outline: none;
-        }
-        input.osb-range::-webkit-slider-runnable-track {
-          height: 10px;
-          border-radius: 999px;
-          background: linear-gradient(90deg, rgba(122,226,255,0.62), rgba(198,164,255,0.56), rgba(255,156,222,0.38));
-          box-shadow: 0 0 0 1px rgba(255,255,255,0.10) inset, 0 14px 70px rgba(0,0,0,0.55);
-        }
-        input.osb-range::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 22px;
-          height: 22px;
-          margin-top: -6px;
-          border-radius: 999px;
-          background: rgba(255,255,255,0.92);
-          box-shadow:
-            0 0 0 1px rgba(255,255,255,0.18) inset,
-            0 18px 70px rgba(0,0,0,0.65),
-            0 0 30px rgba(122,226,255,0.14);
-        }
-        input.osb-range::-moz-range-track {
-          height: 10px;
-          border-radius: 999px;
-          background: linear-gradient(90deg, rgba(122,226,255,0.62), rgba(198,164,255,0.56), rgba(255,156,222,0.38));
-          box-shadow: 0 0 0 1px rgba(255,255,255,0.10) inset, 0 14px 70px rgba(0,0,0,0.55);
-        }
-        input.osb-range::-moz-range-thumb {
-          width: 22px;
-          height: 22px;
-          border-radius: 999px;
-          border: none;
-          background: rgba(255,255,255,0.92);
-          box-shadow:
-            0 0 0 1px rgba(255,255,255,0.18) inset,
-            0 18px 70px rgba(0,0,0,0.65),
-            0 0 30px rgba(122,226,255,0.14);
-        }
-
-        button { -webkit-tap-highlight-color: transparent; }
-      `}</style>
     </div>
   );
 };
+
 
 
 
