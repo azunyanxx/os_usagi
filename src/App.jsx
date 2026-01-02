@@ -5294,7 +5294,7 @@ export default function BeatSyncApp() {
       el.removeEventListener("scroll", onScroll);
       cancelAnimationFrame(raf);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line
   }, [trackIndex]);
 
   // align when entering lobby
