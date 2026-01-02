@@ -4998,16 +4998,9 @@ const Desktop = ({ bgm }) => {
 // ------------------------------------------------
 // 🌸🌸🎮-- 07.Game (げーむ) --🌸🌸🌸🌸🌸🌸🌸🌸
 // ------------------------------------------------
-import React from "react";
 
-/**
- * OS_USAGI SYNC — Award-grade rewrite (ASSET-driven)
- * - Uses your ASSET URLs exactly (judge/arrows/bunny/tracks)
- * - Mobile-first premium UI (lobby / settings / results)
- * - Canvas gameplay to remove flicker
- * - No ugly 4 squares: lane-lines + invisible tap zones + arrow guides
- * - Breathing neon + beat pulse + hit spark
- */
+
+
 
 // -------------------------
 // Utilities
