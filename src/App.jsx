@@ -4998,1968 +4998,1588 @@ const Desktop = ({ bgm }) => {
 // ------------------------------------------------
 // 🌸🌸🎮-- 07.Game (げーむ) --🌸🌸🌸🌸🌸🌸🌸🌸
 // ------------------------------------------------
-// ------------------------------------------------
-// 🌸🌸🎮-- 07.Game (げーむ) --🌸🌸🌸🌸🌸🌸🌸🌸
-// ------------------------------------------------
 
-const BeatSyncApp = () => {
-  // ---------------------------------------------------------------------------
-  // ASSETS
-  // ---------------------------------------------------------------------------
-  const ASSET = React.useMemo(
-    () => ({
-      judge: {
-        perfect: "https://files.catbox.moe/xn8cnp.png",
-        good: "https://files.catbox.moe/6taoa0.png",
-        miss: "https://files.catbox.moe/9ywa9l.png",
-      },
-      arrows: {
-        up: "https://files.catbox.moe/zb8qnn.png",
-        right: "https://files.catbox.moe/zg5lru.png",
-        down: "https://files.catbox.moe/v4g9e7.png",
-        left: "https://files.catbox.moe/rmbi75.png",
-      },
-      bunny: {
-        idle: "https://files.catbox.moe/3revxm.png",
-        runR: "https://files.catbox.moe/p45obb.png",
-        yayR: "https://files.catbox.moe/mkceap.png",
-        dizzy: "https://files.catbox.moe/gxng27.png",
-        flop: "https://files.catbox.moe/dwiqep.png",
-        starR: "https://files.catbox.moe/5zvxy0.png",
-      },
-      tracks: [
-        { id: "overhaul", title: "Overhaul", url: "https://files.catbox.moe/po0sn4.mp3", bpm: 124 },
-        { id: "dawning", title: "The Dawning", url: "https://files.catbox.moe/p17dic.mp3", bpm: 120 },
-        { id: "mirage", title: "mirage", url: "https://files.catbox.moe/ttlaul.mp3", bpm: 132 },
-        { id: "phantasma", title: "廻る世界とファンタズマ", url: "https://files.catbox.moe/ns5til.mp3", bpm: 150 },
-        { id: "immitation", title: "Immitation Girl", url: "https://files.catbox.moe/7lccok.mp3", bpm: 128 },
-        { id: "checkmate", title: "checkmate", url: "https://files.catbox.moe/3dutdo.mp3", bpm: 140 },
-        { id: "lockon", title: "ロックオン", url: "https://files.catbox.moe/o667wd.mp3", bpm: 160 },
-      ],
-    }),
-    []
-  );
 
-  // ---------------------------------------------------------------------------
-  // TOKENS (Safari / Gallery の “ガラス + オーロラ + 霧” 系)
-  // ---------------------------------------------------------------------------
-  const TOK = React.useMemo(
-    () => ({
-      bg0: "#02030A",
-      bg1: "#07081A",
-      ink: "rgba(255,255,255,0.92)",
-      sub: "rgba(255,255,255,0.62)",
-      faint: "rgba(255,255,255,0.42)",
-      line: "rgba(255,255,255,0.12)",
-      line2: "rgba(255,255,255,0.08)",
-
-      glass: "rgba(9,10,16,0.54)",
-      glass2: "rgba(255,255,255,0.055)",
-      glass3: "rgba(255,255,255,0.035)",
-
-      lane0: "rgba(198,164,255,0.78)", // left
-      lane1: "rgba(122,226,255,0.74)", // down
-      lane2: "rgba(255,156,222,0.66)", // up
-      lane3: "rgba(170,255,214,0.60)", // right
-
-      danger: "rgba(255,120,170,0.60)",
-
-      aurA: "rgba(122,226,255,0.26)",
-      aurB: "rgba(198,164,255,0.24)",
-      aurC: "rgba(255,156,222,0.18)",
-      aurD: "rgba(170,255,214,0.16)",
-
-      whiteGlow: "rgba(255,255,255,0.12)",
-      cyanGlow: "rgba(122,226,255,0.14)",
-      violetGlow: "rgba(198,164,255,0.12)",
-    }),
-    []
-  );
-
-  const laneGlow = (lane) => (lane === 0 ? TOK.lane0 : lane === 1 ? TOK.lane1 : lane === 2 ? TOK.lane2 : TOK.lane3);
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const fmtMMSS = (sec) => {
-    if (!isFinite(sec) || sec < 0) return "--:--";
-    const s = Math.floor(sec);
-    const m = Math.floor(s / 60);
-    const r = s % 60;
-    return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
-  };
-
-  // ---------------------------------------------------------------------------
-  // STATE
-  // ---------------------------------------------------------------------------
-  const [view, setView] = React.useState("lobby"); // lobby | play | pause | result
-  const [trackId, setTrackId] = React.useState("dawning");
-  const [difficulty, setDifficulty] = React.useState("NORMAL"); // EASY | NORMAL | HARD
-
-  const [ready, setReady] = React.useState(false);
-  const [configOpen, setConfigOpen] = React.useState(false);
-
-  const [musicVol, setMusicVol] = React.useState(0.86);
-  const [sfxVol, setSfxVol] = React.useState(0.55);
-  const [muted, setMuted] = React.useState(false);
-  const [sfxOn, setSfxOn] = React.useState(true);
-  const [latencyMs, setLatencyMs] = React.useState(0);
-  const [speed, setSpeed] = React.useState(980);
-
-  const [score, setScore] = React.useState(0);
-  const [combo, setCombo] = React.useState(0);
-  const [maxCombo, setMaxCombo] = React.useState(0);
-  const [counts, setCounts] = React.useState({ perfect: 0, good: 0, miss: 0 });
-  const [accuracy, setAccuracy] = React.useState(0);
-
-  const [judgeFx, setJudgeFx] = React.useState(null); // { type, at }
-  const [pressedLane, setPressedLane] = React.useState(-1);
-
-  // re-render throttle (30fps mobile / 60 desktop)
-  const [frame, setFrame] = React.useState(0);
-
-  // ---------------------------------------------------------------------------
-  // REFS
-  // ---------------------------------------------------------------------------
-  const rootRef = React.useRef(null);
-  const fieldRef = React.useRef(null);
-  const audioRef = React.useRef(null);
-
-  const rafRef = React.useRef(null);
-  const playTRef = React.useRef(0);
-  const durationRef = React.useRef(0);
-
-  const notesRef = React.useRef([]);
-  const cursorRef = React.useRef(0);
-  const lastNoteTRef = React.useRef(0);
-
-  const actxRef = React.useRef(null);
-  const sfxGainRef = React.useRef(null);
-
-  // ---------------------------------------------------------------------------
-  // LAYOUT (スマホで「全部見える」最優先の計測 & 配分)
-  // ---------------------------------------------------------------------------
-  const [rootW, setRootW] = React.useState(360);
-  const [rootH, setRootH] = React.useState(640);
-  const [fieldW, setFieldW] = React.useState(360);
-  const [fieldH, setFieldH] = React.useState(420);
-
-  const isMobile = rootW < 560;
-  const compact = rootH < 650; // 小さい端末で詰める
-
-  const safeBottom = React.useMemo(() => `calc(env(safe-area-inset-bottom) + ${isMobile ? 10 : 10}px)`, [isMobile]);
-  const safeTop = React.useMemo(() => `calc(env(safe-area-inset-top) + ${isMobile ? 6 : 8}px)`, [isMobile]);
-
-  const measure = React.useCallback(() => {
-    const r = rootRef.current;
-    if (r) {
-      setRootW(Math.max(320, Math.floor(r.clientWidth || 360)));
-      setRootH(Math.max(520, Math.floor(r.clientHeight || 640)));
-    }
-    const f = fieldRef.current;
-    if (f) {
-      const br = f.getBoundingClientRect();
-      setFieldW(Math.max(320, Math.floor(br.width || 360)));
-      setFieldH(Math.max(240, Math.floor(br.height || 420)));
-    }
-  }, []);
-
-  React.useEffect(() => {
-    measure();
-    const onResize = () => measure();
-    window.addEventListener("resize", onResize);
-    let ro;
-    if (window.ResizeObserver && rootRef.current) {
-      ro = new ResizeObserver(() => measure());
-      ro.observe(rootRef.current);
-    }
-    return () => {
-      window.removeEventListener("resize", onResize);
-      if (ro) ro.disconnect();
-    };
-  }, [measure]);
-
-  // “押したい”を作るための可変サイズ（ここがスマホ見切れを抑える）
-  const padHeight = React.useMemo(() => {
-    // 画面が小さいほど少し縮める。最低 68px を保証。
-    const base = Math.round(rootH * (isMobile ? 0.14 : 0.12));
-    return clamp(base, 68, isMobile ? 98 : 108);
-  }, [rootH, isMobile]);
-
-  const headerHeight = React.useMemo(() => (isMobile ? 56 : 62), [isMobile]);
-  const gutter = React.useMemo(() => (isMobile ? 10 : 12), [isMobile]);
-
-  // ---------------------------------------------------------------------------
-  // DERIVED
-  // ---------------------------------------------------------------------------
-  const currentTrack = React.useMemo(
-    () => ASSET.tracks.find((t) => t.id === trackId) || ASSET.tracks[0],
-    [ASSET.tracks, trackId]
-  );
-
-  const WINDOW = React.useMemo(() => {
-    if (difficulty === "EASY") return { perfect: 0.090, good: 0.160, miss: 0.240 };
-    if (difficulty === "NORMAL") return { perfect: 0.078, good: 0.140, miss: 0.215 };
-    return { perfect: 0.070, good: 0.130, miss: 0.200 };
-  }, [difficulty]);
-
-  // ---------------------------------------------------------------------------
-  // ACCURACY
-  // ---------------------------------------------------------------------------
-  React.useEffect(() => {
-    const total = counts.perfect + counts.good + counts.miss;
-    if (!total) return setAccuracy(0);
-    const acc = (counts.perfect * 1 + counts.good * 0.66) / total;
-    setAccuracy(clamp(acc, 0, 1) * 100);
-  }, [counts]);
-
-  // ---------------------------------------------------------------------------
-  // AUDIO (music)
-  // ---------------------------------------------------------------------------
-  React.useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    a.volume = muted ? 0 : clamp(musicVol, 0, 1);
-  }, [musicVol, muted]);
-
-  // ---------------------------------------------------------------------------
-  // AUDIO (sfx webaudio)
-  // ---------------------------------------------------------------------------
-  const ensureAudioContext = React.useCallback(() => {
-    if (actxRef.current) return actxRef.current;
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return null;
-    const actx = new AC();
-    const g = actx.createGain();
-    g.gain.value = 0.7;
-    g.connect(actx.destination);
-    actxRef.current = actx;
-    sfxGainRef.current = g;
-    return actx;
-  }, []);
-
-  React.useEffect(() => {
-    const g = sfxGainRef.current;
-    if (!g) return;
-    g.gain.value = muted || !sfxOn ? 0 : clamp(sfxVol, 0, 1);
-  }, [muted, sfxOn, sfxVol]);
-
-  const playSfx = React.useCallback(
-    (kind, intensity = 1) => {
-      if (muted || !sfxOn) return;
-      const actx = ensureAudioContext();
-      if (!actx) return;
-      if (actx.state === "suspended") actx.resume?.().catch(() => {});
-      const out = sfxGainRef.current;
-      if (!out) return;
-
-      const t0 = actx.currentTime;
-      const dur = kind === "miss" ? 0.08 : kind === "good" ? 0.10 : 0.12;
-
-      const o = actx.createOscillator();
-      const g = actx.createGain();
-
-      o.type = kind === "miss" ? "sine" : "triangle";
-      o.frequency.setValueAtTime(kind === "perfect" ? 760 : kind === "good" ? 520 : 160, t0);
-
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.16 * intensity, t0 + 0.010);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-
-      o.connect(g);
-      g.connect(out);
-
-      o.start(t0);
-      o.stop(t0 + dur);
-    },
-    [ensureAudioContext, muted, sfxOn]
-  );
-
-  // ---------------------------------------------------------------------------
-  // CHART
-  // ---------------------------------------------------------------------------
-  const CHART = React.useMemo(() => {
-    const mapTok = (t) => {
-      if (!t || t === ".") return null;
-      const m = { L: 0, D: 1, U: 2, R: 3 };
-      if (t.includes("|")) {
-        const parts = t
-          .split("|")
-          .map((x) => x.trim())
-          .filter(Boolean);
-        const lanes = parts.map((p) => m[p]).filter((v) => v !== undefined);
-        return lanes.length ? lanes : null;
-      }
-      return m[t] !== undefined ? [m[t]] : null;
-    };
-
-    const compile = ({ bpm, offsetSec, subdiv, motifs }) => {
-      const beat = 60 / (bpm || 120);
-      const stepSec = beat * (4 / subdiv);
-      const notes = [];
-      let t = offsetSec ?? 1.0;
-      let id = 0;
-
-      for (const block of motifs) {
-        const rep = block.r || 1;
-        for (let rr = 0; rr < rep; rr++) {
-          for (const tok of block.toks) {
-            const lanes = mapTok(tok);
-            if (lanes) {
-              for (const lane of lanes) notes.push({ id: `n${id++}`, t: +t.toFixed(4), lane, judged: false, hit: false });
-            }
-            t += stepSec;
-          }
-        }
-      }
-      notes.sort((a, b) => a.t - b.t);
-      return notes;
-    };
-
-    const MR = (s, r) => ({ toks: s.split(" ").map((x) => x.trim()), r });
-
-    // “安っぽい連打感”を減らして、曲ごとのリズム像を少しだけ出す（密度は維持）
-    const pack = {
-      overhaul: {
-        EASY:   { subdiv: 8,  offsetSec: 1.10, motifs: [MR("L . D . U . R .", 7), MR("L . . R . U . .", 5)] },
-        NORMAL: { subdiv: 16, offsetSec: 1.05, motifs: [MR("L . D . . U . . R . U . . D . .", 6), MR("L . . R U . . D . U . . R . D .", 4)] },
-        HARD:   { subdiv: 16, offsetSec: 1.00, motifs: [MR("L D . U . R . D L . U . R D . .", 6), MR("L|U . R . D . U . L . R . D U . .", 5)] },
-      },
-      dawning: {
-        EASY:   { subdiv: 8,  offsetSec: 1.15, motifs: [MR("L . . D . . U .", 7), MR(". U . . D . . R", 5)] },
-        NORMAL: { subdiv: 16, offsetSec: 1.10, motifs: [MR("L . D . . U . . R . U . . D . .", 6), MR("L . . D U . . R L . . D U . . R", 4)] },
-        HARD:   { subdiv: 16, offsetSec: 1.04, motifs: [MR("L D . U . R . D . U . R L . D .", 6), MR("L|U . R . D . U . L . R . D U . .", 5)] },
-      },
-      mirage: {
-        EASY:   { subdiv: 8,  offsetSec: 1.05, motifs: [MR("L . U . R . U .", 7), MR(". D . . U . . R", 5)] },
-        NORMAL: { subdiv: 16, offsetSec: 1.00, motifs: [MR("L . U . R . U . L . D . U . R .", 5), MR("L . . R U . . D L . . R U . . D", 5)] },
-        HARD:   { subdiv: 16, offsetSec: 0.98, motifs: [MR("L . U R . U . D L . U . R D . .", 6), MR("L|U . R . U . D . L . U . R . D U", 5)] },
-      },
-      phantasma: {
-        EASY:   { subdiv: 8,  offsetSec: 1.00, motifs: [MR("L . D . U . R .", 7), MR("L . U . D . R .", 5)] },
-        NORMAL: { subdiv: 16, offsetSec: 0.98, motifs: [MR("L . D . U . R . L . D . U . R .", 5), MR("L D . R U . D . L D . R U . D .", 4)] },
-        HARD:   { subdiv: 16, offsetSec: 0.95, motifs: [MR("L D U R L . U . D . R . U . D .", 6), MR("L|U . R . D . U . L . R . D U . .", 5)] },
-      },
-      immitation: {
-        EASY:   { subdiv: 8,  offsetSec: 1.10, motifs: [MR("L . U . D . U .", 7), MR(". . R . U . . L", 5)] },
-        NORMAL: { subdiv: 16, offsetSec: 1.05, motifs: [MR("L . U . D . U . L . D . U . R .", 5), MR("L . . D U . . R L . . D U . . R", 4)] },
-        HARD:   { subdiv: 16, offsetSec: 1.00, motifs: [MR("L . U R . U . D L . U . R D . .", 6), MR("L|U . R . U . D . L . U . R . D U", 5)] },
-      },
-      checkmate: {
-        EASY:   { subdiv: 8,  offsetSec: 1.05, motifs: [MR("L . D . U . R .", 7), MR(". U . . R . . D", 5)] },
-        NORMAL: { subdiv: 16, offsetSec: 1.00, motifs: [MR("L . D . U . R . L . U . D . R .", 5), MR("L D . R U . D . L D . R U . D .", 4)] },
-        HARD:   { subdiv: 16, offsetSec: 0.97, motifs: [MR("L D U R . U . D L . U . R D . .", 6), MR("L|U . R . D . U . L . R . D U . .", 5)] },
-      },
-      lockon: {
-        EASY:   { subdiv: 8,  offsetSec: 1.00, motifs: [MR("L . U . R . U .", 7), MR(". D . . U . . R", 5)] },
-        NORMAL: { subdiv: 16, offsetSec: 0.98, motifs: [MR("L . U . R . U . L . D . U . R .", 5), MR("L D . R U . D . L D . R U . D .", 4)] },
-        HARD:   { subdiv: 16, offsetSec: 0.94, motifs: [MR("L D U R L . U . D . R . U . D .", 6), MR("L|U . R . U . D . L . U . R D . .", 5)] },
-      },
-    };
-
-    const build = (durationSec, trackId, diff, bpm) => {
-      const def = pack?.[trackId]?.[diff] || pack?.[ASSET.tracks[0].id]?.[diff];
-      const notes = compile({
-        bpm: bpm || 120,
-        offsetSec: def?.offsetSec ?? 1.0,
-        subdiv: def?.subdiv ?? 8,
-        motifs: def?.motifs ?? [],
-      });
-      const endAt = Math.max(10, Math.min((durationSec || 180) - 0.85, durationSec || 180));
-      return notes.filter((n) => n.t < endAt).sort((a, b) => a.t - b.t);
-    };
-
-    return { build };
-  }, [ASSET.tracks]);
-
-  // ---------------------------------------------------------------------------
-  // STOP / CLEANUP
-  // ---------------------------------------------------------------------------
-  const stopRaf = React.useCallback(() => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = null;
-  }, []);
-
-  const stopAll = React.useCallback(() => {
-    stopRaf();
-    const a = audioRef.current;
-    if (a) {
-      a.pause();
-      a.currentTime = 0;
-    }
-    playTRef.current = 0;
-    cursorRef.current = 0;
-    notesRef.current = [];
-    lastNoteTRef.current = 0;
-    durationRef.current = 0;
-
-    setJudgeFx(null);
-    setPressedLane(-1);
-    setCombo(0);
-    setView("lobby");
-    setConfigOpen(false);
-  }, [stopRaf]);
-
-  const hardReset = React.useCallback(() => {
-    setScore(0);
-    setCombo(0);
-    setMaxCombo(0);
-    setCounts({ perfect: 0, good: 0, miss: 0 });
-    setAccuracy(0);
-    stopAll();
-  }, [stopAll]);
-
-  React.useEffect(() => () => stopRaf(), [stopRaf]);
-
-  // ---------------------------------------------------------------------------
-  // LOAD MUSIC (always mounted audio)
-  // ---------------------------------------------------------------------------
-  const finishRun = React.useCallback(() => {
-    stopRaf();
-    const a = audioRef.current;
-    if (a) a.pause();
-    setView("result");
-  }, [stopRaf]);
-
-  React.useEffect(() => {
-    setReady(false);
-    const a = audioRef.current;
-    if (!a) return;
-
-    stopRaf();
-    a.pause();
-    a.currentTime = 0;
-
-    const onCanPlay = () => {
-      durationRef.current = a.duration || durationRef.current || 0;
-      setReady(true);
-    };
-    const onMeta = () => {
-      durationRef.current = a.duration || durationRef.current || 0;
-    };
-    const onEnded = () => finishRun();
-
-    a.addEventListener("canplay", onCanPlay);
-    a.addEventListener("loadedmetadata", onMeta);
-    a.addEventListener("ended", onEnded);
-
-    a.src = currentTrack.url;
-    a.crossOrigin = "anonymous";
-    a.preload = "auto";
-    try {
-      a.load();
-    } catch {}
-
-    return () => {
-      a.removeEventListener("canplay", onCanPlay);
-      a.removeEventListener("loadedmetadata", onMeta);
-      a.removeEventListener("ended", onEnded);
-    };
-  }, [currentTrack.url, finishRun, stopRaf]);
-
-  // ---------------------------------------------------------------------------
-  // GAME LOOP (no flicker)
-  // ---------------------------------------------------------------------------
-  const lastUiAtRef = React.useRef(0);
-
-  const tick = React.useCallback(() => {
-    const a = audioRef.current;
-    if (!a) return;
-
-    const now = performance.now();
-    const t = a.currentTime || 0;
-    playTRef.current = t;
-
-    // miss resolve
-    const notes = notesRef.current;
-    const missLine = t - (WINDOW.miss + 0.02) - latencyMs / 1000;
-
-    let i = cursorRef.current;
-    let missed = 0;
-
-    while (i < notes.length) {
-      const n = notes[i];
-      if (n.judged) {
-        i++;
-        continue;
-      }
-      if (n.t <= missLine) {
-        n.judged = true;
-        n.hit = false;
-        missed++;
-        i++;
-        continue;
-      }
-      break;
-    }
-
-    if (missed > 0) {
-      cursorRef.current = i;
-      setCounts((c) => ({ ...c, miss: c.miss + missed }));
-      setCombo(0);
-      setJudgeFx({ type: "miss", at: now });
-      playSfx("miss", 0.9);
-      navigator.vibrate?.(8);
-    }
-
-    const dur = durationRef.current || a.duration || 0;
-    const lastNoteT = lastNoteTRef.current || 0;
-    const doneByNotes = notes.length ? t > lastNoteT + 0.95 : t > 1.5;
-
-    if ((dur && t >= dur - 0.02) || doneByNotes) {
-      finishRun();
-      return;
-    }
-
-    // THROTTLE UI updates
-    const targetFps = isMobile ? 30 : 60;
-    const minDt = 1000 / targetFps;
-    if (now - (lastUiAtRef.current || 0) >= minDt) {
-      lastUiAtRef.current = now;
-      setFrame((f) => (f + 1) % 1000000);
-    }
-
-    rafRef.current = requestAnimationFrame(tick);
-  }, [WINDOW.miss, finishRun, isMobile, latencyMs, playSfx]);
-
-  // ---------------------------------------------------------------------------
-  // START / PAUSE / RESUME / RESTART
-  // ---------------------------------------------------------------------------
-  const startRun = React.useCallback(() => {
-    const a = audioRef.current;
-    if (!a || !ready) return;
-
-    measure();
-    ensureAudioContext();
-
-    const dur = a.duration || durationRef.current || 0;
-    durationRef.current = dur;
-
-    const chart = CHART.build(dur || 180, currentTrack.id, difficulty, currentTrack.bpm);
-    notesRef.current = chart;
-    cursorRef.current = 0;
-    lastNoteTRef.current = chart.length ? chart[chart.length - 1].t : 0;
-
-    setScore(0);
-    setCombo(0);
-    setMaxCombo(0);
-    setCounts({ perfect: 0, good: 0, miss: 0 });
-    setJudgeFx(null);
-    setPressedLane(-1);
-
-    a.pause();
-    a.currentTime = 0;
-    playTRef.current = 0;
-
-    const p = a.play();
-    if (p && typeof p.then === "function") {
-      p.then(() => {
-        setView("play");
-        stopRaf();
-        rafRef.current = requestAnimationFrame(tick);
-      }).catch(() => {});
-    } else {
-      setView("play");
-      stopRaf();
-      rafRef.current = requestAnimationFrame(tick);
-    }
-  }, [CHART, currentTrack.bpm, currentTrack.id, difficulty, ensureAudioContext, measure, ready, stopRaf, tick]);
-
-  const pauseRun = React.useCallback(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    a.pause();
-    stopRaf();
-    setView("pause");
-  }, [stopRaf]);
-
-  const resumeRun = React.useCallback(() => {
-    const a = audioRef.current;
-    if (!a) return;
-
-    ensureAudioContext();
-    const p = a.play();
-    if (p && typeof p.then === "function") {
-      p.then(() => {
-        setView("play");
-        stopRaf();
-        rafRef.current = requestAnimationFrame(tick);
-      }).catch(() => {});
-    } else {
-      setView("play");
-      stopRaf();
-      rafRef.current = requestAnimationFrame(tick);
-    }
-  }, [ensureAudioContext, stopRaf, tick]);
-
-  const restartRun = React.useCallback(() => {
-    const a = audioRef.current;
-    if (!a || !ready) return;
-
-    const dur = a.duration || durationRef.current || 0;
-    durationRef.current = dur;
-
-    const chart = CHART.build(dur || 180, currentTrack.id, difficulty, currentTrack.bpm);
-    notesRef.current = chart;
-    cursorRef.current = 0;
-    lastNoteTRef.current = chart.length ? chart[chart.length - 1].t : 0;
-
-    setScore(0);
-    setCombo(0);
-    setMaxCombo(0);
-    setCounts({ perfect: 0, good: 0, miss: 0 });
-    setJudgeFx(null);
-    setPressedLane(-1);
-
-    a.pause();
-    a.currentTime = 0;
-    playTRef.current = 0;
-
-    ensureAudioContext();
-    const p = a.play();
-    if (p && typeof p.then === "function") {
-      p.then(() => {
-        setView("play");
-        stopRaf();
-        rafRef.current = requestAnimationFrame(tick);
-      }).catch(() => {});
-    } else {
-      setView("play");
-      stopRaf();
-      rafRef.current = requestAnimationFrame(tick);
-    }
-  }, [CHART, currentTrack.bpm, currentTrack.id, difficulty, ensureAudioContext, ready, stopRaf, tick]);
-
-  // ---------------------------------------------------------------------------
-  // INPUT / JUDGE
-  // ---------------------------------------------------------------------------
-  const LANES = 4;
-  const LANE_ICON = ["left", "down", "up", "right"];
-
-  const applyJudge = React.useCallback(
-    (type) => {
-      const now = performance.now();
-      setJudgeFx({ type, at: now });
-
-      if (type === "perfect") {
-        setCounts((c) => ({ ...c, perfect: c.perfect + 1 }));
-        setScore((s) => s + 1000 + combo * 10);
-        setCombo((c) => {
-          const n = c + 1;
-          setMaxCombo((m) => Math.max(m, n));
-          return n;
-        });
-        playSfx("perfect", combo >= 20 ? 1.05 : 1.0);
-        navigator.vibrate?.(6);
-      } else if (type === "good") {
-        setCounts((c) => ({ ...c, good: c.good + 1 }));
-        setScore((s) => s + 650 + combo * 5);
-        setCombo((c) => {
-          const n = c + 1;
-          setMaxCombo((m) => Math.max(m, n));
-          return n;
-        });
-        playSfx("good", 0.95);
-        navigator.vibrate?.(5);
-      } else {
-        setCounts((c) => ({ ...c, miss: c.miss + 1 }));
-        setCombo(0);
-        playSfx("miss", 0.9);
-        navigator.vibrate?.(8);
-      }
-    },
-    [combo, playSfx]
-  );
-
-  const hitLane = React.useCallback(
-    (lane) => {
-      // lobby: どのキーでも始まる（スマホの “押したくなる” を優先）
-      if (view === "lobby") {
-        startRun();
-        return;
-      }
-      if (view === "pause") {
-        resumeRun();
-        return;
-      }
-      if (view !== "play") return;
-
-      const t = playTRef.current || 0;
-      const adjT = t + latencyMs / 1000;
-
-      const notes = notesRef.current;
-      const startIdx = cursorRef.current;
-      const endIdx = Math.min(startIdx + 34, notes.length);
-
-      let bestIdx = -1;
-      let bestAbs = Infinity;
-
-      for (let k = startIdx; k < endIdx; k++) {
-        const n = notes[k];
-        if (n.judged) continue;
-
-        const dt = n.t - adjT;
-        if (dt < -WINDOW.miss) continue;
-        if (dt > WINDOW.miss) break;
-        if (n.lane !== lane) continue;
-
-        const abs = Math.abs(dt);
-        if (abs < bestAbs) {
-          bestAbs = abs;
-          bestIdx = k;
-        }
-      }
-
-      if (bestIdx === -1) {
-        applyJudge("miss");
-        return;
-      }
-
-      const n = notes[bestIdx];
-      const dt = Math.abs(n.t - adjT);
-      n.judged = true;
-      n.hit = true;
-
-      while (cursorRef.current < notes.length && notes[cursorRef.current].judged) cursorRef.current++;
-
-      if (dt <= WINDOW.perfect) applyJudge("perfect");
-      else if (dt <= WINDOW.good) applyJudge("good");
-      else applyJudge("miss");
-    },
-    [WINDOW.good, WINDOW.miss, WINDOW.perfect, applyJudge, latencyMs, resumeRun, startRun, view]
-  );
-
-  const bindPad = React.useCallback(
-    (lane) => {
-      const down = (e) => {
-        try {
-          e.preventDefault?.();
-          e.stopPropagation?.();
-        } catch {}
-        setPressedLane(lane);
-        hitLane(lane);
-      };
-      const up = (e) => {
-        try {
-          e.preventDefault?.();
-          e.stopPropagation?.();
-        } catch {}
-        setPressedLane((x) => (x === lane ? -1 : x));
-      };
-      return {
-        onPointerDown: down,
-        onPointerUp: up,
-        onPointerCancel: up,
-        onPointerLeave: up,
-        onTouchStart: down,
-        onTouchEnd: up,
-        onClick: (e) => {
-          try {
-            e.preventDefault?.();
-            e.stopPropagation?.();
-          } catch {}
-        },
-      };
-    },
-    [hitLane]
-  );
-
-  // ---------------------------------------------------------------------------
-  // UI COMPUTE
-  // ---------------------------------------------------------------------------
-  const ui = React.useMemo(() => {
-    const t = playTRef.current || 0;
-    const dur = durationRef.current || 0;
-    const remain = dur ? Math.max(0, dur - t) : NaN;
-
-    // receptor is “field bottom - pads - gutter” の上に固定（見切れを根本解消）
-    const receptorY = clamp(
-      Math.floor(fieldH - (isMobile ? 86 : 92)),
-      170,
-      Math.max(200, fieldH - 58)
-    );
-
-    // visible notes window
-    const margin = 210;
-    const spawnAhead = (receptorY + margin) / speed;
-    const past = (fieldH - receptorY + margin) / speed;
-
-    const minT = t - past - 0.08;
-    const maxT = t + spawnAhead + 0.08;
-
-    const notes = notesRef.current;
-    let i = cursorRef.current;
-    while (i > 0 && notes[i - 1] && notes[i - 1].t >= minT) i--;
-
-    const list = [];
-    for (let k = i; k < notes.length; k++) {
-      const n = notes[k];
-      if (n.t < minT) continue;
-      if (n.t > maxT) break;
-      if (!n.judged) list.push(n);
-      if (list.length > (isMobile ? 70 : 120)) break;
-    }
-
-    const fxAlive = judgeFx && performance.now() - judgeFx.at < 520;
-
-    return { t, dur, remain, receptorY, list, fxAlive };
-  }, [fieldH, speed, frame, isMobile, judgeFx]);
-
-  const remainText = fmtMMSS(ui.remain);
-
-  const bunnyMood = React.useMemo(() => {
-    if (view === "result") return ASSET.bunny.flop;
-    if (combo >= 34) return ASSET.bunny.starR;
-    if (combo >= 14) return ASSET.bunny.yayR;
-    if (judgeFx?.type === "miss") return ASSET.bunny.dizzy;
-    if (view === "play") return ASSET.bunny.runR;
-    return ASSET.bunny.idle;
-  }, [ASSET.bunny, combo, judgeFx, view]);
-
-  const grade = React.useMemo(() => {
-    const a = accuracy;
-    if (a >= 95) return { label: "S", glow: "rgba(122,226,255,0.34)" };
-    if (a >= 88) return { label: "A", glow: "rgba(198,164,255,0.30)" };
-    if (a >= 78) return { label: "B", glow: "rgba(255,156,222,0.24)" };
-    if (a >= 65) return { label: "C", glow: "rgba(170,255,214,0.20)" };
-    return { label: "D", glow: "rgba(255,120,170,0.22)" };
-  }, [accuracy]);
-
-  const setTrackSafe = React.useCallback(
-    (id) => {
-      setTrackId(id);
-      stopAll();
-    },
-    [stopAll]
-  );
-
-  // ---------------------------------------------------------------------------
-  // VISUAL HELPERS
-  // ---------------------------------------------------------------------------
-  const trackAccent = React.useMemo(() => {
-    const idx = ASSET.tracks.findIndex((t) => t.id === trackId);
-    return laneGlow(((idx >= 0 ? idx : 0) % 4) | 0);
-  }, [ASSET.tracks, laneGlow, trackId]);
-
-  const comboAura = React.useMemo(() => {
-    // combo が上がるほど “世界が繋がる” 光を強める
-    const c = clamp(combo / 40, 0, 1);
-    return {
-      op: 0.12 + c * 0.24,
-      blur: 28 + c * 30,
-      scale: 1.02 + c * 0.08,
-    };
-  }, [combo]);
-
-  // ---------------------------------------------------------------------------
-  // UI PRIMITIVES
-  // ---------------------------------------------------------------------------
-  const Frame = ({ children, motion }) => (
-    <div
-      className="relative h-full w-full overflow-hidden rounded-[28px] border"
-      style={{
-        borderColor: TOK.line,
-        background: TOK.glass,
-        boxShadow: "0 28px 140px rgba(0,0,0,0.88), inset 0 1px 0 rgba(255,255,255,0.08)",
-        backdropFilter: "blur(20px)",
-      }}
-    >
-      {/* background layers */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div
-          className={motion ? "osb-aurora" : ""}
-          style={{
-            position: "absolute",
-            inset: "-24%",
-            background:
-              `radial-gradient(900px 600px at 16% 10%, ${TOK.aurA}, transparent 62%),` +
-              `radial-gradient(820px 620px at 86% 14%, ${TOK.aurB}, transparent 66%),` +
-              `radial-gradient(900px 660px at 54% 98%, ${TOK.aurC}, transparent 72%),` +
-              `radial-gradient(900px 660px at 74% 58%, ${TOK.aurD}, transparent 70%)`,
-            filter: `blur(${motion ? 34 : 32}px)`,
-            opacity: motion ? 0.40 : 0.36,
-            transform: "translate3d(0,0,0)",
-          }}
-        />
-        {/* combo aura */}
-        <div
-          style={{
-            position: "absolute",
-            inset: "-18%",
-            background:
-              `radial-gradient(860px 520px at 50% 18%, ${trackAccent}22, transparent 64%),` +
-              `radial-gradient(920px 640px at 50% 82%, rgba(255,255,255,0.08), transparent 60%)`,
-            filter: `blur(${comboAura.blur}px)`,
-            opacity: comboAura.op,
-            transform: `translate3d(0,0,0) scale(${comboAura.scale})`,
-            transition: "opacity 320ms ease, filter 320ms ease, transform 320ms ease",
-          }}
-        />
-        {/* vignette */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "radial-gradient(1200px 720px at 50% -10%, rgba(255,255,255,0.10), transparent 58%)," +
-              "radial-gradient(1200px 900px at 50% 120%, rgba(0,0,0,0.82), transparent 55%)," +
-              "linear-gradient(to bottom, rgba(0,0,0,0.25), rgba(0,0,0,0.72))",
-            opacity: 0.98,
-          }}
-        />
-        {/* grain */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            opacity: 0.06,
-            mixBlendMode: "overlay",
-            backgroundImage:
-              "linear-gradient(transparent, rgba(255,255,255,0.07), transparent)",
-            backgroundSize: "100% 4px",
-          }}
-        />
-      </div>
-
-      {children}
-    </div>
-  );
-
-  const IconBtn = ({ label, onDown, tone = "soft", children }) => (
-    <button
-      aria-label={label}
-      onPointerDown={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onDown?.();
-      }}
-      className="h-10 w-10 rounded-2xl border active:scale-[0.99]"
-      style={{
-        borderColor: tone === "danger" ? "rgba(255,120,170,0.24)" : "rgba(255,255,255,0.12)",
-        background: tone === "danger" ? "rgba(255,120,170,0.10)" : "rgba(255,255,255,0.05)",
-        boxShadow: "0 18px 70px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.08)",
-        WebkitTapHighlightColor: "transparent",
-      }}
-    >
-      {children}
-    </button>
-  );
-
-  const Pill = ({ left, right, glow }) => (
-    <div
-      className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5"
-      style={{
-        borderColor: "rgba(255,255,255,0.10)",
-        background: "rgba(255,255,255,0.045)",
-        boxShadow: glow ? `0 0 0 1px ${glow} inset, 0 0 50px rgba(255,255,255,0.04)` : "none",
-      }}
-    >
-      <span className="text-[10px] tracking-[0.30em] uppercase text-white/45">{left}</span>
-      <span className="text-[12px] text-white/92 tabular-nums">{right}</span>
-    </div>
-  );
-
-  const Seg = ({ value, options, onChange }) => (
-    <div className="grid grid-cols-3 rounded-[18px] border p-1" style={{ borderColor: TOK.line2, background: TOK.glass2 }}>
-      {options.map((opt) => {
-        const active = opt.value === value;
-        return (
-          <button
-            key={opt.value}
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onChange(opt.value);
-            }}
-            className="h-11 rounded-[16px] active:scale-[0.99]"
-            style={{
-              background: active ? "rgba(255,255,255,0.10)" : "transparent",
-              boxShadow: active ? "0 0 0 1px rgba(255,255,255,0.08) inset, 0 12px 44px rgba(0,0,0,0.35)" : "none",
-            }}
-          >
-            <div className="text-[11px] tracking-[0.28em] uppercase text-white/92">{opt.label}</div>
-            {opt.sub ? <div className="text-[10px] tracking-[0.30em] uppercase text-white/38">{opt.sub}</div> : null}
-          </button>
-        );
-      })}
-    </div>
-  );
-
-  // ---------------------------------------------------------------------------
-  // PAD (質感を “安っぽいボタン” から “発光するデバイス” に寄せる)
-  // ---------------------------------------------------------------------------
-  const Pad = ({ lane, label, showIcon }) => {
-    const glow = laneGlow(lane);
-    const active = pressedLane === lane;
-    const icon = ASSET.arrows[LANE_ICON[lane]];
-
-    return (
-      <button
-        aria-label={`pad-${lane}`}
-        {...bindPad(lane)}
-        className="relative h-full w-full rounded-[22px] border overflow-hidden active:scale-[0.995]"
-        style={{
-          borderColor: "rgba(255,255,255,0.14)",
-          background: "rgba(255,255,255,0.045)",
-          touchAction: "none",
-          WebkitTapHighlightColor: "transparent",
-          boxShadow:
-            `0 22px 90px rgba(0,0,0,0.72),` +
-            `inset 0 1px 0 rgba(255,255,255,0.08),` +
-            `0 0 0 1px ${glow}55 inset,` +
-            `0 0 26px ${glow}33` +
-            (active ? `, 0 0 64px ${glow}70` : ""),
-        }}
-      >
-        {/* inner prism */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              `radial-gradient(260px 180px at 30% 18%, ${glow}40, transparent 62%),` +
-              `linear-gradient(135deg, rgba(255,255,255,0.10), transparent 42%)`,
-            filter: "blur(10px)",
-            opacity: 0.72,
-          }}
-        />
-        {/* sheen sweep (軽い) */}
-        <div
-          className={active ? "osb-sheen" : ""}
-          style={{
-            position: "absolute",
-            inset: 0,
-            opacity: active ? 0.55 : 0.18,
-            background: "linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.16) 45%, transparent 70%)",
-            transform: "translateX(-40%)",
-            mixBlendMode: "overlay",
-          }}
-        />
-        <div className="relative h-full w-full flex flex-col items-center justify-center gap-1">
-          {showIcon ? (
-            <img
-              src={icon}
-              alt={label}
-              className="opacity-95"
-              style={{
-                width: isMobile ? 28 : 30,
-                height: isMobile ? 28 : 30,
-                filter: `drop-shadow(0 0 18px ${glow}) drop-shadow(0 0 18px rgba(255,255,255,0.08))`,
-              }}
-            />
-          ) : (
-            <div
-              className="rounded-full"
-              style={{
-                width: 10,
-                height: 10,
-                background: "rgba(255,255,255,0.86)",
-                boxShadow: `0 0 18px ${glow}, 0 0 24px ${glow}`,
-                opacity: 0.74,
-              }}
-            />
-          )}
-          <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">{label}</div>
-        </div>
-      </button>
-    );
-  };
-
-  // ---------------------------------------------------------------------------
-  // HEADER (縦を食わない / Safari のバー感)
-  // ---------------------------------------------------------------------------
-  const Header = ({ right }) => (
-    <div className="relative z-40 px-3 sm:px-4" style={{ paddingTop: safeTop }}>
-      <div
-        className="rounded-[22px] border backdrop-blur-2xl"
-        style={{
-          height: headerHeight,
-          borderColor: "rgba(255,255,255,0.12)",
-          background: "rgba(0,0,0,0.42)",
-          boxShadow: "0 22px 90px rgba(0,0,0,0.60), inset 0 1px 0 rgba(255,255,255,0.08)",
-        }}
-      >
-        <div className="h-full px-3 sm:px-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="h-10 w-10 rounded-2xl border border-white/12 bg-white/5 overflow-hidden shrink-0 relative">
-              <div
-                className="absolute inset-0"
-                style={{
-                  background: `radial-gradient(26px 18px at 50% 40%, ${trackAccent}55, transparent 70%)`,
-                  filter: "blur(10px)",
-                  opacity: 0.85,
-                }}
-              />
-              <img src={bunnyMood} alt="bunny" className="relative h-full w-full object-cover opacity-92" />
-            </div>
-
-            <div className="min-w-0">
-              <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">
-                OS_USAGI <span className="text-white/90">BEAT</span>
-                <span className="ml-2 text-white/35">SYNC</span>
-              </div>
-
-              <div className="text-[12px] text-white/92 font-semibold truncate">
-                {currentTrack.title}
-                <span className="ml-2 text-white/45">· {difficulty}</span>
-                {!compact && <span className="ml-2 text-white/35">BPM {currentTrack.bpm}</span>}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">{right}</div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ---------------------------------------------------------------------------
-  // HUD (スコア類をフィールド内に統合して “見切れ” を防ぐ)
-  // ---------------------------------------------------------------------------
-  const Hud = () => (
-    <div className="absolute left-3 right-3 top-3 z-40 pointer-events-none">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex flex-wrap gap-2">
-          <Pill left="SCORE" right={score.toLocaleString()} glow={combo >= 12 ? TOK.violetGlow : ""} />
-          <Pill left="COMBO" right={combo} glow={combo >= 10 ? TOK.violetGlow : ""} />
-        </div>
-
-        <div className="flex flex-col items-end gap-2">
-          <Pill left="REMAIN" right={remainText} glow={TOK.cyanGlow} />
-          {!compact && (
-            <div
-              className="rounded-full border px-3 py-1.5"
-              style={{
-                borderColor: "rgba(255,255,255,0.10)",
-                background: "rgba(255,255,255,0.04)",
-                boxShadow: `0 0 0 1px ${trackAccent}22 inset`,
-              }}
-            >
-              <span className="text-[10px] tracking-[0.30em] uppercase text-white/45">LAT</span>
-              <span className="ml-2 text-[12px] text-white/92 tabular-nums">{latencyMs}ms</span>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
-  // ---------------------------------------------------------------------------
-  // LOBBY (見た目を “作品の入口” にする)
-  // ---------------------------------------------------------------------------
-  const Lobby = () => (
-    <div className="relative h-full w-full flex flex-col" style={{ paddingBottom: safeBottom }}>
-      <Header
-        right={
-          <>
-            <IconBtn label="config" onDown={() => setConfigOpen(true)}>
-              <span className="text-white/88 text-[16px]">⚙︎</span>
-            </IconBtn>
-          </>
-        }
-      />
-
-      <div className="relative z-20 flex-1 min-h-0 px-3 sm:px-4" style={{ paddingTop: gutter }}>
-        <div className="rounded-[26px] border overflow-hidden" style={{ borderColor: "rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.26)" }}>
-          <div className="p-4 sm:p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">PORTAL</div>
-                <div className="mt-2">
-                  <div
-                    className="text-[22px] sm:text-[26px] font-light tracking-[0.30em] text-white/92 uppercase"
-                    style={{ animation: "osbTitleGlow 4.4s ease-in-out infinite" }}
-                  >
-                    BEAT SYNC
-                  </div>
-                  <div className="mt-2 text-[11px] sm:text-xs text-white/50 font-mono tracking-[0.22em]">
-                    tap pads · connect · keep the signal alive
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col items-end gap-2 shrink-0">
-                <div
-                  className="rounded-full border px-3 py-1.5"
-                  style={{
-                    borderColor: "rgba(255,255,255,0.10)",
-                    background: ready ? "rgba(122,226,255,0.08)" : "rgba(255,255,255,0.04)",
-                    boxShadow: ready ? "0 0 0 1px rgba(122,226,255,0.18) inset, 0 0 50px rgba(122,226,255,0.08)" : "none",
-                  }}
-                >
-                  <span className="text-[10px] tracking-[0.30em] uppercase text-white/45">STATUS</span>
-                  <span className="ml-2 text-[12px] text-white/92">{ready ? "READY" : "LOADING"}</span>
-                </div>
-
-                {!compact && (
-                  <div className="flex items-center gap-2">
-                    <Pill left="SPD" right={`${speed}`} />
-                    <Pill left="LAT" right={`${latencyMs}ms`} />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Track carousel */}
-            <div className="mt-5 rounded-[22px] border border-white/10 bg-black/25 overflow-hidden">
-              <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-                <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">TRACK</div>
-                <div className="text-[10px] tracking-[0.34em] uppercase text-white/30">SWIPE</div>
-              </div>
-
-              <div className="px-4 pb-4">
-                <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory osb-scroll" style={{ WebkitOverflowScrolling: "touch" }}>
-                  {ASSET.tracks.map((t, idx) => {
-                    const active = t.id === trackId;
-                    const accent = laneGlow(idx % 4);
-                    return (
-                      <button
-                        key={t.id}
-                        onPointerDown={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setTrackSafe(t.id);
-                        }}
-                        className="snap-start shrink-0 w-[84%] sm:w-[48%] rounded-[22px] border p-4 text-left active:scale-[0.995] overflow-hidden relative"
-                        style={{
-                          borderColor: active ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.10)",
-                          background: active ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)",
-                          boxShadow: active
-                            ? `0 0 0 1px ${accent}66 inset, 0 0 86px rgba(255,255,255,0.05), 0 28px 90px rgba(0,0,0,0.56)`
-                            : "0 24px 84px rgba(0,0,0,0.46)",
-                        }}
-                      >
-                        <div
-                          className="absolute inset-0 pointer-events-none"
-                          style={{
-                            background:
-                              `radial-gradient(520px 240px at 14% 22%, ${accent}26, transparent 60%),` +
-                              `linear-gradient(120deg, rgba(255,255,255,0.10), transparent 55%)`,
-                            opacity: active ? 0.95 : 0.55,
-                          }}
-                        />
-
-                        <div className="relative">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="text-[15px] text-white/92 font-semibold truncate">{t.title}</div>
-                              <div className="mt-1 text-[10px] tracking-[0.28em] uppercase text-white/45">BPM {t.bpm}</div>
-                            </div>
-                            <div className="text-[10px] tracking-[0.34em] uppercase text-white/60">{active ? "SELECTED" : "SELECT"}</div>
-                          </div>
-
-                          <div
-                            className="mt-3 h-[2px] rounded-full"
-                            style={{
-                              background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
-                              opacity: active ? 0.95 : 0.45,
-                              boxShadow: active ? `0 0 18px ${accent}` : "none",
-                            }}
-                          />
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* difficulty */}
-            <div className="mt-4">
-              <Seg
-                value={difficulty}
-                onChange={setDifficulty}
-                options={[
-                  { value: "EASY", label: "EASY", sub: "WIDE" },
-                  { value: "NORMAL", label: "NORMAL", sub: "STD" },
-                  { value: "HARD", label: "HARD", sub: "TIGHT" },
-                ]}
-              />
-            </div>
-
-            {/* Lobby pads */}
-            <div className="mt-4 grid grid-cols-4 gap-2" style={{ touchAction: "none" }}>
-              <div style={{ height: padHeight }}><Pad lane={0} label="LEFT" showIcon={false} /></div>
-              <div style={{ height: padHeight }}><Pad lane={1} label="DOWN" showIcon={false} /></div>
-              <div style={{ height: padHeight }}><Pad lane={2} label="UP" showIcon={false} /></div>
-              <div style={{ height: padHeight }}><Pad lane={3} label="RIGHT" showIcon={false} /></div>
-            </div>
-
-            <button
-              disabled={!ready}
-              onPointerDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                startRun();
-              }}
-              className="mt-4 h-12 w-full rounded-[18px] border border-white/14 bg-white/10 text-white/92 active:scale-[0.99] disabled:opacity-50"
-              style={{
-                boxShadow: `0 26px 110px rgba(0,0,0,0.76), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 66px ${trackAccent}22`,
-              }}
-            >
-              <span className="text-[11px] tracking-[0.34em] uppercase">{ready ? "START" : "LOADING"}</span>
-            </button>
-
-            <div className="mt-3 text-center text-[9px] font-mono tracking-[0.28em] uppercase text-white/28">
-              // tap any pad to sync
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ---------------------------------------------------------------------------
-  // PLAY (見切れ対策：HUDはフィールド内、操作は最下段に固定)
-  // ---------------------------------------------------------------------------
-  const Play = () => {
-    const receptorY = ui.receptorY;
-
-    return (
-      <div className="relative h-full w-full flex flex-col" style={{ paddingBottom: safeBottom }}>
-        <Header
-          right={
-            <>
-              <IconBtn label="pause" onDown={() => (view === "play" ? pauseRun() : resumeRun())}>
-                <span className="text-white/92 text-[16px]">{view === "play" ? "Ⅱ" : "▶"}</span>
-              </IconBtn>
-              <IconBtn label="restart" onDown={restartRun}>
-                <span className="text-white/88 text-[16px]">↺</span>
-              </IconBtn>
-              <IconBtn label="config" onDown={() => setConfigOpen(true)}>
-                <span className="text-white/88 text-[16px]">⚙︎</span>
-              </IconBtn>
-              <IconBtn label="stop" onDown={stopAll} tone="danger">
-                <span className="text-white/92 text-[16px]">✕</span>
-              </IconBtn>
-            </>
-          }
-        />
-
-        {/* FIELD */}
-        <div className="relative z-20 flex-1 min-h-0 px-3 sm:px-4" style={{ paddingTop: gutter }}>
-          <div className="h-full rounded-[26px] border border-white/10 bg-black/22 overflow-hidden relative">
-            <div ref={fieldRef} className="relative h-full w-full">
-              {/* HUD inside field */}
-              <Hud />
-
-              {/* lane backgrounds */}
-              <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute inset-0 grid grid-cols-4 opacity-[0.70]">
-                  {[0, 1, 2, 3].map((lane) => (
-                    <div key={lane} className="relative">
-                      <div
-                        className="absolute inset-0"
-                        style={{
-                          background:
-                            `linear-gradient(180deg, ${laneGlow(lane)}22 0%, transparent 62%),` +
-                            `radial-gradient(260px 220px at 50% 20%, ${laneGlow(lane)}12, transparent 66%)`,
-                        }}
-                      />
-                      <div className="absolute inset-y-0 right-0 w-px bg-white/10" />
-                    </div>
-                  ))}
-                </div>
-
-                {/* center glow */}
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background:
-                      "radial-gradient(860px 520px at 50% 30%, rgba(255,255,255,0.10), transparent 62%)",
-                    opacity: 0.16,
-                  }}
-                />
-              </div>
-
-              {/* receptor targets */}
-              <div className="absolute inset-x-0 z-30 pointer-events-none" style={{ top: receptorY - 26 }}>
-                <div className="px-3">
-                  <div className="grid grid-cols-4 gap-2">
-                    {[0, 1, 2, 3].map((lane) => {
-                      const g = laneGlow(lane);
-                      return (
-                        <div
-                          key={lane}
-                          className="h-[52px] rounded-[18px] border relative overflow-hidden"
-                          style={{
-                            borderColor: "rgba(255,255,255,0.14)",
-                            background: "rgba(255,255,255,0.035)",
-                            boxShadow: `0 0 0 1px ${g}44 inset, 0 0 30px ${g}24`,
-                          }}
-                        >
-                          <div
-                            className="absolute inset-0"
-                            style={{
-                              background: `radial-gradient(220px 120px at 50% 35%, ${g}30, transparent 64%)`,
-                              opacity: 0.65,
-                              filter: "blur(10px)",
-                            }}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* hit line */}
-                <div className="mt-2 px-3">
-                  <div
-                    className="h-[4px] rounded-full"
-                    style={{
-                      background:
-                        "linear-gradient(90deg, transparent, rgba(122,226,255,0.78), rgba(198,164,255,0.68), rgba(255,156,222,0.48), transparent)",
-                      boxShadow: `0 0 24px rgba(122,226,255,0.12), 0 0 28px rgba(198,164,255,0.10)`,
-                      opacity: 0.94,
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* notes */}
-              <div className="absolute inset-0 pointer-events-none z-20">
-                {ui.list.map((n) => {
-                  const t = playTRef.current || 0;
-                  const adjT = t + latencyMs / 1000;
-                  const dt = n.t - adjT;
-                  const y = receptorY - dt * speed;
-
-                  const xPct = ((n.lane + 0.5) / LANES) * 100;
-                  const g = laneGlow(n.lane);
-
-                  const depth = clamp(y / (fieldH || 1), 0, 1);
-                  const sc = 0.80 + depth * 0.26;
-                  const op = clamp(0.34 + depth * 0.70, 0, 1);
-
-                  const size = isMobile ? 50 : 56;
-
-                  return (
-                    <div
-                      key={n.id}
-                      className="absolute"
-                      style={{
-                        left: `calc(${xPct}% - ${size / 2}px)`,
-                        top: `${y - size / 2}px`,
-                        width: size,
-                        height: size,
-                        transform: `translate3d(0,0,0) scale(${sc})`,
-                        opacity: op,
-                        willChange: "transform, top, opacity",
-                      }}
-                    >
-                      <div
-                        className="h-full w-full rounded-[18px] border flex items-center justify-center overflow-hidden relative"
-                        style={{
-                          borderColor: "rgba(255,255,255,0.14)",
-                          background:
-                            "linear-gradient(180deg, rgba(0,0,0,0.40), rgba(0,0,0,0.58))",
-                          boxShadow: `0 18px 60px rgba(0,0,0,0.62), 0 0 0 1px ${g}55 inset, 0 0 20px ${g}30`,
-                        }}
-                      >
-                        {/* small prism highlight */}
-                        <div
-                          className="absolute inset-0"
-                          style={{
-                            background: "linear-gradient(135deg, rgba(255,255,255,0.14), transparent 46%)",
-                            opacity: 0.55,
-                          }}
-                        />
-                        <img
-                          src={ASSET.arrows[LANE_ICON[n.lane]]}
-                          alt="note"
-                          className="opacity-95 relative"
-                          style={{
-                            width: isMobile ? 28 : 30,
-                            height: isMobile ? 28 : 30,
-                            filter: `drop-shadow(0 0 ${12 + depth * 10}px ${g})`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* judge */}
-              {ui.fxAlive && judgeFx && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-50">
-                  <div className="relative flex flex-col items-center">
-                    {/* ring burst */}
-                    <div
-                      className="absolute rounded-full"
-                      style={{
-                        width: 220,
-                        height: 220,
-                        border: `1px solid ${
-                          judgeFx.type === "miss" ? "rgba(255,120,170,0.30)" : "rgba(122,226,255,0.26)"
-                        }`,
-                        boxShadow:
-                          judgeFx.type === "miss"
-                            ? "0 0 60px rgba(255,120,170,0.10)"
-                            : "0 0 70px rgba(122,226,255,0.10)",
-                        animation: "osbBurst 520ms cubic-bezier(0.22,1,0.36,1) both",
-                        opacity: 0.9,
-                      }}
-                    />
-                    <img
-                      src={
-                        judgeFx.type === "perfect"
-                          ? ASSET.judge.perfect
-                          : judgeFx.type === "good"
-                          ? ASSET.judge.good
-                          : ASSET.judge.miss
-                      }
-                      alt={judgeFx.type}
-                      className="opacity-95"
-                      style={{
-                        height: isMobile ? 54 : 60,
-                        filter:
-                          "drop-shadow(0 0 26px rgba(122,226,255,0.14)) drop-shadow(0 0 26px rgba(198,164,255,0.10))",
-                        animation: "osbJudge 520ms cubic-bezier(0.22,1,0.36,1) both",
-                      }}
-                    />
-                    <div className="mt-2 text-[10px] font-mono tracking-[0.30em] uppercase text-white/35">
-                      {judgeFx.type === "perfect" ? "SIGNAL LOCKED" : judgeFx.type === "good" ? "SYNC OK" : "DESYNC"}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* PADS (最下段固定・全端末で見切れない) */}
-        <div className="relative z-30 px-3 sm:px-4" style={{ paddingTop: gutter }}>
-          <div className={`grid grid-cols-4 ${isMobile ? "gap-2" : "gap-3"}`} style={{ touchAction: "none" }}>
-            <div style={{ height: padHeight }}><Pad lane={0} label="LEFT" showIcon /></div>
-            <div style={{ height: padHeight }}><Pad lane={1} label="DOWN" showIcon /></div>
-            <div style={{ height: padHeight }}><Pad lane={2} label="UP" showIcon /></div>
-            <div style={{ height: padHeight }}><Pad lane={3} label="RIGHT" showIcon /></div>
-          </div>
-
-          {/* footer micro */}
-          <div className="mt-2 flex items-center justify-between">
-            <div className="text-[9px] font-mono tracking-[0.30em] uppercase text-white/28">
-              {view === "pause" ? "PAUSED" : "LIVE"}
-            </div>
-            <div className="text-[9px] font-mono tracking-[0.30em] uppercase text-white/28">
-              {muted ? "MUTE" : "AUDIO"} · {sfxOn ? "SFX" : "SFX OFF"}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // ---------------------------------------------------------------------------
-  // CONFIG (スマホでも “全部見える” を保証：高さ固定 + 中身スクロール)
-  // ---------------------------------------------------------------------------
-  const Config = () => (
-    <div
-      className="absolute inset-0 z-[999] flex items-end md:items-center justify-center p-3"
-      style={{ paddingBottom: safeBottom, paddingTop: safeTop }}
-      onPointerDown={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setConfigOpen(false);
-      }}
-    >
-      <div className="absolute inset-0 bg-black/65 backdrop-blur-2xl" />
-      <div
-        className="relative w-full max-w-[720px] rounded-[26px] border overflow-hidden"
-        style={{
-          borderColor: TOK.line,
-          background: "rgba(0,0,0,0.60)",
-          boxShadow: "0 34px 160px rgba(0,0,0,0.92), inset 0 1px 0 rgba(255,255,255,0.07)",
-          maxHeight: "calc(100dvh - 28px)",
-        }}
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <div className="p-4 border-b" style={{ borderColor: TOK.line2 }}>
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">CONFIG</div>
-              <div className="mt-1 text-[12px] text-white/75">Sync tuning</div>
-            </div>
-            <IconBtn label="close" onDown={() => setConfigOpen(false)}>
-              <span className="text-white/88 text-[16px]">✕</span>
-            </IconBtn>
-          </div>
-        </div>
-
-        <div className="p-4 overflow-y-auto osb-scroll" style={{ maxHeight: "calc(100dvh - 170px)" }}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="rounded-[20px] border border-white/10 bg-white/5 p-3">
-              <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">TRACK</div>
-              <select
-                className="w-full h-11 rounded-[16px] bg-white/5 border border-white/10 text-white/88 px-3 text-[13px] outline-none"
-                value={trackId}
-                onChange={(e) => setTrackSafe(e.target.value)}
-              >
-                {ASSET.tracks.map((t) => (
-                  <option key={t.id} value={t.id} className="bg-black">
-                    {t.title}
-                  </option>
-                ))}
-              </select>
-              <div className="mt-2 text-[10px] tracking-[0.28em] uppercase text-white/40">BPM {currentTrack.bpm}</div>
-            </div>
-
-            <div className="rounded-[20px] border border-white/10 bg-white/5 p-3">
-              <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">DIFFICULTY</div>
-              <Seg
-                value={difficulty}
-                onChange={setDifficulty}
-                options={[
-                  { value: "EASY", label: "EASY" },
-                  { value: "NORMAL", label: "NORMAL" },
-                  { value: "HARD", label: "HARD" },
-                ]}
-              />
-            </div>
-
-            <div className="rounded-[20px] border border-white/10 bg-white/5 p-3">
-              <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">TUNING</div>
-
-              <div className="mb-4">
-                <div className="flex items-center justify-between text-[11px] text-white/60">
-                  <span className="tracking-[0.22em] uppercase">Latency</span>
-                  <span className="tabular-nums text-white/80">{latencyMs} ms</span>
-                </div>
-                <input
-                  type="range"
-                  min={-120}
-                  max={180}
-                  value={latencyMs}
-                  onChange={(e) => setLatencyMs(parseInt(e.target.value, 10))}
-                  className="w-full osb-range"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between text-[11px] text-white/60">
-                  <span className="tracking-[0.22em] uppercase">Speed</span>
-                  <span className="tabular-nums text-white/80">{speed} px/s</span>
-                </div>
-                <input
-                  type="range"
-                  min={720}
-                  max={1240}
-                  value={speed}
-                  onChange={(e) => setSpeed(parseInt(e.target.value, 10))}
-                  className="w-full osb-range"
-                />
-              </div>
-            </div>
-
-            <div className="rounded-[20px] border border-white/10 bg-white/5 p-3">
-              <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">AUDIO</div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  className="h-11 rounded-[16px] border border-white/10 bg-white/5 active:scale-[0.99]"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setMuted((m) => !m);
-                  }}
-                >
-                  <span className="text-[11px] tracking-[0.22em] uppercase text-white/88">{muted ? "MUTE" : "ON"}</span>
-                </button>
-
-                <button
-                  className="h-11 rounded-[16px] border border-white/10 bg-white/5 active:scale-[0.99]"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setSfxOn((v) => !v);
-                  }}
-                >
-                  <span className="text-[11px] tracking-[0.22em] uppercase text-white/88">{sfxOn ? "SFX" : "OFF"}</span>
-                </button>
-
-                <button
-                  className="h-11 rounded-[16px] border border-white/10 bg-white/5 text-white/88 active:scale-[0.99]"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    ensureAudioContext();
-                    const actx = actxRef.current;
-                    if (actx && actx.state === "suspended") actx.resume?.().catch(() => {});
-                    playSfx("perfect", 1.0);
-                    navigator.vibrate?.(6);
-                  }}
-                >
-                  <span className="text-[11px] tracking-[0.22em] uppercase">TEST</span>
-                </button>
-              </div>
-
-              <div className="mt-4">
-                <div className="flex items-center justify-between text-[11px] text-white/60">
-                  <span className="tracking-[0.22em] uppercase">Music</span>
-                  <span className="tabular-nums text-white/80">{Math.round(musicVol * 100)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={musicVol}
-                  onChange={(e) => setMusicVol(parseFloat(e.target.value))}
-                  className="w-full osb-range"
-                />
-              </div>
-
-              <div className="mt-4">
-                <div className="flex items-center justify-between text-[11px] text-white/60">
-                  <span className="tracking-[0.22em] uppercase">SFX</span>
-                  <span className="tabular-nums text-white/80">{Math.round(sfxVol * 100)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={sfxVol}
-                  onChange={(e) => setSfxVol(parseFloat(e.target.value))}
-                  className="w-full osb-range"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <button
-              className="h-11 rounded-[18px] border border-white/12 bg-white/10 text-white/92 active:scale-[0.99]"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setConfigOpen(false);
-              }}
-              style={{ boxShadow: "0 18px 66px rgba(0,0,0,0.70), inset 0 1px 0 rgba(255,255,255,0.07)" }}
-            >
-              <span className="text-[11px] tracking-[0.22em] uppercase">DONE</span>
-            </button>
-
-            <button
-              className="h-11 rounded-[18px] border border-white/10 bg-white/5 text-white/80 active:scale-[0.99]"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                hardReset();
-              }}
-              style={{ boxShadow: "0 18px 60px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.07)" }}
-            >
-              <span className="text-[11px] tracking-[0.22em] uppercase">RESET</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ---------------------------------------------------------------------------
-  // RESULT
-  // ---------------------------------------------------------------------------
-  const Result = () => (
-    <div className="absolute inset-0 z-50 flex items-center justify-center p-4" style={{ paddingBottom: safeBottom, paddingTop: safeTop }}>
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-2xl" />
-      <div
-        className="relative w-full max-w-[560px] rounded-[26px] border p-5"
-        style={{
-          borderColor: TOK.line,
-          background: "rgba(0,0,0,0.58)",
-          boxShadow: `0 36px 170px rgba(0,0,0,0.92), inset 0 1px 0 rgba(255,255,255,0.07), 0 0 90px ${grade.glow}`,
-        }}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">RESULT</div>
-            <div className="mt-1 text-[22px] font-semibold text-white/92">BEAT SYNC</div>
-            <div className="mt-1 text-[11px] tracking-[0.22em] uppercase text-white/50">
-              {currentTrack.title} · {difficulty}
-            </div>
-          </div>
-          <div
-            className="h-12 w-12 rounded-2xl border flex items-center justify-center"
-            style={{
-              borderColor: "rgba(255,255,255,0.14)",
-              background: "rgba(255,255,255,0.05)",
-              boxShadow: `0 0 0 1px rgba(255,255,255,0.06) inset, 0 0 60px ${grade.glow}`,
-            }}
-          >
-            <div className="text-[18px] font-semibold text-white/92">{grade.label}</div>
-          </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          {[
-            ["Perfect", counts.perfect, "rgba(122,226,255,0.22)"],
-            ["Good", counts.good, "rgba(198,164,255,0.20)"],
-            ["Miss", counts.miss, "rgba(255,120,170,0.22)"],
-          ].map(([label, val, glow]) => (
-            <div
-              key={label}
-              className="rounded-[20px] border px-3 py-3"
-              style={{
-                borderColor: "rgba(255,255,255,0.10)",
-                background: "rgba(255,255,255,0.04)",
-                boxShadow: `0 0 0 1px rgba(255,255,255,0.04) inset, 0 0 46px ${glow}`,
-              }}
-            >
-              <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">{label}</div>
-              <div className="mt-1 text-[18px] text-white/92 tabular-nums">{val}</div>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <div className="rounded-[20px] border border-white/10 px-3 py-3" style={{ background: "rgba(255,255,255,0.04)" }}>
-            <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Max Combo</div>
-            <div className="mt-1 text-[18px] text-white/92 tabular-nums">{maxCombo}</div>
-          </div>
-          <div className="rounded-[20px] border border-white/10 px-3 py-3" style={{ background: "rgba(255,255,255,0.04)" }}>
-            <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Accuracy</div>
-            <div className="mt-1 text-[18px] text-white/92 tabular-nums">{accuracy.toFixed(1)}%</div>
-          </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <button
-            className="h-11 rounded-[18px] border border-white/12 bg-white/10 text-white/92 active:scale-[0.99]"
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              restartRun();
-            }}
-            style={{ boxShadow: "0 18px 66px rgba(0,0,0,0.74), inset 0 1px 0 rgba(255,255,255,0.07)" }}
-          >
-            <span className="text-[11px] tracking-[0.22em] uppercase">RESTART</span>
-          </button>
-          <button
-            className="h-11 rounded-[18px] border border-white/10 bg-white/5 text-white/80 active:scale-[0.99]"
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              stopAll();
-            }}
-            style={{ boxShadow: "0 18px 60px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.07)" }}
-          >
-            <span className="text-[11px] tracking-[0.22em] uppercase">BACK</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ---------------------------------------------------------------------------
-  // ROOT
-  // ---------------------------------------------------------------------------
-  return (
-    <div
-      ref={rootRef}
-      className="relative h-full w-full overflow-hidden select-none"
-      style={{
-        background: `radial-gradient(1200px 860px at 50% 0%, ${TOK.bg1}, ${TOK.bg0})`,
-        WebkitTapHighlightColor: "transparent",
-        overscrollBehavior: "none",
-      }}
-    >
-      {/* audio must be always mounted */}
-      <audio ref={audioRef} preload="auto" />
-
-      <div className="absolute inset-0 p-3">
-        {/* motion: gameplay中は弱め（GPUちらつき対策） */}
-        <Frame motion={view !== "play"}>
-          {view === "lobby" && <Lobby />}
-          {(view === "play" || view === "pause") && <Play />}
-          {view === "result" && <Result />}
-          {configOpen && <Config />}
-        </Frame>
-      </div>
-
-      <style>{`
-        /* なるべく軽い演出だけで “高級感” を作る */
-        @keyframes osbAurora {
-          0%   { transform: translate3d(-6px,-5px,0) scale(1.02); }
-          50%  { transform: translate3d(6px,5px,0) scale(1.02); }
-          100% { transform: translate3d(-6px,-5px,0) scale(1.02); }
-        }
-        .osb-aurora { animation: osbAurora 14s ease-in-out infinite; }
-
-        @keyframes osbTitleGlow {
-          0%,100% { filter: drop-shadow(0 0 12px rgba(122,226,255,0.12)); opacity: .92; }
-          50%     { filter: drop-shadow(0 0 24px rgba(198,164,255,0.16)) drop-shadow(0 0 14px rgba(122,226,255,0.10)); opacity: 1; }
-        }
-
-        @keyframes osbJudge {
-          0%   { transform: translateY(12px) scale(.98); opacity: 0; }
-          42%  { transform: translateY(0px)  scale(1.04); opacity: 1; }
-          100% { transform: translateY(-12px) scale(1.00); opacity: 0; }
-        }
-
-        @keyframes osbBurst {
-          0%   { transform: scale(0.88); opacity: 0; }
-          45%  { transform: scale(1.00); opacity: .95; }
-          100% { transform: scale(1.12); opacity: 0; }
-        }
-
-        @keyframes osbSheen {
-          0%   { transform: translateX(-45%); opacity: 0; }
-          35%  { opacity: .65; }
-          100% { transform: translateX(45%); opacity: 0; }
-        }
-        .osb-sheen { animation: osbSheen 420ms ease-out both; }
-
-        .osb-scroll { scrollbar-width: none; }
-        .osb-scroll::-webkit-scrollbar { display: none; }
-
-        /* Premium range styling */
-        input.osb-range {
-          -webkit-appearance: none;
-          appearance: none;
-          height: 28px;
-          background: transparent;
-          outline: none;
-        }
-        input.osb-range::-webkit-slider-runnable-track {
-          height: 10px;
-          border-radius: 999px;
-          background: linear-gradient(90deg, rgba(122,226,255,0.62), rgba(198,164,255,0.56), rgba(255,156,222,0.38));
-          box-shadow: 0 0 0 1px rgba(255,255,255,0.10) inset, 0 14px 60px rgba(0,0,0,0.55);
-        }
-        input.osb-range::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 22px;
-          height: 22px;
-          margin-top: -6px;
-          border-radius: 999px;
-          background: rgba(255,255,255,0.92);
-          box-shadow:
-            0 0 0 1px rgba(255,255,255,0.18) inset,
-            0 18px 60px rgba(0,0,0,0.65),
-            0 0 26px rgba(122,226,255,0.12);
-        }
-        input.osb-range::-moz-range-track {
-          height: 10px;
-          border-radius: 999px;
-          background: linear-gradient(90deg, rgba(122,226,255,0.62), rgba(198,164,255,0.56), rgba(255,156,222,0.38));
-          box-shadow: 0 0 0 1px rgba(255,255,255,0.10) inset, 0 14px 60px rgba(0,0,0,0.55);
-        }
-        input.osb-range::-moz-range-thumb {
-          width: 22px;
-          height: 22px;
-          border-radius: 999px;
-          border: none;
-          background: rgba(255,255,255,0.92);
-          box-shadow:
-            0 0 0 1px rgba(255,255,255,0.18) inset,
-            0 18px 60px rgba(0,0,0,0.65),
-            0 0 26px rgba(122,226,255,0.12);
-        }
-
-        button { -webkit-tap-highlight-color: transparent; }
-      `}</style>
-    </div>
-  );
+/* ---------------- ASSET ---------------- */
+
+const ASSET = {
+  judge: {
+    perfect: "https://files.catbox.moe/xn8cnp.png",
+    good: "https://files.catbox.moe/6taoa0.png",
+    miss: "https://files.catbox.moe/9ywa9l.png",
+  },
+  arrows: {
+    up: "https://files.catbox.moe/zb8qnn.png",
+    right: "https://files.catbox.moe/zg5lru.png",
+    down: "https://files.catbox.moe/v4g9e7.png",
+    left: "https://files.catbox.moe/rmbi75.png",
+  },
+  bunny: {
+    front: "https://files.catbox.moe/cdsn2q.jpg",
+    idle: "https://files.catbox.moe/3revxm.png",
+    runR: "https://files.catbox.moe/p45obb.png",
+    yayR: "https://files.catbox.moe/mkceap.png",
+    dizzy: "https://files.catbox.moe/gxng27.png",
+    flop: "https://files.catbox.moe/dwiqep.png",
+    starR: "https://files.catbox.moe/5zvxy0.png",
+  },
+  tracks: [
+    { id: "overhaul", title: "Overhaul", url: "https://files.catbox.moe/po0sn4.mp3", bpm: 124 },
+    { id: "dawning", title: "The Dawning", url: "https://files.catbox.moe/p17dic.mp3", bpm: 120 },
+    { id: "mirage", title: "mirage", url: "https://files.catbox.moe/ttlaul.mp3", bpm: 132 },
+    { id: "phantasma", title: "廻る世界とファンタズマ", url: "https://files.catbox.moe/ns5til.mp3", bpm: 150 },
+    { id: "immitation", title: "Immitation Girl", url: "https://files.catbox.moe/7lccok.mp3", bpm: 128 },
+    { id: "checkmate", title: "checkmate", url: "https://files.catbox.moe/3dutdo.mp3", bpm: 140 },
+    { id: "lockon", title: "ロックオン", url: "https://files.catbox.moe/o667wd.mp3", bpm: 160 },
+  ],
 };
+
+/* ---------------- CONST ---------------- */
+
+const TRACKS = ASSET.tracks.map((t, i) => ({
+  ...t,
+  artist: "OS_USAGI",
+  cover: ASSET.bunny.idle,
+  accent: i % 2 === 0 ? ["#7df9ff", "#e1b3ff"] : ["#9efcff", "#ff9ad6"],
+}));
+
+const DIFF = {
+  easy: { name: "EASY", density: 0.7 },
+  normal: { name: "NORMAL", density: 1.0 },
+  hard: { name: "HARD", density: 1.25 },
+};
+
+const HIT_WINDOWS = {
+  perfect: 0.06,
+  good: 0.12,
+};
+
+const DEFAULTS = {
+  latencyMs: 80,
+  speed: 1050,
+  musicVol: 0.86,
+  sfxVol: 0.55,
+  sfxOn: true,
+  reduceFlash: true,
+};
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+
+function seededRng(seed) {
+  let t = seed >>> 0;
+  return () => {
+    t += 0x6d2b79f5;
+    let x = t;
+    x = Math.imul(x ^ (x >>> 15), x | 1);
+    x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function formatTime(sec) {
+  const s = Math.max(0, Math.floor(sec));
+  const m = Math.floor(s / 60);
+  const r = String(s % 60).padStart(2, "0");
+  return `${m}:${r}`;
+}
+
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    if (!mq) return;
+    const on = () => setReduced(mq.matches);
+    on();
+    mq.addEventListener?.("change", on);
+    return () => mq.removeEventListener?.("change", on);
+  }, []);
+  return reduced;
+}
+
+/* ---------------- APP ---------------- */
+
+export default function App() {
+  const [view, setView] = useState("lobby"); // lobby | play | result
+  const [trackIndex, setTrackIndex] = useState(0);
+  const [difficulty, setDifficulty] = useState("normal");
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const [latencyMs, setLatencyMs] = useState(DEFAULTS.latencyMs);
+  const [speed, setSpeed] = useState(DEFAULTS.speed);
+  const [musicVol, setMusicVol] = useState(DEFAULTS.musicVol);
+  const [sfxVol, setSfxVol] = useState(DEFAULTS.sfxVol);
+  const [sfxOn, setSfxOn] = useState(DEFAULTS.sfxOn);
+  const [reduceFlash, setReduceFlash] = useState(DEFAULTS.reduceFlash);
+
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  const hasTracks = TRACKS.length > 0;
+  const track = hasTracks ? TRACKS[clamp(trackIndex, 0, TRACKS.length - 1)] : null;
+
+  const accent = useMemo(() => track?.accent || ["#7df9ff", "#e1b3ff"], [track]);
+
+  // audio
+  const musicRef = useRef(null);
+  const beepCtxRef = useRef(null);
+
+  // lobby scroll
+  const railRef = useRef(null);
+
+  // game runtime
+  const notesRef = useRef([]);
+  const statsRef = useRef({
+    perfect: 0,
+    good: 0,
+    miss: 0,
+    combo: 0,
+    maxCombo: 0,
+    score: 0,
+  });
+  const [hud, setHud] = useState({
+    score: 0,
+    combo: 0,
+    remain: 0,
+    status: "READY", // READY | PLAY | PAUSED
+  });
+  const [lastJudge, setLastJudge] = useState(null); // PERFECT | GOOD | MISS
+  const [result, setResult] = useState(null);
+
+  const pressedLaneRef = useRef([0, 0, 0, 0]);
+  const laneFlashRef = useRef([0, 0, 0, 0]);
+  const rafRef = useRef(0);
+  const runningRef = useRef(false);
+  const seedRef = useRef(1);
+
+  // volume
+  useEffect(() => {
+    if (musicRef.current) musicRef.current.volume = clamp(musicVol, 0, 1);
+  }, [musicVol]);
+
+  // inject CSS
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.innerHTML = makeCss(accent, reduceFlash || prefersReducedMotion);
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, [accent, reduceFlash, prefersReducedMotion]);
+
+  // Prevent page scroll jump / keep app-contained
+  useEffect(() => {
+    const prevHtml = document.documentElement.style.overflow;
+    const prevBody = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = prevHtml;
+      document.body.style.overflow = prevBody;
+    };
+  }, []);
+
+  // ------ audio beep (for SFX) ------
+  const playBeep = useCallback(
+    (freq = 880, dur = 0.06) => {
+      if (!sfxOn) return;
+      try {
+        if (!beepCtxRef.current) {
+          beepCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        const ctx = beepCtxRef.current;
+        const t = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(clamp(sfxVol, 0, 1) * 0.42 + 0.0001, t + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + dur + 0.03);
+      } catch {
+        // ignore
+      }
+    },
+    [sfxOn, sfxVol]
+  );
+
+  // ------ chart generator ------
+  const buildChart = useCallback((bpm, seconds, diffKey) => {
+    const diff = DIFF[diffKey] || DIFF.normal;
+    const seed = seedRef.current;
+    const rnd = seededRng(seed);
+    const beat = 60 / (bpm || 120);
+    const density = diff.density;
+
+    const notes = [];
+    let t = 1.2;
+    const end = seconds;
+    while (t < end) {
+      const count = rnd() < 0.18 ? 2 : 1;
+      for (let i = 0; i < count; i++) {
+        const lane = Math.floor(rnd() * 4);
+        const off = (rnd() - 0.5) * beat * 0.18;
+        notes.push({ t: t + off, lane, hit: false, judged: false });
+      }
+      const step = (beat / density) * (rnd() < 0.12 ? 1.5 : 1);
+      t += step;
+    }
+    notes.sort((a, b) => a.t - b.t);
+    return notes;
+  }, []);
+
+  // ------ game stop ------
+  const stopGame = useCallback(() => {
+    runningRef.current = false;
+    cancelAnimationFrame(rafRef.current);
+    const audio = musicRef.current;
+    if (audio) {
+      try {
+        audio.pause();
+      } catch {}
+    }
+  }, []);
+
+  // ------ game end ------
+  const endGame = useCallback(() => {
+    const s = statsRef.current;
+    const total = s.perfect + s.good + s.miss;
+    const acc = total ? (s.perfect + s.good * 0.6) / total : 0;
+    const grade =
+      acc >= 0.95 ? "S" : acc >= 0.9 ? "A" : acc >= 0.8 ? "B" : acc >= 0.7 ? "C" : "D";
+
+    setResult({
+      title: track?.title || "",
+      artist: track?.artist || "",
+      diff: DIFF[difficulty]?.name || "NORMAL",
+      perfect: s.perfect,
+      good: s.good,
+      miss: s.miss,
+      maxCombo: s.maxCombo,
+      score: s.score,
+      accuracy: acc,
+      grade,
+    });
+
+    stopGame();
+    setView("result");
+  }, [difficulty, stopGame, track]);
+
+  // ------ game start (MUST play music on Start tap) ------
+  const startGame = useCallback(async () => {
+    if (!track?.url) return;
+    const audio = musicRef.current;
+    if (!audio) return;
+
+    statsRef.current = {
+      perfect: 0,
+      good: 0,
+      miss: 0,
+      combo: 0,
+      maxCombo: 0,
+      score: 0,
+    };
+    setHud({ score: 0, combo: 0, remain: 0, status: "READY" });
+    setLastJudge(null);
+    setResult(null);
+
+    try {
+      audio.pause();
+    } catch {}
+    audio.src = track.url;
+    audio.load();
+    audio.currentTime = 0;
+    audio.volume = clamp(musicVol, 0, 1);
+
+    setView("play");
+
+    // ensure canplay
+    if (audio.readyState < 2) {
+      await new Promise((res) => {
+        const on = () => res();
+        audio.addEventListener("canplay", on, { once: true });
+      });
+    }
+
+    const duration = Number.isFinite(audio.duration) ? audio.duration : 180;
+    const key = `${track.id || track.title}-${difficulty}`;
+    let h = 2166136261;
+    for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 16777619);
+    seedRef.current = (h >>> 0) || 1;
+    notesRef.current = buildChart(track.bpm || 120, duration, difficulty);
+
+    // IMPORTANT: play now (Start button is user gesture)
+    try {
+      await audio.play();
+      setHud((p) => ({ ...p, status: "PLAY" }));
+    } catch {
+      // In rare cases still blocked: user will start on first lane tap
+      setHud((p) => ({ ...p, status: "READY" }));
+    }
+
+    runningRef.current = true;
+  }, [buildChart, difficulty, musicVol, track]);
+
+  const restart = useCallback(() => {
+    stopGame();
+    startGame();
+  }, [startGame, stopGame]);
+
+  const backToLobby = useCallback(() => {
+    stopGame();
+    setView("lobby");
+  }, [stopGame]);
+
+  // ------ tap & judge ------
+  const ensureAudioPlaying = useCallback(() => {
+    const audio = musicRef.current;
+    if (!audio) return;
+    if (audio.paused) {
+      audio.play().catch(() => {});
+      setHud((h) => ({ ...h, status: "PLAY" }));
+    }
+  }, []);
+
+  const judgeLane = useCallback(
+    (lane) => {
+      const audio = musicRef.current;
+      if (!audio) return;
+
+      ensureAudioPlaying();
+
+      const nowT = audio.currentTime + latencyMs / 1000;
+      const notes = notesRef.current;
+      let bestIdx = -1;
+      let bestDt = Infinity;
+
+      for (let i = 0; i < notes.length; i++) {
+        const n = notes[i];
+        if (n.judged || n.lane !== lane) continue;
+        const dt = n.t - nowT;
+        const adt = Math.abs(dt);
+        if (adt < bestDt) {
+          bestDt = adt;
+          bestIdx = i;
+        }
+        if (n.t > nowT + HIT_WINDOWS.good) break;
+      }
+
+      const s = statsRef.current;
+
+      if (bestIdx >= 0 && bestDt <= HIT_WINDOWS.good) {
+        const n = notes[bestIdx];
+        n.judged = true;
+        n.hit = true;
+
+        if (bestDt <= HIT_WINDOWS.perfect) {
+          s.perfect++;
+          s.combo++;
+          s.score += 1200;
+          setLastJudge("PERFECT");
+          playBeep(1100, 0.05);
+          laneFlashRef.current[lane] = 1;
+        } else {
+          s.good++;
+          s.combo++;
+          s.score += 700;
+          setLastJudge("GOOD");
+          playBeep(880, 0.05);
+          laneFlashRef.current[lane] = 0.6;
+        }
+        s.maxCombo = Math.max(s.maxCombo, s.combo);
+      } else {
+        s.combo = 0;
+        setLastJudge("MISS");
+        if (sfxOn) playBeep(260, 0.04);
+      }
+
+      // fade judge after a moment (so it doesn't get stuck)
+      window.clearTimeout(judgeLane._t);
+      judgeLane._t = window.setTimeout(() => setLastJudge(null), 260);
+
+      setHud((h) => ({ ...h, score: s.score, combo: s.combo }));
+    },
+    [ensureAudioPlaying, latencyMs, playBeep, sfxOn]
+  );
+
+  const onLaneDown = useCallback(
+    (lane) => {
+      pressedLaneRef.current[lane] = 1;
+      judgeLane(lane);
+    },
+    [judgeLane]
+  );
+
+  const onLaneUp = useCallback((lane) => {
+    pressedLaneRef.current[lane] = 0;
+  }, []);
+
+  // ------ main loop (auto miss / remain) ------
+  useEffect(() => {
+    if (view !== "play") return;
+    const audio = musicRef.current;
+    if (!audio) return;
+    runningRef.current = true;
+
+    const travel = 0.9;
+
+    const loop = () => {
+      if (!runningRef.current) return;
+
+      const nowAudio = audio.currentTime;
+      const nowT = nowAudio + latencyMs / 1000;
+      const duration = Number.isFinite(audio.duration) ? audio.duration : 180;
+
+      const s = statsRef.current;
+      const notes = notesRef.current;
+
+      for (let i = 0; i < notes.length; i++) {
+        const n = notes[i];
+        if (n.judged) continue;
+        if (n.t < nowT - HIT_WINDOWS.good) {
+          n.judged = true;
+          n.hit = false;
+          s.miss++;
+          s.combo = 0;
+        } else if (n.t > nowT + travel) break;
+      }
+
+      for (let i = 0; i < 4; i++) {
+        laneFlashRef.current[i] = Math.max(0, laneFlashRef.current[i] - 0.055);
+      }
+
+      const remain = Math.max(0, duration - nowAudio);
+      setHud((h) => ({
+        ...h,
+        remain,
+        score: s.score,
+        combo: s.combo,
+      }));
+
+      if (!audio.paused && nowAudio >= duration - 0.02) {
+        endGame();
+        return;
+      }
+
+      rafRef.current = requestAnimationFrame(loop);
+    };
+
+    rafRef.current = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [endGame, latencyMs, view]);
+
+  // ------ pause ------
+  const togglePause = useCallback(() => {
+    const audio = musicRef.current;
+    if (!audio) return;
+    if (audio.paused) {
+      audio.play().catch(() => {});
+      setHud((h) => ({ ...h, status: "PLAY" }));
+    } else {
+      audio.pause();
+      setHud((h) => ({ ...h, status: "PAUSED" }));
+    }
+  }, []);
+
+  // ESC/back
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      if (settingsOpen) setSettingsOpen(false);
+      else if (view === "play") backToLobby();
+      else if (view === "result") setView("lobby");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [backToLobby, settingsOpen, view]);
+
+  const playMeta = useMemo(
+    () => ({
+      title: track?.title || "",
+      diff: DIFF[difficulty]?.name || "NORMAL",
+      bpm: track?.bpm || 120,
+    }),
+    [difficulty, track]
+  );
+
+  return (
+    <div className="osu-app" data-view={view}>
+      <audio ref={musicRef} src={track?.url || ""} preload="auto" playsInline />
+
+      <header className="osu-topbar">
+        <div className="osu-brand">
+          <div className="osu-bunny" style={{ backgroundImage: `url(${ASSET.bunny.front})` }} />
+          <div className="osu-brandText">
+            <div className="osu-brandTitle">
+              OS_USAGI <span>SYNC</span>
+            </div>
+            <div className="osu-brandSub">BEAT PORTAL / NIGHT SESSION</div>
+          </div>
+        </div>
+        <div className="osu-topRight">
+          {view !== "lobby" && (
+            <button className="osu-iconBtn" onClick={() => (view === "play" ? backToLobby() : setView("lobby"))}>
+              <ArrowLeft size={18} />
+            </button>
+          )}
+          <button className="osu-iconBtn" onClick={() => setSettingsOpen(true)}>
+            <Settings size={18} />
+          </button>
+        </div>
+      </header>
+
+      <main className="osu-main">
+        <div className="osu-bgLayer" />
+
+        {!hasTracks ? (
+          <EmptyTrackHint />
+        ) : (
+          <>
+            {view === "lobby" && (
+              <Lobby
+                track={track}
+                trackIndex={trackIndex}
+                total={TRACKS.length}
+                difficulty={difficulty}
+                setDifficulty={setDifficulty}
+                railRef={railRef}
+                setTrackIndex={setTrackIndex}
+                onPrev={() => setTrackIndex((i) => clamp(i - 1, 0, TRACKS.length - 1))}
+                onNext={() => setTrackIndex((i) => clamp(i + 1, 0, TRACKS.length - 1))}
+                onStart={startGame}
+              />
+            )}
+
+            {view === "play" && (
+              <PlayView
+                musicRef={musicRef}
+                meta={playMeta}
+                speed={speed}
+                hud={hud}
+                notesRef={notesRef}
+                laneFlashRef={laneFlashRef}
+                pressedLaneRef={pressedLaneRef}
+                lastJudge={lastJudge}
+                reduceFlash={reduceFlash || prefersReducedMotion}
+                latencyMs={latencyMs}
+                onLaneDown={onLaneDown}
+                onLaneUp={onLaneUp}
+                onPause={togglePause}
+                onRestart={restart}
+                onEnd={endGame}
+                asset={ASSET}
+              />
+            )}
+
+            {view === "result" && (
+              <ResultView result={result} onRestart={restart} onBack={() => setView("lobby")} asset={ASSET} />
+            )}
+          </>
+        )}
+      </main>
+
+      {settingsOpen && (
+        <SettingsSheet
+          onClose={() => setSettingsOpen(false)}
+          track={track}
+          difficulty={difficulty}
+          setDifficulty={setDifficulty}
+          latencyMs={latencyMs}
+          setLatencyMs={setLatencyMs}
+          speed={speed}
+          setSpeed={setSpeed}
+          musicVol={musicVol}
+          setMusicVol={setMusicVol}
+          sfxVol={sfxVol}
+          setSfxVol={setSfxVol}
+          sfxOn={sfxOn}
+          setSfxOn={setSfxOn}
+          reduceFlash={reduceFlash}
+          setReduceFlash={setReduceFlash}
+          onTestSfx={() => {
+            playBeep(880, 0.05);
+            setTimeout(() => playBeep(1175, 0.05), 140);
+          }}
+          onPreviewMusic={() => {
+            const a = musicRef.current;
+            if (!a) return;
+            try {
+              a.currentTime = Math.min(a.currentTime || 0, 2);
+              a.play().catch(() => {});
+              setTimeout(() => {
+                try {
+                  a.pause();
+                } catch {}
+              }, 2200);
+            } catch {}
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ------------ sub components ------------ */
+
+function Lobby({ track, trackIndex, total, difficulty, setDifficulty, railRef, setTrackIndex, onPrev, onNext, onStart }) {
+  return (
+    <section className="osu-lobby">
+      <div className="osu-card osu-lobbyCard">
+        <div className="osu-lobbyScroll">
+          <div className="osu-lobbyHead">
+            <div className="osu-lobbyCaps">
+              OS_USAGI <span>BEAT SYNC</span>
+            </div>
+            <div className="osu-lobbyTitle">{track.title}</div>
+            <div className="osu-lobbyMeta">
+              <span className="pill">{track.artist || "OS_USAGI"}</span>
+              <span className="dot" />
+              <span className="pill">{DIFF[difficulty]?.name || "NORMAL"}</span>
+              <span className="dot" />
+              <span className="pill">BPM {track.bpm || 120}</span>
+            </div>
+          </div>
+
+          <div className="osu-portalRow">
+            <div className="osu-portalCopy">
+              <div className="osu-portalLabel">PORTAL</div>
+              <div className="osu-portalTitle">
+                B<span>E</span>A<span>T</span>
+                <br />
+                SYNC
+              </div>
+              <div className="osu-portalSub">tap pads · connect · keep the signal alive</div>
+            </div>
+
+            <div className="osu-portalStatus">
+              <div className="osu-statusBadge">
+                STATUS <span>READY</span>
+              </div>
+              <div className="osu-statusBadge">
+                SPD <span>—</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="osu-trackStrip">
+            <div className="osu-stripHead">
+              <span>TRACK</span>
+              <span>SWIPE</span>
+            </div>
+
+            <div className="osu-stripRow">
+              <button className="osu-arrowBtn" onClick={onPrev} aria-label="prev">
+                <ChevronLeft size={16} />
+              </button>
+
+              <div className="osu-trackRail" ref={railRef}>
+                {TRACKS.map((t, i) => (
+                  <button
+                    key={t.id || `${t.title}-${i}`}
+                    className={`osu-trackChip ${i === trackIndex ? "active" : ""}`}
+                    onClick={() => setTrackIndex(i)}
+                    type="button"
+                  >
+                    <div className="osu-trackTitle">{t.title}</div>
+                    <div className="osu-trackSub">
+                      <span>{t.artist || "OS_USAGI"}</span>
+                      <span className="sep">•</span>
+                      <span>BPM {t.bpm || 120}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <button className="osu-arrowBtn" onClick={onNext} aria-label="next">
+                <ChevronRight size={16} />
+              </button>
+            </div>
+
+            <div className="osu-trackDots">
+              {Array.from({ length: total }).map((_, i) => (
+                <span key={i} className={`osu-dotSmall ${i === trackIndex ? "on" : ""}`} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Sticky footer (Start always visible) */}
+        <div className="osu-lobbySticky">
+          <div className="seg">
+            {["easy", "normal", "hard"].map((k) => (
+              <button
+                key={k}
+                className={`segBtn ${difficulty === k ? "active" : ""}`}
+                onClick={() => setDifficulty(k)}
+                type="button"
+              >
+                {DIFF[k].name}
+              </button>
+            ))}
+          </div>
+
+          <button className="startBtn" onClick={onStart} type="button">
+            <Play size={18} />
+            START
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PlayView({
+  musicRef,
+  meta,
+  speed,
+  hud,
+  notesRef,
+  laneFlashRef,
+  pressedLaneRef,
+  lastJudge,
+  reduceFlash,
+  latencyMs,
+  onLaneDown,
+  onLaneUp,
+  onPause,
+  onRestart,
+  onEnd,
+  asset,
+}) {
+  const lanes = 4;
+  const [t, setT] = useState(0);
+
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      const a = musicRef.current;
+      setT(a ? a.currentTime : 0);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [musicRef]);
+
+  const nowT = t + latencyMs / 1000;
+  const travelSec = 0.9;
+  const spawnY = -120;
+  const hitY = 0;
+  const notes = notesRef.current;
+
+  const judgeImg =
+    lastJudge === "PERFECT" ? asset.judge.perfect : lastJudge === "GOOD" ? asset.judge.good : lastJudge === "MISS" ? asset.judge.miss : null;
+
+  const laneDirs = ["left", "down", "up", "right"];
+  const arrowMap = {
+    left: asset.arrows.left,
+    down: asset.arrows.down,
+    up: asset.arrows.up,
+    right: asset.arrows.right,
+  };
+
+  return (
+    <section className="osu-play">
+      <div className="osu-card osu-playCard">
+        <div className="osu-playHead">
+          <div>
+            <div className="osu-playTitle">{meta.title}</div>
+            <div className="osu-playMeta">
+              <span className="pill">{meta.diff}</span>
+              <span className="dot" />
+              <span className="pill">BPM {meta.bpm}</span>
+            </div>
+          </div>
+          <div className="osu-playStats">
+            <div className="osu-hudCol">
+              <div className="osu-hudLabel">SCORE</div>
+              <div className="osu-hudValue">{Math.floor(hud.score || 0).toLocaleString()}</div>
+            </div>
+            <div className="osu-hudCol">
+              <div className="osu-hudLabel">COMBO</div>
+              <div className="osu-hudValue">{hud.combo || 0}</div>
+            </div>
+            <div className="osu-hudCol">
+              <div className="osu-hudLabel">REMAIN</div>
+              <div className="osu-hudValue">{formatTime(hud.remain || 0)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className={`osu-laneStage ${reduceFlash ? "reduceFlash" : ""}`}>
+          <div className="osu-laneLines">
+            {Array.from({ length: lanes + 1 }).map((_, i) => (
+              <div key={i} className="osu-laneLine" style={{ left: `${(i / lanes) * 100}%` }} />
+            ))}
+          </div>
+
+          <div className="osu-noteLayer">
+            {notes.slice(0, 500).map((n, idx) => {
+              const dt = n.t - nowT;
+              const visible = dt < travelSec && dt > -0.25;
+              if (!visible) return null;
+              const y = lerp(hitY, spawnY, clamp(dt / travelSec, 0, 1));
+              const x = ((n.lane + 0.5) / lanes) * 100;
+              const alpha = clamp(1 - Math.abs(dt) * 1.8, 0, 1);
+              return (
+                <div
+                  key={`${idx}-${n.t}`}
+                  className={`osu-note ${n.hit ? "hit" : ""}`}
+                  style={{
+                    transform: `translate3d(${x}%, ${y}px, 0)`,
+                    opacity: alpha,
+                  }}
+                />
+              );
+            })}
+          </div>
+
+          <div className="osu-hitLine" />
+
+          <div className="osu-bunnyOverlay">
+            <img src={ASSET.bunny.idle} alt="bunny" className="osu-bunnyIdle" />
+          </div>
+
+          <div className="osu-tapHint">
+            <span className="osu-tapPill">tap lanes to sync</span>
+          </div>
+
+          <div className={`osu-judgeImgWrap ${lastJudge ? "on" : ""}`}>
+            {judgeImg && <img src={judgeImg} alt={lastJudge || "judge"} className="osu-judgeImg" />}
+          </div>
+        </div>
+
+        <div className="osu-touchBar">
+          {laneDirs.map((dir, lane) => {
+            const pressed = pressedLaneRef.current[lane] > 0;
+            const flash = laneFlashRef.current[lane];
+            return (
+              <button
+                key={lane}
+                className={`osu-touchLane ${pressed ? "pressed" : ""}`}
+                style={{ "--flash": flash }}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.setPointerCapture?.(e.pointerId);
+                  onLaneDown(lane);
+                }}
+                onPointerUp={(e) => {
+                  e.preventDefault();
+                  onLaneUp(lane);
+                }}
+                onPointerCancel={() => onLaneUp(lane)}
+                type="button"
+              >
+                <span className="osu-touchGlow" />
+                <img src={arrowMap[dir]} alt={dir} className="osu-touchIcon" />
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="osu-playSpeed">SPEED {speed} px/s</div>
+
+        <div className="osu-playActions">
+          <button className="ghostBtn" onClick={onPause} type="button">
+            <Pause size={18} />
+            {hud.status === "PAUSED" ? "RESUME" : "PAUSE"}
+          </button>
+          <button className="ghostBtn" onClick={onRestart} type="button">
+            <RotateCcw size={18} />
+            RESTART
+          </button>
+          <button className="ghostBtn danger" onClick={onEnd} type="button">
+            <X size={18} />
+            END
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ResultView({ result, onRestart, onBack, asset }) {
+  const accPct = Math.round((result?.accuracy || 0) * 1000) / 10;
+
+  let gradeImg = asset.judge.miss;
+  if (result?.accuracy >= 0.8) gradeImg = asset.judge.good;
+  if (result?.accuracy >= 0.93) gradeImg = asset.judge.perfect;
+
+  return (
+    <section className="osu-result">
+      <div className="osu-card osu-resultCard">
+        <div className="osu-resultHead">
+          <div className="osu-resultLabel">RESULT</div>
+          <div className="osu-resultTitle">{result?.title || "NEON SYNC"}</div>
+          <div className="osu-resultMeta">
+            <span className="pill">{result?.diff || "NORMAL"}</span>
+            <span className="dot" />
+            <span className="pill">{result?.artist || "OS_USAGI"}</span>
+          </div>
+
+          <div className="osu-grade">
+            <img src={gradeImg} alt={result?.grade || "D"} className="osu-gradeImg" />
+          </div>
+        </div>
+
+        <div className="osu-statGrid">
+          <Stat label="PERFECT" value={result?.perfect ?? 0} />
+          <Stat label="GOOD" value={result?.good ?? 0} />
+          <Stat label="MISS" value={result?.miss ?? 0} />
+          <Stat label="MAX COMBO" value={result?.maxCombo ?? 0} />
+          <Stat label="ACCURACY" value={`${accPct}%`} />
+          <Stat label="SCORE" value={(result?.score ?? 0).toLocaleString()} />
+        </div>
+
+        <div className="osu-resultActions">
+          <button className="startBtn" onClick={onRestart} type="button">
+            <RotateCcw size={18} />
+            RESTART
+          </button>
+          <button className="ghostBtn" onClick={onBack} type="button">
+            <ArrowLeft size={18} />
+            BACK
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Stat({ label, value }) {
+  return (
+    <div className="osu-statCard">
+      <div className="osu-statLabel">{label}</div>
+      <div className="osu-statValue">{value}</div>
+    </div>
+  );
+}
+
+function EmptyTrackHint() {
+  return (
+    <section className="osu-empty">
+      <div className="osu-card osu-emptyCard">
+        <div className="osu-emptyTitle">TRACKS not set</div>
+        <div className="osu-emptyBody">ASSET.tracks に BGM を登録してください。</div>
+      </div>
+    </section>
+  );
+}
+
+function SettingsSheet({
+  onClose,
+  track,
+  difficulty,
+  setDifficulty,
+  latencyMs,
+  setLatencyMs,
+  speed,
+  setSpeed,
+  musicVol,
+  setMusicVol,
+  sfxVol,
+  setSfxVol,
+  sfxOn,
+  setSfxOn,
+  reduceFlash,
+  setReduceFlash,
+  onTestSfx,
+  onPreviewMusic,
+}) {
+  return (
+    <div className="osu-sheetWrap" role="dialog" aria-modal="true">
+      <div className="osu-sheetBackdrop" onClick={onClose} />
+      <div className="osu-sheet" onPointerDown={(e) => e.stopPropagation()}>
+        <div className="osu-sheetHead">
+          <div>
+            <div className="osu-sheetTitle">Sync tuning</div>
+            <div className="osu-sheetSub">{track?.title || "—"}</div>
+          </div>
+          <button className="osu-iconBtn" onClick={onClose} type="button">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="osu-sheetBody">
+          <div className="group">
+            <div className="groupTitle">DIFFICULTY</div>
+            <div className="seg">
+              {["easy", "normal", "hard"].map((k) => (
+                <button
+                  key={k}
+                  className={`segBtn ${difficulty === k ? "active" : ""}`}
+                  onClick={() => setDifficulty(k)}
+                  type="button"
+                >
+                  {DIFF[k].name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="group">
+            <div className="groupTitle">TUNING</div>
+
+            <Row label="LATENCY" value={`${latencyMs} ms`} hint="タップタイミング補正">
+              <input type="range" min={-120} max={240} value={latencyMs} onChange={(e) => setLatencyMs(Number(e.target.value))} />
+            </Row>
+
+            <Row label="SPEED" value={`${speed} px/s`} hint="ノーツの落下速度">
+              <input type="range" min={750} max={1400} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} />
+            </Row>
+          </div>
+
+          <div className="group">
+            <div className="groupTitle">AUDIO</div>
+
+            <div className="btnRow">
+              <button className={`chip ${sfxOn ? "on" : ""}`} onClick={() => setSfxOn((v) => !v)} type="button">
+                SFX {sfxOn ? "ON" : "OFF"}
+              </button>
+              <button className="chip" onClick={onTestSfx} type="button">
+                TEST SFX
+              </button>
+              <button className="chip on" onClick={onPreviewMusic} type="button">
+                PREVIEW MUSIC
+              </button>
+            </div>
+
+            <Row label="MUSIC" value={`${Math.round(musicVol * 100)}%`}>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(musicVol * 100)}
+                onChange={(e) => setMusicVol(Number(e.target.value) / 100)}
+              />
+            </Row>
+
+            <Row label="SFX" value={`${Math.round(sfxVol * 100)}%`}>
+              <input type="range" min={0} max={100} value={Math.round(sfxVol * 100)} onChange={(e) => setSfxVol(Number(e.target.value) / 100)} />
+            </Row>
+          </div>
+
+          <div className="group">
+            <div className="groupTitle">VISUAL</div>
+            <div className="btnRow">
+              <button className={`chip ${reduceFlash ? "on" : ""}`} onClick={() => setReduceFlash((v) => !v)} type="button">
+                Reduce flash
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="osu-sheetFoot">
+          <button className="startBtn" onClick={onClose} type="button">
+            DONE
+          </button>
+          <button
+            className="ghostBtn"
+            onClick={() => {
+              setLatencyMs(DEFAULTS.latencyMs);
+              setSpeed(DEFAULTS.speed);
+              setMusicVol(DEFAULTS.musicVol);
+              setSfxVol(DEFAULTS.sfxVol);
+              setSfxOn(DEFAULTS.sfxOn);
+              setReduceFlash(DEFAULTS.reduceFlash);
+            }}
+            type="button"
+          >
+            RESET
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value, hint, children }) {
+  return (
+    <div className="row">
+      <div className="rowHead">
+        <div className="rowLabel">{label}</div>
+        <div className="rowValue">{value}</div>
+      </div>
+      {hint && <div className="rowHint">{hint}</div>}
+      <div className="rowBody">{children}</div>
+    </div>
+  );
+}
+
+/* ------------ CSS ------------ */
+
+function makeCss(accent, reduceFlash) {
+  const [a0, a1] = accent;
+  const motionOff = reduceFlash ? "paused" : "running";
+
+  return `
+  :root{
+    --a0:${a0};
+    --a1:${a1};
+    --bg:#05060a;
+    --card:rgba(18,19,28,.94);
+    --border:rgba(255,255,255,.08);
+    --text:rgba(255,255,255,.94);
+    --safeT:env(safe-area-inset-top);
+    --safeB:env(safe-area-inset-bottom);
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;height:100%;
+    background: radial-gradient(1200px 680px at 10% -10%, rgba(102,227,255,.18), transparent 60%),
+               radial-gradient(1000px 620px at 90% -10%, rgba(192,132,255,.20), transparent 60%),
+               #02030a;
+    color:var(--text);
+    font-family:system-ui,-apple-system,"SF Pro Text","Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overscroll-behavior: none;
+  }
+
+  .osu-app{height:100vh; display:flex; flex-direction:column;}
+  .osu-topbar{
+    position:relative; z-index:20;
+    padding: calc(10px + var(--safeT)) 16px 10px;
+    display:flex; align-items:center; justify-content:space-between;
+    backdrop-filter: blur(12px);
+    background: linear-gradient(to bottom, rgba(5,6,10,.96), rgba(5,6,10,.60));
+    border-bottom:1px solid rgba(255,255,255,.10);
+    flex: 0 0 auto;
+  }
+  .osu-brand{display:flex;align-items:center;gap:10px;min-width:0;}
+  .osu-bunny{
+    width:32px;height:32px;border-radius:12px;
+    background-size:cover;background-position:center;
+    box-shadow:0 18px 55px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.12) inset;
+    overflow:hidden; position:relative;
+  }
+  .osu-bunny::after{
+    content:""; position:absolute; inset:0; border-radius:inherit;
+    background: radial-gradient(circle at 50% 40%, rgba(255,255,255,.26), transparent 60%);
+    opacity:.85;
+    animation: osu-breathe 7s ease-in-out infinite;
+    animation-play-state:${motionOff};
+  }
+  @keyframes osu-breathe{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.06);opacity:1}}
+  .osu-brandText{min-width:0;}
+  .osu-brandTitle{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:rgba(255,255,255,.78)}
+  .osu-brandTitle span{color:rgba(255,255,255,.98)}
+  .osu-brandSub{font-size:11px;color:rgba(255,255,255,.46);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .osu-topRight{display:flex;gap:8px;}
+  .osu-iconBtn{
+    width:36px;height:36px;border-radius:14px;
+    border:1px solid rgba(255,255,255,.12);
+    background: rgba(15,16,26,.92);
+    color: rgba(255,255,255,.88);
+    display:grid; place-items:center;
+    box-shadow: 0 18px 60px rgba(0,0,0,.55);
+  }
+
+  .osu-main{
+    position:relative;
+    flex: 1 1 auto;
+    padding: 14px 16px calc(16px + var(--safeB));
+    overflow: hidden;
+  }
+  .osu-bgLayer{
+    position:absolute; inset:0;
+    border-radius: 28px;
+    background:
+      radial-gradient(900px 460px at 20% 0%, rgba(102,227,255,.20), transparent 60%),
+      radial-gradient(900px 460px at 90% 0%, rgba(192,132,255,.20), transparent 60%),
+      radial-gradient(1400px 960px at 50% 100%, rgba(0,0,0,.85), transparent 65%);
+    opacity:.6; pointer-events:none;
+  }
+
+  .osu-lobby,.osu-play,.osu-result,.osu-empty{
+    position:relative; z-index:1;
+    height: 100%;
+    display:flex; justify-content:center;
+  }
+
+  .osu-card{
+    width:min(980px,100%);
+    height: 100%;
+    max-height: 100%;
+    border-radius:28px;
+    background:
+      radial-gradient(circle at 0% 0%, rgba(255,255,255,.06), transparent 55%),
+      radial-gradient(circle at 100% 0%, rgba(255,255,255,.06), transparent 55%),
+      rgba(18,19,28,.94);
+    border:1px solid rgba(255,255,255,.08);
+    box-shadow: 0 32px 120px rgba(0,0,0,.75);
+    position:relative;
+    overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .osu-card::before{
+    content:""; position:absolute; inset:-1px;
+    background:
+      radial-gradient(800px 280px at 15% 0%, rgba(102,227,255,.18), transparent 60%),
+      radial-gradient(800px 280px at 85% 0%, rgba(192,132,255,.18), transparent 60%);
+    opacity:.75; pointer-events:none;
+  }
+
+  .pill{
+    padding:6px 10px;border-radius:999px;
+    background: rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.12);
+    font-size:11px; letter-spacing:.18em;
+    text-transform:uppercase;
+    color: rgba(255,255,255,.86);
+  }
+  .dot{width:4px;height:4px;border-radius:999px;background:rgba(255,255,255,.30);}
+
+  /* LOBBY */
+  .osu-lobbyCard{padding:0;}
+  .osu-lobbyScroll{
+    position:relative; z-index:1;
+    padding: 16px 14px 10px;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .osu-lobbyHead{padding:6px 4px 10px;}
+  .osu-lobbyCaps{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:rgba(255,255,255,.60)}
+  .osu-lobbyCaps span{color:rgba(255,255,255,.90)}
+  .osu-lobbyTitle{font-size:24px;font-weight:900;margin-top:6px;}
+  .osu-lobbyMeta{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;}
+  .osu-portalRow{display:flex;justify-content:space-between;gap:12px;padding:2px 4px 12px;}
+  .osu-portalLabel{font-size:11px;letter-spacing:.30em;text-transform:uppercase;color:rgba(255,255,255,.55)}
+  .osu-portalTitle{margin-top:4px;font-size:22px;font-weight:900;letter-spacing:.32em}
+  .osu-portalTitle span{opacity:.6}
+  .osu-portalSub{margin-top:6px;font-size:11px;color:rgba(255,255,255,.48);letter-spacing:.16em;text-transform:uppercase}
+  .osu-portalStatus{display:flex;flex-direction:column;gap:6px}
+  .osu-statusBadge{
+    padding:7px 10px;border-radius:999px;
+    border:1px solid rgba(255,255,255,.16);
+    background: rgba(10,11,20,.8);
+    font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.65);
+    display:flex;justify-content:space-between;gap:10px;
+  }
+  .osu-statusBadge span{color:rgba(255,255,255,.90)}
+
+  .osu-trackStrip{margin-top:8px;}
+  .osu-stripHead{padding:2px 4px 6px;display:flex;justify-content:space-between;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.48)}
+  .osu-stripRow{display:flex;align-items:center;gap:8px;}
+  .osu-arrowBtn{
+    width:36px;height:36px;border-radius:14px;
+    border:1px solid rgba(255,255,255,.12);
+    background: rgba(10,11,18,.9);
+    color: rgba(255,255,255,.88);
+    display:grid;place-items:center;
+    flex: 0 0 auto;
+  }
+
+  .osu-trackRail{
+    flex:1 1 auto;
+    display:flex;gap:10px;
+    overflow-x:auto;
+    scroll-snap-type:x mandatory;
+    scroll-snap-stop: always;
+    -webkit-overflow-scrolling: touch;
+    padding: 4px 2px 8px;
+    scrollbar-width:none;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+  }
+  .osu-trackRail::-webkit-scrollbar{display:none}
+
+  .osu-trackChip{
+    scroll-snap-align:center;
+    flex:0 0 min(280px, 72vw);
+    border-radius:20px;
+    padding:10px 12px;
+    background: rgba(0,0,0,.28);
+    border:1px solid rgba(255,255,255,.12);
+    text-align:left;color:var(--text);
+    touch-action: pan-x;
+  }
+  .osu-trackChip.active{
+    background: linear-gradient(135deg, rgba(102,227,255,.24), rgba(192,132,255,.20));
+    box-shadow: 0 18px 60px rgba(0,0,0,.55);
+  }
+  .osu-trackTitle{font-weight:900;font-size:14px;}
+  .osu-trackSub{margin-top:6px;font-size:11px;color:rgba(255,255,255,.60);display:flex;gap:8px;align-items:center;}
+  .sep{opacity:.7;}
+  .osu-trackDots{display:flex;justify-content:center;gap:6px;padding-top:4px;}
+  .osu-dotSmall{width:5px;height:5px;border-radius:999px;background:rgba(255,255,255,.18);}
+  .osu-dotSmall.on{width:16px;background:linear-gradient(90deg, rgba(102,227,255,.80), rgba(192,132,255,.80));box-shadow:0 10px 30px rgba(0,0,0,.45);}
+
+  .osu-lobbySticky{
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    padding: 12px 14px 14px;
+    border-top: 1px solid rgba(255,255,255,.10);
+    background: linear-gradient(to top, rgba(18,19,28,.96), rgba(18,19,28,.50));
+    display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;
+  }
+  .seg{
+    display:flex;gap:4px;padding:4px;border-radius:999px;
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.12);
+  }
+  .segBtn{
+    border-radius:999px;border:0;padding:8px 10px;
+    background:transparent;
+    font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+    color:rgba(255,255,255,.58);
+  }
+  .segBtn.active{
+    background: linear-gradient(135deg, rgba(102,227,255,.24), rgba(192,132,255,.22));
+    color:rgba(255,255,255,.96);
+    box-shadow: 0 14px 40px rgba(0,0,0,.45);
+  }
+  .startBtn{
+    border-radius:18px;
+    border:1px solid rgba(255,255,255,.18);
+    background: linear-gradient(135deg, rgba(102,227,255,.86), rgba(192,132,255,.86));
+    color:#020308;
+    font-weight:900;
+    letter-spacing:.22em;text-transform:uppercase;
+    padding:12px 18px;
+    display:flex;align-items:center;gap:10px;
+    box-shadow: 0 26px 80px rgba(0,0,0,.75);
+  }
+
+  /* PLAY */
+  .osu-playCard{padding: 16px 14px 14px; gap: 10px;}
+  .osu-playHead{
+    position:relative; z-index:1;
+    display:flex; justify-content:space-between; gap:10px;
+    padding: 4px 4px 0;
+    flex: 0 0 auto;
+  }
+  .osu-playTitle{font-size:20px;font-weight:900;}
+  .osu-playMeta{margin-top:6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .osu-playStats{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;justify-content:flex-end;}
+  .osu-hudCol{
+    min-width:96px;
+    padding:8px 10px;border-radius:18px;
+    background: rgba(0,0,0,.30);
+    border:1px solid rgba(255,255,255,.12);
+    text-align:right;
+    box-shadow:0 18px 55px rgba(0,0,0,.55);
+  }
+  .osu-hudLabel{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.60);}
+  .osu-hudValue{margin-top:4px;font-size:16px;font-weight:900;}
+
+  .osu-laneStage{
+    position:relative;
+    flex: 1 1 auto;
+    border-radius:24px;
+    background: rgba(0,0,0,.36);
+    border:1px solid rgba(255,255,255,.16);
+    box-shadow: 0 26px 90px rgba(0,0,0,.70);
+    overflow:hidden;
+    min-height: 280px;
+  }
+  .osu-laneStage.reduceFlash *{animation:none !important;}
+  .osu-laneLines{position:absolute; inset: 10px 12px 52px; pointer-events:none;}
+  .osu-laneLine{position:absolute;top:0;bottom:0;width:1px;background:linear-gradient(to bottom, transparent, rgba(255,255,255,.26), transparent);opacity:.7;}
+
+  .osu-noteLayer{
+    position:relative;
+    height: 100%;
+    padding: 16px 12px 52px;
+    overflow:hidden;
+  }
+  .osu-note{
+    position:absolute; left:0; top: 48%;
+    width:40px;height:9px;border-radius:999px;margin-left:-20px;
+    background: linear-gradient(90deg, rgba(102,227,255,.96), rgba(192,132,255,.96));
+    box-shadow: 0 12px 40px rgba(0,0,0,.45), 0 0 18px rgba(255,255,255,.18);
+    will-change: transform, opacity;
+  }
+  .osu-note.hit{opacity:.2; filter: blur(1px);}
+
+  .osu-hitLine{
+    position:absolute; left:12px; right:12px; bottom:52px;
+    height:1px;background:linear-gradient(90deg, transparent, rgba(255,255,255,.32), transparent);
+    box-shadow: 0 0 26px rgba(255,255,255,.18);
+  }
+  .osu-bunnyOverlay{position:absolute; right:12px; bottom:52px; pointer-events:none;}
+  .osu-bunnyIdle{
+    width:64px;height:64px;border-radius:24px;object-fit:cover;opacity:.9;
+    box-shadow: 0 18px 60px rgba(0,0,0,.85);
+  }
+  .osu-tapHint{position:absolute;left:0;right:0;bottom:74px;display:flex;justify-content:center;pointer-events:none;}
+  .osu-tapPill{
+    padding:8px 14px;border-radius:999px;
+    background: rgba(2,3,10,.80);
+    border:1px solid rgba(255,255,255,.18);
+    font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.86);
+    box-shadow: 0 18px 60px rgba(0,0,0,.65);
+    animation: osu-float 3s ease-in-out infinite;
+    animation-play-state:${motionOff};
+  }
+  @keyframes osu-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+
+  .osu-judgeImgWrap{
+    position:absolute; left:0; right:0; top: 14px;
+    text-align:center;
+    opacity:0;
+    transform: translateY(-6px);
+    transition: opacity .16s ease, transform .16s ease;
+    pointer-events:none;
+  }
+  .osu-judgeImgWrap.on{opacity:1; transform:translateY(0);}
+  .osu-judgeImg{height: 44px; object-fit: contain; filter: drop-shadow(0 18px 60px rgba(0,0,0,.80));}
+
+  .osu-touchBar{
+    flex: 0 0 auto;
+    display:grid; grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 8px;
+  }
+  .osu-touchLane{
+    position:relative;height:68px;border-radius:22px;
+    border:1px solid rgba(255,255,255,.14);
+    background: rgba(0,0,0,.40);
+    overflow:hidden;
+    touch-action: manipulation;
+    box-shadow: 0 24px 80px rgba(0,0,0,.72);
+  }
+  .osu-touchGlow{
+    position:absolute; inset:-1px;
+    background:
+      radial-gradient(240px 90px at 50% 110%, rgba(255,255,255,.25), transparent 62%),
+      radial-gradient(260px 140px at 50% 115%, rgba(102,227,255,.30), transparent 64%),
+      radial-gradient(260px 140px at 50% 115%, rgba(192,132,255,.26), transparent 64%);
+    opacity: calc(.16 + .52 * var(--flash, 0));
+    transition: opacity .18s ease;
+  }
+  .osu-touchLane.pressed .osu-touchGlow{opacity:.92;}
+  .osu-touchIcon{
+    position:relative; z-index:1;
+    width: 28px; height: 28px; object-fit: contain;
+    filter: drop-shadow(0 8px 26px rgba(0,0,0,.85));
+  }
+
+  .osu-playSpeed{
+    flex:0 0 auto;
+    font-size:11px;color:rgba(255,255,255,.56);
+    letter-spacing:.20em;text-transform:uppercase;
+    text-align:right;padding: 0 4px;
+  }
+  .osu-playActions{
+    flex:0 0 auto;
+    display:flex;gap:8px;flex-wrap:wrap;justify-content:center;
+  }
+  .ghostBtn{
+    border-radius:16px;border:1px solid rgba(255,255,255,.14);
+    background: rgba(0,0,0,.42);
+    padding:10px 12px;
+    color: rgba(255,255,255,.86);
+    display:flex;align-items:center;gap:8px;
+    font-size:11px;letter-spacing:.20em;text-transform:uppercase;
+    box-shadow: 0 22px 70px rgba(0,0,0,.70);
+  }
+
+  /* RESULT */
+  .osu-resultCard{padding: 16px 14px 14px; overflow:auto; -webkit-overflow-scrolling: touch;}
+  .osu-resultHead{position:relative; z-index:1; padding: 6px 4px 10px;}
+  .osu-resultLabel{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:rgba(255,255,255,.58);}
+  .osu-resultTitle{margin-top:6px;font-size:24px;font-weight:900;}
+  .osu-resultMeta{margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .osu-grade{
+    position:absolute; right:14px; top: 16px;
+    width:64px;height:64px;border-radius:22px;
+    display:grid;place-items:center;
+    background: rgba(0,0,0,.42);
+    border:1px solid rgba(255,255,255,.18);
+    box-shadow: 0 26px 90px rgba(0,0,0,.75);
+  }
+  .osu-gradeImg{width:48px;height:48px;object-fit:contain;}
+  .osu-statGrid{
+    position:relative; z-index:1;
+    display:grid; grid-template-columns: repeat(2, minmax(0,1fr));
+    gap:10px; margin-top: 8px;
+  }
+  @media (min-width:720px){.osu-statGrid{grid-template-columns: repeat(3, minmax(0,1fr));}}
+  .osu-statCard{
+    border-radius:20px;
+    background: rgba(0,0,0,.32);
+    border:1px solid rgba(255,255,255,.16);
+    box-shadow: 0 22px 70px rgba(0,0,0,.70);
+    padding: 10px 10px;
+  }
+  .osu-statLabel{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.60);}
+  .osu-statValue{margin-top:6px;font-size:20px;font-weight:900;}
+  .osu-resultActions{margin-top:12px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+
+  /* SETTINGS SHEET */
+  .osu-sheetWrap{position:fixed; inset:0; z-index:40; display:flex; justify-content:center; align-items:flex-end;}
+  .osu-sheetBackdrop{position:absolute; inset:0; background: rgba(0,0,0,.60);}
+  .osu-sheet{
+    position:relative;
+    width:min(960px, 100%);
+    max-height: calc(100vh - 14px);
+    border-radius:24px 24px 0 0;
+    background: rgba(3,4,10,.96);
+    border:1px solid rgba(255,255,255,.16);
+    box-shadow: 0 -36px 120px rgba(0,0,0,.85);
+    overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .osu-sheetHead{padding:12px 16px 10px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,.10);}
+  .osu-sheetTitle{font-size:13px;letter-spacing:.22em;text-transform:uppercase;font-weight:900;}
+  .osu-sheetSub{margin-top:4px;font-size:12px;color:rgba(255,255,255,.60);}
+  .osu-sheetBody{
+    padding:10px 16px 12px;
+    overflow-y:auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  .group{margin-bottom:12px;}
+  .groupTitle{font-size:11px;letter-spacing:.30em;text-transform:uppercase;color:rgba(255,255,255,.52); padding:6px 2px 8px;}
+  .row{
+    border-radius:20px;
+    background: rgba(255,255,255,.03);
+    border:1px solid rgba(255,255,255,.14);
+    padding:10px 12px;
+    box-shadow: 0 20px 70px rgba(0,0,0,.70);
+    margin-bottom: 8px;
+  }
+  .rowHead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
+  .rowLabel{font-size:11px;letter-spacing:.20em;text-transform:uppercase;font-weight:800;}
+  .rowValue{font-size:12px;font-weight:800;}
+  .rowHint{margin-top:4px;font-size:11px;color:rgba(255,255,255,.52);}
+  .rowBody{margin-top:8px;}
+  .row input[type="range"]{width:100%; -webkit-appearance:none; height:26px; background: transparent;}
+  .row input[type="range"]::-webkit-slider-runnable-track{
+    height:7px;border-radius:999px;
+    background: linear-gradient(90deg, rgba(102,227,255,.70), rgba(192,132,255,.70));
+  }
+  .row input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:20px;height:20px;border-radius:999px;
+    background:#fff;border:1px solid rgba(0,0,0,.30);
+    margin-top:-6px;
+    box-shadow: 0 14px 40px rgba(0,0,0,.6);
+  }
+  .btnRow{display:flex; gap:8px; flex-wrap:wrap; padding: 0 2px 8px;}
+  .chip{
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.14);
+    background: rgba(10,11,20,.92);
+    padding:8px 12px;
+    font-size:11px; letter-spacing:.20em; text-transform:uppercase;
+    color: rgba(255,255,255,.78);
+  }
+  .chip.on{
+    background: linear-gradient(135deg, rgba(102,227,255,.26), rgba(192,132,255,.24));
+    color: rgba(255,255,255,.96);
+  }
+  .osu-sheetFoot{
+    padding:10px 16px calc(12px + var(--safeB));
+    border-top:1px solid rgba(255,255,255,.10);
+    display:flex; justify-content:space-between; gap:8px;
+  }
+
+  @media (max-width:420px){
+    .osu-lobbyTitle,.osu-resultTitle{font-size:22px}
+  }
+  `;
+}
 
 
 
