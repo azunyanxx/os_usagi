@@ -5013,18 +5013,7 @@ const Desktop = ({ bgm }) => {
  * ✅ Judge assets: perfect/good/miss overlays
  * ✅ Result: premium layout + bunny reaction + judge icons
  */
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import {
-  Settings as SettingsIcon,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Play as PlayIcon,
-  Pause,
-  RotateCcw,
-  ArrowLeft,
-  Volume2,
-} from "lucide-react";
+
 
 /**
  * OS_USAGI — BEAT SYNC (Mobile-first, award-grade, single file)
