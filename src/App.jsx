@@ -7192,7 +7192,7 @@ const GLOBAL_CSS = `
 body { margin: 0; background: #000; overflow: hidden; height: 100vh; height: 100dvh; }
 `;
 
-export default function os_usagi_xxxx() {
+export function os_usagi_xxxx() {
   const [mode, setMode] = useState("power");
   const bgm = useBGM(PLAYLIST);
 
