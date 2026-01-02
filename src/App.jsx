@@ -4998,80 +4998,17 @@ const Desktop = ({ bgm }) => {
 // ------------------------------------------------
 // 🌸🌸🎮-- 07.Game (げーむ) --🌸🌸🌸🌸🌸🌸🌸🌸
 // ------------------------------------------------
-
-
-
-
-/**
- * OS_USAGI — BEAT SYNC (Premium mobile-first rewrite)
- * Single-file App.jsx
- *
- * ✅ Lobby: swipe-to-ends (no snap-back), start always visible
- * ✅ Settings: fully scrollable, no jump-to-top on button taps
- * ✅ TEST: actually plays selected music (short preview) + optional beep
- * ✅ Play: no clipping (safe areas + OS dock padding), touch-first lanes
- * ✅ Judge assets: perfect/good/miss overlays
- * ✅ Result: premium layout + bunny reaction + judge icons
- */
-
-
-/**
- * OS_USAGI — BEAT SYNC (Mobile-first, award-grade, single file)
- * Replace src/App.jsx with this.
- *
- * ✅ Uses your ASSET + tracks (catbox URLs)
- * ✅ Fixes: carousel end, start visibility, settings scroll, button jump-to-top, audio unlock on mobile,
- *          play cut off by OS dock, judge PNG overlay, result redesign.
- */
-
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const lerp = (a, b, t) => a + (b - a) * t;
-const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
-
-function formatTime(sec) {
-  const s = Math.max(0, Math.floor(sec || 0));
-  const m = Math.floor(s / 60);
-  const r = String(s % 60).padStart(2, "0");
-  return `${m}:${r}`;
-}
-
-// deterministic rng
-function seededRng(seed) {
-  let t = seed >>> 0;
-  return () => {
-    t += 0x6D2B79F5;
-    let x = t;
-    x = Math.imul(x ^ (x >>> 15), x | 1);
-    x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
-    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-const HIT_WINDOWS = {
-  perfect: 0.06, // 60ms
-  good: 0.12, // 120ms
-};
-
-const DIFF = {
-  easy: { name: "EASY", density: 0.80, lanes: 4, label2: "WIDE" },
-  normal: { name: "NORMAL", density: 1.0, lanes: 4, label2: "STD" },
-  hard: { name: "HARD", density: 1.25, lanes: 4, label2: "TIGHT" },
-};
-
-const DEFAULTS = {
-  latencyMs: 70,
-  noteSpeed: 980, // px/s (visual speed)
-  musicVol: 0.86,
-  sfxVol: 0.55,
-  sfxOn: true,
-  reduceFlash: true,
-  dockReserve: 84, // reserve space for OS bottom dock (approx)
-};
-
-// --- main ---
-export default function BeatSyncApp() {
-  // ----------------------------- ASSETS (your given) -----------------------------
-  const ASSET = useMemo(
+// ------------------------------------------------------------
+// OS_USAGI SYNC — Rebuild v3 (award-grade mobile UX)
+// - Lobby: hero + breathing glow
+// - Track swipe: reach edges (spacer + scroll-padding)
+// - Config: single scroll container (no "can't reach bottom")
+// - Play: NO square pads, lane touch zones + receptor lines
+// - Flicker: remove per-note backdrop/filter, lighter shadows
+// ------------------------------------------------------------
+const BeatSyncApp = () => {
+  // ----------------------------- ASSETS -----------------------------
+  const ASSET = React.useMemo(
     () => ({
       judge: {
         perfect: "https://files.catbox.moe/xn8cnp.png",
@@ -5085,7 +5022,6 @@ export default function BeatSyncApp() {
         left: "https://files.catbox.moe/rmbi75.png",
       },
       bunny: {
-        front: "https://files.catbox.moe/cdsn2q.jpg",
         idle: "https://files.catbox.moe/3revxm.png",
         runR: "https://files.catbox.moe/p45obb.png",
         yayR: "https://files.catbox.moe/mkceap.png",
@@ -5106,2054 +5042,1677 @@ export default function BeatSyncApp() {
     []
   );
 
-  const TRACKS = ASSET.tracks || [];
-  const hasTracks = TRACKS.length > 0;
+  // ----------------------------- TOKENS -----------------------------
+  const TOK = React.useMemo(
+    () => ({
+      bg0: "#05060b",
+      bg1: "#0b0d22",
+      ink: "rgba(255,255,255,0.94)",
+      sub: "rgba(255,255,255,0.66)",
+      faint: "rgba(255,255,255,0.44)",
+      line: "rgba(255,255,255,0.14)",
+      line2: "rgba(255,255,255,0.10)",
+      glass: "rgba(12,14,26,0.54)",
+      glass2: "rgba(255,255,255,0.06)",
 
-  // ----------------------------- UI / view state -----------------------------
-  const [view, setView] = useState("lobby"); // lobby | play | result
-  const [settingsOpen, setSettingsOpen] = useState(false);
+      lane0: "rgba(198,164,255,0.88)", // left
+      lane1: "rgba(122,226,255,0.86)", // down
+      lane2: "rgba(255,156,222,0.78)", // up
+      lane3: "rgba(170,255,214,0.76)", // right
 
-  const [trackIndex, setTrackIndex] = useState(0);
-  const [difficulty, setDifficulty] = useState("normal");
+      danger: "rgba(255,120,170,0.68)",
 
-  const [latencyMs, setLatencyMs] = useState(DEFAULTS.latencyMs);
-  const [noteSpeed, setNoteSpeed] = useState(DEFAULTS.noteSpeed);
-  const [musicVol, setMusicVol] = useState(DEFAULTS.musicVol);
-  const [sfxVol, setSfxVol] = useState(DEFAULTS.sfxVol);
-  const [sfxOn, setSfxOn] = useState(DEFAULTS.sfxOn);
-  const [reduceFlash, setReduceFlash] = useState(DEFAULTS.reduceFlash);
-  const [dockReserve, setDockReserve] = useState(DEFAULTS.dockReserve);
-
-  const track = hasTracks ? TRACKS[clamp(trackIndex, 0, TRACKS.length - 1)] : null;
-
-  // accent per track (subtle)
-  const accent = useMemo(() => {
-    // gentle variations
-    const map = {
-      overhaul: ["#66e3ff", "#c084ff"],
-      dawning: ["#7df9ff", "#b1a7ff"],
-      mirage: ["#77ffe0", "#ff7ad9"],
-      phantasma: ["#8ff0ff", "#9b7bff"],
-      immitation: ["#7ee7ff", "#ff92d3"],
-      checkmate: ["#b0f3ff", "#caa6ff"],
-      lockon: ["#7af1ff", "#a58bff"],
-    };
-    return map[track?.id] || ["#66e3ff", "#c084ff"];
-  }, [track?.id]);
-
-  // ----------------------------- audio -----------------------------
-  const audioRef = useRef(null);
-  const audioCtxRef = useRef(null);
-  const beepGainRef = useRef(null);
-
-  const [toast, setToast] = useState(null);
-  const toastTimerRef = useRef(0);
-
-  const showToast = useCallback((msg) => {
-    setToast(msg);
-    clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = setTimeout(() => setToast(null), 1800);
-  }, []);
-
-  const ensureAudioUnlocked = useCallback(async () => {
-    // resume AudioContext (for iOS/Android)
-    try {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      if (Ctx) {
-        if (!audioCtxRef.current) {
-          audioCtxRef.current = new Ctx();
-          const g = audioCtxRef.current.createGain();
-          g.gain.value = 0.9;
-          g.connect(audioCtxRef.current.destination);
-          beepGainRef.current = g;
-        }
-        if (audioCtxRef.current.state !== "running") {
-          await audioCtxRef.current.resume();
-        }
-      }
-    } catch {}
-    // nudge audio element (some browsers)
-    try {
-      const a = audioRef.current;
-      if (a) {
-        a.muted = false;
-        a.volume = clamp(musicVol, 0, 1);
-      }
-    } catch {}
-  }, [musicVol]);
-
-  const playBeep = useCallback(
-    async (freq = 880, dur = 0.06) => {
-      if (!sfxOn) return;
-      try {
-        await ensureAudioUnlocked();
-        const ctx = audioCtxRef.current;
-        const g0 = beepGainRef.current;
-        if (!ctx || !g0) return;
-
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        o.type = "sine";
-        o.frequency.value = freq;
-
-        const t0 = ctx.currentTime;
-        g.gain.setValueAtTime(0.0001, t0);
-        g.gain.exponentialRampToValueAtTime(clamp(sfxVol, 0, 1) * 0.38 + 0.0001, t0 + 0.01);
-        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-
-        o.connect(g).connect(g0);
-        o.start(t0);
-        o.stop(t0 + dur + 0.03);
-      } catch {}
-    },
-    [ensureAudioUnlocked, sfxOn, sfxVol]
+      aurA: "rgba(122,226,255,0.34)",
+      aurB: "rgba(198,164,255,0.32)",
+      aurC: "rgba(255,156,222,0.26)",
+      aurD: "rgba(170,255,214,0.22)",
+    }),
+    []
   );
 
-  // keep audio volume in sync
-  useEffect(() => {
+  const laneGlow = (lane) => (lane === 0 ? TOK.lane0 : lane === 1 ? TOK.lane1 : lane === 2 ? TOK.lane2 : TOK.lane3);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const fmtMMSS = (sec) => {
+    if (!isFinite(sec) || sec < 0) return "--:--";
+    const s = Math.floor(sec);
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+  };
+
+  // ----------------------------- STATE -----------------------------
+  const [view, setView] = React.useState("lobby"); // lobby | play | pause | result
+  const [trackId, setTrackId] = React.useState("dawning");
+  const [difficulty, setDifficulty] = React.useState("NORMAL"); // EASY | NORMAL | HARD
+
+  const [ready, setReady] = React.useState(false);
+  const [configOpen, setConfigOpen] = React.useState(false);
+
+  const [musicVol, setMusicVol] = React.useState(0.86);
+  const [sfxVol, setSfxVol] = React.useState(0.55);
+  const [muted, setMuted] = React.useState(false);
+  const [sfxOn, setSfxOn] = React.useState(true);
+  const [latencyMs, setLatencyMs] = React.useState(0);
+  const [speed, setSpeed] = React.useState(980);
+
+  const [score, setScore] = React.useState(0);
+  const [combo, setCombo] = React.useState(0);
+  const [maxCombo, setMaxCombo] = React.useState(0);
+  const [counts, setCounts] = React.useState({ perfect: 0, good: 0, miss: 0 });
+  const [accuracy, setAccuracy] = React.useState(0);
+
+  const [judgeFx, setJudgeFx] = React.useState(null); // { type, at }
+  const [pressedLane, setPressedLane] = React.useState(-1);
+
+  // 30fps mobile throttle for React updates
+  const [frame, setFrame] = React.useState(0);
+
+  // ----------------------------- REFS -----------------------------
+  const rootRef = React.useRef(null);
+  const fieldRef = React.useRef(null);
+  const audioRef = React.useRef(null);
+
+  const rafRef = React.useRef(null);
+  const playTRef = React.useRef(0);
+  const durationRef = React.useRef(0);
+
+  const notesRef = React.useRef([]);
+  const cursorRef = React.useRef(0);
+  const lastNoteTRef = React.useRef(0);
+
+  const actxRef = React.useRef(null);
+  const sfxGainRef = React.useRef(null);
+
+  // ----------------------------- LAYOUT -----------------------------
+  const [rootW, setRootW] = React.useState(360);
+  const [rootH, setRootH] = React.useState(640);
+  const [fieldW, setFieldW] = React.useState(360);
+  const [fieldH, setFieldH] = React.useState(420);
+
+  const isMobile = rootW < 560;
+
+  const safeBottom = React.useMemo(() => {
+    return `calc(env(safe-area-inset-bottom) + ${isMobile ? 12 : 10}px)`;
+  }, [isMobile]);
+
+  const measure = React.useCallback(() => {
+    const r = rootRef.current;
+    if (r) {
+      setRootW(Math.max(320, Math.floor(r.clientWidth || 360)));
+      setRootH(Math.max(540, Math.floor(r.clientHeight || 640)));
+    }
+    const f = fieldRef.current;
+    if (f) {
+      const br = f.getBoundingClientRect();
+      setFieldW(Math.max(320, Math.floor(br.width || 360)));
+      setFieldH(Math.max(260, Math.floor(br.height || 420)));
+    }
+  }, []);
+
+  React.useEffect(() => {
+    measure();
+    const onResize = () => measure();
+    window.addEventListener("resize", onResize);
+    let ro;
+    if (window.ResizeObserver && rootRef.current) {
+      ro = new ResizeObserver(() => measure());
+      ro.observe(rootRef.current);
+    }
+    return () => {
+      window.removeEventListener("resize", onResize);
+      if (ro) ro.disconnect();
+    };
+  }, [measure]);
+
+  // ----------------------------- DERIVED -----------------------------
+  const currentTrack = React.useMemo(
+    () => ASSET.tracks.find((t) => t.id === trackId) || ASSET.tracks[0],
+    [ASSET.tracks, trackId]
+  );
+
+  const WINDOW = React.useMemo(() => {
+    if (difficulty === "EASY") return { perfect: 0.090, good: 0.160, miss: 0.240 };
+    if (difficulty === "NORMAL") return { perfect: 0.078, good: 0.140, miss: 0.215 };
+    return { perfect: 0.070, good: 0.130, miss: 0.200 };
+  }, [difficulty]);
+
+  // ----------------------------- ACCURACY -----------------------------
+  React.useEffect(() => {
+    const total = counts.perfect + counts.good + counts.miss;
+    if (!total) return setAccuracy(0);
+    const acc = (counts.perfect * 1 + counts.good * 0.66) / total;
+    setAccuracy(clamp(acc, 0, 1) * 100);
+  }, [counts]);
+
+  // ----------------------------- AUDIO (music) -----------------------------
+  React.useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
-    a.volume = clamp(musicVol, 0, 1);
-  }, [musicVol]);
+    a.volume = muted ? 0 : clamp(musicVol, 0, 1);
+  }, [musicVol, muted]);
 
-  // preload judge PNGs (avoid “出ない”)
-  useEffect(() => {
-    const urls = [ASSET.judge.perfect, ASSET.judge.good, ASSET.judge.miss, ASSET.arrows.up, ASSET.arrows.down, ASSET.arrows.left, ASSET.arrows.right];
-    urls.forEach((u) => {
-      const img = new Image();
-      img.decoding = "async";
-      img.loading = "eager";
-      img.src = u;
-    });
-  }, [ASSET]);
-
-  // ----------------------------- lobby carousel edge padding fix -----------------------------
-  const railRef = useRef(null);
-  const [railEdge, setRailEdge] = useState(16);
-
-  const recalcRailEdge = useCallback(() => {
-    const el = railRef.current;
-    if (!el) return;
-    const card = el.querySelector("[data-card='track']");
-    if (!card) return;
-    const w = el.clientWidth;
-    const cw = card.clientWidth;
-    const edge = Math.max(14, Math.floor((w - cw) / 2));
-    setRailEdge(edge);
+  // ----------------------------- AUDIO (sfx webaudio) -----------------------------
+  const ensureAudioContext = React.useCallback(() => {
+    if (actxRef.current) return actxRef.current;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    const actx = new AC();
+    const g = actx.createGain();
+    g.gain.value = 0.7;
+    g.connect(actx.destination);
+    actxRef.current = actx;
+    sfxGainRef.current = g;
+    return actx;
   }, []);
 
-  useEffect(() => {
-    recalcRailEdge();
-    const el = railRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => recalcRailEdge());
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [recalcRailEdge]);
+  React.useEffect(() => {
+    const g = sfxGainRef.current;
+    if (!g) return;
+    g.gain.value = muted || !sfxOn ? 0 : clamp(sfxVol, 0, 1);
+  }, [muted, sfxOn, sfxVol]);
 
-  const scrollToIndex = useCallback((idx, smooth = true) => {
-    const el = railRef.current;
-    if (!el) return;
-    const cards = el.querySelectorAll("[data-card='track']");
-    const card = cards[idx];
-    if (!card) return;
-    const left = card.offsetLeft - (el.clientWidth - card.clientWidth) / 2;
-    el.scrollTo({ left, behavior: smooth ? "smooth" : "auto" });
-  }, []);
+  const playSfx = React.useCallback(
+    (kind, intensity = 1) => {
+      if (muted || !sfxOn) return;
+      const actx = ensureAudioContext();
+      if (!actx) return;
+      if (actx.state === "suspended") actx.resume?.().catch(() => {});
+      const out = sfxGainRef.current;
+      if (!out) return;
 
-  // scroll -> nearest index
-  useEffect(() => {
-    const el = railRef.current;
-    if (!el) return;
-    let raf = 0;
+      const t0 = actx.currentTime;
+      const dur = kind === "miss" ? 0.08 : kind === "good" ? 0.10 : 0.12;
 
-    const onScroll = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const cards = Array.from(el.querySelectorAll("[data-card='track']"));
-        if (!cards.length) return;
-        const center = el.scrollLeft + el.clientWidth / 2;
-        let best = 0;
-        let bestDist = Infinity;
-        for (let i = 0; i < cards.length; i++) {
-          const c = cards[i];
-          const cx = c.offsetLeft + c.clientWidth / 2;
-          const d = Math.abs(cx - center);
-          if (d < bestDist) {
-            bestDist = d;
-            best = i;
+      const o = actx.createOscillator();
+      const g = actx.createGain();
+
+      o.type = kind === "miss" ? "sine" : "triangle";
+      o.frequency.setValueAtTime(kind === "perfect" ? 760 : kind === "good" ? 520 : 160, t0);
+
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.14 * intensity, t0 + 0.010);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+
+      o.connect(g);
+      g.connect(out);
+
+      o.start(t0);
+      o.stop(t0 + dur);
+    },
+    [ensureAudioContext, muted, sfxOn]
+  );
+
+  // ----------------------------- CHART -----------------------------
+  const CHART = React.useMemo(() => {
+    const mapTok = (t) => {
+      if (!t || t === ".") return null;
+      const m = { L: 0, D: 1, U: 2, R: 3 };
+      if (t.includes("|")) {
+        const parts = t.split("|").map((x) => x.trim()).filter(Boolean);
+        const lanes = parts.map((p) => m[p]).filter((v) => v !== undefined);
+        return lanes.length ? lanes : null;
+      }
+      return m[t] !== undefined ? [m[t]] : null;
+    };
+
+    const compile = ({ bpm, offsetSec, subdiv, motifs }) => {
+      const beat = 60 / (bpm || 120);
+      const stepSec = beat * (4 / subdiv);
+      const notes = [];
+      let t = offsetSec ?? 1.0;
+      let id = 0;
+
+      for (const block of motifs) {
+        const rep = block.r || 1;
+        for (let rr = 0; rr < rep; rr++) {
+          for (const tok of block.toks) {
+            const lanes = mapTok(tok);
+            if (lanes) {
+              for (const lane of lanes) notes.push({ id: `n${id++}`, t: +t.toFixed(4), lane, judged: false, hit: false });
+            }
+            t += stepSec;
           }
         }
-        if (best !== trackIndex) setTrackIndex(best);
-      });
-    };
-
-    el.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => {
-      el.removeEventListener("scroll", onScroll);
-      cancelAnimationFrame(raf);
-    };
-    // eslint-disable-next-line
-  }, [trackIndex]);
-
-  // align when entering lobby
-  useEffect(() => {
-    if (view !== "lobby") return;
-    if (!hasTracks) return;
-    requestAnimationFrame(() => scrollToIndex(trackIndex, false));
-  }, [view, hasTracks, trackIndex, scrollToIndex]);
-
-  // ----------------------------- game runtime (refs) -----------------------------
-  const lanes = 4;
-  const rafRef = useRef(0);
-  const runningRef = useRef(false);
-  const startedRef = useRef(false);
-
-  const seedRef = useRef(1);
-  const notesRef = useRef([]); // {t, lane, judged:false, hit:false}
-  const statsRef = useRef({ perfect: 0, good: 0, miss: 0, combo: 0, maxCombo: 0, score: 0 });
-
-  const pressedRef = useRef([0, 0, 0, 0]);
-  const flashRef = useRef([0, 0, 0, 0]);
-
-  const [hud, setHud] = useState({ status: "READY", score: 0, combo: 0, remain: 0, bpm: 120 });
-  const [judgeOverlay, setJudgeOverlay] = useState({ kind: null, at: 0 });
-  const [result, setResult] = useState(null);
-
-  const canvasRef = useRef(null);
-  const stageRef = useRef(null);
-  const [stageSize, setStageSize] = useState({ w: 320, h: 420 });
-
-  // stage measure
-  useEffect(() => {
-    const el = stageRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => {
-      const r = el.getBoundingClientRect();
-      setStageSize({ w: Math.max(1, Math.floor(r.width)), h: Math.max(1, Math.floor(r.height)) });
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  const buildChart = useCallback((bpm, seconds, diffKey, seed) => {
-    const diff = DIFF[diffKey] || DIFF.normal;
-    const rnd = seededRng(seed);
-
-    const beat = 60 / bpm;
-    const density = diff.density;
-
-    const notes = [];
-    let t = 1.4; // lead-in
-    const end = seconds;
-
-    while (t < end) {
-      const count = rnd() < 0.18 ? 2 : 1;
-      for (let i = 0; i < count; i++) {
-        const lane = Math.floor(rnd() * diff.lanes);
-        const off = (rnd() - 0.5) * beat * 0.18;
-        notes.push({ t: t + off, lane, judged: false, hit: false });
       }
-      const step = beat / density * (rnd() < 0.12 ? 1.5 : 1.0);
-      t += step;
-    }
-    notes.sort((a, b) => a.t - b.t);
-    return notes;
+      notes.sort((a, b) => a.t - b.t);
+      return notes;
+    };
+
+    const MR = (s, r) => ({ toks: s.split(" ").map((x) => x.trim()), r });
+
+    const pack = {
+      overhaul: {
+        EASY:   { subdiv: 8,  offsetSec: 1.10, motifs: [MR("L . D . U . R .", 7), MR("L . . R . U . .", 5)] },
+        NORMAL: { subdiv: 16, offsetSec: 1.05, motifs: [MR("L . D . U . R . L . U . D . R .", 5), MR("L . . R U . . D L . . R U . . D", 5)] },
+        HARD:   { subdiv: 16, offsetSec: 1.00, motifs: [MR("L D . U . R . D L . U . R D . .", 6), MR("L|U . R . D . U . L . R . D U . .", 5)] },
+      },
+      dawning: {
+        EASY:   { subdiv: 8,  offsetSec: 1.15, motifs: [MR("L . . D . . U .", 7), MR("L . U . . D . .", 5)] },
+        NORMAL: { subdiv: 16, offsetSec: 1.10, motifs: [MR("L . D . . U . . R . U . . D . .", 6), MR("L . . D U . . R L . . D U . . R", 4)] },
+        HARD:   { subdiv: 16, offsetSec: 1.04, motifs: [MR("L D . U . R . D . U . R L . D .", 6), MR("L|U . R . D . U . L . R . D U . .", 5)] },
+      },
+      mirage: {
+        EASY:   { subdiv: 8,  offsetSec: 1.05, motifs: [MR("L . U . R . U .", 7), MR("L . D . U . R .", 5)] },
+        NORMAL: { subdiv: 16, offsetSec: 1.00, motifs: [MR("L . U . R . U . L . D . U . R .", 5), MR("L . . R U . . D L . . R U . . D", 5)] },
+        HARD:   { subdiv: 16, offsetSec: 0.98, motifs: [MR("L . U R . U . D L . U . R D . .", 6), MR("L|U . R . U . D . L . U . R . D U", 5)] },
+      },
+      phantasma: {
+        EASY:   { subdiv: 8,  offsetSec: 1.00, motifs: [MR("L . D . U . R .", 7), MR("L . U . D . R .", 5)] },
+        NORMAL: { subdiv: 16, offsetSec: 0.98, motifs: [MR("L . D . U . R . L . D . U . R .", 5), MR("L D . R U . D . L D . R U . D .", 4)] },
+        HARD:   { subdiv: 16, offsetSec: 0.95, motifs: [MR("L D U R L . U . D . R . U . D .", 6), MR("L|U . R . D . U . L . R . D U . .", 5)] },
+      },
+      immitation: {
+        EASY:   { subdiv: 8,  offsetSec: 1.10, motifs: [MR("L . U . D . U .", 7), MR("L . . R . U . .", 5)] },
+        NORMAL: { subdiv: 16, offsetSec: 1.05, motifs: [MR("L . U . D . U . L . D . U . R .", 5), MR("L . . D U . . R L . . D U . . R", 4)] },
+        HARD:   { subdiv: 16, offsetSec: 1.00, motifs: [MR("L . U R . U . D L . U . R D . .", 6), MR("L|U . R . U . D . L . U . R . D U", 5)] },
+      },
+      checkmate: {
+        EASY:   { subdiv: 8,  offsetSec: 1.05, motifs: [MR("L . D . U . R .", 7), MR("L . . R . U . .", 5)] },
+        NORMAL: { subdiv: 16, offsetSec: 1.00, motifs: [MR("L . D . U . R . L . U . D . R .", 5), MR("L D . R U . D . L D . R U . D .", 4)] },
+        HARD:   { subdiv: 16, offsetSec: 0.97, motifs: [MR("L D U R . U . D L . U . R D . .", 6), MR("L|U . R . D . U . L . R . D U . .", 5)] },
+      },
+      lockon: {
+        EASY:   { subdiv: 8,  offsetSec: 1.00, motifs: [MR("L . U . R . U .", 7), MR("L . D . U . R .", 5)] },
+        NORMAL: { subdiv: 16, offsetSec: 0.98, motifs: [MR("L . U . R . U . L . D . U . R .", 5), MR("L D . R U . D . L D . R U . D .", 4)] },
+        HARD:   { subdiv: 16, offsetSec: 0.94, motifs: [MR("L D U R L . U . D . R . U . D .", 6), MR("L|U . R . U . D . L . U . R D . .", 5)] },
+      },
+    };
+
+    const build = (durationSec, trackId, diff, bpm) => {
+      const def = pack?.[trackId]?.[diff] || pack?.[ASSET.tracks[0].id]?.[diff];
+      const notes = compile({
+        bpm: bpm || 120,
+        offsetSec: def?.offsetSec ?? 1.0,
+        subdiv: def?.subdiv ?? 8,
+        motifs: def?.motifs ?? [],
+      });
+      const endAt = Math.max(10, Math.min((durationSec || 180) - 0.85, durationSec || 180));
+      return notes.filter((n) => n.t < endAt).sort((a, b) => a.t - b.t);
+    };
+
+    return { build };
+  }, [ASSET.tracks]);
+
+  // ----------------------------- STOP / CLEANUP -----------------------------
+  const stopRaf = React.useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
   }, []);
 
-  const stopGame = useCallback(() => {
-    runningRef.current = false;
-    cancelAnimationFrame(rafRef.current);
+  const softStopPlayback = React.useCallback(() => {
+    stopRaf();
+    const a = audioRef.current;
+    if (a) a.pause();
+  }, [stopRaf]);
+
+  const stopAll = React.useCallback(() => {
+    stopRaf();
     const a = audioRef.current;
     if (a) {
-      try { a.pause(); } catch {}
+      a.pause();
+      a.currentTime = 0;
     }
-  }, []);
+    playTRef.current = 0;
+    cursorRef.current = 0;
+    notesRef.current = [];
+    lastNoteTRef.current = 0;
+    durationRef.current = 0;
 
-  const endGame = useCallback(() => {
-    const s = statsRef.current;
-    const total = s.perfect + s.good + s.miss;
-    const acc = total > 0 ? (s.perfect + s.good * 0.6) / total : 0;
-    const grade =
-      acc >= 0.95 ? "S" :
-      acc >= 0.88 ? "A" :
-      acc >= 0.78 ? "B" :
-      acc >= 0.65 ? "C" : "D";
+    setJudgeFx(null);
+    setPressedLane(-1);
+    setCombo(0);
+    setView("lobby");
+  }, [stopRaf]);
 
-    setResult({
-      title: track?.title || "UNKNOWN",
-      bpm: track?.bpm || 120,
-      diff: DIFF[difficulty]?.name || "NORMAL",
-      perfect: s.perfect,
-      good: s.good,
-      miss: s.miss,
-      maxCombo: s.maxCombo,
-      score: s.score,
-      accuracy: acc,
-      grade,
-    });
+  const hardReset = React.useCallback(() => {
+    setScore(0);
+    setCombo(0);
+    setMaxCombo(0);
+    setCounts({ perfect: 0, good: 0, miss: 0 });
+    setAccuracy(0);
+    stopAll();
+  }, [stopAll]);
 
-    stopGame();
-    setView("result");
-  }, [difficulty, stopGame, track]);
+  React.useEffect(() => () => stopRaf(), [stopRaf]);
 
-  const startGame = useCallback(async () => {
-    if (!track?.url) return;
-
-    // reset runtime
-    setResult(null);
-    startedRef.current = false;
-    statsRef.current = { perfect: 0, good: 0, miss: 0, combo: 0, maxCombo: 0, score: 0 };
-    pressedRef.current = [0, 0, 0, 0];
-    flashRef.current = [0, 0, 0, 0];
-
-    setHud({ status: "LOADING", score: 0, combo: 0, remain: 0, bpm: track.bpm || 120 });
-    setJudgeOverlay({ kind: null, at: 0 });
-
-    // seed
-    const seedStr = `${track.id}-${difficulty}`;
-    let seed = 2166136261;
-    for (let i = 0; i < seedStr.length; i++) seed = Math.imul(seed ^ seedStr.charCodeAt(i), 16777619);
-    seedRef.current = seed >>> 0;
-
-    // go play screen first
-    setView("play");
-
-    // prepare audio
-    await ensureAudioUnlocked();
+  // ----------------------------- LOAD MUSIC -----------------------------
+  React.useEffect(() => {
+    setReady(false);
     const a = audioRef.current;
     if (!a) return;
 
-    try { a.pause(); } catch {}
-    a.src = track.url;
-    a.preload = "auto";
-    a.crossOrigin = "anonymous";
+    stopRaf();
+    a.pause();
     a.currentTime = 0;
-    a.volume = clamp(musicVol, 0, 1);
 
-    // try load metadata quickly
-    const waitCanPlay = () =>
-      new Promise((res) => {
-        const on = () => res();
-        a.addEventListener("canplay", on, { once: true });
-        // fallback
-        setTimeout(res, 1200);
-      });
+    const onCanPlay = () => {
+      durationRef.current = a.duration || durationRef.current || 0;
+      setReady(true);
+    };
+    const onMeta = () => {
+      durationRef.current = a.duration || durationRef.current || 0;
+    };
+    const onEnded = () => finishRun();
 
-    await waitCanPlay();
+    a.addEventListener("canplay", onCanPlay);
+    a.addEventListener("loadedmetadata", onMeta);
+    a.addEventListener("ended", onEnded);
 
-    const duration = Number.isFinite(a.duration) ? a.duration : 180;
-    notesRef.current = buildChart(track.bpm || 120, duration, difficulty, seedRef.current);
+    a.src = currentTrack.url;
+    a.crossOrigin = "anonymous";
+    a.preload = "auto";
+    try { a.load(); } catch {}
 
-    setHud((h) => ({ ...h, status: "READY" }));
-    // audio will start on Start tap (overlay) OR lane tap.
-  }, [track, difficulty, buildChart, ensureAudioUnlocked, musicVol]);
+    return () => {
+      a.removeEventListener("canplay", onCanPlay);
+      a.removeEventListener("loadedmetadata", onMeta);
+      a.removeEventListener("ended", onEnded);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTrack.url]);
 
-  // start playback on user gesture
-  const startPlayback = useCallback(async () => {
-    const a = audioRef.current;
-    if (!a) return;
-    await ensureAudioUnlocked();
+  // ----------------------------- GAME LOOP (lighter) -----------------------------
+  const lastUiAtRef = React.useRef(0);
 
-    try {
-      const p = a.play();
-      if (p && typeof p.then === "function") await p;
-      startedRef.current = true;
-      setHud((h) => ({ ...h, status: "SYNC", bpm: track?.bpm || 120 }));
-      runningRef.current = true;
-      showToast("SYNC READY");
-    } catch {
-      showToast("音が出ないときはもう一度タップしてね");
-    }
-  }, [ensureAudioUnlocked, showToast, track?.bpm]);
-
-  // judge tap
-  const judgeLane = useCallback((lane) => {
+  const tick = React.useCallback(() => {
     const a = audioRef.current;
     if (!a) return;
 
-    // mobile: if not started, start audio on first lane tap
-    if (!startedRef.current) {
-      startPlayback();
-    }
+    const now = performance.now();
+    const t = a.currentTime || 0;
+    playTRef.current = t;
 
-    const tNow = (a.currentTime || 0) + latencyMs / 1000;
+    // miss resolve (batched)
     const notes = notesRef.current;
-    let bestIdx = -1;
-    let bestDt = Infinity;
+    const missLine = t - (WINDOW.miss + 0.02) - latencyMs / 1000;
 
-    for (let i = 0; i < notes.length; i++) {
+    let i = cursorRef.current;
+    let missed = 0;
+
+    while (i < notes.length) {
       const n = notes[i];
-      if (n.judged || n.lane !== lane) continue;
-      const dt = n.t - tNow;
-      const adt = Math.abs(dt);
-      if (adt < bestDt) {
-        bestDt = adt;
-        bestIdx = i;
-      }
-      if (n.t > tNow + HIT_WINDOWS.good) break;
+      if (n.judged) { i++; continue; }
+      if (n.t <= missLine) { n.judged = true; n.hit = false; missed++; i++; continue; }
+      break;
     }
 
-    const s = statsRef.current;
+    if (missed > 0) {
+      cursorRef.current = i;
+      setCounts((c) => ({ ...c, miss: c.miss + missed }));
+      setCombo(0);
+      setJudgeFx({ type: "miss", at: now });
+      playSfx("miss", 0.9);
+      navigator.vibrate?.(8);
+    }
 
-    if (bestIdx >= 0 && bestDt <= HIT_WINDOWS.good) {
+    const dur = durationRef.current || a.duration || 0;
+    const lastNoteT = lastNoteTRef.current || 0;
+    const doneByNotes = notes.length ? t > lastNoteT + 0.95 : t > 1.5;
+
+    if ((dur && t >= dur - 0.02) || doneByNotes) {
+      finishRun();
+      return;
+    }
+
+    // 30fps mobile (react updates only)
+    const targetFps = isMobile ? 30 : 60;
+    const minDt = 1000 / targetFps;
+    if (now - (lastUiAtRef.current || 0) >= minDt) {
+      lastUiAtRef.current = now;
+      setFrame((f) => (f + 1) % 1000000);
+    }
+
+    rafRef.current = requestAnimationFrame(tick);
+  }, [WINDOW.miss, isMobile, latencyMs, playSfx]);
+
+  // ----------------------------- START / PAUSE / RESUME / FINISH -----------------------------
+  const startRun = React.useCallback(() => {
+    const a = audioRef.current;
+    if (!a || !ready) return;
+
+    measure();
+    ensureAudioContext();
+
+    const dur = a.duration || durationRef.current || 0;
+    durationRef.current = dur;
+
+    const chart = CHART.build(dur || 180, currentTrack.id, difficulty, currentTrack.bpm);
+    notesRef.current = chart;
+    cursorRef.current = 0;
+    lastNoteTRef.current = chart.length ? chart[chart.length - 1].t : 0;
+
+    setScore(0);
+    setCombo(0);
+    setMaxCombo(0);
+    setCounts({ perfect: 0, good: 0, miss: 0 });
+    setJudgeFx(null);
+    setPressedLane(-1);
+
+    a.pause();
+    a.currentTime = 0;
+    playTRef.current = 0;
+
+    const p = a.play();
+    if (p && typeof p.then === "function") {
+      p.then(() => {
+        setView("play");
+        stopRaf();
+        rafRef.current = requestAnimationFrame(tick);
+      }).catch(() => {});
+    } else {
+      setView("play");
+      stopRaf();
+      rafRef.current = requestAnimationFrame(tick);
+    }
+  }, [CHART, currentTrack.bpm, currentTrack.id, difficulty, ensureAudioContext, measure, ready, stopRaf, tick]);
+
+  const pauseRun = React.useCallback(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    a.pause();
+    stopRaf();
+    setView("pause");
+  }, [stopRaf]);
+
+  const resumeRun = React.useCallback(() => {
+    const a = audioRef.current;
+    if (!a) return;
+
+    ensureAudioContext();
+    const p = a.play();
+    if (p && typeof p.then === "function") {
+      p.then(() => {
+        setView("play");
+        stopRaf();
+        rafRef.current = requestAnimationFrame(tick);
+      }).catch(() => {});
+    } else {
+      setView("play");
+      stopRaf();
+      rafRef.current = requestAnimationFrame(tick);
+    }
+  }, [ensureAudioContext, stopRaf, tick]);
+
+  const restartRun = React.useCallback(() => {
+    const a = audioRef.current;
+    if (!a || !ready) return;
+
+    const dur = a.duration || durationRef.current || 0;
+    durationRef.current = dur;
+
+    const chart = CHART.build(dur || 180, currentTrack.id, difficulty, currentTrack.bpm);
+    notesRef.current = chart;
+    cursorRef.current = 0;
+    lastNoteTRef.current = chart.length ? chart[chart.length - 1].t : 0;
+
+    setScore(0);
+    setCombo(0);
+    setMaxCombo(0);
+    setCounts({ perfect: 0, good: 0, miss: 0 });
+    setJudgeFx(null);
+    setPressedLane(-1);
+
+    a.pause();
+    a.currentTime = 0;
+    playTRef.current = 0;
+
+    ensureAudioContext();
+    const p = a.play();
+    if (p && typeof p.then === "function") {
+      p.then(() => {
+        setView("play");
+        stopRaf();
+        rafRef.current = requestAnimationFrame(tick);
+      }).catch(() => {});
+    } else {
+      setView("play");
+      stopRaf();
+      rafRef.current = requestAnimationFrame(tick);
+    }
+  }, [CHART, currentTrack.bpm, currentTrack.id, difficulty, ensureAudioContext, ready, stopRaf, tick]);
+
+  const finishRun = React.useCallback(() => {
+    stopRaf();
+    const a = audioRef.current;
+    if (a) a.pause();
+    setView("result");
+  }, [stopRaf]);
+
+  // ----------------------------- INPUT / JUDGE -----------------------------
+  const LANES = 4;
+  const LANE_ICON = ["left", "down", "up", "right"];
+
+  const applyJudge = React.useCallback(
+    (type) => {
+      const now = performance.now();
+      setJudgeFx({ type, at: now });
+
+      if (type === "perfect") {
+        setCounts((c) => ({ ...c, perfect: c.perfect + 1 }));
+        setScore((s) => s + 1000 + combo * 10);
+        setCombo((c) => {
+          const n = c + 1;
+          setMaxCombo((m) => Math.max(m, n));
+          return n;
+        });
+        playSfx("perfect", combo >= 20 ? 1.05 : 1.0);
+        navigator.vibrate?.(6);
+      } else if (type === "good") {
+        setCounts((c) => ({ ...c, good: c.good + 1 }));
+        setScore((s) => s + 650 + combo * 5);
+        setCombo((c) => {
+          const n = c + 1;
+          setMaxCombo((m) => Math.max(m, n));
+          return n;
+        });
+        playSfx("good", 0.95);
+        navigator.vibrate?.(5);
+      } else {
+        setCounts((c) => ({ ...c, miss: c.miss + 1 }));
+        setCombo(0);
+        playSfx("miss", 0.9);
+        navigator.vibrate?.(8);
+      }
+    },
+    [combo, playSfx]
+  );
+
+  const hitLane = React.useCallback(
+    (lane) => {
+      if (view === "lobby") { startRun(); return; }
+      if (view === "pause") { resumeRun(); return; }
+      if (view !== "play") return;
+
+      const t = playTRef.current || 0;
+      const adjT = t + latencyMs / 1000;
+
+      const notes = notesRef.current;
+      const startIdx = cursorRef.current;
+      const endIdx = Math.min(startIdx + 34, notes.length);
+
+      let bestIdx = -1;
+      let bestAbs = Infinity;
+
+      for (let k = startIdx; k < endIdx; k++) {
+        const n = notes[k];
+        if (n.judged) continue;
+
+        const dt = n.t - adjT;
+        if (dt < -WINDOW.miss) continue;
+        if (dt > WINDOW.miss) break;
+        if (n.lane !== lane) continue;
+
+        const abs = Math.abs(dt);
+        if (abs < bestAbs) { bestAbs = abs; bestIdx = k; }
+      }
+
+      if (bestIdx === -1) { applyJudge("miss"); return; }
+
       const n = notes[bestIdx];
+      const dt = Math.abs(n.t - adjT);
       n.judged = true;
       n.hit = true;
 
-      if (bestDt <= HIT_WINDOWS.perfect) {
-        s.perfect += 1;
-        s.combo += 1;
-        s.score += 1200;
-        s.maxCombo = Math.max(s.maxCombo, s.combo);
-        setJudgeOverlay({ kind: "perfect", at: now() });
-        flashRef.current[lane] = 1.0;
-        playBeep(1046, 0.045);
-      } else {
-        s.good += 1;
-        s.combo += 1;
-        s.score += 700;
-        s.maxCombo = Math.max(s.maxCombo, s.combo);
-        setJudgeOverlay({ kind: "good", at: now() });
-        flashRef.current[lane] = 0.7;
-        playBeep(880, 0.04);
-      }
-    } else {
-      // miss tap: break combo but not add miss (miss is for note passing)
-      s.combo = 0;
-      setJudgeOverlay({ kind: "miss", at: now() });
-      if (sfxOn) playBeep(220, 0.03);
+      while (cursorRef.current < notes.length && notes[cursorRef.current].judged) cursorRef.current++;
+
+      if (dt <= WINDOW.perfect) applyJudge("perfect");
+      else if (dt <= WINDOW.good) applyJudge("good");
+      else applyJudge("miss");
+    },
+    [WINDOW.good, WINDOW.miss, WINDOW.perfect, applyJudge, latencyMs, resumeRun, startRun, view]
+  );
+
+  const bindZone = React.useCallback(
+    (lane) => {
+      const down = (e) => {
+        try { e.preventDefault?.(); e.stopPropagation?.(); } catch {}
+        setPressedLane(lane);
+        hitLane(lane);
+      };
+      const up = (e) => {
+        try { e.preventDefault?.(); e.stopPropagation?.(); } catch {}
+        setPressedLane((x) => (x === lane ? -1 : x));
+      };
+      return {
+        onPointerDown: down,
+        onPointerUp: up,
+        onPointerCancel: up,
+        onPointerLeave: up,
+        onTouchStart: down,
+        onTouchEnd: up,
+      };
+    },
+    [hitLane]
+  );
+
+  // ----------------------------- UI COMPUTE -----------------------------
+  const ui = React.useMemo(() => {
+    const t = playTRef.current || 0;
+    const dur = durationRef.current || 0;
+    const remain = dur ? Math.max(0, dur - t) : NaN;
+
+    // receptor near bottom
+    const receptorY = clamp(Math.floor(fieldH * 0.80), 190, Math.max(220, fieldH - 62));
+
+    const margin = 220;
+    const spawnAhead = (receptorY + margin) / speed;
+    const past = (fieldH - receptorY + margin) / speed;
+    const minT = t - past - 0.08;
+    const maxT = t + spawnAhead + 0.08;
+
+    const notes = notesRef.current;
+    let i = cursorRef.current;
+    while (i > 0 && notes[i - 1] && notes[i - 1].t >= minT) i--;
+
+    const list = [];
+    for (let k = i; k < notes.length; k++) {
+      const n = notes[k];
+      if (n.t < minT) continue;
+      if (n.t > maxT) break;
+      if (!n.judged) list.push(n);
+      if (list.length > (isMobile ? 70 : 120)) break;
     }
 
-    setHud((h) => ({ ...h, score: s.score, combo: s.combo }));
-  }, [latencyMs, playBeep, sfxOn, startPlayback]);
+    const fxAlive = judgeFx && performance.now() - judgeFx.at < 420;
+    return { t, dur, remain, receptorY, list, fxAlive };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fieldH, speed, frame, isMobile, judgeFx, latencyMs]);
 
-  const onLaneDown = useCallback((lane) => {
-    pressedRef.current[lane] = 1;
-    judgeLane(lane);
-  }, [judgeLane]);
+  const remainText = fmtMMSS(ui.remain);
 
-  const onLaneUp = useCallback((lane) => {
-    pressedRef.current[lane] = 0;
+  const bunnyMood = React.useMemo(() => {
+    if (view === "result") return ASSET.bunny.flop;
+    if (combo >= 34) return ASSET.bunny.starR;
+    if (combo >= 14) return ASSET.bunny.yayR;
+    if (judgeFx?.type === "miss") return ASSET.bunny.dizzy;
+    if (view === "play") return ASSET.bunny.runR;
+    return ASSET.bunny.idle;
+  }, [ASSET.bunny, combo, judgeFx, view]);
+
+  const grade = React.useMemo(() => {
+    const a = accuracy;
+    if (a >= 95) return { label: "S", glow: "rgba(122,226,255,0.44)" };
+    if (a >= 88) return { label: "A", glow: "rgba(198,164,255,0.40)" };
+    if (a >= 78) return { label: "B", glow: "rgba(255,156,222,0.34)" };
+    if (a >= 65) return { label: "C", glow: "rgba(170,255,214,0.30)" };
+    return { label: "D", glow: "rgba(255,120,170,0.32)" };
+  }, [accuracy]);
+
+  // ✅ Fix: changing track in config should NOT kick you back to lobby
+  // - in lobby: just change track
+  // - in play/pause/result: stop playback and go lobby only if user presses "Apply & Restart"
+  const setTrackInPlace = React.useCallback((id) => {
+    setTrackId(id);
   }, []);
 
-  // pause toggle
-  const togglePause = useCallback(async () => {
-    const a = audioRef.current;
-    if (!a) return;
-    if (a.paused) {
-      await startPlayback();
-      setHud((h) => ({ ...h, status: "SYNC" }));
-    } else {
-      a.pause();
-      setHud((h) => ({ ...h, status: "PAUSED" }));
-    }
-  }, [startPlayback]);
-
-  const restart = useCallback(() => {
-    stopGame();
-    startGame();
-  }, [stopGame, startGame]);
-
-  const backToLobby = useCallback(() => {
-    stopGame();
-    setSettingsOpen(false);
-    setView("lobby");
-  }, [stopGame]);
-
-  // game loop: draw + miss + remain
-  useEffect(() => {
-    if (view !== "play") return;
-
-    const a = audioRef.current;
-    if (!a) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext?.("2d");
-    const w = stageSize.w;
-    const h = stageSize.h;
-
-    if (canvas) {
-      canvas.width = Math.max(1, w * devicePixelRatio);
-      canvas.height = Math.max(1, h * devicePixelRatio);
-      canvas.style.width = `${w}px`;
-      canvas.style.height = `${h}px`;
-      if (ctx) ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-    }
-
-    const laneW = w / lanes;
-    const hitY = Math.floor(h * 0.78);
-    const spawnY = -30;
-
-    const tick = () => {
-      if (!runningRef.current) {
-        // still draw idle state softly
-        if (ctx) {
-          ctx.clearRect(0, 0, w, h);
-          drawLaneFrame(ctx, w, h, lanes, accent);
-        }
-        rafRef.current = requestAnimationFrame(tick);
-        return;
-      }
-
-      // audio ended
-      if (!a.paused && Number.isFinite(a.duration) && a.currentTime >= a.duration - 0.02) {
-        endGame();
-        return;
-      }
-
-      const tNow = (a.currentTime || 0) + latencyMs / 1000;
-      const remain = Number.isFinite(a.duration) ? Math.max(0, a.duration - a.currentTime) : 0;
-
-      // auto miss overdue notes
-      const notes = notesRef.current;
-      const s = statsRef.current;
-      for (let i = 0; i < notes.length; i++) {
-        const n = notes[i];
-        if (n.judged) continue;
-        if (n.t < tNow - HIT_WINDOWS.good) {
-          n.judged = true;
-          n.hit = false;
-          s.miss += 1;
-          s.combo = 0;
-        } else break;
-      }
-
-      // decay flash
-      for (let i = 0; i < lanes; i++) flashRef.current[i] = Math.max(0, flashRef.current[i] - 0.055);
-
-      // hud
-      setHud((p) => ({ ...p, remain, score: s.score, combo: s.combo }));
-
-      // draw
-      if (ctx) {
-        ctx.clearRect(0, 0, w, h);
-        drawLaneFrame(ctx, w, h, lanes, accent);
-        drawHitLine(ctx, w, hitY, accent);
-
-        // travel time from speed & distance
-        const dist = hitY - spawnY;
-        const travel = clamp(dist / Math.max(1, noteSpeed), 0.35, 1.3);
-
-        // notes
-        for (let i = 0; i < notes.length; i++) {
-          const n = notes[i];
-          const dt = n.t - tNow;
-          if (dt > travel + 0.2) break; // too early, future
-          if (dt < -0.25) continue; // too late, skip
-          const prog = clamp(1 - dt / travel, 0, 1); // 0->spawn, 1->hit
-          const y = lerp(spawnY, hitY, prog);
-          const x = n.lane * laneW + laneW / 2;
-
-          const alpha = clamp(1 - Math.abs(dt) * 1.9, 0, 1);
-          const hitFade = n.hit ? 0.18 : 1.0;
-
-          drawNote(ctx, x, y, laneW, alpha * hitFade, accent);
-        }
-      }
-
-      rafRef.current = requestAnimationFrame(tick);
-    };
-
-    rafRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [view, stageSize.w, stageSize.h, lanes, latencyMs, noteSpeed, accent, endGame]);
-
-  // start running when audio starts playing
-  useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    const onPlay = () => { runningRef.current = true; };
-    const onPause = () => { runningRef.current = false; };
-    a.addEventListener("play", onPlay);
-    a.addEventListener("pause", onPause);
-    return () => {
-      a.removeEventListener("play", onPlay);
-      a.removeEventListener("pause", onPause);
-    };
-  }, []);
-
-  // ESC/back
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "Escape") {
-        if (settingsOpen) setSettingsOpen(false);
-        else if (view === "play") backToLobby();
-        else if (view === "result") setView("lobby");
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [settingsOpen, view, backToLobby]);
-
-  // lock body scroll when sheet open
-  useEffect(() => {
-    if (!settingsOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, [settingsOpen]);
-
-  // ----------------------------- render -----------------------------
-  return (
-    <div className="app" data-view={view}>
-      <style>{css(accent)}</style>
-
-      {/* audio */}
-      <audio ref={audioRef} preload="auto" />
-
-      {/* topbar */}
-      <header className="topbar">
-        <div className="brand" onClick={() => view !== "lobby" && backToLobby()} role="button" tabIndex={0}>
-          <div className="brandMark" aria-hidden />
-          <div className="brandText">
-            <div className="brandTitle">
-              OS_USAGI <span>SYNC</span>
-            </div>
-            <div className="brandSub">beat sync • glass neon minimal</div>
-          </div>
-        </div>
-
-        <div className="topActions">
-          {view !== "lobby" && (
-            <button type="button" className="iconBtn" onClick={backToLobby} aria-label="Back">
-              <ArrowLeft size={18} />
-            </button>
-          )}
-          <button type="button" className="iconBtn" onClick={() => setSettingsOpen(true)} aria-label="Settings">
-            <SettingsIcon size={18} />
-          </button>
-        </div>
-      </header>
-
-      {/* stage */}
-      <main className="stage">
-        <div className="bg">
-          <div className="bgNoise" />
-          <div className="bgGlow a" />
-          <div className="bgGlow b" />
-          <div className="bgGrid" />
-        </div>
-
-        {!hasTracks ? (
-          <div className="empty">
-            <div className="panelCard">
-              <div className="h1">TRACKS が未設定</div>
-              <div className="p">
-                ASSET.tracks が空です。<br />
-                いまはあなたのASSETに曲が入ってるので、本来ここには来ないはず。
-              </div>
-            </div>
-          </div>
-        ) : (
-          <>
-            {view === "lobby" && (
-              <LobbyScreen
-                ASSET={ASSET}
-                accent={accent}
-                railRef={railRef}
-                railEdge={railEdge}
-                trackIndex={trackIndex}
-                tracks={TRACKS}
-                difficulty={difficulty}
-                setDifficulty={setDifficulty}
-                onPrev={() => { const ni = clamp(trackIndex - 1, 0, TRACKS.length - 1); setTrackIndex(ni); scrollToIndex(ni); }}
-                onNext={() => { const ni = clamp(trackIndex + 1, 0, TRACKS.length - 1); setTrackIndex(ni); scrollToIndex(ni); }}
-                onStart={async () => { await startGame(); }}
-                scrollToIndex={scrollToIndex}
-              />
-            )}
-
-            {view === "play" && (
-              <PlayScreen
-                ASSET={ASSET}
-                accent={accent}
-                track={track}
-                diff={difficulty}
-                hud={hud}
-                stageRef={stageRef}
-                canvasRef={canvasRef}
-                judgeOverlay={judgeOverlay}
-                pressedRef={pressedRef}
-                flashRef={flashRef}
-                dockReserve={dockReserve}
-                reduceFlash={reduceFlash}
-                onTapStart={startPlayback}
-                onLaneDown={onLaneDown}
-                onLaneUp={onLaneUp}
-                onPause={togglePause}
-                onRestart={restart}
-                onEnd={endGame}
-              />
-            )}
-
-            {view === "result" && (
-              <ResultScreen
-                ASSET={ASSET}
-                accent={accent}
-                result={result}
-                onRestart={restart}
-                onBack={() => setView("lobby")}
-              />
-            )}
-          </>
-        )}
-
-        {toast && <div className="toast">{toast}</div>}
-      </main>
-
-      {/* settings sheet */}
-      {settingsOpen && (
-        <SettingsSheet
-          ASSET={ASSET}
-          accent={accent}
-          track={track}
-          difficulty={difficulty}
-          setDifficulty={setDifficulty}
-          latencyMs={latencyMs}
-          setLatencyMs={setLatencyMs}
-          noteSpeed={noteSpeed}
-          setNoteSpeed={setNoteSpeed}
-          musicVol={musicVol}
-          setMusicVol={setMusicVol}
-          sfxVol={sfxVol}
-          setSfxVol={setSfxVol}
-          sfxOn={sfxOn}
-          setSfxOn={setSfxOn}
-          reduceFlash={reduceFlash}
-          setReduceFlash={setReduceFlash}
-          dockReserve={dockReserve}
-          setDockReserve={setDockReserve}
-          onClose={() => setSettingsOpen(false)}
-          onTest={() => {
-            playBeep(880, 0.05);
-            setTimeout(() => playBeep(1174, 0.05), 120);
-          }}
-          onTestMusic={async () => {
-            await ensureAudioUnlocked();
-            const a = audioRef.current;
-            if (!a || !track?.url) return;
-            try {
-              if (!a.src || a.src !== track.url) a.src = track.url;
-              if (a.paused) await a.play();
-              else a.pause();
-            } catch {
-              showToast("音が出ないときは画面を一度タップしてね");
-            }
+  // ----------------------------- UI PRIMITIVES -----------------------------
+  const Frame = ({ children, motion }) => (
+    <div
+      className="relative h-full w-full overflow-hidden rounded-[28px] border"
+      style={{
+        borderColor: TOK.line,
+        background: TOK.glass,
+        boxShadow: "0 26px 120px rgba(0,0,0,0.86), inset 0 1px 0 rgba(255,255,255,0.10)",
+        backdropFilter: "blur(18px)",
+      }}
+    >
+      {/* Aurora layer (motion only outside play to avoid flicker) */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div
+          className={motion ? "osb-aurora-breath" : ""}
+          style={{
+            position: "absolute",
+            inset: "-24%",
+            background:
+              `radial-gradient(820px 560px at 16% 10%, ${TOK.aurA}, transparent 64%),` +
+              `radial-gradient(760px 560px at 84% 12%, ${TOK.aurB}, transparent 66%),` +
+              `radial-gradient(860px 620px at 52% 92%, ${TOK.aurC}, transparent 72%),` +
+              `radial-gradient(860px 620px at 76% 58%, ${TOK.aurD}, transparent 70%)`,
+            filter: "blur(30px)",
+            opacity: 0.46,
+            transform: "translate3d(0,0,0)",
           }}
         />
-      )}
-    </div>
-  );
-}
-
-// ----------------------------- Screens -----------------------------
-
-function LobbyScreen({
-  ASSET,
-  accent,
-  railRef,
-  railEdge,
-  trackIndex,
-  tracks,
-  difficulty,
-  setDifficulty,
-  onPrev,
-  onNext,
-  onStart,
-  scrollToIndex,
-}) {
-  useEffect(() => {
-    requestAnimationFrame(() => scrollToIndex(trackIndex, false));
-  }, [scrollToIndex, trackIndex]);
-
-  const t = tracks[trackIndex];
-
-  return (
-    <section className="lobby">
-      <div className="hero">
-        <div className="heroTop">
-          <div className="kicker">PORTAL</div>
-          <div className="heroTitle">
-            BEAT<br />SYNC
-          </div>
-          <div className="heroSub">
-            <div className="muted">
-              tap pads ・ connect ・ keep the signal alive
-            </div>
-          </div>
-
-          <div className="heroMeta">
-            <div className="pillLite">
-              <span className="pillKey">STATUS</span>
-              <span className="pillVal">READY</span>
-            </div>
-            <div className="pillLite">
-              <span className="pillKey">BPM</span>
-              <span className="pillVal">{t?.bpm || 120}</span>
-            </div>
-            <div className="pillLite">
-              <span className="pillKey">MODE</span>
-              <span className="pillVal">{DIFF[difficulty]?.name}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="carouselWrap">
-          <button type="button" className="navBtn" onClick={onPrev} aria-label="Prev">
-            <ChevronLeft size={18} />
-          </button>
-
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "radial-gradient(900px 620px at 50% 0%, rgba(255,255,255,0.14), transparent 62%)," +
+              "radial-gradient(1200px 900px at 50% 120%, rgba(0,0,0,0.78), transparent 58%)",
+            opacity: 0.98,
+          }}
+        />
+        {/* grain (disabled in play via motion flag) */}
+        {motion && (
           <div
-            className="rail"
-            ref={railRef}
-            style={{ paddingInline: `${railEdge}px` }}
-          >
-            {tracks.map((x, i) => (
-              <div className="trackCard" data-card="track" key={x.id || i}>
-                <div className="trackCardGlow" />
-                <div className="trackCover">
-                  <img
-                    alt=""
-                    className="coverImg"
-                    src={ASSET.bunny.front}
-                    loading="eager"
-                    decoding="async"
-                  />
-                  <div className="coverMask" />
-                </div>
-                <div className="trackInfo">
-                  <div className="trackTitle">{x.title}</div>
-                  <div className="trackSub">
-                    <span className="chipMini">OS_USAGI</span>
-                    <span className="sep">•</span>
-                    <span className="chipMini">BPM {x.bpm || 120}</span>
-                  </div>
-                </div>
-                <div className={`selectBadge ${i === trackIndex ? "on" : ""}`}>
-                  {i === trackIndex ? "SELECT" : "—"}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <button type="button" className="navBtn" onClick={onNext} aria-label="Next">
-            <ChevronRight size={18} />
-          </button>
-        </div>
-
-        <div className="controlsRow">
-          <div className="seg">
-            {["easy", "normal", "hard"].map((k) => (
-              <button
-                type="button"
-                key={k}
-                className={`segBtn ${difficulty === k ? "active" : ""}`}
-                onClick={() => setDifficulty(k)}
-              >
-                <span>{DIFF[k].name}</span>
-                <em>{DIFF[k].label2}</em>
-              </button>
-            ))}
-          </div>
-
-          <div className="pageDots" aria-hidden>
-            {tracks.map((_, i) => (
-              <span key={i} className={`pDot ${i === trackIndex ? "on" : ""}`} />
-            ))}
-          </div>
-        </div>
-
-        {/* Floating START so it never disappears */}
-        <div className="startFloat">
-          <button type="button" className="startBtn" onClick={onStart}>
-            <PlayIcon size={18} />
-            START
-          </button>
-        </div>
+            style={{
+              position: "absolute",
+              inset: 0,
+              opacity: 0.06,
+              mixBlendMode: "overlay",
+              backgroundImage:
+                "repeating-radial-gradient(circle at 20% 18%, rgba(255,255,255,0.18) 0px, rgba(255,255,255,0.18) 1px, transparent 1px, transparent 4px)",
+            }}
+          />
+        )}
       </div>
-    </section>
-  );
-}
-
-function PlayScreen({
-  ASSET,
-  accent,
-  track,
-  diff,
-  hud,
-  stageRef,
-  canvasRef,
-  judgeOverlay,
-  pressedRef,
-  flashRef,
-  dockReserve,
-  reduceFlash,
-  onTapStart,
-  onLaneDown,
-  onLaneUp,
-  onPause,
-  onRestart,
-  onEnd,
-}) {
-  const lanes = 4;
-  const started = hud.status !== "LOADING" && hud.status !== "READY";
-
-  const judgeUrl =
-    judgeOverlay.kind === "perfect"
-      ? ASSET.judge.perfect
-      : judgeOverlay.kind === "good"
-      ? ASSET.judge.good
-      : judgeOverlay.kind === "miss"
-      ? ASSET.judge.miss
-      : null;
-
-  // overlay visibility (auto fade)
-  const [judgeShow, setJudgeShow] = useState(false);
-  useEffect(() => {
-    if (!judgeOverlay.kind) return;
-    setJudgeShow(true);
-    const t = setTimeout(() => setJudgeShow(false), 520);
-    return () => clearTimeout(t);
-  }, [judgeOverlay.at]); // only when updated
-
-  const arrow = [ASSET.arrows.left, ASSET.arrows.down, ASSET.arrows.up, ASSET.arrows.right];
-
-  return (
-    <section className="play">
-      <div className="playHud">
-        <div className="hudLeft">
-          <div className="hudKicker">OS_USAGI BEAT SYNC</div>
-          <div className="hudTitle">{track?.title || ""}</div>
-          <div className="hudMeta">
-            <span className="chipMini">{DIFF[diff]?.name}</span>
-            <span className="dot" />
-            <span className="chipMini">BPM {track?.bpm || 120}</span>
-          </div>
-        </div>
-
-        <div className="hudRight">
-          <div className="hudPill">
-            <span className="pillKey">SCORE</span>
-            <span className="pillVal">{Math.floor(hud.score || 0).toLocaleString()}</span>
-          </div>
-          <div className="hudPill">
-            <span className="pillKey">COMBO</span>
-            <span className="pillVal">{hud.combo || 0}</span>
-          </div>
-          <div className="hudPill">
-            <span className="pillKey">REMAIN</span>
-            <span className="pillVal">{formatTime(hud.remain || 0)}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className={`laneStage ${reduceFlash ? "reduceFlash" : ""}`}>
-        <div className="laneFrame" ref={stageRef}>
-          <canvas ref={canvasRef} className="laneCanvas" />
-
-          {/* judge image overlay */}
-          {judgeUrl && (
-            <div className={`judgeImg ${judgeShow ? "on" : ""}`}>
-              <img src={judgeUrl} alt={judgeOverlay.kind || ""} draggable={false} />
-            </div>
-          )}
-
-          {/* Tap-to-start overlay (fix audio autoplay restriction) */}
-          {!started && (
-            <button
-              type="button"
-              className="tapStartOverlay"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onTapStart();
-              }}
-            >
-              <div className="tapStartPill">
-                <Volume2 size={16} />
-                TAP TO START AUDIO
-              </div>
-              <div className="tapStartSub">（最初の1回だけ）</div>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* touch lanes */}
-      <div className="touchBar" style={{ marginBottom: `${dockReserve}px` }} role="group" aria-label="Lanes">
-        {Array.from({ length: lanes }).map((_, lane) => {
-          const pressed = pressedRef.current[lane] > 0;
-          const flash = flashRef.current[lane];
-          return (
-            <button
-              type="button"
-              key={lane}
-              className={`laneTouch ${pressed ? "pressed" : ""}`}
-              style={{ "--flash": flash }}
-              onPointerDown={(e) => {
-                e.preventDefault();
-                e.currentTarget.setPointerCapture?.(e.pointerId);
-                onLaneDown(lane);
-              }}
-              onPointerUp={() => onLaneUp(lane)}
-              onPointerCancel={() => onLaneUp(lane)}
-            >
-              <span className="laneGlow" />
-              <img className="laneIcon" src={arrow[lane]} alt="" draggable={false} />
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="playActions" style={{ paddingBottom: `calc(${dockReserve}px + var(--safeB))` }}>
-        <button type="button" className="ghostBtn" onClick={onPause}>
-          <Pause size={18} /> {hud.status === "PAUSED" ? "RESUME" : "PAUSE"}
-        </button>
-        <button type="button" className="ghostBtn" onClick={onRestart}>
-          <RotateCcw size={18} /> RESTART
-        </button>
-        <button type="button" className="ghostBtn danger" onClick={onEnd}>
-          <X size={18} /> END
-        </button>
-      </div>
-    </section>
-  );
-}
-
-function ResultScreen({ ASSET, accent, result, onRestart, onBack }) {
-  const accPct = Math.round(((result?.accuracy || 0) * 1000)) / 10;
-
-  const mood =
-    result?.grade === "S" || result?.grade === "A"
-      ? ASSET.bunny.yayR
-      : result?.grade === "B"
-      ? ASSET.bunny.starR
-      : result?.grade === "C"
-      ? ASSET.bunny.dizzy
-      : ASSET.bunny.flop;
-
-  return (
-    <section className="result">
-      <div className="resultCard">
-        <div className="resultTop">
-          <div className="kicker">RESULT</div>
-          <div className="resultTitle">BEAT SYNC</div>
-          <div className="resultSub">
-            <span className="chipMini">{result?.title || "—"}</span>
-            <span className="dot" />
-            <span className="chipMini">{result?.diff || "NORMAL"}</span>
-            <span className="dot" />
-            <span className="chipMini">BPM {result?.bpm || 120}</span>
-          </div>
-
-          <div className={`gradeChip g${result?.grade || "D"}`}>
-            <span>{result?.grade || "D"}</span>
-          </div>
-
-          <div className="resultBunny">
-            <img src={mood} alt="" draggable={false} />
-          </div>
-        </div>
-
-        <div className="statsGrid">
-          <Stat label="PERFECT" value={result?.perfect ?? 0} />
-          <Stat label="GOOD" value={result?.good ?? 0} />
-          <Stat label="MISS" value={result?.miss ?? 0} />
-          <Stat label="MAX COMBO" value={result?.maxCombo ?? 0} />
-          <Stat label="ACCURACY" value={`${accPct}%`} />
-          <Stat label="SCORE" value={(result?.score ?? 0).toLocaleString()} />
-        </div>
-
-        <div className="resultActions">
-          <button type="button" className="startBtn" onClick={onRestart}>
-            <RotateCcw size={18} />
-            RESTART
-          </button>
-          <button type="button" className="ghostBtn" onClick={onBack}>
-            <ArrowLeft size={18} />
-            BACK
-          </button>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Stat({ label, value }) {
-  return (
-    <div className="statCard">
-      <div className="statLabel">{label}</div>
-      <div className="statValue">{value}</div>
+      {children}
     </div>
   );
-}
 
-function SettingsSheet({
-  ASSET,
-  accent,
-  track,
-  difficulty,
-  setDifficulty,
-  latencyMs,
-  setLatencyMs,
-  noteSpeed,
-  setNoteSpeed,
-  musicVol,
-  setMusicVol,
-  sfxVol,
-  setSfxVol,
-  sfxOn,
-  setSfxOn,
-  reduceFlash,
-  setReduceFlash,
-  dockReserve,
-  setDockReserve,
-  onClose,
-  onTest,
-  onTestMusic,
-}) {
-  return (
-    <div className="sheetWrap" role="dialog" aria-modal="true">
-      <div className="sheetBackdrop" onClick={onClose} />
+  const IconBtn = ({ label, onDown, tone = "soft", children }) => (
+    <button
+      aria-label={label}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onDown?.();
+      }}
+      className="h-10 w-10 rounded-2xl border active:scale-[0.99]"
+      style={{
+        borderColor: tone === "danger" ? "rgba(255,120,170,0.28)" : "rgba(255,255,255,0.14)",
+        background: tone === "danger" ? "rgba(255,120,170,0.12)" : "rgba(255,255,255,0.06)",
+        boxShadow: "0 18px 70px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.10)",
+        WebkitTapHighlightColor: "transparent",
+      }}
+    >
+      {children}
+    </button>
+  );
 
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheetHead">
-          <div>
-            <div className="sheetTitle">Sync tuning</div>
-            <div className="sheetSub">{track?.title || "—"}</div>
+  const Chip = ({ label, value, glow }) => (
+    <div
+      className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5"
+      style={{
+        borderColor: "rgba(255,255,255,0.12)",
+        background: "rgba(255,255,255,0.055)",
+        boxShadow: glow ? `0 0 0 1px ${glow} inset, 0 0 46px rgba(255,255,255,0.04)` : "none",
+      }}
+    >
+      <span className="text-[10px] tracking-[0.30em] uppercase text-white/50">{label}</span>
+      <span className="text-[12px] text-white/92 tabular-nums">{value}</span>
+    </div>
+  );
+
+  const Seg = ({ value, options, onChange }) => (
+    <div className="grid grid-cols-3 rounded-[18px] border p-1" style={{ borderColor: TOK.line2, background: TOK.glass2 }}>
+      {options.map((opt) => {
+        const active = opt.value === value;
+        return (
+          <button
+            key={opt.value}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onChange(opt.value);
+            }}
+            className="h-11 rounded-[16px] active:scale-[0.99]"
+            style={{
+              background: active ? "rgba(255,255,255,0.12)" : "transparent",
+              boxShadow: active ? "0 0 0 1px rgba(255,255,255,0.10) inset, 0 12px 44px rgba(0,0,0,0.35)" : "none",
+            }}
+          >
+            <div className="text-[11px] tracking-[0.28em] uppercase text-white/92">{opt.label}</div>
+            {opt.sub ? <div className="text-[10px] tracking-[0.30em] uppercase text-white/42">{opt.sub}</div> : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const TopBar = ({ right }) => (
+    <div className="relative z-30 px-4 pt-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className="h-10 w-10 rounded-2xl border overflow-hidden shrink-0"
+            style={{ borderColor: "rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.06)" }}
+          >
+            <img src={bunnyMood} alt="bunny" className="h-full w-full object-cover opacity-95" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[10px] tracking-[0.34em] uppercase text-white/58">
+              OS_USAGI <span className="text-white/92">SYNC</span>
+            </div>
+            <div className="text-[12px] text-white/92 font-semibold truncate">
+              {currentTrack.title} <span className="text-white/50">· {difficulty}</span>
+              <span className="ml-2 text-white/38">BPM {currentTrack.bpm}</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">{right}</div>
+      </div>
+    </div>
+  );
+
+  // ----------------------------- LOBBY (hero) -----------------------------
+  const Lobby = () => (
+    <div className="relative h-full w-full flex flex-col" style={{ paddingBottom: safeBottom }}>
+      <TopBar
+        right={
+          <>
+            <IconBtn label="config" onDown={() => setConfigOpen(true)}>
+              <span className="text-white/90 text-[16px]">⚙︎</span>
+            </IconBtn>
+          </>
+        }
+      />
+
+      <div className="relative z-20 px-4 pt-3 flex-1 min-h-0">
+        {/* Hero */}
+        <div
+          className="rounded-[24px] border p-4"
+          style={{
+            borderColor: "rgba(255,255,255,0.12)",
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)), rgba(0,0,0,0.20)",
+            boxShadow: "0 30px 120px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.10)",
+          }}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-[10px] tracking-[0.34em] uppercase text-white/48">READY TO SYNC</div>
+              <div className="mt-1 text-[20px] font-semibold text-white/92 truncate">{currentTrack.title}</div>
+              <div className="mt-1 text-[11px] tracking-[0.22em] uppercase text-white/50">
+                {difficulty} · BPM {currentTrack.bpm}
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-2 shrink-0">
+              <Chip label="STATUS" value={ready ? "READY" : "LOADING"} glow={ready ? "rgba(122,226,255,0.20)" : ""} />
+              <div className="flex gap-2">
+                <Chip label="LAT" value={`${latencyMs}ms`} />
+                <Chip label="SPD" value={`${speed}`} />
+              </div>
+            </div>
           </div>
 
-          <button type="button" className="iconBtn" onClick={onClose} aria-label="Close">
-            <X size={18} />
-          </button>
+          {/* breathing line */}
+          <div
+            className="mt-3 h-[3px] rounded-full osb-breath"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent, rgba(122,226,255,0.90), rgba(198,164,255,0.82), rgba(255,156,222,0.56), transparent)",
+              boxShadow: "0 0 30px rgba(122,226,255,0.18), 0 0 34px rgba(198,164,255,0.14)",
+              opacity: 0.95,
+            }}
+          />
         </div>
 
-        <div className="sheetBody">
-          <div className="group">
-            <div className="groupTitle">TRACK / DIFFICULTY</div>
-            <div className="row tight">
-              <div className="rowHead">
-                <div className="rowLabel">DIFFICULTY</div>
-                <div className="rowValue">{DIFF[difficulty]?.name}</div>
-              </div>
-              <div className="seg mini">
-                {["easy", "normal", "hard"].map((k) => (
+        {/* Track carousel (FIX: reach edges) */}
+        <div className="mt-3 rounded-[22px] border border-white/12 bg-black/22 overflow-hidden">
+          <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+            <div className="text-[10px] tracking-[0.34em] uppercase text-white/48">TRACK</div>
+            <div className="text-[10px] tracking-[0.34em] uppercase text-white/34">SWIPE</div>
+          </div>
+
+          <div className="px-4 pb-4">
+            <div
+              className="flex gap-3 overflow-x-auto snap-x snap-mandatory osb-scroll"
+              style={{
+                WebkitOverflowScrolling: "touch",
+                paddingRight: 16,
+                scrollPaddingLeft: 0,
+                scrollPaddingRight: 16,
+              }}
+            >
+              {ASSET.tracks.map((t, idx) => {
+                const active = t.id === trackId;
+                const accent = laneGlow(idx % 4);
+                return (
                   <button
-                    type="button"
-                    key={k}
-                    className={`segBtn ${difficulty === k ? "active" : ""}`}
-                    onClick={(e) => {
+                    key={t.id}
+                    onPointerDown={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      setDifficulty(k);
+                      setTrackId(t.id);
+                    }}
+                    className="snap-start shrink-0 w-[78%] sm:w-[46%] rounded-[20px] border p-4 text-left active:scale-[0.995]"
+                    style={{
+                      borderColor: active ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.12)",
+                      background: active ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.05)",
+                      boxShadow: active
+                        ? `0 0 0 1px ${accent}66 inset, 0 0 90px rgba(255,255,255,0.06), 0 28px 96px rgba(0,0,0,0.56)`
+                        : "0 24px 88px rgba(0,0,0,0.46)",
                     }}
                   >
-                    {DIFF[k].name}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-[14px] text-white/92 font-semibold truncate">{t.title}</div>
+                        <div className="mt-1 text-[10px] tracking-[0.28em] uppercase text-white/48">BPM {t.bpm}</div>
+                      </div>
+                      <div className="text-[10px] tracking-[0.34em] uppercase text-white/70">{active ? "SELECTED" : "SELECT"}</div>
+                    </div>
+
+                    <div
+                      className={`mt-3 h-[2px] rounded-full ${active ? "osb-breath-fast" : ""}`}
+                      style={{
+                        background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
+                        opacity: active ? 0.98 : 0.55,
+                        boxShadow: active ? `0 0 18px ${accent}` : "none",
+                      }}
+                    />
                   </button>
-                ))}
-              </div>
+                );
+              })}
+              {/* spacer to ensure last card fully reachable */}
+              <div className="shrink-0 w-4" />
             </div>
           </div>
+        </div>
 
-          <div className="group">
-            <div className="groupTitle">TUNING</div>
+        {/* difficulty */}
+        <div className="mt-3">
+          <Seg
+            value={difficulty}
+            onChange={setDifficulty}
+            options={[
+              { value: "EASY", label: "EASY", sub: "WIDE" },
+              { value: "NORMAL", label: "NORMAL", sub: "STD" },
+              { value: "HARD", label: "HARD", sub: "TIGHT" },
+            ]}
+          />
+        </div>
 
-            <Row label="LATENCY" value={`${latencyMs} ms`} hint="Tap timing compensation">
-              <input
-                className="range"
-                type="range"
-                min={-120}
-                max={240}
-                value={latencyMs}
-                onChange={(e) => setLatencyMs(Number(e.target.value))}
-              />
-            </Row>
-
-            <Row label="NOTE SPEED" value={`${noteSpeed} px/s`} hint="Visual travel speed">
-              <input
-                className="range"
-                type="range"
-                min={720}
-                max={1400}
-                value={noteSpeed}
-                onChange={(e) => setNoteSpeed(Number(e.target.value))}
-              />
-            </Row>
-
-            <Row label="DOCK RESERVE" value={`${dockReserve}px`} hint="OSの下ドックに被るとき調整">
-              <input
-                className="range"
-                type="range"
-                min={40}
-                max={140}
-                value={dockReserve}
-                onChange={(e) => setDockReserve(Number(e.target.value))}
-              />
-            </Row>
+        {/* Start button (hero + breathing) */}
+        <button
+          disabled={!ready}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            startRun();
+          }}
+          className="mt-3 h-14 w-full rounded-[20px] border text-white/92 active:scale-[0.99] disabled:opacity-50 osb-start"
+          style={{
+            borderColor: "rgba(255,255,255,0.18)",
+            background: "rgba(255,255,255,0.10)",
+            boxShadow:
+              "0 30px 120px rgba(0,0,0,0.76), inset 0 1px 0 rgba(255,255,255,0.10), 0 0 70px rgba(122,226,255,0.18)",
+          }}
+        >
+          <div className="flex items-center justify-center gap-3">
+            <span className="text-[11px] tracking-[0.34em] uppercase">{ready ? "START SYNC" : "LOADING"}</span>
+            <span className="text-white/55 text-[11px] tracking-[0.22em] uppercase">Tap any lane too</span>
           </div>
+        </button>
 
-          <div className="group">
-            <div className="groupTitle">AUDIO</div>
-
-            <div className="btnRow">
-              <button
-                type="button"
-                className={`chip ${sfxOn ? "on" : ""}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setSfxOn((v) => !v);
-                }}
-              >
-                SFX {sfxOn ? "ON" : "OFF"}
-              </button>
-
-              <button
-                type="button"
-                className="chip"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onTest();
-                }}
-              >
-                TEST SFX
-              </button>
-
-              <button
-                type="button"
-                className="chip"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onTestMusic();
-                }}
-              >
-                TEST MUSIC
-              </button>
-            </div>
-
-            <Row label="MUSIC" value={`${Math.round(musicVol * 100)}%`}>
-              <input
-                className="range"
-                type="range"
-                min={0}
-                max={100}
-                value={Math.round(musicVol * 100)}
-                onChange={(e) => setMusicVol(Number(e.target.value) / 100)}
-              />
-            </Row>
-
-            <Row label="SFX" value={`${Math.round(sfxVol * 100)}%`}>
-              <input
-                className="range"
-                type="range"
-                min={0}
-                max={100}
-                value={Math.round(sfxVol * 100)}
-                onChange={(e) => setSfxVol(Number(e.target.value) / 100)}
-              />
-            </Row>
-          </div>
-
-          <div className="group">
-            <div className="groupTitle">VISUAL</div>
-            <div className="btnRow">
-              <button
-                type="button"
-                className={`chip ${reduceFlash ? "on" : ""}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setReduceFlash((v) => !v);
-                }}
-              >
-                Reduce flash
-              </button>
-            </div>
-          </div>
-
-          {/* sticky footer (prevents “押すと上に戻る”) */}
-          <div className="sheetFoot">
-            <button
-              type="button"
-              className="startBtn"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onClose();
-              }}
-            >
-              DONE
-            </button>
-
-            <button
-              type="button"
-              className="ghostBtn"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setLatencyMs(DEFAULTS.latencyMs);
-                setNoteSpeed(DEFAULTS.noteSpeed);
-                setMusicVol(DEFAULTS.musicVol);
-                setSfxVol(DEFAULTS.sfxVol);
-                setSfxOn(DEFAULTS.sfxOn);
-                setReduceFlash(DEFAULTS.reduceFlash);
-                setDockReserve(DEFAULTS.dockReserve);
-              }}
-            >
-              RESET
-            </button>
-          </div>
+        <div className="mt-3 flex items-center justify-between text-[10px] tracking-[0.28em] uppercase text-white/38">
+          <span>Tip</span>
+          <span>Config → Latency / Speed tuned</span>
         </div>
       </div>
     </div>
   );
-}
 
-function Row({ label, value, hint, children }) {
-  return (
-    <div className="row">
-      <div className="rowHead">
-        <div className="rowLabel">{label}</div>
-        <div className="rowValue">{value}</div>
+  // ----------------------------- PLAY (no square pads) -----------------------------
+  const Play = () => {
+    const receptorY = ui.receptorY;
+
+    return (
+      <div className="relative h-full w-full flex flex-col" style={{ paddingBottom: safeBottom }}>
+        <TopBar
+          right={
+            <>
+              <IconBtn label="config" onDown={() => setConfigOpen(true)}>
+                <span className="text-white/90 text-[16px]">⚙︎</span>
+              </IconBtn>
+              <IconBtn label="stop" onDown={stopAll} tone="danger">
+                <span className="text-white/92 text-[16px]">✕</span>
+              </IconBtn>
+            </>
+          }
+        />
+
+        <div className="relative z-20 px-4 pt-2 flex flex-wrap items-center gap-2">
+          <Chip label="SCORE" value={score.toLocaleString()} />
+          <Chip label="COMBO" value={combo} glow={combo >= 10 ? "rgba(198,164,255,0.20)" : ""} />
+          <Chip label="REMAIN" value={remainText} />
+        </div>
+
+        {/* Field (lighter: no per-note blur/filter) */}
+        <div className="relative z-10 px-4 pt-3 flex-1 min-h-0">
+          <div className="h-full rounded-[22px] border border-white/12 bg-black/22 overflow-hidden">
+            <div ref={fieldRef} className="relative h-full w-full">
+              {/* lane backgrounds + dividers */}
+              <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute inset-0 grid grid-cols-4 opacity-[0.70]">
+                  {[0, 1, 2, 3].map((lane) => (
+                    <div key={lane} className="relative">
+                      <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${laneGlow(lane)}18 0%, transparent 70%)` }} />
+                      <div className="absolute inset-y-0 right-0 w-px bg-white/10" />
+                    </div>
+                  ))}
+                </div>
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: "radial-gradient(860px 560px at 50% 26%, rgba(255,255,255,0.10), transparent 62%)",
+                    opacity: 0.20,
+                  }}
+                />
+              </div>
+
+              {/* receptor lines (FIX: no 4 squares) */}
+              <div className="absolute inset-x-0 z-30 pointer-events-none" style={{ top: receptorY }}>
+                <div className="px-4">
+                  <div className="grid grid-cols-4 gap-2">
+                    {[0, 1, 2, 3].map((lane) => {
+                      const g = laneGlow(lane);
+                      const active = pressedLane === lane;
+                      return (
+                        <div key={lane} className="relative h-10">
+                          <div
+                            className={`absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[3px] rounded-full ${active ? "osb-hitpulse" : ""}`}
+                            style={{
+                              background: `linear-gradient(90deg, transparent, ${g}, transparent)`,
+                              opacity: active ? 0.98 : 0.78,
+                              boxShadow: active ? `0 0 26px ${g}, 0 0 30px ${g}` : `0 0 16px ${g}66`,
+                            }}
+                          />
+                          <div
+                            className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[10px]"
+                            style={{
+                              background: `radial-gradient(80px 20px at 50% 50%, ${g}26, transparent 70%)`,
+                              opacity: active ? 1 : 0.55,
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* global hit line glow */}
+                <div className="mt-2 px-4">
+                  <div
+                    className="h-[4px] rounded-full"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, transparent, rgba(122,226,255,0.76), rgba(198,164,255,0.68), rgba(255,156,222,0.46), transparent)",
+                      boxShadow: "0 0 18px rgba(122,226,255,0.12), 0 0 22px rgba(198,164,255,0.10)",
+                      opacity: 0.85,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* notes (lightweight cards) */}
+              <div className="absolute inset-0 pointer-events-none z-20">
+                {ui.list.map((n) => {
+                  const t = playTRef.current || 0;
+                  const adjT = t + latencyMs / 1000;
+                  const dt = n.t - adjT;
+                  const y = receptorY - dt * speed;
+
+                  const xPct = ((n.lane + 0.5) / LANES) * 100;
+                  const g = laneGlow(n.lane);
+
+                  const depth = clamp(y / (fieldH || 1), 0, 1);
+                  const sc = 0.86 + depth * 0.18;
+                  const op = clamp(0.44 + depth * 0.60, 0, 1);
+                  const size = isMobile ? 46 : 52;
+
+                  return (
+                    <div
+                      key={n.id}
+                      className="absolute"
+                      style={{
+                        left: `calc(${xPct}% - ${size / 2}px)`,
+                        top: `${y - size / 2}px`,
+                        width: size,
+                        height: size,
+                        transform: `translate3d(0,0,0) scale(${sc})`,
+                        opacity: op,
+                        willChange: "transform, top, opacity",
+                      }}
+                    >
+                      <div
+                        className="h-full w-full rounded-[16px] border flex items-center justify-center"
+                        style={{
+                          borderColor: "rgba(255,255,255,0.14)",
+                          background: "rgba(0,0,0,0.36)",
+                          boxShadow: `0 14px 44px rgba(0,0,0,0.58), 0 0 0 1px ${g}45 inset`,
+                        }}
+                      >
+                        <img
+                          src={ASSET.arrows[LANE_ICON[n.lane]]}
+                          alt="note"
+                          className="h-7 w-7 opacity-95"
+                          style={{
+                            // no heavy drop-shadow (android flicker)
+                            filter: "none",
+                          }}
+                        />
+                        {/* tiny glow dot */}
+                        <div
+                          className="absolute bottom-2 right-2 h-2 w-2 rounded-full"
+                          style={{ background: g, opacity: 0.55, boxShadow: `0 0 10px ${g}` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* judge */}
+              {ui.fxAlive && judgeFx && (
+                <div className="absolute inset-x-0 top-[42%] -translate-y-1/2 flex justify-center pointer-events-none z-40">
+                  <img
+                    src={judgeFx.type === "perfect" ? ASSET.judge.perfect : judgeFx.type === "good" ? ASSET.judge.good : ASSET.judge.miss}
+                    alt={judgeFx.type}
+                    className="h-14 opacity-95"
+                    style={{
+                      filter: "none",
+                      animation: "osbJudge 420ms cubic-bezier(0.22,1,0.36,1) both",
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Lane touch zones (no square buttons) */}
+              <div className="absolute inset-0 z-50" style={{ touchAction: "none" }}>
+                <div className="absolute inset-0 grid grid-cols-4">
+                  {[0, 1, 2, 3].map((lane) => {
+                    const g = laneGlow(lane);
+                    const active = pressedLane === lane;
+                    return (
+                      <div
+                        key={lane}
+                        {...bindZone(lane)}
+                        className="relative"
+                        style={{
+                          WebkitTapHighlightColor: "transparent",
+                          background: active ? `${g}08` : "transparent",
+                        }}
+                      >
+                        {/* ghost arrow at bottom */}
+                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 opacity-60 pointer-events-none">
+                          <img src={ASSET.arrows[LANE_ICON[lane]]} alt="ghost" className="h-7 w-7" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="relative z-20 px-4 pt-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">
+              {view === "play" ? "SYNC" : "PAUSE"}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                className="h-10 px-4 rounded-[18px] border border-white/14 bg-white/10 text-white/92 active:scale-[0.99]"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  view === "play" ? pauseRun() : resumeRun();
+                }}
+                style={{ boxShadow: "0 18px 66px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.10)" }}
+              >
+                <span className="text-[11px] tracking-[0.26em] uppercase">{view === "play" ? "PAUSE" : "RESUME"}</span>
+              </button>
+
+              <button
+                className="h-10 px-4 rounded-[18px] border border-white/12 bg-white/6 text-white/86 active:scale-[0.99]"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  restartRun();
+                }}
+                style={{ boxShadow: "0 18px 60px rgba(0,0,0,0.56), inset 0 1px 0 rgba(255,255,255,0.08)" }}
+              >
+                <span className="text-[11px] tracking-[0.26em] uppercase">RESTART</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-2 text-[10px] tracking-[0.26em] uppercase text-white/34">
+            Tap lanes — no buttons
+          </div>
+        </div>
       </div>
-      {hint && <div className="rowHint">{hint}</div>}
-      <div className="rowBody">{children}</div>
+    );
+  };
+
+  // ----------------------------- CONFIG (single scroll, always reachable bottom) -----------------------------
+  const Config = () => {
+    const inRun = view === "play" || view === "pause";
+
+    return (
+      <div
+        className="absolute inset-0 z-[999] flex items-end md:items-center justify-center p-3"
+        style={{ paddingBottom: safeBottom }}
+        onPointerDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setConfigOpen(false);
+        }}
+      >
+        <div className="absolute inset-0 bg-black/65" style={{ backdropFilter: "blur(18px)" }} />
+        <div
+          className="relative w-full max-w-[760px] rounded-[26px] border overflow-hidden"
+          style={{
+            borderColor: TOK.line,
+            background: "rgba(0,0,0,0.60)",
+            boxShadow: "0 34px 160px rgba(0,0,0,0.92), inset 0 1px 0 rgba(255,255,255,0.08)",
+            // ✅ single container height (svh is stable on mobile)
+            height: "min(760px, calc(100svh - 28px - env(safe-area-inset-bottom)))",
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <div className="p-4 border-b" style={{ borderColor: TOK.line2 }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-[10px] tracking-[0.34em] uppercase text-white/50">CONFIG</div>
+                <div className="mt-1 text-[12px] text-white/78">Sync tuning</div>
+              </div>
+              <IconBtn label="close" onDown={() => setConfigOpen(false)}>
+                <span className="text-white/90 text-[16px]">✕</span>
+              </IconBtn>
+            </div>
+          </div>
+
+          {/* ✅ one scroll area */}
+          <div className="p-4 overflow-y-auto osb-scroll" style={{ height: "calc(100% - 72px)" }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="rounded-[20px] border border-white/12 bg-white/6 p-3">
+                <div className="text-[10px] tracking-[0.34em] uppercase text-white/50 mb-2">TRACK</div>
+                <select
+                  className="w-full h-11 rounded-[16px] bg-white/6 border border-white/12 text-white/90 px-3 text-[13px] outline-none"
+                  value={trackId}
+                  onChange={(e) => setTrackInPlace(e.target.value)}
+                >
+                  {ASSET.tracks.map((t) => (
+                    <option key={t.id} value={t.id} className="bg-black">
+                      {t.title}
+                    </option>
+                  ))}
+                </select>
+                <div className="mt-2 text-[10px] tracking-[0.28em] uppercase text-white/44">BPM {currentTrack.bpm}</div>
+                {inRun && (
+                  <div className="mt-2 text-[11px] text-white/60">
+                    Track changed. Press <span className="text-white/88">APPLY & RESTART</span>.
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-[20px] border border-white/12 bg-white/6 p-3">
+                <div className="text-[10px] tracking-[0.34em] uppercase text-white/50 mb-2">DIFFICULTY</div>
+                <Seg
+                  value={difficulty}
+                  onChange={setDifficulty}
+                  options={[
+                    { value: "EASY", label: "EASY" },
+                    { value: "NORMAL", label: "NORMAL" },
+                    { value: "HARD", label: "HARD" },
+                  ]}
+                />
+              </div>
+
+              <div className="rounded-[20px] border border-white/12 bg-white/6 p-3">
+                <div className="text-[10px] tracking-[0.34em] uppercase text-white/50 mb-2">TUNING</div>
+
+                <div className="mb-4">
+                  <div className="flex items-center justify-between text-[11px] text-white/62">
+                    <span className="tracking-[0.22em] uppercase">Latency</span>
+                    <span className="tabular-nums text-white/86">{latencyMs} ms</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={-120}
+                    max={180}
+                    value={latencyMs}
+                    onChange={(e) => setLatencyMs(parseInt(e.target.value, 10))}
+                    className="w-full osb-range"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between text-[11px] text-white/62">
+                    <span className="tracking-[0.22em] uppercase">Speed</span>
+                    <span className="tabular-nums text-white/86">{speed} px/s</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={720}
+                    max={1240}
+                    value={speed}
+                    onChange={(e) => setSpeed(parseInt(e.target.value, 10))}
+                    className="w-full osb-range"
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-[20px] border border-white/12 bg-white/6 p-3">
+                <div className="text-[10px] tracking-[0.34em] uppercase text-white/50 mb-2">AUDIO</div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    className="h-11 rounded-[16px] border border-white/12 bg-white/6 active:scale-[0.99]"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setMuted((m) => !m);
+                    }}
+                  >
+                    <span className="text-[11px] tracking-[0.22em] uppercase text-white/90">{muted ? "MUTE" : "ON"}</span>
+                  </button>
+
+                  <button
+                    className="h-11 rounded-[16px] border border-white/12 bg-white/6 active:scale-[0.99]"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setSfxOn((v) => !v);
+                    }}
+                  >
+                    <span className="text-[11px] tracking-[0.22em] uppercase text-white/90">{sfxOn ? "SFX" : "OFF"}</span>
+                  </button>
+
+                  <button
+                    className="h-11 rounded-[16px] border border-white/12 bg-white/6 text-white/90 active:scale-[0.99]"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      ensureAudioContext();
+                      const actx = actxRef.current;
+                      if (actx && actx.state === "suspended") actx.resume?.().catch(() => {});
+                      playSfx("perfect", 1.0);
+                      navigator.vibrate?.(6);
+                    }}
+                  >
+                    <span className="text-[11px] tracking-[0.22em] uppercase">TEST</span>
+                  </button>
+                </div>
+
+                <div className="mt-4">
+                  <div className="flex items-center justify-between text-[11px] text-white/62">
+                    <span className="tracking-[0.22em] uppercase">Music</span>
+                    <span className="tabular-nums text-white/86">{Math.round(musicVol * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={musicVol}
+                    onChange={(e) => setMusicVol(parseFloat(e.target.value))}
+                    className="w-full osb-range"
+                  />
+                </div>
+
+                <div className="mt-4">
+                  <div className="flex items-center justify-between text-[11px] text-white/62">
+                    <span className="tracking-[0.22em] uppercase">SFX</span>
+                    <span className="tabular-nums text-white/86">{Math.round(sfxVol * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={sfxVol}
+                    onChange={(e) => setSfxVol(parseFloat(e.target.value))}
+                    className="w-full osb-range"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                className="h-12 rounded-[18px] border border-white/14 bg-white/10 text-white/92 active:scale-[0.99]"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setConfigOpen(false);
+                }}
+                style={{ boxShadow: "0 18px 70px rgba(0,0,0,0.70), inset 0 1px 0 rgba(255,255,255,0.10)" }}
+              >
+                <span className="text-[11px] tracking-[0.22em] uppercase">DONE</span>
+              </button>
+
+              {inRun ? (
+                <button
+                  className="h-12 rounded-[18px] border border-white/12 bg-white/8 text-white/90 active:scale-[0.99]"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Apply & restart cleanly
+                    setConfigOpen(false);
+                    // stop current playback and restart with current selections
+                    softStopPlayback();
+                    setView("lobby");
+                    // start immediately after audio is ready (already loaded), so start now
+                    // small delay lets layout settle
+                    setTimeout(() => startRun(), 60);
+                  }}
+                  style={{ boxShadow: "0 18px 66px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.10)" }}
+                >
+                  <span className="text-[11px] tracking-[0.22em] uppercase">APPLY & RESTART</span>
+                </button>
+              ) : (
+                <button
+                  className="h-12 rounded-[18px] border border-white/12 bg-white/6 text-white/86 active:scale-[0.99]"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    hardReset();
+                  }}
+                  style={{ boxShadow: "0 18px 66px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.10)" }}
+                >
+                  <span className="text-[11px] tracking-[0.22em] uppercase">RESET</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ----------------------------- RESULT (more premium) -----------------------------
+  const Result = () => (
+    <div className="absolute inset-0 z-50 flex items-center justify-center p-4" style={{ paddingBottom: safeBottom }}>
+      <div className="absolute inset-0 bg-black/70" style={{ backdropFilter: "blur(18px)" }} />
+      <div
+        className="relative w-full max-w-[560px] rounded-[26px] border p-5"
+        style={{
+          borderColor: TOK.line,
+          background: "rgba(0,0,0,0.58)",
+          boxShadow: `0 36px 170px rgba(0,0,0,0.92), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 120px ${grade.glow}`,
+        }}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-[10px] tracking-[0.34em] uppercase text-white/50">RESULT</div>
+            <div className="mt-1 text-[22px] font-semibold text-white/92">NEON SYNC</div>
+            <div className="mt-1 text-[11px] tracking-[0.22em] uppercase text-white/54">
+              {currentTrack.title} · {difficulty}
+            </div>
+          </div>
+          <div
+            className="h-12 w-12 rounded-2xl border flex items-center justify-center osb-breath-fast"
+            style={{
+              borderColor: "rgba(255,255,255,0.16)",
+              background: "rgba(255,255,255,0.06)",
+              boxShadow: `0 0 0 1px rgba(255,255,255,0.08) inset, 0 0 90px ${grade.glow}`,
+            }}
+          >
+            <div className="text-[18px] font-semibold text-white/92">{grade.label}</div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          {[
+            ["Perfect", counts.perfect, "rgba(122,226,255,0.26)"],
+            ["Good", counts.good, "rgba(198,164,255,0.22)"],
+            ["Miss", counts.miss, "rgba(255,120,170,0.24)"],
+          ].map(([label, val, glow]) => (
+            <div
+              key={label}
+              className="rounded-[20px] border px-3 py-3"
+              style={{
+                borderColor: "rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.05)",
+                boxShadow: `0 0 0 1px rgba(255,255,255,0.05) inset, 0 0 60px ${glow}`,
+              }}
+            >
+              <div className="text-[10px] tracking-[0.28em] uppercase text-white/50">{label}</div>
+              <div className="mt-1 text-[18px] text-white/92 tabular-nums">{val}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="rounded-[20px] border border-white/12 px-3 py-3" style={{ background: "rgba(255,255,255,0.05)" }}>
+            <div className="text-[10px] tracking-[0.28em] uppercase text-white/50">Max Combo</div>
+            <div className="mt-1 text-[18px] text-white/92 tabular-nums">{maxCombo}</div>
+          </div>
+          <div className="rounded-[20px] border border-white/12 px-3 py-3" style={{ background: "rgba(255,255,255,0.05)" }}>
+            <div className="text-[10px] tracking-[0.28em] uppercase text-white/50">Accuracy</div>
+            <div className="mt-1 text-[18px] text-white/92 tabular-nums">{accuracy.toFixed(1)}%</div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            className="h-12 rounded-[18px] border border-white/14 bg-white/10 text-white/92 active:scale-[0.99]"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              restartRun();
+            }}
+            style={{ boxShadow: "0 18px 70px rgba(0,0,0,0.74), inset 0 1px 0 rgba(255,255,255,0.10)" }}
+          >
+            <span className="text-[11px] tracking-[0.22em] uppercase">RESTART</span>
+          </button>
+          <button
+            className="h-12 rounded-[18px] border border-white/12 bg-white/6 text-white/86 active:scale-[0.99]"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              stopAll();
+            }}
+            style={{ boxShadow: "0 18px 66px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.10)" }}
+          >
+            <span className="text-[11px] tracking-[0.22em] uppercase">BACK</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
-}
 
-// ----------------------------- Canvas drawing -----------------------------
-function drawLaneFrame(ctx, w, h, lanes, accent) {
-  // soft glass background
-  const grd = ctx.createLinearGradient(0, 0, 0, h);
-  grd.addColorStop(0, "rgba(255,255,255,0.04)");
-  grd.addColorStop(1, "rgba(255,255,255,0.015)");
-  ctx.fillStyle = grd;
-  roundRect(ctx, 0, 0, w, h, 26);
-  ctx.fill();
+  // ----------------------------- ROOT -----------------------------
+  return (
+    <div
+      ref={rootRef}
+      className="relative h-full w-full overflow-hidden select-none"
+      style={{
+        background: `radial-gradient(1200px 900px at 50% 0%, ${TOK.bg1}, ${TOK.bg0})`,
+        WebkitTapHighlightColor: "transparent",
+        overscrollBehavior: "none",
+      }}
+    >
+      <audio ref={audioRef} preload="auto" />
 
-  // subtle border
-  ctx.strokeStyle = "rgba(255,255,255,0.09)";
-  ctx.lineWidth = 1;
-  roundRect(ctx, 0.5, 0.5, w - 1, h - 1, 26);
-  ctx.stroke();
+      <div className="absolute inset-0 p-3">
+        {/* motion disabled in play to prevent flicker */}
+        <Frame motion={view !== "play"}>
+          {view === "lobby" && <Lobby />}
+          {(view === "play" || view === "pause") && <Play />}
+          {view === "result" && <Result />}
+          {configOpen && <Config />}
+        </Frame>
+      </div>
 
-  // lane lines
-  for (let i = 1; i < lanes; i++) {
-    const x = (w * i) / lanes;
-    const g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, "rgba(255,255,255,0.03)");
-    g.addColorStop(0.5, "rgba(255,255,255,0.09)");
-    g.addColorStop(1, "rgba(255,255,255,0.03)");
-    ctx.strokeStyle = g;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x + 0.5, 18);
-    ctx.lineTo(x + 0.5, h - 18);
-    ctx.stroke();
-  }
+      <style>{`
+        @keyframes osbAuroraBreath {
+          0%   { transform: translate3d(-8px,-6px,0) scale(1.02); opacity: .46; }
+          50%  { transform: translate3d(8px,6px,0)  scale(1.02); opacity: .52; }
+          100% { transform: translate3d(-8px,-6px,0) scale(1.02); opacity: .46; }
+        }
+        .osb-aurora-breath { animation: osbAuroraBreath 12s ease-in-out infinite; }
 
-  // top glow hint
-  const glow = ctx.createRadialGradient(w * 0.22, h * 0.02, 0, w * 0.22, h * 0.02, w * 0.9);
-  glow.addColorStop(0, "rgba(102,227,255,0.07)");
-  glow.addColorStop(1, "rgba(102,227,255,0)");
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, w, h);
-}
+        @keyframes osbBreath {
+          0%,100% { transform: scaleX(1); filter: brightness(1); opacity: .92; }
+          50%     { transform: scaleX(1.02); filter: brightness(1.08); opacity: 1; }
+        }
+        .osb-breath { animation: osbBreath 2.6s ease-in-out infinite; transform-origin: center; }
+        .osb-breath-fast { animation: osbBreath 1.9s ease-in-out infinite; transform-origin: center; }
 
-function drawHitLine(ctx, w, y, accent) {
-  const g = ctx.createLinearGradient(0, 0, w, 0);
-  g.addColorStop(0, "rgba(255,255,255,0)");
-  g.addColorStop(0.5, "rgba(255,255,255,0.22)");
-  g.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.strokeStyle = g;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(18, y + 0.5);
-  ctx.lineTo(w - 18, y + 0.5);
-  ctx.stroke();
+        @keyframes osbStart {
+          0%,100% { box-shadow: 0 30px 120px rgba(0,0,0,0.76), inset 0 1px 0 rgba(255,255,255,0.10), 0 0 70px rgba(122,226,255,0.18); }
+          50%     { box-shadow: 0 30px 120px rgba(0,0,0,0.76), inset 0 1px 0 rgba(255,255,255,0.12), 0 0 96px rgba(198,164,255,0.20); }
+        }
+        .osb-start { animation: osbStart 2.4s ease-in-out infinite; }
 
-  // neon underglow
-  const gg = ctx.createLinearGradient(0, 0, w, 0);
-  gg.addColorStop(0, "rgba(102,227,255,0)");
-  gg.addColorStop(0.5, "rgba(102,227,255,0.12)");
-  gg.addColorStop(1, "rgba(192,132,255,0)");
-  ctx.strokeStyle = gg;
-  ctx.lineWidth = 6;
-  ctx.globalAlpha = 0.22;
-  ctx.beginPath();
-  ctx.moveTo(30, y + 0.5);
-  ctx.lineTo(w - 30, y + 0.5);
-  ctx.stroke();
-  ctx.globalAlpha = 1;
-}
+        @keyframes osbHitPulse {
+          0% { transform: translateY(-50%) scaleX(1); opacity: .92; }
+          55% { transform: translateY(-50%) scaleX(1.06); opacity: 1; }
+          100% { transform: translateY(-50%) scaleX(1); opacity: .92; }
+        }
+        .osb-hitpulse { animation: osbHitPulse 260ms ease-out both; }
 
-function drawNote(ctx, x, y, laneW, alpha, accent) {
-  const w = Math.max(28, Math.min(46, laneW * 0.36));
-  const h = 10;
-  ctx.globalAlpha = alpha;
+        @keyframes osbJudge {
+          0%   { transform: translateY(10px) scale(.98); opacity: 0; }
+          36%  { transform: translateY(0px)  scale(1.03); opacity: 1; }
+          100% { transform: translateY(-10px) scale(1.00); opacity: 0; }
+        }
 
-  // glow
-  ctx.shadowColor = "rgba(0,0,0,0.0)";
-  const g = ctx.createLinearGradient(x - w / 2, y, x + w / 2, y);
-  g.addColorStop(0, "rgba(102,227,255,0.92)");
-  g.addColorStop(1, "rgba(192,132,255,0.92)");
-  ctx.fillStyle = g;
-  roundRect(ctx, x - w / 2, y - h / 2, w, h, 999);
-  ctx.fill();
+        .osb-scroll { scrollbar-width: none; }
+        .osb-scroll::-webkit-scrollbar { display: none; }
 
-  // soft highlight
-  ctx.globalAlpha = alpha * 0.55;
-  ctx.fillStyle = "rgba(255,255,255,0.18)";
-  roundRect(ctx, x - w / 2, y - h / 2, w, 2.4, 999);
-  ctx.fill();
+        /* Range */
+        input.osb-range {
+          -webkit-appearance: none;
+          appearance: none;
+          height: 28px;
+          background: transparent;
+          outline: none;
+        }
+        input.osb-range::-webkit-slider-runnable-track {
+          height: 10px;
+          border-radius: 999px;
+          background: linear-gradient(90deg, rgba(122,226,255,0.70), rgba(198,164,255,0.62), rgba(255,156,222,0.44));
+          box-shadow: 0 0 0 1px rgba(255,255,255,0.12) inset, 0 14px 60px rgba(0,0,0,0.55);
+        }
+        input.osb-range::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 22px;
+          height: 22px;
+          margin-top: -6px;
+          border-radius: 999px;
+          background: rgba(255,255,255,0.92);
+          box-shadow: 0 0 0 1px rgba(255,255,255,0.20) inset, 0 18px 60px rgba(0,0,0,0.65);
+        }
+        input.osb-range::-moz-range-track {
+          height: 10px;
+          border-radius: 999px;
+          background: linear-gradient(90deg, rgba(122,226,255,0.70), rgba(198,164,255,0.62), rgba(255,156,222,0.44));
+          box-shadow: 0 0 0 1px rgba(255,255,255,0.12) inset, 0 14px 60px rgba(0,0,0,0.55);
+        }
+        input.osb-range::-moz-range-thumb {
+          width: 22px;
+          height: 22px;
+          border-radius: 999px;
+          border: none;
+          background: rgba(255,255,255,0.92);
+          box-shadow: 0 0 0 1px rgba(255,255,255,0.20) inset, 0 18px 60px rgba(0,0,0,0.65);
+        }
 
-  ctx.globalAlpha = 1;
-}
-
-function roundRect(ctx, x, y, w, h, r) {
-  const rr = Math.min(r, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + rr, y);
-  ctx.arcTo(x + w, y, x + w, y + h, rr);
-  ctx.arcTo(x + w, y + h, x, y + h, rr);
-  ctx.arcTo(x, y + h, x, y, rr);
-  ctx.arcTo(x, y, x + w, y, rr);
-  ctx.closePath();
-}
-
-// ----------------------------- CSS -----------------------------
-function css(accent) {
-  const a0 = accent?.[0] || "#66e3ff";
-  const a1 = accent?.[1] || "#c084ff";
-
-  return `
-:root{
-  --bg:#06070b;
-  --txt:rgba(255,255,255,.92);
-  --muted:rgba(255,255,255,.56);
-  --muted2:rgba(255,255,255,.40);
-  --stroke:rgba(255,255,255,.10);
-  --stroke2:rgba(255,255,255,.14);
-  --panel:rgba(255,255,255,.05);
-  --panel2:rgba(255,255,255,.07);
-  --shadow:rgba(0,0,0,.55);
-  --a0:${a0};
-  --a1:${a1};
-  --safeB: env(safe-area-inset-bottom);
-  --safeT: env(safe-area-inset-top);
-}
-*{ box-sizing:border-box; }
-html,body{ height:100%; background:var(--bg); }
-body{
-  margin:0;
-  color:var(--txt);
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: geometricPrecision;
-  overflow-x:hidden;
-}
-button{ font:inherit; color:inherit; -webkit-tap-highlight-color: transparent; }
-.app{
-  min-height:100dvh;
-  background:
-    radial-gradient(1200px 680px at 22% 0%, rgba(102,227,255,.10), transparent 60%),
-    radial-gradient(900px 560px at 86% 6%, rgba(192,132,255,.12), transparent 58%),
-    var(--bg);
-}
-.topbar{
-  position:sticky; top:0; z-index:40;
-  padding: calc(14px + var(--safeT)) 16px 12px;
-  display:flex; align-items:center; justify-content:space-between;
-  backdrop-filter: blur(14px);
-  background: linear-gradient(to bottom, rgba(6,7,11,.92), rgba(6,7,11,.42));
-  border-bottom: 1px solid rgba(255,255,255,.07);
-}
-.brand{ display:flex; gap:12px; align-items:center; min-width:0; cursor:pointer; }
-.brandMark{
-  width:34px; height:34px; border-radius:12px;
-  background:
-    radial-gradient(circle at 35% 35%, rgba(255,255,255,.62), transparent 38%),
-    linear-gradient(135deg, rgba(102,227,255,.35), rgba(192,132,255,.32));
-  box-shadow: 0 18px 56px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.10) inset;
-}
-.brandTitle{ letter-spacing:.24em; font-weight:800; font-size:12px; color:rgba(255,255,255,.76); }
-.brandTitle span{ color:rgba(255,255,255,.96); }
-.brandSub{ margin-top:2px; font-size:12px; color:rgba(255,255,255,.40); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.topActions{ display:flex; gap:10px; }
-.iconBtn{
-  width:40px; height:40px; border-radius:14px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.10);
-  display:grid; place-items:center;
-  box-shadow: 0 16px 56px rgba(0,0,0,.35);
-}
-.iconBtn:active{ transform: translateY(1px); }
-
-.stage{
-  position:relative;
-  padding: 16px 16px calc(20px + var(--safeB));
-  min-height: calc(100dvh - 76px);
-}
-.bg{ position:absolute; inset:0; pointer-events:none; overflow:hidden; border-radius: 34px; }
-.bgNoise{
-  position:absolute; inset:-40px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
-  opacity:.10; mix-blend-mode: overlay;
-}
-.bgGlow{ position:absolute; width:740px; height:740px; border-radius:50%; filter: blur(44px); opacity:.9; }
-.bgGlow.a{ left:-280px; top:-260px; background: radial-gradient(circle at 30% 30%, rgba(102,227,255,.22), transparent 62%); }
-.bgGlow.b{ right:-320px; top:-280px; background: radial-gradient(circle at 55% 40%, rgba(192,132,255,.20), transparent 62%); }
-.bgGrid{
-  position:absolute; inset:0;
-  background:
-    linear-gradient(to bottom, rgba(255,255,255,.06), transparent 40%),
-    repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0, rgba(255,255,255,.05) 1px, transparent 1px, transparent 44px),
-    repeating-linear-gradient(0deg, rgba(255,255,255,.04) 0, rgba(255,255,255,.04) 1px, transparent 1px, transparent 44px);
-  opacity:.08;
-  mask-image: radial-gradient(620px 620px at 50% 30%, black 0, black 55%, transparent 78%);
-}
-
-/* Shared micro */
-.kicker{ font-size:11px; letter-spacing:.34em; color:rgba(255,255,255,.50); }
-.dot{ width:4px; height:4px; border-radius:50%; background: rgba(255,255,255,.28); }
-.chipMini{
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.10);
-  color: rgba(255,255,255,.78);
-  font-size:12px;
-  letter-spacing:.10em;
-  text-transform: uppercase;
-}
-
-/* Lobby */
-.lobby{ position:relative; z-index:2; display:flex; justify-content:center; padding-top:8px; }
-.hero{
-  width: min(980px, 100%);
-  border-radius: 32px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-  box-shadow: 0 44px 140px rgba(0,0,0,.58);
-  overflow:hidden;
-  position:relative;
-  padding: 18px 16px 84px; /* room for floating start */
-}
-.hero:before{
-  content:"";
-  position:absolute; inset:-1px;
-  background:
-    radial-gradient(900px 420px at 18% 0%, rgba(102,227,255,.16), transparent 66%),
-    radial-gradient(900px 420px at 92% 0%, rgba(192,132,255,.16), transparent 62%);
-  opacity:.75;
-  pointer-events:none;
-}
-.heroTop{ position:relative; z-index:2; }
-.heroTitle{ margin-top:6px; font-size:46px; line-height:.92; font-weight:900; letter-spacing:.02em; }
-.heroSub{ margin-top:10px; color: rgba(255,255,255,.40); font-size:13px; letter-spacing:.18em; text-transform: lowercase; }
-.heroMeta{ margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; }
-.pillLite{
-  display:flex; gap:10px; align-items:center;
-  padding: 10px 12px;
-  border-radius: 999px;
-  background: rgba(0,0,0,.18);
-  border: 1px solid rgba(255,255,255,.10);
-  box-shadow: 0 22px 70px rgba(0,0,0,.34);
-}
-.pillKey{ font-size:11px; letter-spacing:.24em; color:rgba(255,255,255,.46); }
-.pillVal{ font-weight:900; letter-spacing:.08em; }
-
-.carouselWrap{
-  position:relative; z-index:2;
-  margin-top: 14px;
-  display:flex; align-items:center; gap:10px;
-}
-.navBtn{
-  width:42px; height:42px; border-radius:16px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(255,255,255,.06);
-  display:grid; place-items:center;
-  box-shadow: 0 20px 60px rgba(0,0,0,.35);
-  flex: 0 0 auto;
-}
-.rail{
-  flex:1 1 auto;
-  display:flex; gap:12px;
-  overflow-x:auto;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width:none;
-  padding-block: 10px 12px;
-  overscroll-behavior-x: contain;
-  scroll-padding-inline: 16px;
-}
-.rail::-webkit-scrollbar{ display:none; }
-
-.trackCard{
-  scroll-snap-align:center;
-  flex: 0 0 min(320px, 78vw);
-  border-radius: 26px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(0,0,0,.22);
-  box-shadow: 0 26px 90px rgba(0,0,0,.46);
-  padding: 14px;
-  position:relative;
-  overflow:hidden;
-}
-.trackCardGlow{
-  position:absolute; inset:-1px;
-  background:
-    radial-gradient(420px 220px at 20% 0%, rgba(102,227,255,.14), transparent 65%),
-    radial-gradient(420px 220px at 90% 0%, rgba(192,132,255,.14), transparent 60%);
-  opacity:.65;
-  pointer-events:none;
-}
-.trackCover{
-  position:relative;
-  width:100%;
-  aspect-ratio: 16/9;
-  border-radius: 18px;
-  overflow:hidden;
-  border: 1px solid rgba(255,255,255,.12);
-  box-shadow: 0 18px 60px rgba(0,0,0,.45);
-}
-.coverImg{
-  width:100%; height:100%;
-  object-fit: cover;
-  transform: scale(1.02);
-  filter: saturate(1.02) contrast(1.02);
-}
-.coverMask{
-  position:absolute; inset:0;
-  background: radial-gradient(circle at 30% 20%, rgba(255,255,255,.14), transparent 55%);
-}
-.trackInfo{ margin-top:12px; position:relative; z-index:2; }
-.trackTitle{ font-weight:900; font-size:18px; letter-spacing:.02em; }
-.trackSub{ margin-top:6px; display:flex; gap:8px; align-items:center; color: rgba(255,255,255,.52); font-size:12px; }
-.sep{ opacity:.55; }
-.selectBadge{
-  position:absolute; right:14px; top:14px;
-  width:44px; height:44px;
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(0,0,0,.18);
-  display:grid; place-items:center;
-  font-weight:900; letter-spacing:.12em;
-  color: rgba(255,255,255,.60);
-}
-.selectBadge.on{
-  background: linear-gradient(135deg, rgba(102,227,255,.16), rgba(192,132,255,.14));
-  color: rgba(255,255,255,.92);
-}
-
-.controlsRow{
-  position:relative; z-index:2;
-  margin-top: 12px;
-  display:flex; flex-direction:column; gap:12px;
-}
-.seg{
-  display:flex; gap:6px;
-  padding: 4px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(255,255,255,.05);
-}
-.segBtn{
-  border:0;
-  border-radius:999px;
-  padding: 10px 12px;
-  background: transparent;
-  color: rgba(255,255,255,.60);
-  letter-spacing:.16em;
-  text-transform: uppercase;
-  font-size:12px;
-  display:flex; align-items:baseline; gap:10px;
-}
-.segBtn em{ font-style:normal; opacity:.55; font-size:11px; letter-spacing:.14em; }
-.segBtn.active{
-  color: rgba(255,255,255,.92);
-  background: linear-gradient(135deg, rgba(102,227,255,.18), rgba(192,132,255,.16));
-  box-shadow: 0 14px 46px rgba(0,0,0,.35);
-}
-.pageDots{ display:flex; justify-content:center; gap:6px; }
-.pDot{ width:6px; height:6px; border-radius:999px; background: rgba(255,255,255,.14); }
-.pDot.on{ width:20px; background: linear-gradient(90deg, rgba(102,227,255,.70), rgba(192,132,255,.70)); box-shadow: 0 12px 40px rgba(0,0,0,.35); }
-
-.startFloat{
-  position:absolute; left:0; right:0; bottom: 14px;
-  display:flex; justify-content:center;
-  padding: 0 16px;
-  z-index:3;
-}
-.startBtn{
-  border:0;
-  display:flex; align-items:center; justify-content:center; gap:10px;
-  width:min(520px, 100%);
-  padding: 14px 18px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(102,227,255,.22), rgba(192,132,255,.20));
-  color: rgba(255,255,255,.95);
-  font-weight:900;
-  letter-spacing:.18em;
-  text-transform: uppercase;
-  box-shadow: 0 30px 100px rgba(0,0,0,.55);
-  border: 1px solid rgba(255,255,255,.12);
-}
-.startBtn:active{ transform: translateY(1px); }
-
-/* Play */
-.play{ position:relative; z-index:2; width: min(980px, 100%); margin: 0 auto; }
-.playHud{
-  display:flex; justify-content:space-between; gap:12px;
-  padding: 8px 4px 12px;
-  flex-wrap:wrap;
-}
-.hudKicker{ font-size:11px; letter-spacing:.26em; color: rgba(255,255,255,.46); }
-.hudTitle{ margin-top:6px; font-size:20px; font-weight:900; letter-spacing:.02em; }
-.hudMeta{ margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-.hudRight{ display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; justify-content:flex-end; }
-.hudPill{
-  padding: 10px 12px;
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(0,0,0,.18);
-  box-shadow: 0 22px 70px rgba(0,0,0,.32);
-  display:flex; flex-direction:column; gap:6px;
-  min-width: 120px;
-}
-.hudPill .pillKey{ font-size:11px; letter-spacing:.22em; }
-.hudPill .pillVal{ font-weight:900; font-size:16px; text-align:right; }
-
-.laneStage{
-  border-radius: 30px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(255,255,255,.03);
-  box-shadow: 0 44px 140px rgba(0,0,0,.58);
-  overflow:hidden;
-}
-.laneStage.reduceFlash *{ animation:none !important; }
-.laneFrame{
-  position:relative;
-  height: min(56vh, 560px);
-}
-.laneCanvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
-.judgeImg{
-  position:absolute; left:0; right:0; top: 18px;
-  display:flex; justify-content:center;
-  opacity:0;
-  transform: translateY(-6px) scale(.98);
-  transition: .16s ease;
-  pointer-events:none;
-}
-.judgeImg.on{
-  opacity:1;
-  transform: translateY(0) scale(1);
-}
-.judgeImg img{
-  width: min(280px, 64vw);
-  filter: drop-shadow(0 18px 60px rgba(0,0,0,.60));
-}
-.tapStartOverlay{
-  position:absolute; inset:0;
-  border:0;
-  background: radial-gradient(700px 360px at 50% 10%, rgba(0,0,0,.30), rgba(0,0,0,.08));
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:10px;
-}
-.tapStartPill{
-  display:flex; align-items:center; gap:10px;
-  padding: 12px 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(0,0,0,.28);
-  box-shadow: 0 28px 90px rgba(0,0,0,.55);
-  letter-spacing:.16em;
-  text-transform: uppercase;
-  font-weight:900;
-}
-.tapStartSub{ color: rgba(255,255,255,.48); font-size:12px; letter-spacing:.14em; }
-
-.touchBar{
-  display:grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-top: 12px;
-}
-.laneTouch{
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(255,255,255,.03);
-  height: 74px;
-  border-radius: 22px;
-  position:relative;
-  overflow:hidden;
-  box-shadow: 0 24px 80px rgba(0,0,0,.45);
-  touch-action: manipulation;
-}
-.laneGlow{
-  position:absolute; inset:-1px;
-  background:
-    radial-gradient(240px 120px at 50% 120%, rgba(255,255,255,.18), transparent 62%),
-    radial-gradient(260px 160px at 50% 120%, rgba(102,227,255,.18), transparent 64%),
-    radial-gradient(260px 160px at 50% 120%, rgba(192,132,255,.14), transparent 64%);
-  opacity: calc(.14 + .56 * var(--flash));
-  transition: opacity .18s ease;
-}
-.laneTouch.pressed .laneGlow{ opacity:.92; }
-.laneIcon{
-  position:absolute; left:50%; top:50%;
-  width: 22px; height: 22px;
-  transform: translate(-50%,-50%);
-  opacity:.92;
-  filter: drop-shadow(0 10px 28px rgba(0,0,0,.45));
-}
-
-.playActions{
-  display:flex; gap:10px;
-  margin-top: 12px;
-  flex-wrap:wrap;
-  justify-content:center;
-}
-.ghostBtn{
-  border-radius: 16px;
-  padding: 12px 14px;
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.10);
-  color: rgba(255,255,255,.85);
-  display:flex; align-items:center; gap:10px;
-  letter-spacing:.16em;
-  text-transform: uppercase;
-  box-shadow: 0 22px 70px rgba(0,0,0,.38);
-}
-.ghostBtn.danger{ border-color: rgba(255,255,255,.12); }
-.ghostBtn:active{ transform: translateY(1px); }
-
-/* Result */
-.result{ position:relative; z-index:2; display:flex; justify-content:center; padding-top: 10px; }
-.resultCard{
-  width: min(860px, 100%);
-  border-radius: 32px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-  box-shadow: 0 48px 160px rgba(0,0,0,.60);
-  overflow:hidden;
-  position:relative;
-  padding: 16px;
-}
-.resultCard:before{
-  content:"";
-  position:absolute; inset:-1px;
-  background:
-    radial-gradient(740px 360px at 18% 0%, rgba(102,227,255,.16), transparent 62%),
-    radial-gradient(740px 360px at 92% 0%, rgba(192,132,255,.16), transparent 62%);
-  opacity:.75; pointer-events:none;
-}
-.resultTop{ position:relative; z-index:2; padding: 6px 6px 0; }
-.resultTitle{ margin-top:6px; font-size:28px; font-weight:1000; letter-spacing:.02em; }
-.resultSub{ margin-top:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-.gradeChip{
-  position:absolute; right:16px; top:16px;
-  width:56px; height:56px;
-  border-radius: 18px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(0,0,0,.22);
-  display:grid; place-items:center;
-  font-weight:1000; font-size:22px;
-  box-shadow: 0 30px 110px rgba(0,0,0,.55);
-}
-.gradeChip.gS{ background: linear-gradient(135deg, rgba(102,227,255,.22), rgba(192,132,255,.22)); }
-.gradeChip.gA{ background: linear-gradient(135deg, rgba(102,227,255,.18), rgba(255,255,255,.10)); }
-.gradeChip.gB{ background: rgba(255,255,255,.06); }
-.gradeChip.gC{ background: rgba(255,255,255,.05); }
-.gradeChip.gD{ background: rgba(255,255,255,.04); }
-
-.resultBunny{
-  margin-top: 14px;
-  width:100%;
-  display:flex; justify-content:center;
-}
-.resultBunny img{
-  width: min(260px, 64vw);
-  opacity:.92;
-  filter: drop-shadow(0 24px 90px rgba(0,0,0,.60));
-}
-
-.statsGrid{
-  position:relative; z-index:2;
-  display:grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin-top: 14px;
-}
-@media(min-width:720px){
-  .statsGrid{ grid-template-columns: repeat(3, 1fr); }
-}
-.statCard{
-  border-radius: 22px;
-  background: rgba(0,0,0,.22);
-  border: 1px solid rgba(255,255,255,.10);
-  box-shadow: 0 22px 70px rgba(0,0,0,.38);
-  padding: 12px;
-}
-.statLabel{
-  font-size:11px;
-  letter-spacing:.26em;
-  text-transform: uppercase;
-  color: rgba(255,255,255,.50);
-}
-.statValue{
-  font-size:22px;
-  font-weight:1000;
-  margin-top: 8px;
-}
-.resultActions{
-  position:relative; z-index:2;
-  display:flex; gap:10px;
-  justify-content:center;
-  margin-top: 14px;
-  flex-wrap:wrap;
-}
-
-/* Empty */
-.empty{ position:relative; z-index:2; display:flex; justify-content:center; padding-top: 40px; }
-.panelCard{
-  width: min(820px, 100%);
-  border-radius: 28px;
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.10);
-  box-shadow: 0 40px 120px rgba(0,0,0,.55);
-  padding: 18px 16px;
-}
-.h1{ font-weight:1000; font-size:18px; letter-spacing:.08em; }
-.p{ color: rgba(255,255,255,.55); margin-top:10px; line-height:1.7; }
-
-/* Toast */
-.toast{
-  position:fixed;
-  left:50%; bottom: calc(24px + var(--safeB));
-  transform: translateX(-50%);
-  padding: 10px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(0,0,0,.40);
-  backdrop-filter: blur(14px);
-  color: rgba(255,255,255,.86);
-  letter-spacing:.12em;
-  box-shadow: 0 26px 90px rgba(0,0,0,.55);
-  z-index:80;
-}
-
-/* Settings sheet */
-.sheetWrap{ position:fixed; inset:0; z-index:100; display:flex; justify-content:center; align-items:flex-end; }
-.sheetBackdrop{ position:absolute; inset:0; background: rgba(0,0,0,.58); }
-.sheet{
-  width: min(920px, 100%);
-  max-height: calc(100dvh - 10px);
-  border-radius: 28px 28px 0 0;
-  background: rgba(10,11,16,.92);
-  border: 1px solid rgba(255,255,255,.10);
-  box-shadow: 0 -40px 160px rgba(0,0,0,.70);
-  backdrop-filter: blur(16px);
-  overflow:hidden;
-  position:relative;
-}
-.sheetHead{
-  padding: 16px 16px 12px;
-  display:flex; justify-content:space-between; align-items:center;
-  border-bottom: 1px solid rgba(255,255,255,.08);
-}
-.sheetTitle{ font-weight:1000; font-size:16px; letter-spacing:.12em; text-transform: uppercase; }
-.sheetSub{ color: rgba(255,255,255,.45); font-size:12px; margin-top:4px; }
-.sheetBody{
-  padding: 12px 16px calc(18px + var(--safeB));
-  overflow:auto;
-  -webkit-overflow-scrolling: touch;
-  max-height: calc(100dvh - 120px);
-  overscroll-behavior: contain;
-}
-.group{ margin-bottom: 14px; }
-.groupTitle{
-  font-size:11px;
-  letter-spacing:.34em;
-  text-transform: uppercase;
-  color: rgba(255,255,255,.44);
-  padding: 10px 6px 8px;
-}
-.row{
-  border-radius: 22px;
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.10);
-  box-shadow: 0 22px 70px rgba(0,0,0,.35);
-  padding: 12px;
-  margin-bottom: 10px;
-}
-.row.tight{ padding: 12px 12px 10px; }
-.rowHead{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
-.rowLabel{ font-weight:900; letter-spacing:.22em; font-size:12px; color: rgba(255,255,255,.78); }
-.rowValue{ font-weight:1000; color: rgba(255,255,255,.92); }
-.rowHint{ margin-top:6px; font-size:12px; color: rgba(255,255,255,.42); }
-.rowBody{ margin-top: 10px; }
-
-.seg.mini{ padding:3px; }
-.seg.mini .segBtn{ padding:8px 10px; font-size:11px; letter-spacing:.14em; }
-
-.range{ width:100%; }
-input[type="range"]{
-  -webkit-appearance:none;
-  height: 26px;
-  background: transparent;
-}
-input[type="range"]::-webkit-slider-runnable-track{
-  height: 8px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(102,227,255,.55), rgba(192,132,255,.55));
-  opacity:.85;
-}
-input[type="range"]::-webkit-slider-thumb{
-  -webkit-appearance:none;
-  width: 22px; height: 22px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.92);
-  border: 1px solid rgba(0,0,0,.25);
-  margin-top: -7px;
-  box-shadow: 0 12px 40px rgba(0,0,0,.45);
-}
-.btnRow{ display:flex; gap:10px; flex-wrap:wrap; padding: 0 2px 10px; align-items:center; }
-.chip{
-  padding: 10px 12px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.10);
-  color: rgba(255,255,255,.78);
-  letter-spacing:.20em;
-  text-transform: uppercase;
-  font-size:12px;
-}
-.chip.on{
-  background: linear-gradient(135deg, rgba(102,227,255,.18), rgba(192,132,255,.16));
-  color: rgba(255,255,255,.92);
-}
-.sheetFoot{
-  position:sticky;
-  bottom:0;
-  display:flex; gap:10px;
-  justify-content:space-between;
-  padding: 12px 2px 0;
-  background: linear-gradient(to top, rgba(10,11,16,.92), rgba(10,11,16,0));
-}
-
-/* Small screens */
-@media(max-width:420px){
-  .heroTitle{ font-size:44px; }
-  .hudPill{ min-width: 110px; }
-  .resultTitle{ font-size:24px; }
-}
-`;
-}
+        button { -webkit-tap-highlight-color: transparent; }
+      `}</style>
+    </div>
+  );
+};
 
 
 
