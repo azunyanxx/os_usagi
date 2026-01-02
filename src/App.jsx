@@ -5751,7 +5751,7 @@ const BeatSyncApp = () => {
     const fxAlive = judgeFx && performance.now() - judgeFx.at < 420;
 
     return { t, dur, remain, receptorY, list, fxAlive };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [fieldH, speed, frame, isMobile, judgeFx, latencyMs]);
 
   const remainText = fmtMMSS(ui.remain);
