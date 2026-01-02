@@ -5259,7 +5259,7 @@ const BeatSyncApp = () => {
   React.useEffect(() => {
     // initial preload
     loadTrack(trackId, { preview: false });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   // ----------------------------- CHART BUILD
