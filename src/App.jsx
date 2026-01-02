@@ -5680,11 +5680,8 @@ const BeatSyncApp = () => {
     [applyJudge, getRunTimeSec, windows]
   );
 
-  // ---------- miss judge + finish + raf tick ----------
-  const stopRaf = React.useCallback(() => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = null;
-  }, []);
+
+
 
   const finishRun = React.useCallback(() => {
     runningRef.current = false;
