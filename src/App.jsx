@@ -5814,7 +5814,7 @@ const BeatSyncApp = () => {
     if (!a) return;
     setAudioVolume();
     loadTrack(trackId, { preview: false });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+ 
   }, []);
 
   // ---------- start / pause / resume / stop ----------
