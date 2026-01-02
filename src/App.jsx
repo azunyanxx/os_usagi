@@ -5013,9 +5013,31 @@ const Desktop = ({ bgm }) => {
  * ✅ Judge assets: perfect/good/miss overlays
  * ✅ Result: premium layout + bunny reaction + judge icons
  */
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import {
+  Settings as SettingsIcon,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Play as PlayIcon,
+  Pause,
+  RotateCcw,
+  ArrowLeft,
+  Volume2,
+} from "lucide-react";
+
+/**
+ * OS_USAGI — BEAT SYNC (Mobile-first, award-grade, single file)
+ * Replace src/App.jsx with this.
+ *
+ * ✅ Uses your ASSET + tracks (catbox URLs)
+ * ✅ Fixes: carousel end, start visibility, settings scroll, button jump-to-top, audio unlock on mobile,
+ *          play cut off by OS dock, judge PNG overlay, result redesign.
+ */
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
+const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
 
 function formatTime(sec) {
   const s = Math.max(0, Math.floor(sec || 0));
@@ -5024,29 +5046,8 @@ function formatTime(sec) {
   return `${m}:${r}`;
 }
 
-function hashColor(id = "x") {
-  // deterministic nice accent pair
-  let h = 2166136261;
-  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
-  const a = h >>> 0;
-  const hue1 = a % 360;
-  const hue2 = (hue1 + 120 + ((a >>> 8) % 80)) % 360;
-  return [`hsl(${hue1} 90% 65%)`, `hsl(${hue2} 85% 62%)`];
-}
-
-function binSearchFirstGreater(arr, x) {
-  // arr sorted by .t
-  let lo = 0, hi = arr.length;
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    if (arr[mid].t < x) lo = mid + 1;
-    else hi = mid;
-  }
-  return lo;
-}
-
+// deterministic rng
 function seededRng(seed) {
-  // mulberry32
   let t = seed >>> 0;
   return () => {
     t += 0x6D2B79F5;
@@ -5057,23 +5058,30 @@ function seededRng(seed) {
   };
 }
 
-const HIT = {
-  perfect: 0.06,
-  good: 0.12,
+const HIT_WINDOWS = {
+  perfect: 0.06, // 60ms
+  good: 0.12, // 120ms
 };
 
 const DIFF = {
-  easy:   { key: "easy",   label: "EASY",   density: 0.78, lanes: 4, speedMul: 0.96 },
-  normal: { key: "normal", label: "NORMAL", density: 1.00, lanes: 4, speedMul: 1.00 },
-  hard:   { key: "hard",   label: "HARD",   density: 1.26, lanes: 4, speedMul: 1.06 },
+  easy: { name: "EASY", density: 0.80, lanes: 4, label2: "WIDE" },
+  normal: { name: "NORMAL", density: 1.0, lanes: 4, label2: "STD" },
+  hard: { name: "HARD", density: 1.25, lanes: 4, label2: "TIGHT" },
 };
 
-export default function App() {
-  return <BeatSyncApp />;
-}
+const DEFAULTS = {
+  latencyMs: 70,
+  noteSpeed: 980, // px/s (visual speed)
+  musicVol: 0.86,
+  sfxVol: 0.55,
+  sfxOn: true,
+  reduceFlash: true,
+  dockReserve: 84, // reserve space for OS bottom dock (approx)
+};
 
-function BeatSyncApp() {
-  // ----------------------------- ASSETS -----------------------------
+// --- main ---
+export default function BeatSyncApp() {
+  // ----------------------------- ASSETS (your given) -----------------------------
   const ASSET = useMemo(
     () => ({
       judge: {
@@ -5097,98 +5105,162 @@ function BeatSyncApp() {
         starR: "https://files.catbox.moe/5zvxy0.png",
       },
       tracks: [
-        { id: "overhaul",    title: "Overhaul",                 url: "https://files.catbox.moe/po0sn4.mp3", bpm: 124 },
-        { id: "dawning",     title: "The Dawning",              url: "https://files.catbox.moe/p17dic.mp3", bpm: 120 },
-        { id: "mirage",      title: "mirage",                   url: "https://files.catbox.moe/ttlaul.mp3", bpm: 132 },
-        { id: "phantasma",   title: "廻る世界とファンタズマ",     url: "https://files.catbox.moe/ns5til.mp3", bpm: 150 },
-        { id: "immitation",  title: "Immitation Girl",          url: "https://files.catbox.moe/7lccok.mp3", bpm: 128 },
-        { id: "checkmate",   title: "checkmate",                url: "https://files.catbox.moe/3dutdo.mp3", bpm: 140 },
-        { id: "lockon",      title: "ロックオン",                url: "https://files.catbox.moe/o667wd.mp3", bpm: 160 },
+        { id: "overhaul", title: "Overhaul", url: "https://files.catbox.moe/po0sn4.mp3", bpm: 124 },
+        { id: "dawning", title: "The Dawning", url: "https://files.catbox.moe/p17dic.mp3", bpm: 120 },
+        { id: "mirage", title: "mirage", url: "https://files.catbox.moe/ttlaul.mp3", bpm: 132 },
+        { id: "phantasma", title: "廻る世界とファンタズマ", url: "https://files.catbox.moe/ns5til.mp3", bpm: 150 },
+        { id: "immitation", title: "Immitation Girl", url: "https://files.catbox.moe/7lccok.mp3", bpm: 128 },
+        { id: "checkmate", title: "checkmate", url: "https://files.catbox.moe/3dutdo.mp3", bpm: 140 },
+        { id: "lockon", title: "ロックオン", url: "https://files.catbox.moe/o667wd.mp3", bpm: 160 },
       ],
     }),
     []
   );
 
-  // preload key images (reduces “表示されない”事故)
-  useEffect(() => {
-    const urls = [
-      ...Object.values(ASSET.judge),
-      ...Object.values(ASSET.arrows),
-      ...Object.values(ASSET.bunny),
-    ];
-    urls.forEach((u) => {
-      const img = new Image();
-      img.src = u;
-    });
-  }, [ASSET]);
+  const TRACKS = ASSET.tracks || [];
+  const hasTracks = TRACKS.length > 0;
 
-  // ----------------------------- STATE -----------------------------
-  const TRACKS = ASSET.tracks;
+  // ----------------------------- UI / view state -----------------------------
   const [view, setView] = useState("lobby"); // lobby | play | result
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [trackIndex, setTrackIndex] = useState(0);
   const [difficulty, setDifficulty] = useState("normal");
 
-  const [latencyMs, setLatencyMs] = useState(70);
-  const [noteSpeed, setNoteSpeed] = useState(1020); // px/s base
-  const [musicVol, setMusicVol] = useState(0.88);
-  const [sfxOn, setSfxOn] = useState(true);
-  const [sfxVol, setSfxVol] = useState(0.55);
-  const [reduceFlash, setReduceFlash] = useState(true);
+  const [latencyMs, setLatencyMs] = useState(DEFAULTS.latencyMs);
+  const [noteSpeed, setNoteSpeed] = useState(DEFAULTS.noteSpeed);
+  const [musicVol, setMusicVol] = useState(DEFAULTS.musicVol);
+  const [sfxVol, setSfxVol] = useState(DEFAULTS.sfxVol);
+  const [sfxOn, setSfxOn] = useState(DEFAULTS.sfxOn);
+  const [reduceFlash, setReduceFlash] = useState(DEFAULTS.reduceFlash);
+  const [dockReserve, setDockReserve] = useState(DEFAULTS.dockReserve);
 
-  const track = TRACKS[clamp(trackIndex, 0, TRACKS.length - 1)];
-  const accent = useMemo(() => hashColor(track?.id || track?.title || "os"), [track]);
-  const diff = DIFF[difficulty] || DIFF.normal;
+  const track = hasTracks ? TRACKS[clamp(trackIndex, 0, TRACKS.length - 1)] : null;
 
-  // ----------------------------- AUDIO -----------------------------
-  const musicRef = useRef(null);
-  const previewRef = useRef(null);
-  const beepCtxRef = useRef(null);
+  // accent per track (subtle)
+  const accent = useMemo(() => {
+    // gentle variations
+    const map = {
+      overhaul: ["#66e3ff", "#c084ff"],
+      dawning: ["#7df9ff", "#b1a7ff"],
+      mirage: ["#77ffe0", "#ff7ad9"],
+      phantasma: ["#8ff0ff", "#9b7bff"],
+      immitation: ["#7ee7ff", "#ff92d3"],
+      checkmate: ["#b0f3ff", "#caa6ff"],
+      lockon: ["#7af1ff", "#a58bff"],
+    };
+    return map[track?.id] || ["#66e3ff", "#c084ff"];
+  }, [track?.id]);
 
-  useEffect(() => {
-    if (musicRef.current) musicRef.current.volume = clamp(musicVol, 0, 1);
-  }, [musicVol]);
+  // ----------------------------- audio -----------------------------
+  const audioRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const beepGainRef = useRef(null);
 
-  const playBeep = useCallback((freq = 880, dur = 0.06) => {
-    if (!sfxOn) return;
-    try {
-      if (!beepCtxRef.current) beepCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      const ctx = beepCtxRef.current;
-      const now = ctx.currentTime;
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.type = "sine";
-      o.frequency.value = freq;
-      g.gain.setValueAtTime(0.0001, now);
-      g.gain.exponentialRampToValueAtTime(clamp(sfxVol, 0, 1) * 0.34 + 0.0001, now + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-      o.connect(g).connect(ctx.destination);
-      o.start(now);
-      o.stop(now + dur + 0.02);
-    } catch {}
-  }, [sfxOn, sfxVol]);
+  const [toast, setToast] = useState(null);
+  const toastTimerRef = useRef(0);
 
-  const stopAllAudio = useCallback(() => {
-    const a = musicRef.current;
-    if (a) { try { a.pause(); } catch {} }
-    const p = previewRef.current;
-    if (p) { try { p.pause(); p.currentTime = 0; } catch {} }
+  const showToast = useCallback((msg) => {
+    setToast(msg);
+    clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 1800);
   }, []);
 
-  // Settings open: lock background scroll (sheetだけスクロール)
-  useEffect(() => {
-    if (!settingsOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, [settingsOpen]);
+  const ensureAudioUnlocked = useCallback(async () => {
+    // resume AudioContext (for iOS/Android)
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) {
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new Ctx();
+          const g = audioCtxRef.current.createGain();
+          g.gain.value = 0.9;
+          g.connect(audioCtxRef.current.destination);
+          beepGainRef.current = g;
+        }
+        if (audioCtxRef.current.state !== "running") {
+          await audioCtxRef.current.resume();
+        }
+      }
+    } catch {}
+    // nudge audio element (some browsers)
+    try {
+      const a = audioRef.current;
+      if (a) {
+        a.muted = false;
+        a.volume = clamp(musicVol, 0, 1);
+      }
+    } catch {}
+  }, [musicVol]);
 
-  // ----------------------------- LOBBY CAROUSEL -----------------------------
+  const playBeep = useCallback(
+    async (freq = 880, dur = 0.06) => {
+      if (!sfxOn) return;
+      try {
+        await ensureAudioUnlocked();
+        const ctx = audioCtxRef.current;
+        const g0 = beepGainRef.current;
+        if (!ctx || !g0) return;
+
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "sine";
+        o.frequency.value = freq;
+
+        const t0 = ctx.currentTime;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(clamp(sfxVol, 0, 1) * 0.38 + 0.0001, t0 + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+
+        o.connect(g).connect(g0);
+        o.start(t0);
+        o.stop(t0 + dur + 0.03);
+      } catch {}
+    },
+    [ensureAudioUnlocked, sfxOn, sfxVol]
+  );
+
+  // keep audio volume in sync
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    a.volume = clamp(musicVol, 0, 1);
+  }, [musicVol]);
+
+  // preload judge PNGs (avoid “出ない”)
+  useEffect(() => {
+    const urls = [ASSET.judge.perfect, ASSET.judge.good, ASSET.judge.miss, ASSET.arrows.up, ASSET.arrows.down, ASSET.arrows.left, ASSET.arrows.right];
+    urls.forEach((u) => {
+      const img = new Image();
+      img.decoding = "async";
+      img.loading = "eager";
+      img.src = u;
+    });
+  }, [ASSET]);
+
+  // ----------------------------- lobby carousel edge padding fix -----------------------------
   const railRef = useRef(null);
-  const snappingRef = useRef(false);
-  const userDragRef = useRef(false);
-  const scrollEndTimerRef = useRef(null);
+  const [railEdge, setRailEdge] = useState(16);
+
+  const recalcRailEdge = useCallback(() => {
+    const el = railRef.current;
+    if (!el) return;
+    const card = el.querySelector("[data-card='track']");
+    if (!card) return;
+    const w = el.clientWidth;
+    const cw = card.clientWidth;
+    const edge = Math.max(14, Math.floor((w - cw) / 2));
+    setRailEdge(edge);
+  }, []);
+
+  useEffect(() => {
+    recalcRailEdge();
+    const el = railRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => recalcRailEdge());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [recalcRailEdge]);
 
   const scrollToIndex = useCallback((idx, smooth = true) => {
     const el = railRef.current;
@@ -5196,202 +5268,119 @@ function BeatSyncApp() {
     const cards = el.querySelectorAll("[data-card='track']");
     const card = cards[idx];
     if (!card) return;
-    snappingRef.current = true;
     const left = card.offsetLeft - (el.clientWidth - card.clientWidth) / 2;
     el.scrollTo({ left, behavior: smooth ? "smooth" : "auto" });
-    window.clearTimeout(scrollEndTimerRef.current);
-    scrollEndTimerRef.current = window.setTimeout(() => {
-      snappingRef.current = false;
-    }, smooth ? 360 : 0);
   }, []);
 
-  const snapToNearest = useCallback(() => {
-    const el = railRef.current;
-    if (!el) return;
-    const cards = Array.from(el.querySelectorAll("[data-card='track']"));
-    if (!cards.length) return;
-    const center = el.scrollLeft + el.clientWidth / 2;
-    let best = 0;
-    let bestDist = Infinity;
-    for (let i = 0; i < cards.length; i++) {
-      const c = cards[i];
-      const cx = c.offsetLeft + c.clientWidth / 2;
-      const d = Math.abs(cx - center);
-      if (d < bestDist) { bestDist = d; best = i; }
-    }
-    setTrackIndex(best);
-    scrollToIndex(best, true);
-  }, [scrollToIndex]);
-
+  // scroll -> nearest index
   useEffect(() => {
     const el = railRef.current;
     if (!el) return;
-
-    const onPointerDown = () => { userDragRef.current = true; };
-    const onPointerUp = () => {
-      userDragRef.current = false;
-      // when user stops, snap once
-      window.clearTimeout(scrollEndTimerRef.current);
-      scrollEndTimerRef.current = window.setTimeout(() => snapToNearest(), 120);
-    };
+    let raf = 0;
 
     const onScroll = () => {
-      if (!userDragRef.current) return;
-      // do not fight user scroll; only snap at end (timer)
-      window.clearTimeout(scrollEndTimerRef.current);
-      scrollEndTimerRef.current = window.setTimeout(() => {
-        if (!userDragRef.current) snapToNearest();
-      }, 140);
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const cards = Array.from(el.querySelectorAll("[data-card='track']"));
+        if (!cards.length) return;
+        const center = el.scrollLeft + el.clientWidth / 2;
+        let best = 0;
+        let bestDist = Infinity;
+        for (let i = 0; i < cards.length; i++) {
+          const c = cards[i];
+          const cx = c.offsetLeft + c.clientWidth / 2;
+          const d = Math.abs(cx - center);
+          if (d < bestDist) {
+            bestDist = d;
+            best = i;
+          }
+        }
+        if (best !== trackIndex) setTrackIndex(best);
+      });
     };
 
     el.addEventListener("scroll", onScroll, { passive: true });
-    el.addEventListener("pointerdown", onPointerDown, { passive: true });
-    window.addEventListener("pointerup", onPointerUp, { passive: true });
-
-    // initial align
-    requestAnimationFrame(() => scrollToIndex(trackIndex, false));
-
+    onScroll();
     return () => {
       el.removeEventListener("scroll", onScroll);
-      el.removeEventListener("pointerdown", onPointerDown);
-      window.removeEventListener("pointerup", onPointerUp);
-      window.clearTimeout(scrollEndTimerRef.current);
+      cancelAnimationFrame(raf);
     };
-  }, [snapToNearest, scrollToIndex, trackIndex]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trackIndex]);
 
-  const nextTrack = useCallback(() => {
-    const ni = clamp(trackIndex + 1, 0, TRACKS.length - 1);
-    setTrackIndex(ni);
-    scrollToIndex(ni, true);
-  }, [TRACKS.length, trackIndex, scrollToIndex]);
+  // align when entering lobby
+  useEffect(() => {
+    if (view !== "lobby") return;
+    if (!hasTracks) return;
+    requestAnimationFrame(() => scrollToIndex(trackIndex, false));
+  }, [view, hasTracks, trackIndex, scrollToIndex]);
 
-  const prevTrack = useCallback(() => {
-    const ni = clamp(trackIndex - 1, 0, TRACKS.length - 1);
-    setTrackIndex(ni);
-    scrollToIndex(ni, true);
-  }, [trackIndex, scrollToIndex]);
-
-  // ----------------------------- GAME RUNTIME -----------------------------
+  // ----------------------------- game runtime (refs) -----------------------------
+  const lanes = 4;
   const rafRef = useRef(0);
   const runningRef = useRef(false);
-  const notesRef = useRef([]); // { t, lane, judged, hit }
+  const startedRef = useRef(false);
+
   const seedRef = useRef(1);
-
+  const notesRef = useRef([]); // {t, lane, judged:false, hit:false}
   const statsRef = useRef({ perfect: 0, good: 0, miss: 0, combo: 0, maxCombo: 0, score: 0 });
-  const [hud, setHud] = useState({ score: 0, combo: 0, remain: 0, status: "READY" });
-
-  const [judgeOverlay, setJudgeOverlay] = useState(null); // "perfect"|"good"|"miss"|null
-  const judgeTRef = useRef(null);
 
   const pressedRef = useRef([0, 0, 0, 0]);
   const flashRef = useRef([0, 0, 0, 0]);
 
+  const [hud, setHud] = useState({ status: "READY", score: 0, combo: 0, remain: 0, bpm: 120 });
+  const [judgeOverlay, setJudgeOverlay] = useState({ kind: null, at: 0 });
   const [result, setResult] = useState(null);
 
-  const buildChart = useCallback((bpm, seconds, diffKey) => {
-    const d = DIFF[diffKey] || DIFF.normal;
+  const canvasRef = useRef(null);
+  const stageRef = useRef(null);
+  const [stageSize, setStageSize] = useState({ w: 320, h: 420 });
 
-    const seedStr = `${track?.id || track?.title || "x"}-${diffKey}`;
-    let seed = 2166136261;
-    for (let i = 0; i < seedStr.length; i++) seed = Math.imul(seed ^ seedStr.charCodeAt(i), 16777619);
-    seedRef.current = seed >>> 0;
+  // stage measure
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const r = el.getBoundingClientRect();
+      setStageSize({ w: Math.max(1, Math.floor(r.width)), h: Math.max(1, Math.floor(r.height)) });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
-    const rnd = seededRng(seedRef.current);
-    const beat = 60 / (bpm || 120);
-    const density = d.density;
+  const buildChart = useCallback((bpm, seconds, diffKey, seed) => {
+    const diff = DIFF[diffKey] || DIFF.normal;
+    const rnd = seededRng(seed);
+
+    const beat = 60 / bpm;
+    const density = diff.density;
 
     const notes = [];
-    let t = 1.25; // lead-in
-    const end = Math.max(25, seconds || 180);
+    let t = 1.4; // lead-in
+    const end = seconds;
 
-    while (t < end - 0.5) {
-      const chord = rnd() < 0.18 ? 2 : 1;
-      for (let i = 0; i < chord; i++) {
-        const lane = Math.floor(rnd() * d.lanes);
+    while (t < end) {
+      const count = rnd() < 0.18 ? 2 : 1;
+      for (let i = 0; i < count; i++) {
+        const lane = Math.floor(rnd() * diff.lanes);
         const off = (rnd() - 0.5) * beat * 0.18;
         notes.push({ t: t + off, lane, judged: false, hit: false });
       }
-      const step = (beat / density) * (rnd() < 0.10 ? 1.5 : 1.0);
+      const step = beat / density * (rnd() < 0.12 ? 1.5 : 1.0);
       t += step;
     }
     notes.sort((a, b) => a.t - b.t);
     return notes;
-  }, [track]);
-
-  const hardStop = useCallback(() => {
-    runningRef.current = false;
-    cancelAnimationFrame(rafRef.current);
-    stopAllAudio();
-  }, [stopAllAudio]);
-
-  const toLobby = useCallback(() => {
-    hardStop();
-    setView("lobby");
-    setResult(null);
-    setHud({ score: 0, combo: 0, remain: 0, status: "READY" });
-  }, [hardStop]);
-
-  const showJudge = useCallback((k) => {
-    setJudgeOverlay(k);
-    window.clearTimeout(judgeTRef.current);
-    judgeTRef.current = window.setTimeout(() => setJudgeOverlay(null), 240);
   }, []);
 
-  const startGame = useCallback(() => {
-    if (!track?.url) return;
-
-    // reset runtime
-    hardStop();
-    setResult(null);
-    statsRef.current = { perfect: 0, good: 0, miss: 0, combo: 0, maxCombo: 0, score: 0 };
-    pressedRef.current = [0, 0, 0, 0];
-    flashRef.current = [0, 0, 0, 0];
-    setHud({ score: 0, combo: 0, remain: 0, status: "LOADING" });
-    setJudgeOverlay(null);
-
-    // move view first (layout ready)
-    setView("play");
-
-    const audio = musicRef.current;
-    if (!audio) return;
-
-    // IMPORTANT: keep this in the SAME user gesture frame as much as possible.
-    // Set src and attempt play immediately.
-    audio.src = track.url;
-    audio.volume = clamp(musicVol, 0, 1);
-    audio.currentTime = 0;
-    audio.preload = "auto";
-
-    // generate chart once metadata known; fallback duration if not
-    const onMeta = () => {
-      const dur = Number.isFinite(audio.duration) ? audio.duration : 180;
-      notesRef.current = buildChart(track.bpm || 120, dur, difficulty);
-    };
-    audio.addEventListener("loadedmetadata", onMeta, { once: true });
-
-    // attempt play (gesture-safe)
-    const p = audio.play();
-    if (p && typeof p.then === "function") {
-      p.then(() => {
-        setHud((h) => ({ ...h, status: "SYNC" }));
-      }).catch(() => {
-        // if blocked: show status; user can tap lanes to retry play
-        setHud((h) => ({ ...h, status: "TAP" }));
-      });
-    } else {
-      setHud((h) => ({ ...h, status: "SYNC" }));
+  const stopGame = useCallback(() => {
+    runningRef.current = false;
+    cancelAnimationFrame(rafRef.current);
+    const a = audioRef.current;
+    if (a) {
+      try { a.pause(); } catch {}
     }
-
-    // if metadata not fired fast, create chart after short fallback
-    window.setTimeout(() => {
-      if (!notesRef.current.length) {
-        const dur = Number.isFinite(audio.duration) ? audio.duration : 180;
-        notesRef.current = buildChart(track.bpm || 120, dur, difficulty);
-      }
-    }, 240);
-
-    runningRef.current = true;
-  }, [track, musicVol, buildChart, difficulty, hardStop]);
+  }, []);
 
   const endGame = useCallback(() => {
     const s = statsRef.current;
@@ -5403,15 +5392,10 @@ function BeatSyncApp() {
       acc >= 0.78 ? "B" :
       acc >= 0.65 ? "C" : "D";
 
-    const bunny =
-      grade === "S" || grade === "A" ? ASSET.bunny.yayR :
-      grade === "B" || grade === "C" ? ASSET.bunny.dizzy :
-      ASSET.bunny.flop;
-
     setResult({
-      trackTitle: track?.title || "UNKNOWN",
+      title: track?.title || "UNKNOWN",
       bpm: track?.bpm || 120,
-      diff: DIFF[difficulty]?.label || "NORMAL",
+      diff: DIFF[difficulty]?.name || "NORMAL",
       perfect: s.perfect,
       good: s.good,
       miss: s.miss,
@@ -5419,101 +5403,142 @@ function BeatSyncApp() {
       score: s.score,
       accuracy: acc,
       grade,
-      bunny,
     });
 
-    hardStop();
+    stopGame();
     setView("result");
-  }, [ASSET.bunny, difficulty, hardStop, track]);
+  }, [difficulty, stopGame, track]);
 
-  const togglePause = useCallback(() => {
-    const audio = musicRef.current;
-    if (!audio) return;
-    if (audio.paused) {
-      audio.play().catch(() => {});
-      setHud((h) => ({ ...h, status: "SYNC" }));
-    } else {
-      audio.pause();
-      setHud((h) => ({ ...h, status: "PAUSED" }));
-    }
-  }, []);
+  const startGame = useCallback(async () => {
+    if (!track?.url) return;
 
-  const restart = useCallback(() => {
-    startGame();
-  }, [startGame]);
+    // reset runtime
+    setResult(null);
+    startedRef.current = false;
+    statsRef.current = { perfect: 0, good: 0, miss: 0, combo: 0, maxCombo: 0, score: 0 };
+    pressedRef.current = [0, 0, 0, 0];
+    flashRef.current = [0, 0, 0, 0];
 
-  // Core judge
-  const ensurePlay = useCallback(() => {
-    const audio = musicRef.current;
-    if (!audio) return;
-    if (audio.paused) {
-      audio.play().then(() => {
-        setHud((h) => ({ ...h, status: "SYNC" }));
-      }).catch(() => {
-        setHud((h) => ({ ...h, status: "TAP" }));
+    setHud({ status: "LOADING", score: 0, combo: 0, remain: 0, bpm: track.bpm || 120 });
+    setJudgeOverlay({ kind: null, at: 0 });
+
+    // seed
+    const seedStr = `${track.id}-${difficulty}`;
+    let seed = 2166136261;
+    for (let i = 0; i < seedStr.length; i++) seed = Math.imul(seed ^ seedStr.charCodeAt(i), 16777619);
+    seedRef.current = seed >>> 0;
+
+    // go play screen first
+    setView("play");
+
+    // prepare audio
+    await ensureAudioUnlocked();
+    const a = audioRef.current;
+    if (!a) return;
+
+    try { a.pause(); } catch {}
+    a.src = track.url;
+    a.preload = "auto";
+    a.crossOrigin = "anonymous";
+    a.currentTime = 0;
+    a.volume = clamp(musicVol, 0, 1);
+
+    // try load metadata quickly
+    const waitCanPlay = () =>
+      new Promise((res) => {
+        const on = () => res();
+        a.addEventListener("canplay", on, { once: true });
+        // fallback
+        setTimeout(res, 1200);
       });
+
+    await waitCanPlay();
+
+    const duration = Number.isFinite(a.duration) ? a.duration : 180;
+    notesRef.current = buildChart(track.bpm || 120, duration, difficulty, seedRef.current);
+
+    setHud((h) => ({ ...h, status: "READY" }));
+    // audio will start on Start tap (overlay) OR lane tap.
+  }, [track, difficulty, buildChart, ensureAudioUnlocked, musicVol]);
+
+  // start playback on user gesture
+  const startPlayback = useCallback(async () => {
+    const a = audioRef.current;
+    if (!a) return;
+    await ensureAudioUnlocked();
+
+    try {
+      const p = a.play();
+      if (p && typeof p.then === "function") await p;
+      startedRef.current = true;
+      setHud((h) => ({ ...h, status: "SYNC", bpm: track?.bpm || 120 }));
+      runningRef.current = true;
+      showToast("SYNC READY");
+    } catch {
+      showToast("音が出ないときはもう一度タップしてね");
     }
-  }, []);
+  }, [ensureAudioUnlocked, showToast, track?.bpm]);
 
+  // judge tap
   const judgeLane = useCallback((lane) => {
-    ensurePlay();
+    const a = audioRef.current;
+    if (!a) return;
 
-    const audio = musicRef.current;
-    if (!audio) return;
+    // mobile: if not started, start audio on first lane tap
+    if (!startedRef.current) {
+      startPlayback();
+    }
 
-    const nowT = (audio.currentTime || 0) + (latencyMs / 1000);
+    const tNow = (a.currentTime || 0) + latencyMs / 1000;
     const notes = notesRef.current;
-    if (!notes.length) return;
-
-    // search around current time window for this lane
-    const searchFrom = binSearchFirstGreater(notes, nowT - 0.35);
-    const searchTo = Math.min(notes.length, searchFrom + 80);
-
     let bestIdx = -1;
     let bestDt = Infinity;
 
-    for (let i = searchFrom; i < searchTo; i++) {
+    for (let i = 0; i < notes.length; i++) {
       const n = notes[i];
       if (n.judged || n.lane !== lane) continue;
-      const dt = n.t - nowT;
+      const dt = n.t - tNow;
       const adt = Math.abs(dt);
-      if (adt < bestDt) { bestDt = adt; bestIdx = i; }
-      if (n.t > nowT + HIT.good) break;
+      if (adt < bestDt) {
+        bestDt = adt;
+        bestIdx = i;
+      }
+      if (n.t > tNow + HIT_WINDOWS.good) break;
     }
 
     const s = statsRef.current;
 
-    if (bestIdx >= 0 && bestDt <= HIT.good) {
+    if (bestIdx >= 0 && bestDt <= HIT_WINDOWS.good) {
       const n = notes[bestIdx];
       n.judged = true;
       n.hit = true;
 
-      if (bestDt <= HIT.perfect) {
+      if (bestDt <= HIT_WINDOWS.perfect) {
         s.perfect += 1;
         s.combo += 1;
         s.score += 1200;
-        showJudge("perfect");
-        playBeep(1046, 0.045);
+        s.maxCombo = Math.max(s.maxCombo, s.combo);
+        setJudgeOverlay({ kind: "perfect", at: now() });
         flashRef.current[lane] = 1.0;
+        playBeep(1046, 0.045);
       } else {
         s.good += 1;
         s.combo += 1;
-        s.score += 760;
-        showJudge("good");
+        s.score += 700;
+        s.maxCombo = Math.max(s.maxCombo, s.combo);
+        setJudgeOverlay({ kind: "good", at: now() });
+        flashRef.current[lane] = 0.7;
         playBeep(880, 0.04);
-        flashRef.current[lane] = 0.75;
       }
-      s.maxCombo = Math.max(s.maxCombo, s.combo);
     } else {
-      // miss tap -> combo break (not extra miss count; feels better)
+      // miss tap: break combo but not add miss (miss is for note passing)
       s.combo = 0;
-      showJudge("miss");
-      playBeep(220, 0.03);
-      flashRef.current[lane] = 0.35;
+      setJudgeOverlay({ kind: "miss", at: now() });
+      if (sfxOn) playBeep(220, 0.03);
     }
 
     setHud((h) => ({ ...h, score: s.score, combo: s.combo }));
-  }, [ensurePlay, latencyMs, playBeep, showJudge]);
+  }, [latencyMs, playBeep, sfxOn, startPlayback]);
 
   const onLaneDown = useCallback((lane) => {
     pressedRef.current[lane] = 1;
@@ -5524,206 +5549,276 @@ function BeatSyncApp() {
     pressedRef.current[lane] = 0;
   }, []);
 
-  // Game loop: auto-miss + HUD update throttled
+  // pause toggle
+  const togglePause = useCallback(async () => {
+    const a = audioRef.current;
+    if (!a) return;
+    if (a.paused) {
+      await startPlayback();
+      setHud((h) => ({ ...h, status: "SYNC" }));
+    } else {
+      a.pause();
+      setHud((h) => ({ ...h, status: "PAUSED" }));
+    }
+  }, [startPlayback]);
+
+  const restart = useCallback(() => {
+    stopGame();
+    startGame();
+  }, [stopGame, startGame]);
+
+  const backToLobby = useCallback(() => {
+    stopGame();
+    setSettingsOpen(false);
+    setView("lobby");
+  }, [stopGame]);
+
+  // game loop: draw + miss + remain
   useEffect(() => {
     if (view !== "play") return;
 
-    const audio = musicRef.current;
-    if (!audio) return;
+    const a = audioRef.current;
+    if (!a) return;
 
-    let lastHudAt = 0;
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext?.("2d");
+    const w = stageSize.w;
+    const h = stageSize.h;
 
-    const tick = (ts) => {
-      if (!runningRef.current) return;
+    if (canvas) {
+      canvas.width = Math.max(1, w * devicePixelRatio);
+      canvas.height = Math.max(1, h * devicePixelRatio);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      if (ctx) ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    }
 
-      const now = (audio.currentTime || 0) + (latencyMs / 1000);
+    const laneW = w / lanes;
+    const hitY = Math.floor(h * 0.78);
+    const spawnY = -30;
 
-      // auto-miss passed notes
-      const notes = notesRef.current;
-      const s = statsRef.current;
-      const start = binSearchFirstGreater(notes, now - 0.6);
-      for (let i = Math.max(0, start - 60); i < Math.min(notes.length, start + 10); i++) {
-        const n = notes[i];
-        if (n.judged) continue;
-        if (n.t < now - HIT.good) {
-          n.judged = true;
-          n.hit = false;
-          s.miss += 1;
-          s.combo = 0;
+    const tick = () => {
+      if (!runningRef.current) {
+        // still draw idle state softly
+        if (ctx) {
+          ctx.clearRect(0, 0, w, h);
+          drawLaneFrame(ctx, w, h, lanes, accent);
         }
+        rafRef.current = requestAnimationFrame(tick);
+        return;
       }
 
-      // flash decay
-      for (let l = 0; l < 4; l++) {
-        flashRef.current[l] = Math.max(0, flashRef.current[l] - 0.08);
-      }
-
-      // remain
-      const dur = Number.isFinite(audio.duration) ? audio.duration : 0;
-      const remain = dur ? Math.max(0, dur - audio.currentTime) : 0;
-
-      // end detection
-      if (dur && audio.currentTime >= dur - 0.02) {
+      // audio ended
+      if (!a.paused && Number.isFinite(a.duration) && a.currentTime >= a.duration - 0.02) {
         endGame();
         return;
       }
 
-      // throttle HUD updates
-      if (ts - lastHudAt > 110) {
-        lastHudAt = ts;
-        setHud((h) => ({
-          ...h,
-          remain,
-          score: s.score,
-          combo: s.combo,
-          status: audio.paused ? (h.status === "PAUSED" ? "PAUSED" : "TAP") : (h.status === "PAUSED" ? "SYNC" : h.status),
-        }));
+      const tNow = (a.currentTime || 0) + latencyMs / 1000;
+      const remain = Number.isFinite(a.duration) ? Math.max(0, a.duration - a.currentTime) : 0;
+
+      // auto miss overdue notes
+      const notes = notesRef.current;
+      const s = statsRef.current;
+      for (let i = 0; i < notes.length; i++) {
+        const n = notes[i];
+        if (n.judged) continue;
+        if (n.t < tNow - HIT_WINDOWS.good) {
+          n.judged = true;
+          n.hit = false;
+          s.miss += 1;
+          s.combo = 0;
+        } else break;
+      }
+
+      // decay flash
+      for (let i = 0; i < lanes; i++) flashRef.current[i] = Math.max(0, flashRef.current[i] - 0.055);
+
+      // hud
+      setHud((p) => ({ ...p, remain, score: s.score, combo: s.combo }));
+
+      // draw
+      if (ctx) {
+        ctx.clearRect(0, 0, w, h);
+        drawLaneFrame(ctx, w, h, lanes, accent);
+        drawHitLine(ctx, w, hitY, accent);
+
+        // travel time from speed & distance
+        const dist = hitY - spawnY;
+        const travel = clamp(dist / Math.max(1, noteSpeed), 0.35, 1.3);
+
+        // notes
+        for (let i = 0; i < notes.length; i++) {
+          const n = notes[i];
+          const dt = n.t - tNow;
+          if (dt > travel + 0.2) break; // too early, future
+          if (dt < -0.25) continue; // too late, skip
+          const prog = clamp(1 - dt / travel, 0, 1); // 0->spawn, 1->hit
+          const y = lerp(spawnY, hitY, prog);
+          const x = n.lane * laneW + laneW / 2;
+
+          const alpha = clamp(1 - Math.abs(dt) * 1.9, 0, 1);
+          const hitFade = n.hit ? 0.18 : 1.0;
+
+          drawNote(ctx, x, y, laneW, alpha * hitFade, accent);
+        }
       }
 
       rafRef.current = requestAnimationFrame(tick);
     };
 
-    runningRef.current = true;
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [view, latencyMs, endGame]);
+  }, [view, stageSize.w, stageSize.h, lanes, latencyMs, noteSpeed, accent, endGame]);
+
+  // start running when audio starts playing
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    const onPlay = () => { runningRef.current = true; };
+    const onPause = () => { runningRef.current = false; };
+    a.addEventListener("play", onPlay);
+    a.addEventListener("pause", onPause);
+    return () => {
+      a.removeEventListener("play", onPlay);
+      a.removeEventListener("pause", onPause);
+    };
+  }, []);
 
   // ESC/back
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key !== "Escape") return;
-      if (settingsOpen) setSettingsOpen(false);
-      else if (view === "play") toLobby();
-      else if (view === "result") setView("lobby");
+      if (e.key === "Escape") {
+        if (settingsOpen) setSettingsOpen(false);
+        else if (view === "play") backToLobby();
+        else if (view === "result") setView("lobby");
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [settingsOpen, view, toLobby]);
+  }, [settingsOpen, view, backToLobby]);
 
-  // TEST: preview selected track (short play)
-  const testMusic = useCallback(() => {
-    const p = previewRef.current;
-    if (!p || !track?.url) return;
+  // lock body scroll when sheet open
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [settingsOpen]);
 
-    try {
-      p.src = track.url;
-      p.volume = clamp(musicVol, 0, 1);
-      p.currentTime = 0;
-      const promise = p.play();
-      if (promise && typeof promise.then === "function") {
-        promise.then(() => {
-          // stop after 1.2s (preview)
-          window.setTimeout(() => {
-            try { p.pause(); p.currentTime = 0; } catch {}
-          }, 1200);
-        }).catch(() => {
-          // fallback: beep so user knows it registered
-          playBeep(880, 0.06);
-          playBeep(1174, 0.06);
-        });
-      } else {
-        window.setTimeout(() => {
-          try { p.pause(); p.currentTime = 0; } catch {}
-        }, 1200);
-      }
-    } catch {
-      playBeep(880, 0.06);
-    }
-  }, [musicVol, playBeep, track]);
-
-  // ----------------------------- RENDER -----------------------------
+  // ----------------------------- render -----------------------------
   return (
-    <div className="bsApp" data-view={view}>
-      <style>{css(accent, reduceFlash)}</style>
+    <div className="app" data-view={view}>
+      <style>{css(accent)}</style>
 
-      {/* Main audio */}
-      <audio ref={musicRef} preload="auto" crossOrigin="anonymous" />
-      {/* Preview audio for TEST (separate so it won't break main state) */}
-      <audio ref={previewRef} preload="none" crossOrigin="anonymous" />
+      {/* audio */}
+      <audio ref={audioRef} preload="auto" />
 
+      {/* topbar */}
       <header className="topbar">
-        <div className="brand">
-          <div className="mark">
-            <img src={ASSET.bunny.front} alt="" />
-          </div>
-          <div className="brandTxt">
-            <div className="title">
+        <div className="brand" onClick={() => view !== "lobby" && backToLobby()} role="button" tabIndex={0}>
+          <div className="brandMark" aria-hidden />
+          <div className="brandText">
+            <div className="brandTitle">
               OS_USAGI <span>SYNC</span>
             </div>
-            <div className="sub">beat sync • minimal neon OS</div>
+            <div className="brandSub">beat sync • glass neon minimal</div>
           </div>
         </div>
 
         <div className="topActions">
           {view !== "lobby" && (
-            <button className="iconBtn" onClick={toLobby} aria-label="Back">
+            <button type="button" className="iconBtn" onClick={backToLobby} aria-label="Back">
               <ArrowLeft size={18} />
             </button>
           )}
-          <button className="iconBtn" onClick={() => setSettingsOpen(true)} aria-label="Settings">
-            <Settings size={18} />
+          <button type="button" className="iconBtn" onClick={() => setSettingsOpen(true)} aria-label="Settings">
+            <SettingsIcon size={18} />
           </button>
         </div>
       </header>
 
+      {/* stage */}
       <main className="stage">
         <div className="bg">
-          <div className="grain" />
-          <div className="glow a" />
-          <div className="glow b" />
-          <div className="grid" />
+          <div className="bgNoise" />
+          <div className="bgGlow a" />
+          <div className="bgGlow b" />
+          <div className="bgGrid" />
         </div>
 
-        {view === "lobby" && (
-          <Lobby
-            ASSET={ASSET}
-            TRACKS={TRACKS}
-            trackIndex={trackIndex}
-            track={track}
-            difficulty={difficulty}
-            setDifficulty={setDifficulty}
-            railRef={railRef}
-            onPrev={prevTrack}
-            onNext={nextTrack}
-            onStart={startGame}
-            onSnapToIndex={(i) => scrollToIndex(i, true)}
-          />
+        {!hasTracks ? (
+          <div className="empty">
+            <div className="panelCard">
+              <div className="h1">TRACKS が未設定</div>
+              <div className="p">
+                ASSET.tracks が空です。<br />
+                いまはあなたのASSETに曲が入ってるので、本来ここには来ないはず。
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            {view === "lobby" && (
+              <LobbyScreen
+                ASSET={ASSET}
+                accent={accent}
+                railRef={railRef}
+                railEdge={railEdge}
+                trackIndex={trackIndex}
+                tracks={TRACKS}
+                difficulty={difficulty}
+                setDifficulty={setDifficulty}
+                onPrev={() => { const ni = clamp(trackIndex - 1, 0, TRACKS.length - 1); setTrackIndex(ni); scrollToIndex(ni); }}
+                onNext={() => { const ni = clamp(trackIndex + 1, 0, TRACKS.length - 1); setTrackIndex(ni); scrollToIndex(ni); }}
+                onStart={async () => { await startGame(); }}
+                scrollToIndex={scrollToIndex}
+              />
+            )}
+
+            {view === "play" && (
+              <PlayScreen
+                ASSET={ASSET}
+                accent={accent}
+                track={track}
+                diff={difficulty}
+                hud={hud}
+                stageRef={stageRef}
+                canvasRef={canvasRef}
+                judgeOverlay={judgeOverlay}
+                pressedRef={pressedRef}
+                flashRef={flashRef}
+                dockReserve={dockReserve}
+                reduceFlash={reduceFlash}
+                onTapStart={startPlayback}
+                onLaneDown={onLaneDown}
+                onLaneUp={onLaneUp}
+                onPause={togglePause}
+                onRestart={restart}
+                onEnd={endGame}
+              />
+            )}
+
+            {view === "result" && (
+              <ResultScreen
+                ASSET={ASSET}
+                accent={accent}
+                result={result}
+                onRestart={restart}
+                onBack={() => setView("lobby")}
+              />
+            )}
+          </>
         )}
 
-        {view === "play" && (
-          <Play
-            ASSET={ASSET}
-            track={track}
-            diff={diff}
-            accent={accent}
-            hud={hud}
-            notesRef={notesRef}
-            noteSpeed={noteSpeed}
-            latencyMs={latencyMs}
-            pressedRef={pressedRef}
-            flashRef={flashRef}
-            judgeOverlay={judgeOverlay}
-            onLaneDown={onLaneDown}
-            onLaneUp={onLaneUp}
-            onPause={togglePause}
-            onRestart={restart}
-            onEnd={endGame}
-          />
-        )}
-
-        {view === "result" && (
-          <Result
-            ASSET={ASSET}
-            result={result}
-            onRestart={restart}
-            onBack={() => setView("lobby")}
-          />
-        )}
+        {toast && <div className="toast">{toast}</div>}
       </main>
 
+      {/* settings sheet */}
       {settingsOpen && (
         <SettingsSheet
           ASSET={ASSET}
+          accent={accent}
           track={track}
           difficulty={difficulty}
           setDifficulty={setDifficulty}
@@ -5733,137 +5828,180 @@ function BeatSyncApp() {
           setNoteSpeed={setNoteSpeed}
           musicVol={musicVol}
           setMusicVol={setMusicVol}
-          sfxOn={sfxOn}
-          setSfxOn={setSfxOn}
           sfxVol={sfxVol}
           setSfxVol={setSfxVol}
+          sfxOn={sfxOn}
+          setSfxOn={setSfxOn}
           reduceFlash={reduceFlash}
           setReduceFlash={setReduceFlash}
+          dockReserve={dockReserve}
+          setDockReserve={setDockReserve}
           onClose={() => setSettingsOpen(false)}
-          onTestMusic={testMusic}
-          onTestBeep={() => { playBeep(880, 0.06); window.setTimeout(() => playBeep(1174, 0.06), 110); }}
+          onTest={() => {
+            playBeep(880, 0.05);
+            setTimeout(() => playBeep(1174, 0.05), 120);
+          }}
+          onTestMusic={async () => {
+            await ensureAudioUnlocked();
+            const a = audioRef.current;
+            if (!a || !track?.url) return;
+            try {
+              if (!a.src || a.src !== track.url) a.src = track.url;
+              if (a.paused) await a.play();
+              else a.pause();
+            } catch {
+              showToast("音が出ないときは画面を一度タップしてね");
+            }
+          }}
         />
       )}
     </div>
   );
 }
 
-function Lobby({
+// ----------------------------- Screens -----------------------------
+
+function LobbyScreen({
   ASSET,
-  TRACKS,
+  accent,
+  railRef,
+  railEdge,
   trackIndex,
-  track,
+  tracks,
   difficulty,
   setDifficulty,
-  railRef,
   onPrev,
   onNext,
   onStart,
-  onSnapToIndex,
+  scrollToIndex,
 }) {
-  // Keep Start always visible: sticky bottom control bar
+  useEffect(() => {
+    requestAnimationFrame(() => scrollToIndex(trackIndex, false));
+  }, [scrollToIndex, trackIndex]);
+
+  const t = tracks[trackIndex];
+
   return (
     <section className="lobby">
       <div className="hero">
         <div className="heroTop">
           <div className="kicker">PORTAL</div>
-          <div className="hTitle">BEAT SYNC</div>
-          <div className="hSub">tap pads • connect • keep the signal alive</div>
-
-          <div className="now">
-            <div className="nowLeft">
-              <div className="nowLabel">OS_USAGI • BEAT SYNC</div>
-              <div className="nowTitle">{track?.title}</div>
-              <div className="nowMeta">
-                <span className="pill">{DIFF[difficulty]?.label || "NORMAL"}</span>
-                <span className="dot" />
-                <span className="pill">BPM {track?.bpm || 120}</span>
-              </div>
+          <div className="heroTitle">
+            BEAT<br />SYNC
+          </div>
+          <div className="heroSub">
+            <div className="muted">
+              tap pads ・ connect ・ keep the signal alive
             </div>
+          </div>
 
-            <div className="nowRight">
-              <div className="statusPill">
-                <span className="muted">STATUS</span>
-                <span className="ready">READY</span>
-              </div>
+          <div className="heroMeta">
+            <div className="pillLite">
+              <span className="pillKey">STATUS</span>
+              <span className="pillVal">READY</span>
+            </div>
+            <div className="pillLite">
+              <span className="pillKey">BPM</span>
+              <span className="pillVal">{t?.bpm || 120}</span>
+            </div>
+            <div className="pillLite">
+              <span className="pillKey">MODE</span>
+              <span className="pillVal">{DIFF[difficulty]?.name}</span>
             </div>
           </div>
         </div>
 
         <div className="carouselWrap">
-          <button className="navBtn" onClick={onPrev} aria-label="Previous track">
+          <button type="button" className="navBtn" onClick={onPrev} aria-label="Prev">
             <ChevronLeft size={18} />
           </button>
 
-          <div className="rail" ref={railRef} aria-label="Track carousel">
-            {TRACKS.map((t, i) => (
-              <button
-                key={t.id}
-                type="button"
-                className={`tCard ${i === trackIndex ? "active" : ""}`}
-                data-card="track"
-                onClick={() => onSnapToIndex(i)}
-              >
-                <div className="tTop">
-                  <img className="bunnyStamp" src={ASSET.bunny.idle} alt="" />
-                  <div className="tBadge">{i === trackIndex ? "SELECT" : "TRACK"}</div>
+          <div
+            className="rail"
+            ref={railRef}
+            style={{ paddingInline: `${railEdge}px` }}
+          >
+            {tracks.map((x, i) => (
+              <div className="trackCard" data-card="track" key={x.id || i}>
+                <div className="trackCardGlow" />
+                <div className="trackCover">
+                  <img
+                    alt=""
+                    className="coverImg"
+                    src={ASSET.bunny.front}
+                    loading="eager"
+                    decoding="async"
+                  />
+                  <div className="coverMask" />
                 </div>
-                <div className="tTitle">{t.title}</div>
-                <div className="tMeta">
-                  <span className="muted">BPM</span> {t.bpm}
+                <div className="trackInfo">
+                  <div className="trackTitle">{x.title}</div>
+                  <div className="trackSub">
+                    <span className="chipMini">OS_USAGI</span>
+                    <span className="sep">•</span>
+                    <span className="chipMini">BPM {x.bpm || 120}</span>
+                  </div>
                 </div>
-                <div className="tGlow" />
-              </button>
+                <div className={`selectBadge ${i === trackIndex ? "on" : ""}`}>
+                  {i === trackIndex ? "SELECT" : "—"}
+                </div>
+              </div>
             ))}
           </div>
 
-          <button className="navBtn" onClick={onNext} aria-label="Next track">
+          <button type="button" className="navBtn" onClick={onNext} aria-label="Next">
             <ChevronRight size={18} />
           </button>
         </div>
 
-        <div className="lobbyBottom">
+        <div className="controlsRow">
           <div className="seg">
             {["easy", "normal", "hard"].map((k) => (
               <button
-                key={k}
                 type="button"
-                className={`segBtn ${difficulty === k ? "on" : ""}`}
+                key={k}
+                className={`segBtn ${difficulty === k ? "active" : ""}`}
                 onClick={() => setDifficulty(k)}
               >
-                {DIFF[k].label}
+                <span>{DIFF[k].name}</span>
+                <em>{DIFF[k].label2}</em>
               </button>
             ))}
           </div>
 
-          <button className="start" onClick={onStart} type="button">
-            <Play size={18} />
-            START
-          </button>
+          <div className="pageDots" aria-hidden>
+            {tracks.map((_, i) => (
+              <span key={i} className={`pDot ${i === trackIndex ? "on" : ""}`} />
+            ))}
+          </div>
         </div>
 
-        <div className="dots" aria-hidden>
-          {TRACKS.map((_, i) => (
-            <span key={i} className={`dotx ${i === trackIndex ? "on" : ""}`} />
-          ))}
+        {/* Floating START so it never disappears */}
+        <div className="startFloat">
+          <button type="button" className="startBtn" onClick={onStart}>
+            <PlayIcon size={18} />
+            START
+          </button>
         </div>
       </div>
     </section>
   );
 }
 
-function Play({
+function PlayScreen({
   ASSET,
+  accent,
   track,
   diff,
-  accent,
   hud,
-  notesRef,
-  noteSpeed,
-  latencyMs,
+  stageRef,
+  canvasRef,
+  judgeOverlay,
   pressedRef,
   flashRef,
-  judgeOverlay,
+  dockReserve,
+  reduceFlash,
+  onTapStart,
   onLaneDown,
   onLaneUp,
   onPause,
@@ -5871,208 +6009,180 @@ function Play({
   onEnd,
 }) {
   const lanes = 4;
+  const started = hud.status !== "LOADING" && hud.status !== "READY";
 
-  // local render tick for smooth note motion (visual-only)
-  const [, setTick] = useState(0);
+  const judgeUrl =
+    judgeOverlay.kind === "perfect"
+      ? ASSET.judge.perfect
+      : judgeOverlay.kind === "good"
+      ? ASSET.judge.good
+      : judgeOverlay.kind === "miss"
+      ? ASSET.judge.miss
+      : null;
+
+  // overlay visibility (auto fade)
+  const [judgeShow, setJudgeShow] = useState(false);
   useEffect(() => {
-    let raf = 0;
-    const loop = () => {
-      setTick((t) => (t + 1) % 1000000);
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, []);
+    if (!judgeOverlay.kind) return;
+    setJudgeShow(true);
+    const t = setTimeout(() => setJudgeShow(false), 520);
+    return () => clearTimeout(t);
+  }, [judgeOverlay.at]); // only when updated
 
-  const audio = document.querySelector("audio"); // main is first audio in DOM
-  const nowT = ((audio?.currentTime || 0) + (latencyMs / 1000));
-
-  // travel time derived from speed and stage height feel
-  // (visual tuned for mobile)
-  const travelSec = 0.92 / (diff.speedMul || 1);
-  const spawnY = -120;
-
-  const notes = notesRef.current || [];
-  const from = Math.max(0, binSearchFirstGreater(notes, nowT - 0.25) - 40);
-  const to = Math.min(notes.length, from + 130);
-  const visible = notes.slice(from, to);
-
-  const arrowByLane = [ASSET.arrows.left, ASSET.arrows.down, ASSET.arrows.up, ASSET.arrows.right];
+  const arrow = [ASSET.arrows.left, ASSET.arrows.down, ASSET.arrows.up, ASSET.arrows.right];
 
   return (
     <section className="play">
-      <div className="pHud">
-        <div className="pLeft">
-          <div className="pTitle">{track?.title}</div>
-          <div className="pSub">
-            <span className="pill">{diff.label}</span>
+      <div className="playHud">
+        <div className="hudLeft">
+          <div className="hudKicker">OS_USAGI BEAT SYNC</div>
+          <div className="hudTitle">{track?.title || ""}</div>
+          <div className="hudMeta">
+            <span className="chipMini">{DIFF[diff]?.name}</span>
             <span className="dot" />
-            <span className="pill">BPM {track?.bpm || 120}</span>
+            <span className="chipMini">BPM {track?.bpm || 120}</span>
           </div>
         </div>
 
-        <div className="pRight">
-          <div className="stat">
-            <div className="k">SCORE</div>
-            <div className="v">{Math.floor(hud.score || 0).toLocaleString()}</div>
+        <div className="hudRight">
+          <div className="hudPill">
+            <span className="pillKey">SCORE</span>
+            <span className="pillVal">{Math.floor(hud.score || 0).toLocaleString()}</span>
           </div>
-          <div className="stat">
-            <div className="k">COMBO</div>
-            <div className="v">{hud.combo || 0}</div>
+          <div className="hudPill">
+            <span className="pillKey">COMBO</span>
+            <span className="pillVal">{hud.combo || 0}</span>
           </div>
-          <div className="stat">
-            <div className="k">REMAIN</div>
-            <div className="v">{formatTime(hud.remain || 0)}</div>
+          <div className="hudPill">
+            <span className="pillKey">REMAIN</span>
+            <span className="pillVal">{formatTime(hud.remain || 0)}</span>
           </div>
         </div>
       </div>
 
-      <div className="laneStage">
-        <div className="laneFrame">
-          <div className="laneLines">
-            {Array.from({ length: lanes + 1 }).map((_, i) => (
-              <div key={i} className="laneLine" style={{ left: `${(i / lanes) * 100}%` }} />
-            ))}
-          </div>
+      <div className={`laneStage ${reduceFlash ? "reduceFlash" : ""}`}>
+        <div className="laneFrame" ref={stageRef}>
+          <canvas ref={canvasRef} className="laneCanvas" />
 
-          <div className="noteLayer" aria-hidden>
-            {visible.map((n, idx) => {
-              const dt = n.t - nowT;
-              const prog = 1 - clamp(dt / travelSec, 0, 1);
-              if (dt > travelSec || dt < -0.22) return null;
-
-              const y = lerp(spawnY, 0, prog);
-              const xPct = ((n.lane + 0.5) / lanes) * 100;
-
-              const opacity = clamp(1 - Math.abs(dt) * 1.7, 0.12, 1);
-              const s = n.hit ? 0.94 : 1.0;
-
-              return (
-                <div
-                  key={`${from + idx}-${n.t}`}
-                  className={`note ${n.hit ? "hit" : ""}`}
-                  style={{
-                    transform: `translate3d(${xPct}%, ${y}px, 0) scale(${s})`,
-                    opacity,
-                  }}
-                >
-                  <img src={arrowByLane[n.lane]} alt="" />
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="hitLine" />
-
-          <div className={`hudStatus ${hud.status}`}>
-            {hud.status === "PAUSED" ? "PAUSED" : hud.status === "TAP" ? "TAP TO START AUDIO" : "SYNC"}
-          </div>
-
-          {judgeOverlay && (
-            <div className="judgeOverlay" aria-hidden>
-              <img
-                src={judgeOverlay === "perfect" ? ASSET.judge.perfect : judgeOverlay === "good" ? ASSET.judge.good : ASSET.judge.miss}
-                alt=""
-              />
+          {/* judge image overlay */}
+          {judgeUrl && (
+            <div className={`judgeImg ${judgeShow ? "on" : ""}`}>
+              <img src={judgeUrl} alt={judgeOverlay.kind || ""} draggable={false} />
             </div>
+          )}
+
+          {/* Tap-to-start overlay (fix audio autoplay restriction) */}
+          {!started && (
+            <button
+              type="button"
+              className="tapStartOverlay"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onTapStart();
+              }}
+            >
+              <div className="tapStartPill">
+                <Volume2 size={16} />
+                TAP TO START AUDIO
+              </div>
+              <div className="tapStartSub">（最初の1回だけ）</div>
+            </button>
           )}
         </div>
       </div>
 
-      <div className="touchBar" role="group" aria-label="Lanes">
+      {/* touch lanes */}
+      <div className="touchBar" style={{ marginBottom: `${dockReserve}px` }} role="group" aria-label="Lanes">
         {Array.from({ length: lanes }).map((_, lane) => {
           const pressed = pressedRef.current[lane] > 0;
-          const flash = flashRef.current[lane] || 0;
+          const flash = flashRef.current[lane];
           return (
             <button
-              key={lane}
               type="button"
+              key={lane}
               className={`laneTouch ${pressed ? "pressed" : ""}`}
-              style={{ "--flash": flash, "--a0": accent[0], "--a1": accent[1] }}
-              onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture?.(e.pointerId); onLaneDown(lane); }}
-              onPointerUp={(e) => { e.preventDefault(); onLaneUp(lane); }}
-              onPointerCancel={(e) => { e.preventDefault(); onLaneUp(lane); }}
+              style={{ "--flash": flash }}
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.currentTarget.setPointerCapture?.(e.pointerId);
+                onLaneDown(lane);
+              }}
+              onPointerUp={() => onLaneUp(lane)}
+              onPointerCancel={() => onLaneUp(lane)}
             >
-              <span className="touchGlow" />
-              <img className="touchIcon" src={arrowByLane[lane]} alt="" />
+              <span className="laneGlow" />
+              <img className="laneIcon" src={arrow[lane]} alt="" draggable={false} />
             </button>
           );
         })}
       </div>
 
-      <div className="playActions">
-        <button className="ghost" type="button" onPointerDown={(e) => e.preventDefault()} onClick={onPause}>
-          {hud.status === "PAUSED" ? <Play size={18} /> : <Pause size={18} />}
-          {hud.status === "PAUSED" ? "RESUME" : "PAUSE"}
+      <div className="playActions" style={{ paddingBottom: `calc(${dockReserve}px + var(--safeB))` }}>
+        <button type="button" className="ghostBtn" onClick={onPause}>
+          <Pause size={18} /> {hud.status === "PAUSED" ? "RESUME" : "PAUSE"}
         </button>
-        <button className="ghost" type="button" onPointerDown={(e) => e.preventDefault()} onClick={onRestart}>
-          <RotateCcw size={18} />
-          RESTART
+        <button type="button" className="ghostBtn" onClick={onRestart}>
+          <RotateCcw size={18} /> RESTART
         </button>
-        <button className="ghost danger" type="button" onPointerDown={(e) => e.preventDefault()} onClick={onEnd}>
-          <X size={18} />
-          END
+        <button type="button" className="ghostBtn danger" onClick={onEnd}>
+          <X size={18} /> END
         </button>
       </div>
     </section>
   );
 }
 
-function Result({ ASSET, result, onRestart, onBack }) {
-  const r = result || {
-    trackTitle: "BEAT SYNC",
-    diff: "NORMAL",
-    bpm: 120,
-    perfect: 0,
-    good: 0,
-    miss: 0,
-    maxCombo: 0,
-    score: 0,
-    accuracy: 0,
-    grade: "D",
-    bunny: ASSET.bunny.flop,
-  };
-  const accPct = Math.round((r.accuracy || 0) * 1000) / 10;
+function ResultScreen({ ASSET, accent, result, onRestart, onBack }) {
+  const accPct = Math.round(((result?.accuracy || 0) * 1000)) / 10;
+
+  const mood =
+    result?.grade === "S" || result?.grade === "A"
+      ? ASSET.bunny.yayR
+      : result?.grade === "B"
+      ? ASSET.bunny.starR
+      : result?.grade === "C"
+      ? ASSET.bunny.dizzy
+      : ASSET.bunny.flop;
 
   return (
     <section className="result">
       <div className="resultCard">
-        <div className="rHead">
-          <div className="rKicker">RESULT</div>
-          <div className="rTitle">{r.trackTitle}</div>
-          <div className="rMeta">
-            <span className="pill">{r.diff}</span>
+        <div className="resultTop">
+          <div className="kicker">RESULT</div>
+          <div className="resultTitle">BEAT SYNC</div>
+          <div className="resultSub">
+            <span className="chipMini">{result?.title || "—"}</span>
             <span className="dot" />
-            <span className="pill">BPM {r.bpm}</span>
+            <span className="chipMini">{result?.diff || "NORMAL"}</span>
+            <span className="dot" />
+            <span className="chipMini">BPM {result?.bpm || 120}</span>
           </div>
 
-          <div className={`grade ${r.grade}`}>
-            <span>{r.grade}</span>
-          </div>
-        </div>
-
-        <div className="rBody">
-          <div className="bunnyCard">
-            <img src={r.bunny} alt="" />
-            <div className="bunnyCap">OS_USAGI reaction</div>
+          <div className={`gradeChip g${result?.grade || "D"}`}>
+            <span>{result?.grade || "D"}</span>
           </div>
 
-          <div className="stats">
-            <Stat icon={ASSET.judge.perfect} label="PERFECT" value={r.perfect} />
-            <Stat icon={ASSET.judge.good} label="GOOD" value={r.good} />
-            <Stat icon={ASSET.judge.miss} label="MISS" value={r.miss} />
-            <Stat label="MAX COMBO" value={r.maxCombo} />
-            <Stat label="ACCURACY" value={`${accPct}%`} />
-            <Stat label="SCORE" value={(r.score || 0).toLocaleString()} />
+          <div className="resultBunny">
+            <img src={mood} alt="" draggable={false} />
           </div>
         </div>
 
-        <div className="rActions">
-          <button className="start" type="button" onPointerDown={(e) => e.preventDefault()} onClick={onRestart}>
+        <div className="statsGrid">
+          <Stat label="PERFECT" value={result?.perfect ?? 0} />
+          <Stat label="GOOD" value={result?.good ?? 0} />
+          <Stat label="MISS" value={result?.miss ?? 0} />
+          <Stat label="MAX COMBO" value={result?.maxCombo ?? 0} />
+          <Stat label="ACCURACY" value={`${accPct}%`} />
+          <Stat label="SCORE" value={(result?.score ?? 0).toLocaleString()} />
+        </div>
+
+        <div className="resultActions">
+          <button type="button" className="startBtn" onClick={onRestart}>
             <RotateCcw size={18} />
             RESTART
           </button>
-          <button className="ghost" type="button" onPointerDown={(e) => e.preventDefault()} onClick={onBack}>
+          <button type="button" className="ghostBtn" onClick={onBack}>
             <ArrowLeft size={18} />
             BACK
           </button>
@@ -6082,19 +6192,18 @@ function Result({ ASSET, result, onRestart, onBack }) {
   );
 }
 
-function Stat({ icon, label, value }) {
+function Stat({ label, value }) {
   return (
     <div className="statCard">
-      <div className="sTop">
-        {icon ? <img src={icon} alt="" /> : <span className="sDot" />}
-        <div className="sLabel">{label}</div>
-      </div>
-      <div className="sVal">{value}</div>
+      <div className="statLabel">{label}</div>
+      <div className="statValue">{value}</div>
     </div>
   );
 }
 
 function SettingsSheet({
+  ASSET,
+  accent,
   track,
   difficulty,
   setDifficulty,
@@ -6104,68 +6213,55 @@ function SettingsSheet({
   setNoteSpeed,
   musicVol,
   setMusicVol,
-  sfxOn,
-  setSfxOn,
   sfxVol,
   setSfxVol,
+  sfxOn,
+  setSfxOn,
   reduceFlash,
   setReduceFlash,
+  dockReserve,
+  setDockReserve,
   onClose,
+  onTest,
   onTestMusic,
-  onTestBeep,
 }) {
-  const bodyRef = useRef(null);
-
-  // keep scroll position stable even when state changes
-  const lastScrollRef = useRef(0);
-  useEffect(() => {
-    const el = bodyRef.current;
-    if (!el) return;
-    const onScroll = () => { lastScrollRef.current = el.scrollTop; };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, []);
-  useEffect(() => {
-    const el = bodyRef.current;
-    if (!el) return;
-    // restore (prevents “ボタン押したら上に戻る”系の体感)
-    el.scrollTop = lastScrollRef.current;
-  });
-
-  const noFocusScroll = (e) => e.preventDefault();
-
   return (
     <div className="sheetWrap" role="dialog" aria-modal="true">
       <div className="sheetBackdrop" onClick={onClose} />
-      <div className="sheet">
+
+      <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="sheetHead">
-          <div className="shLeft">
-            <div className="shTitle">Sync tuning</div>
-            <div className="shSub">{track?.title || "—"}</div>
+          <div>
+            <div className="sheetTitle">Sync tuning</div>
+            <div className="sheetSub">{track?.title || "—"}</div>
           </div>
-          <button className="iconBtn" type="button" onPointerDown={noFocusScroll} onClick={onClose} aria-label="Close">
+
+          <button type="button" className="iconBtn" onClick={onClose} aria-label="Close">
             <X size={18} />
           </button>
         </div>
 
-        <div className="sheetBody" ref={bodyRef}>
+        <div className="sheetBody">
           <div className="group">
-            <div className="gTitle">TRACK</div>
-            <div className="row">
+            <div className="groupTitle">TRACK / DIFFICULTY</div>
+            <div className="row tight">
               <div className="rowHead">
                 <div className="rowLabel">DIFFICULTY</div>
-                <div className="rowValue">{DIFF[difficulty]?.label}</div>
+                <div className="rowValue">{DIFF[difficulty]?.name}</div>
               </div>
               <div className="seg mini">
                 {["easy", "normal", "hard"].map((k) => (
                   <button
-                    key={k}
                     type="button"
-                    className={`segBtn ${difficulty === k ? "on" : ""}`}
-                    onPointerDown={noFocusScroll}
-                    onClick={() => setDifficulty(k)}
+                    key={k}
+                    className={`segBtn ${difficulty === k ? "active" : ""}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDifficulty(k);
+                    }}
                   >
-                    {DIFF[k].label}
+                    {DIFF[k].name}
                   </button>
                 ))}
               </div>
@@ -6173,7 +6269,7 @@ function SettingsSheet({
           </div>
 
           <div className="group">
-            <div className="gTitle">TUNING</div>
+            <div className="groupTitle">TUNING</div>
 
             <Row label="LATENCY" value={`${latencyMs} ms`} hint="Tap timing compensation">
               <input
@@ -6186,32 +6282,67 @@ function SettingsSheet({
               />
             </Row>
 
-            <Row label="SPEED" value={`${noteSpeed} px/s`} hint="Note travel speed">
+            <Row label="NOTE SPEED" value={`${noteSpeed} px/s`} hint="Visual travel speed">
               <input
                 className="range"
                 type="range"
-                min={760}
-                max={1500}
+                min={720}
+                max={1400}
                 value={noteSpeed}
                 onChange={(e) => setNoteSpeed(Number(e.target.value))}
+              />
+            </Row>
+
+            <Row label="DOCK RESERVE" value={`${dockReserve}px`} hint="OSの下ドックに被るとき調整">
+              <input
+                className="range"
+                type="range"
+                min={40}
+                max={140}
+                value={dockReserve}
+                onChange={(e) => setDockReserve(Number(e.target.value))}
               />
             </Row>
           </div>
 
           <div className="group">
-            <div className="gTitle">AUDIO</div>
+            <div className="groupTitle">AUDIO</div>
 
             <div className="btnRow">
-              <button className={`chip ${sfxOn ? "on" : ""}`} type="button" onPointerDown={noFocusScroll} onClick={() => setSfxOn((v) => !v)}>
+              <button
+                type="button"
+                className={`chip ${sfxOn ? "on" : ""}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setSfxOn((v) => !v);
+                }}
+              >
                 SFX {sfxOn ? "ON" : "OFF"}
               </button>
 
-              <button className="chip" type="button" onPointerDown={noFocusScroll} onClick={onTestBeep}>
-                TEST BEEP
+              <button
+                type="button"
+                className="chip"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onTest();
+                }}
+              >
+                TEST SFX
               </button>
 
-              <button className="chip strong" type="button" onPointerDown={noFocusScroll} onClick={onTestMusic}>
-                <Volume2 size={16} /> TEST MUSIC
+              <button
+                type="button"
+                className="chip"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onTestMusic();
+                }}
+              >
+                TEST MUSIC
               </button>
             </div>
 
@@ -6239,35 +6370,49 @@ function SettingsSheet({
           </div>
 
           <div className="group">
-            <div className="gTitle">VISUAL</div>
-            <div className="row">
-              <div className="rowHead">
-                <div className="rowLabel">REDUCE FLASH</div>
-                <div className="rowValue">{reduceFlash ? "ON" : "OFF"}</div>
-              </div>
-              <div className="btnRow" style={{ padding: 0 }}>
-                <button className={`chip ${reduceFlash ? "on" : ""}`} type="button" onPointerDown={noFocusScroll} onClick={() => setReduceFlash((v) => !v)}>
-                  Reduce flash
-                </button>
-              </div>
+            <div className="groupTitle">VISUAL</div>
+            <div className="btnRow">
+              <button
+                type="button"
+                className={`chip ${reduceFlash ? "on" : ""}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setReduceFlash((v) => !v);
+                }}
+              >
+                Reduce flash
+              </button>
             </div>
           </div>
 
+          {/* sticky footer (prevents “押すと上に戻る”) */}
           <div className="sheetFoot">
-            <button className="start" type="button" onPointerDown={noFocusScroll} onClick={onClose}>
+            <button
+              type="button"
+              className="startBtn"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+              }}
+            >
               DONE
             </button>
+
             <button
-              className="ghost"
               type="button"
-              onPointerDown={noFocusScroll}
-              onClick={() => {
-                setLatencyMs(70);
-                setNoteSpeed(1020);
-                setMusicVol(0.88);
-                setSfxOn(true);
-                setSfxVol(0.55);
-                setReduceFlash(true);
+              className="ghostBtn"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setLatencyMs(DEFAULTS.latencyMs);
+                setNoteSpeed(DEFAULTS.noteSpeed);
+                setMusicVol(DEFAULTS.musicVol);
+                setSfxVol(DEFAULTS.sfxVol);
+                setSfxOn(DEFAULTS.sfxOn);
+                setReduceFlash(DEFAULTS.reduceFlash);
+                setDockReserve(DEFAULTS.dockReserve);
               }}
             >
               RESET
@@ -6292,679 +6437,735 @@ function Row({ label, value, hint, children }) {
   );
 }
 
-function css(accent, reduceFlash) {
+// ----------------------------- Canvas drawing -----------------------------
+function drawLaneFrame(ctx, w, h, lanes, accent) {
+  // soft glass background
+  const grd = ctx.createLinearGradient(0, 0, 0, h);
+  grd.addColorStop(0, "rgba(255,255,255,0.04)");
+  grd.addColorStop(1, "rgba(255,255,255,0.015)");
+  ctx.fillStyle = grd;
+  roundRect(ctx, 0, 0, w, h, 26);
+  ctx.fill();
+
+  // subtle border
+  ctx.strokeStyle = "rgba(255,255,255,0.09)";
+  ctx.lineWidth = 1;
+  roundRect(ctx, 0.5, 0.5, w - 1, h - 1, 26);
+  ctx.stroke();
+
+  // lane lines
+  for (let i = 1; i < lanes; i++) {
+    const x = (w * i) / lanes;
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, "rgba(255,255,255,0.03)");
+    g.addColorStop(0.5, "rgba(255,255,255,0.09)");
+    g.addColorStop(1, "rgba(255,255,255,0.03)");
+    ctx.strokeStyle = g;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + 0.5, 18);
+    ctx.lineTo(x + 0.5, h - 18);
+    ctx.stroke();
+  }
+
+  // top glow hint
+  const glow = ctx.createRadialGradient(w * 0.22, h * 0.02, 0, w * 0.22, h * 0.02, w * 0.9);
+  glow.addColorStop(0, "rgba(102,227,255,0.07)");
+  glow.addColorStop(1, "rgba(102,227,255,0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, w, h);
+}
+
+function drawHitLine(ctx, w, y, accent) {
+  const g = ctx.createLinearGradient(0, 0, w, 0);
+  g.addColorStop(0, "rgba(255,255,255,0)");
+  g.addColorStop(0.5, "rgba(255,255,255,0.22)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.strokeStyle = g;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(18, y + 0.5);
+  ctx.lineTo(w - 18, y + 0.5);
+  ctx.stroke();
+
+  // neon underglow
+  const gg = ctx.createLinearGradient(0, 0, w, 0);
+  gg.addColorStop(0, "rgba(102,227,255,0)");
+  gg.addColorStop(0.5, "rgba(102,227,255,0.12)");
+  gg.addColorStop(1, "rgba(192,132,255,0)");
+  ctx.strokeStyle = gg;
+  ctx.lineWidth = 6;
+  ctx.globalAlpha = 0.22;
+  ctx.beginPath();
+  ctx.moveTo(30, y + 0.5);
+  ctx.lineTo(w - 30, y + 0.5);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+function drawNote(ctx, x, y, laneW, alpha, accent) {
+  const w = Math.max(28, Math.min(46, laneW * 0.36));
+  const h = 10;
+  ctx.globalAlpha = alpha;
+
+  // glow
+  ctx.shadowColor = "rgba(0,0,0,0.0)";
+  const g = ctx.createLinearGradient(x - w / 2, y, x + w / 2, y);
+  g.addColorStop(0, "rgba(102,227,255,0.92)");
+  g.addColorStop(1, "rgba(192,132,255,0.92)");
+  ctx.fillStyle = g;
+  roundRect(ctx, x - w / 2, y - h / 2, w, h, 999);
+  ctx.fill();
+
+  // soft highlight
+  ctx.globalAlpha = alpha * 0.55;
+  ctx.fillStyle = "rgba(255,255,255,0.18)";
+  roundRect(ctx, x - w / 2, y - h / 2, w, 2.4, 999);
+  ctx.fill();
+
+  ctx.globalAlpha = 1;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
+// ----------------------------- CSS -----------------------------
+function css(accent) {
   const a0 = accent?.[0] || "#66e3ff";
   const a1 = accent?.[1] || "#c084ff";
 
   return `
-  :root{
-    --bg:#06070b;
-    --txt: rgba(255,255,255,.92);
-    --muted: rgba(255,255,255,.62);
-    --muted2: rgba(255,255,255,.44);
-    --stroke: rgba(255,255,255,.10);
-    --stroke2: rgba(255,255,255,.14);
-    --panel: rgba(255,255,255,.06);
-    --panel2: rgba(255,255,255,.08);
-    --shadow: rgba(0,0,0,.58);
-    --a0:${a0};
-    --a1:${a1};
-    --r: 26px;
-    --r2: 18px;
-    --safeB: env(safe-area-inset-bottom);
-    --safeT: env(safe-area-inset-top);
-    /* OS dock overlap estimate (your bottom dock) */
-    --dock: 92px;
-  }
-
-  *{ box-sizing:border-box; }
-  html,body{ height:100%; background:var(--bg); }
-  body{
-    margin:0;
-    color:var(--txt);
-    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-    overflow-x:hidden;
-    -webkit-tap-highlight-color: transparent;
-  }
-  button{ font:inherit; color:inherit; }
-  img{ display:block; max-width:100%; }
-
-  .bsApp{
-    min-height:100dvh;
-    background:
-      radial-gradient(1200px 600px at 18% -10%, color-mix(in oklab, var(--a0) 18%, transparent), transparent 60%),
-      radial-gradient(900px 520px at 92% 0%, color-mix(in oklab, var(--a1) 18%, transparent), transparent 58%),
-      var(--bg);
-  }
-
-  .topbar{
-    position: sticky; top:0; z-index:40;
-    padding: calc(12px + var(--safeT)) 14px 10px;
-    display:flex; align-items:center; justify-content:space-between;
-    background: linear-gradient(to bottom, rgba(6,7,11,.92), rgba(6,7,11,.44));
-    border-bottom: 1px solid rgba(255,255,255,.08);
-    backdrop-filter: blur(14px);
-  }
-  .brand{ display:flex; align-items:center; gap:10px; min-width:0; }
-  .mark{
-    width:34px; height:34px; border-radius: 14px;
-    background: linear-gradient(135deg, color-mix(in oklab, var(--a0) 30%, transparent), color-mix(in oklab, var(--a1) 26%, transparent));
-    border: 1px solid rgba(255,255,255,.12);
-    box-shadow: 0 20px 70px rgba(0,0,0,.48);
-    overflow:hidden;
-  }
-  .mark img{ width:100%; height:100%; object-fit:cover; opacity:.88; filter:saturate(.9) contrast(1.05); }
-  .brandTxt{ min-width:0; }
-  .title{ font-size:12px; letter-spacing:.26em; font-weight:800; color:rgba(255,255,255,.78); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .title span{ color:rgba(255,255,255,.96); text-shadow:0 0 18px rgba(255,255,255,.16); }
-  .sub{ font-size:12px; color:rgba(255,255,255,.42); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-
-  .topActions{ display:flex; gap:10px; }
-  .iconBtn{
-    width:40px; height:40px; border-radius: 16px;
-    background: rgba(255,255,255,.06);
-    border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 22px 70px rgba(0,0,0,.40);
-    display:grid; place-items:center;
-    touch-action: manipulation;
-  }
-  .iconBtn:active{ transform: translateY(1px); }
-
-  .stage{
-    position:relative;
-    padding: 14px 14px calc(18px + var(--safeB) + var(--dock));
-    min-height: calc(100dvh - 70px);
-  }
-
-  .bg{ position:absolute; inset:0; pointer-events:none; overflow:hidden; border-radius: 34px; }
-  .grain{
-    position:absolute; inset:-40px;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
-    opacity:.10;
-    mix-blend-mode: overlay;
-  }
-  .glow{
-    position:absolute; width:720px; height:720px; border-radius:50%;
-    filter: blur(42px);
-    opacity: .95;
-  }
-  .glow.a{ left:-320px; top:-260px; background: radial-gradient(circle at 30% 30%, color-mix(in oklab, var(--a0) 26%, transparent), transparent 60%); }
-  .glow.b{ right:-340px; top:-280px; background: radial-gradient(circle at 55% 40%, color-mix(in oklab, var(--a1) 24%, transparent), transparent 62%); }
-  .grid{
-    position:absolute; inset:0;
-    background:
-      linear-gradient(to bottom, rgba(255,255,255,.06), transparent 42%),
-      repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0, rgba(255,255,255,.05) 1px, transparent 1px, transparent 46px),
-      repeating-linear-gradient(0deg, rgba(255,255,255,.04) 0, rgba(255,255,255,.04) 1px, transparent 1px, transparent 46px);
-    opacity:.08;
-    mask-image: radial-gradient(620px 620px at 50% 26%, black 0, black 56%, transparent 78%);
-  }
-
-  .pill{
-    padding: 6px 10px;
-    border-radius: 999px;
-    background: rgba(255,255,255,.06);
-    border: 1px solid rgba(255,255,255,.10);
-    font-size:12px;
-    letter-spacing:.10em;
-    text-transform:uppercase;
-    color: rgba(255,255,255,.82);
-  }
-  .dot{ width:4px; height:4px; border-radius:50%; background: rgba(255,255,255,.30); }
-
-  /* Lobby */
-  .lobby{ position:relative; z-index:2; display:flex; justify-content:center; }
-  .hero{
-    width: min(980px, 100%);
-    border-radius: 34px;
-    background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
-    border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 46px 160px rgba(0,0,0,.58);
-    overflow:hidden;
-    padding: 18px 16px 16px;
-    position:relative;
-  }
-  .hero:before{
-    content:"";
-    position:absolute; inset:-1px;
-    background:
-      radial-gradient(900px 420px at 20% 0%, color-mix(in oklab, var(--a0) 18%, transparent), transparent 62%),
-      radial-gradient(880px 420px at 90% 0%, color-mix(in oklab, var(--a1) 18%, transparent), transparent 62%);
-    opacity:.65;
-    pointer-events:none;
-  }
-  .heroTop{ position:relative; z-index:2; }
-  .kicker{ font-size:11px; letter-spacing:.34em; color: rgba(255,255,255,.54); }
-  .hTitle{ font-size:32px; font-weight:900; letter-spacing:.04em; margin-top:6px; }
-  .hSub{ margin-top:10px; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color: rgba(255,255,255,.42); }
-
-  .now{
-    margin-top: 16px;
-    display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
-    padding: 14px 14px;
-    border-radius: 26px;
-    background: rgba(0,0,0,.20);
-    border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 26px 90px rgba(0,0,0,.44);
-  }
-  .nowLabel{ font-size:12px; letter-spacing:.18em; color: rgba(255,255,255,.62); text-transform:uppercase; }
-  .nowTitle{ font-size:20px; font-weight:900; margin-top:6px; }
-  .nowMeta{ display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
-  .statusPill{
-    display:flex; gap:10px; align-items:center;
-    padding: 10px 12px;
-    border-radius: 999px;
-    background: rgba(255,255,255,.05);
-    border: 1px solid rgba(255,255,255,.10);
-    white-space:nowrap;
-  }
-  .statusPill .muted{ font-size:12px; letter-spacing:.16em; color: rgba(255,255,255,.52); }
-  .statusPill .ready{ font-size:12px; font-weight:900; letter-spacing:.16em; color: rgba(255,255,255,.92); }
-
-  .carouselWrap{
-    position:relative; z-index:2;
-    display:flex; align-items:center; gap:10px;
-    margin-top: 14px;
-  }
-  .navBtn{
-    width:42px; height:42px; border-radius: 16px;
-    background: rgba(255,255,255,.06);
-    border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 22px 70px rgba(0,0,0,.40);
-    display:grid; place-items:center;
-    flex: 0 0 auto;
-    touch-action: manipulation;
-  }
-  .rail{
-    flex:1 1 auto;
-    display:flex;
-    gap:12px;
-    overflow-x:auto;
-    scroll-snap-type: x mandatory;
-    scroll-padding: 24px;
-    -webkit-overflow-scrolling: touch;
-    padding: 8px 6px 12px;
-    scrollbar-width:none;
-    overscroll-behavior-x: contain;
-  }
-  .rail::-webkit-scrollbar{ display:none; }
-  .tCard{
-    scroll-snap-align:center;
-    flex: 0 0 min(320px, 78vw);
-    border-radius: 26px;
-    padding: 14px 14px;
-    background: rgba(0,0,0,.22);
-    border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 30px 110px rgba(0,0,0,.50);
-    position:relative;
-    overflow:hidden;
-    text-align:left;
-    touch-action: manipulation;
-  }
-  .tCard:active{ transform: translateY(1px); }
-  .tGlow{
-    position:absolute; inset:-1px;
-    background:
-      radial-gradient(420px 240px at 18% 0%, color-mix(in oklab, var(--a0) 16%, transparent), transparent 62%),
-      radial-gradient(420px 240px at 92% 0%, color-mix(in oklab, var(--a1) 16%, transparent), transparent 62%);
-    opacity:.55;
-    pointer-events:none;
-  }
-  .tTop{ display:flex; justify-content:space-between; align-items:center; position:relative; z-index:2; }
-  .bunnyStamp{
-    width:32px; height:32px; border-radius: 14px;
-    border: 1px solid rgba(255,255,255,.12);
-    background: rgba(255,255,255,.06);
-    box-shadow: 0 18px 60px rgba(0,0,0,.45);
-    object-fit: cover;
-    opacity:.92;
-  }
-  .tBadge{
-    font-size:11px;
-    letter-spacing:.26em;
-    text-transform:uppercase;
-    padding: 8px 10px;
-    border-radius: 999px;
-    background: rgba(255,255,255,.05);
-    border: 1px solid rgba(255,255,255,.10);
-    color: rgba(255,255,255,.64);
-  }
-  .tCard.active .tBadge{
-    color: rgba(255,255,255,.92);
-    background: linear-gradient(135deg, color-mix(in oklab, var(--a0) 18%, transparent), color-mix(in oklab, var(--a1) 16%, transparent));
-    border-color: rgba(255,255,255,.14);
-  }
-  .tTitle{ position:relative; z-index:2; margin-top: 12px; font-size:18px; font-weight:900; letter-spacing:.02em; }
-  .tMeta{ position:relative; z-index:2; margin-top: 8px; color: rgba(255,255,255,.62); letter-spacing:.08em; font-size:12px; }
-  .tMeta .muted{ color: rgba(255,255,255,.44); margin-right:8px; }
-
-  .lobbyBottom{
-    position: sticky;
-    bottom: 0;
-    margin-top: 14px;
-    display:flex; gap:12px; align-items:center; justify-content:space-between;
-    padding-top: 12px;
-    background: linear-gradient(to top, rgba(6,7,11,.86), rgba(6,7,11,0));
-    z-index:3;
-  }
-  .seg{
-    display:flex; gap:6px;
-    padding: 4px;
-    border-radius: 999px;
-    background: rgba(255,255,255,.05);
-    border: 1px solid rgba(255,255,255,.10);
-  }
-  .segBtn{
-    border:0;
-    padding: 10px 14px;
-    border-radius: 999px;
-    background: transparent;
-    color: rgba(255,255,255,.62);
-    letter-spacing:.18em;
-    font-size:12px;
-    text-transform:uppercase;
-    touch-action: manipulation;
-  }
-  .segBtn.on{
-    color: rgba(255,255,255,.95);
-    background: linear-gradient(135deg, color-mix(in oklab, var(--a0) 18%, transparent), color-mix(in oklab, var(--a1) 16%, transparent));
-    box-shadow: 0 18px 60px rgba(0,0,0,.42);
-  }
-
-  .start{
-    border:0;
-    display:flex; align-items:center; gap:10px;
-    padding: 14px 18px;
-    border-radius: 18px;
-    background: linear-gradient(135deg, color-mix(in oklab, var(--a0) 22%, transparent), color-mix(in oklab, var(--a1) 20%, transparent));
-    color: rgba(255,255,255,.96);
-    font-weight:900;
-    letter-spacing:.18em;
-    text-transform:uppercase;
-    border: 1px solid rgba(255,255,255,.12);
-    box-shadow: 0 30px 120px rgba(0,0,0,.56);
-    touch-action: manipulation;
-  }
-  .start:active{ transform: translateY(1px); }
-
-  .dots{ display:flex; justify-content:center; gap:6px; margin-top: 10px; }
-  .dotx{ width:6px; height:6px; border-radius:999px; background: rgba(255,255,255,.16); }
-  .dotx.on{ width:18px; background: linear-gradient(90deg, color-mix(in oklab, var(--a0) 75%, transparent), color-mix(in oklab, var(--a1) 75%, transparent)); }
-
-  /* Play */
-  .play{ position:relative; z-index:2; width: min(980px, 100%); margin: 0 auto; }
-  .pHud{
-    display:flex; justify-content:space-between; gap:12px;
-    padding: 10px 4px 12px;
-    flex-wrap:wrap;
-  }
-  .pTitle{ font-size:18px; font-weight:900; letter-spacing:.02em; }
-  .pSub{ display:flex; gap:10px; align-items:center; margin-top:8px; flex-wrap:wrap; }
-  .pRight{ display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; justify-content:flex-end; }
-  .stat{
-    min-width: 118px;
-    text-align:right;
-    padding: 10px 12px;
-    border-radius: 18px;
-    background: rgba(255,255,255,.04);
-    border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 22px 80px rgba(0,0,0,.40);
-  }
-  .stat .k{ font-size:11px; color: rgba(255,255,255,.46); letter-spacing:.26em; text-transform:uppercase; }
-  .stat .v{ font-size:18px; font-weight:900; margin-top:4px; }
-
-  .laneStage{
-    border-radius: 32px;
-    background: rgba(255,255,255,.03);
-    border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 46px 160px rgba(0,0,0,.58);
-    overflow:hidden;
-  }
-  .laneFrame{
-    position:relative;
-    height: min(54vh, 560px);
-    padding: 16px 14px 86px;
-  }
-
-  .laneLines{ position:absolute; inset:0; pointer-events:none; }
-  .laneLine{
-    position:absolute; top:0; bottom:0;
-    width:1px;
-    background: linear-gradient(to bottom, transparent, rgba(255,255,255,.12), transparent);
-    opacity:.85;
-  }
-
-  .noteLayer{ position:absolute; left:0; right:0; top:16px; bottom:86px; overflow:hidden; }
-  .note{
-    position:absolute;
-    left:0;
-    top: 50%;
-    width: 56px;
-    height: 18px;
-    border-radius: 999px;
-    background: linear-gradient(90deg, color-mix(in oklab, var(--a0) 82%, white 0%), color-mix(in oklab, var(--a1) 82%, white 0%));
-    border: 1px solid rgba(255,255,255,.12);
-    box-shadow: 0 20px 80px rgba(0,0,0,.42), 0 0 22px rgba(255,255,255,.10);
-    margin-left: -28px;
-    display:grid; place-items:center;
-    will-change: transform, opacity;
-  }
-  .note img{ width: 26px; height: 26px; opacity:.92; filter: drop-shadow(0 10px 24px rgba(0,0,0,.45)); }
-  .note.hit{ opacity:.18; filter: blur(1px); }
-
-  .hitLine{
-    position:absolute; left:0; right:0; bottom:86px;
-    height:1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,.30), transparent);
-    box-shadow: 0 0 30px rgba(255,255,255,.12);
-  }
-
-  .hudStatus{
-    position:absolute; left:12px; top:12px;
-    padding: 10px 12px;
-    border-radius: 999px;
-    background: rgba(0,0,0,.26);
-    border: 1px solid rgba(255,255,255,.12);
-    font-size:12px;
-    letter-spacing:.18em;
-    text-transform:uppercase;
-    color: rgba(255,255,255,.80);
-    box-shadow: 0 24px 90px rgba(0,0,0,.52);
-  }
-  .hudStatus.PAUSED{ opacity:.95; }
-  .hudStatus.TAP{ opacity:.95; }
-
-  .judgeOverlay{
-    position:absolute; left:0; right:0; top: 22px;
-    display:flex; justify-content:center;
-    pointer-events:none;
-    animation: pop .18s ease-out;
-  }
-  .judgeOverlay img{
-    width: min(240px, 62vw);
-    filter: drop-shadow(0 30px 100px rgba(0,0,0,.62));
-    opacity:.98;
-  }
-  @keyframes pop{
-    from{ transform: translateY(-6px) scale(.98); opacity:.0; }
-    to{ transform: translateY(0) scale(1); opacity:1; }
-  }
-
-  .touchBar{
-    display:grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    margin-top: 12px;
-  }
-  .laneTouch{
-    height: 78px;
-    border-radius: 24px;
-    background: rgba(255,255,255,.03);
-    border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 28px 110px rgba(0,0,0,.50);
-    position:relative;
-    overflow:hidden;
-    touch-action: manipulation;
-  }
-  .touchGlow{
-    position:absolute; inset:-1px;
-    background:
-      radial-gradient(260px 120px at 50% 120%, rgba(255,255,255,.18), transparent 62%),
-      radial-gradient(280px 140px at 50% 120%, color-mix(in oklab, var(--a0) 18%, transparent), transparent 64%),
-      radial-gradient(280px 140px at 50% 120%, color-mix(in oklab, var(--a1) 16%, transparent), transparent 64%);
-    opacity: calc(.12 + .62 * var(--flash));
-    transition: opacity .16s ease;
-  }
-  .laneTouch.pressed .touchGlow{ opacity: .92; }
-  .touchIcon{
-    position:absolute; inset:0;
-    margin:auto;
-    width: 30px; height: 30px;
-    opacity:.90;
-    filter: drop-shadow(0 14px 38px rgba(0,0,0,.58));
-  }
-
-  .playActions{
-    display:flex; gap:10px; flex-wrap:wrap;
-    justify-content:center;
-    margin-top: 12px;
-  }
-  .ghost{
-    border-radius: 18px;
-    padding: 12px 14px;
-    background: rgba(255,255,255,.04);
-    border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 24px 90px rgba(0,0,0,.44);
-    display:flex; align-items:center; gap:10px;
-    letter-spacing:.16em;
-    text-transform:uppercase;
-    touch-action: manipulation;
-  }
-  .ghost.danger{ border-color: rgba(255,255,255,.12); }
-
-  /* Result */
-  .result{ position:relative; z-index:2; display:flex; justify-content:center; }
-  .resultCard{
-    width: min(920px, 100%);
-    border-radius: 34px;
-    background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
-    border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 54px 190px rgba(0,0,0,.62);
-    overflow:hidden;
-    padding: 18px 16px 16px;
-    position:relative;
-  }
-  .resultCard:before{
-    content:"";
-    position:absolute; inset:-1px;
-    background:
-      radial-gradient(820px 380px at 20% 0%, color-mix(in oklab, var(--a0) 18%, transparent), transparent 62%),
-      radial-gradient(820px 380px at 90% 0%, color-mix(in oklab, var(--a1) 18%, transparent), transparent 62%);
-    opacity:.70;
-    pointer-events:none;
-  }
-  .rHead{ position:relative; z-index:2; padding: 6px 6px 10px; }
-  .rKicker{ font-size:11px; letter-spacing:.34em; color: rgba(255,255,255,.54); }
-  .rTitle{ font-size:28px; font-weight:1000; margin-top: 8px; letter-spacing:.02em; }
-  .rMeta{ display:flex; gap:10px; align-items:center; margin-top:10px; flex-wrap:wrap; }
-
-  .grade{
-    position:absolute; right:14px; top:16px;
-    width:60px; height:60px;
-    border-radius: 20px;
-    display:grid; place-items:center;
-    font-size:22px;
-    font-weight:1000;
-    background: rgba(0,0,0,.26);
-    border: 1px solid rgba(255,255,255,.12);
-    box-shadow: 0 28px 110px rgba(0,0,0,.56);
-  }
-  .grade.S, .grade.A{
-    background: linear-gradient(135deg, color-mix(in oklab, var(--a0) 22%, transparent), color-mix(in oklab, var(--a1) 22%, transparent));
-  }
-
-  .rBody{
-    position:relative; z-index:2;
-    display:grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
-    margin-top: 8px;
-  }
-  @media(min-width:820px){
-    .rBody{ grid-template-columns: 0.45fr 0.55fr; align-items:stretch; }
-  }
-
-  .bunnyCard{
-    border-radius: 28px;
-    background: rgba(0,0,0,.22);
-    border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 30px 120px rgba(0,0,0,.52);
-    padding: 14px;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    overflow:hidden;
-  }
-  .bunnyCard img{
-    width: min(260px, 62vw);
-    filter: drop-shadow(0 30px 110px rgba(0,0,0,.62));
-    opacity:.95;
-  }
-  .bunnyCap{
-    margin-top: 10px;
-    font-size:12px;
-    letter-spacing:.18em;
-    text-transform:uppercase;
-    color: rgba(255,255,255,.52);
-  }
-
-  .stats{
-    display:grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-  @media(min-width:720px){
-    .stats{ grid-template-columns: repeat(3, 1fr); }
-  }
-  .statCard{
-    border-radius: 22px;
-    background: rgba(0,0,0,.22);
-    border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 26px 100px rgba(0,0,0,.46);
-    padding: 12px 12px;
-    overflow:hidden;
-  }
-  .sTop{ display:flex; align-items:center; gap:10px; }
-  .statCard img{ width:26px; height:26px; opacity:.92; filter: drop-shadow(0 14px 34px rgba(0,0,0,.58)); }
-  .sDot{ width:10px; height:10px; border-radius:50%; background: rgba(255,255,255,.22); box-shadow: 0 0 0 1px rgba(255,255,255,.10) inset; }
-  .sLabel{
-    font-size:11px;
-    letter-spacing:.26em;
-    text-transform:uppercase;
-    color: rgba(255,255,255,.52);
-  }
-  .sVal{ font-size:22px; font-weight:1000; margin-top: 10px; }
-
-  .rActions{
-    position:relative; z-index:2;
-    display:flex; gap:10px; flex-wrap:wrap;
-    justify-content:center;
-    margin-top: 14px;
-  }
-
-  /* Settings */
-  .sheetWrap{
-    position:fixed; inset:0; z-index:70;
-    display:flex; justify-content:center; align-items:flex-end;
-  }
-  .sheetBackdrop{ position:absolute; inset:0; background: rgba(0,0,0,.58); }
-  .sheet{
-    width: min(960px, 100%);
-    max-height: calc(100dvh - 10px);
-    border-radius: 30px 30px 0 0;
-    background: rgba(10,11,16,.92);
-    border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 -46px 180px rgba(0,0,0,.70);
-    backdrop-filter: blur(16px);
-    overflow:hidden;
-    position:relative;
-  }
-  .sheetHead{
-    padding: 16px 16px 12px;
-    display:flex; justify-content:space-between; align-items:center;
-    border-bottom: 1px solid rgba(255,255,255,.08);
-  }
-  .shTitle{ font-size:16px; font-weight:1000; letter-spacing:.12em; text-transform:uppercase; }
-  .shSub{ margin-top:4px; font-size:12px; color: rgba(255,255,255,.46); }
-  .sheetBody{
-    padding: 12px 16px calc(16px + var(--safeB));
-    overflow:auto;
-    -webkit-overflow-scrolling: touch;
-    max-height: calc(100dvh - 120px);
-    overscroll-behavior: contain;
-  }
-  .group{ margin-bottom: 14px; }
-  .gTitle{
-    padding: 10px 6px 8px;
-    font-size:11px;
-    letter-spacing:.34em;
-    text-transform:uppercase;
-    color: rgba(255,255,255,.44);
-  }
-  .row{
-    border-radius: 22px;
-    background: rgba(255,255,255,.04);
-    border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 24px 92px rgba(0,0,0,.44);
-    padding: 12px 12px;
-    margin-bottom: 10px;
-  }
-  .rowHead{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
-  .rowLabel{ font-size:12px; font-weight:900; letter-spacing:.22em; color: rgba(255,255,255,.78); }
-  .rowValue{ font-weight:1000; color: rgba(255,255,255,.92); }
-  .rowHint{ margin-top:6px; font-size:12px; color: rgba(255,255,255,.42); }
-  .rowBody{ margin-top: 10px; }
-
-  .range{ width:100%; }
-  input[type="range"]{ -webkit-appearance:none; height: 28px; background: transparent; }
-  input[type="range"]::-webkit-slider-runnable-track{
-    height: 8px; border-radius: 999px;
-    background: linear-gradient(90deg, color-mix(in oklab, var(--a0) 55%, transparent), color-mix(in oklab, var(--a1) 55%, transparent));
-    opacity:.90;
-  }
-  input[type="range"]::-webkit-slider-thumb{
-    -webkit-appearance:none;
-    width: 22px; height: 22px;
-    border-radius: 999px;
-    background: rgba(255,255,255,.92);
-    border: 1px solid rgba(0,0,0,.25);
-    margin-top: -7px;
-    box-shadow: 0 16px 60px rgba(0,0,0,.55);
-  }
-
-  .btnRow{ display:flex; gap:10px; flex-wrap:wrap; padding: 2px 2px 10px; align-items:center; }
-  .chip{
-    padding: 10px 12px;
-    border-radius: 999px;
-    background: rgba(255,255,255,.04);
-    border: 1px solid rgba(255,255,255,.10);
-    color: rgba(255,255,255,.78);
-    letter-spacing:.18em;
-    text-transform:uppercase;
-    font-size:12px;
-    display:flex; align-items:center; gap:8px;
-    touch-action: manipulation;
-  }
-  .chip.on{
-    background: linear-gradient(135deg, color-mix(in oklab, var(--a0) 18%, transparent), color-mix(in oklab, var(--a1) 16%, transparent));
-    color: rgba(255,255,255,.92);
-  }
-  .chip.strong{
-    background: rgba(255,255,255,.07);
-    border-color: rgba(255,255,255,.12);
-  }
-
-  .seg.mini{ padding:3px; gap:4px; width: fit-content; }
-  .seg.mini .segBtn{ padding: 9px 12px; font-size:11px; }
-
-  .sheetFoot{
-    display:flex; gap:10px; justify-content:space-between;
-    position: sticky; bottom: 0;
-    padding: 10px 2px 0;
-    background: linear-gradient(to top, rgba(10,11,16,.92), rgba(10,11,16,0));
-  }
-
-  /* Small screens */
-  @media(max-width:420px){
-    .hTitle{ font-size:28px; }
-    .stat{ min-width: 106px; }
-    .rTitle{ font-size:24px; }
-  }
-
-  /* Reduce flash */
-  ${reduceFlash ? `
-    .note, .judgeOverlay img{ filter: none; }
-  ` : ``}
-  `;
+:root{
+  --bg:#06070b;
+  --txt:rgba(255,255,255,.92);
+  --muted:rgba(255,255,255,.56);
+  --muted2:rgba(255,255,255,.40);
+  --stroke:rgba(255,255,255,.10);
+  --stroke2:rgba(255,255,255,.14);
+  --panel:rgba(255,255,255,.05);
+  --panel2:rgba(255,255,255,.07);
+  --shadow:rgba(0,0,0,.55);
+  --a0:${a0};
+  --a1:${a1};
+  --safeB: env(safe-area-inset-bottom);
+  --safeT: env(safe-area-inset-top);
 }
+*{ box-sizing:border-box; }
+html,body{ height:100%; background:var(--bg); }
+body{
+  margin:0;
+  color:var(--txt);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  overflow-x:hidden;
+}
+button{ font:inherit; color:inherit; -webkit-tap-highlight-color: transparent; }
+.app{
+  min-height:100dvh;
+  background:
+    radial-gradient(1200px 680px at 22% 0%, rgba(102,227,255,.10), transparent 60%),
+    radial-gradient(900px 560px at 86% 6%, rgba(192,132,255,.12), transparent 58%),
+    var(--bg);
+}
+.topbar{
+  position:sticky; top:0; z-index:40;
+  padding: calc(14px + var(--safeT)) 16px 12px;
+  display:flex; align-items:center; justify-content:space-between;
+  backdrop-filter: blur(14px);
+  background: linear-gradient(to bottom, rgba(6,7,11,.92), rgba(6,7,11,.42));
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.brand{ display:flex; gap:12px; align-items:center; min-width:0; cursor:pointer; }
+.brandMark{
+  width:34px; height:34px; border-radius:12px;
+  background:
+    radial-gradient(circle at 35% 35%, rgba(255,255,255,.62), transparent 38%),
+    linear-gradient(135deg, rgba(102,227,255,.35), rgba(192,132,255,.32));
+  box-shadow: 0 18px 56px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.10) inset;
+}
+.brandTitle{ letter-spacing:.24em; font-weight:800; font-size:12px; color:rgba(255,255,255,.76); }
+.brandTitle span{ color:rgba(255,255,255,.96); }
+.brandSub{ margin-top:2px; font-size:12px; color:rgba(255,255,255,.40); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.topActions{ display:flex; gap:10px; }
+.iconBtn{
+  width:40px; height:40px; border-radius:14px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  display:grid; place-items:center;
+  box-shadow: 0 16px 56px rgba(0,0,0,.35);
+}
+.iconBtn:active{ transform: translateY(1px); }
+
+.stage{
+  position:relative;
+  padding: 16px 16px calc(20px + var(--safeB));
+  min-height: calc(100dvh - 76px);
+}
+.bg{ position:absolute; inset:0; pointer-events:none; overflow:hidden; border-radius: 34px; }
+.bgNoise{
+  position:absolute; inset:-40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
+  opacity:.10; mix-blend-mode: overlay;
+}
+.bgGlow{ position:absolute; width:740px; height:740px; border-radius:50%; filter: blur(44px); opacity:.9; }
+.bgGlow.a{ left:-280px; top:-260px; background: radial-gradient(circle at 30% 30%, rgba(102,227,255,.22), transparent 62%); }
+.bgGlow.b{ right:-320px; top:-280px; background: radial-gradient(circle at 55% 40%, rgba(192,132,255,.20), transparent 62%); }
+.bgGrid{
+  position:absolute; inset:0;
+  background:
+    linear-gradient(to bottom, rgba(255,255,255,.06), transparent 40%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0, rgba(255,255,255,.05) 1px, transparent 1px, transparent 44px),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.04) 0, rgba(255,255,255,.04) 1px, transparent 1px, transparent 44px);
+  opacity:.08;
+  mask-image: radial-gradient(620px 620px at 50% 30%, black 0, black 55%, transparent 78%);
+}
+
+/* Shared micro */
+.kicker{ font-size:11px; letter-spacing:.34em; color:rgba(255,255,255,.50); }
+.dot{ width:4px; height:4px; border-radius:50%; background: rgba(255,255,255,.28); }
+.chipMini{
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  color: rgba(255,255,255,.78);
+  font-size:12px;
+  letter-spacing:.10em;
+  text-transform: uppercase;
+}
+
+/* Lobby */
+.lobby{ position:relative; z-index:2; display:flex; justify-content:center; padding-top:8px; }
+.hero{
+  width: min(980px, 100%);
+  border-radius: 32px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+  box-shadow: 0 44px 140px rgba(0,0,0,.58);
+  overflow:hidden;
+  position:relative;
+  padding: 18px 16px 84px; /* room for floating start */
+}
+.hero:before{
+  content:"";
+  position:absolute; inset:-1px;
+  background:
+    radial-gradient(900px 420px at 18% 0%, rgba(102,227,255,.16), transparent 66%),
+    radial-gradient(900px 420px at 92% 0%, rgba(192,132,255,.16), transparent 62%);
+  opacity:.75;
+  pointer-events:none;
+}
+.heroTop{ position:relative; z-index:2; }
+.heroTitle{ margin-top:6px; font-size:46px; line-height:.92; font-weight:900; letter-spacing:.02em; }
+.heroSub{ margin-top:10px; color: rgba(255,255,255,.40); font-size:13px; letter-spacing:.18em; text-transform: lowercase; }
+.heroMeta{ margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; }
+.pillLite{
+  display:flex; gap:10px; align-items:center;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.18);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 22px 70px rgba(0,0,0,.34);
+}
+.pillKey{ font-size:11px; letter-spacing:.24em; color:rgba(255,255,255,.46); }
+.pillVal{ font-weight:900; letter-spacing:.08em; }
+
+.carouselWrap{
+  position:relative; z-index:2;
+  margin-top: 14px;
+  display:flex; align-items:center; gap:10px;
+}
+.navBtn{
+  width:42px; height:42px; border-radius:16px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.06);
+  display:grid; place-items:center;
+  box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  flex: 0 0 auto;
+}
+.rail{
+  flex:1 1 auto;
+  display:flex; gap:12px;
+  overflow-x:auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width:none;
+  padding-block: 10px 12px;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: 16px;
+}
+.rail::-webkit-scrollbar{ display:none; }
+
+.trackCard{
+  scroll-snap-align:center;
+  flex: 0 0 min(320px, 78vw);
+  border-radius: 26px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.22);
+  box-shadow: 0 26px 90px rgba(0,0,0,.46);
+  padding: 14px;
+  position:relative;
+  overflow:hidden;
+}
+.trackCardGlow{
+  position:absolute; inset:-1px;
+  background:
+    radial-gradient(420px 220px at 20% 0%, rgba(102,227,255,.14), transparent 65%),
+    radial-gradient(420px 220px at 90% 0%, rgba(192,132,255,.14), transparent 60%);
+  opacity:.65;
+  pointer-events:none;
+}
+.trackCover{
+  position:relative;
+  width:100%;
+  aspect-ratio: 16/9;
+  border-radius: 18px;
+  overflow:hidden;
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 18px 60px rgba(0,0,0,.45);
+}
+.coverImg{
+  width:100%; height:100%;
+  object-fit: cover;
+  transform: scale(1.02);
+  filter: saturate(1.02) contrast(1.02);
+}
+.coverMask{
+  position:absolute; inset:0;
+  background: radial-gradient(circle at 30% 20%, rgba(255,255,255,.14), transparent 55%);
+}
+.trackInfo{ margin-top:12px; position:relative; z-index:2; }
+.trackTitle{ font-weight:900; font-size:18px; letter-spacing:.02em; }
+.trackSub{ margin-top:6px; display:flex; gap:8px; align-items:center; color: rgba(255,255,255,.52); font-size:12px; }
+.sep{ opacity:.55; }
+.selectBadge{
+  position:absolute; right:14px; top:14px;
+  width:44px; height:44px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.18);
+  display:grid; place-items:center;
+  font-weight:900; letter-spacing:.12em;
+  color: rgba(255,255,255,.60);
+}
+.selectBadge.on{
+  background: linear-gradient(135deg, rgba(102,227,255,.16), rgba(192,132,255,.14));
+  color: rgba(255,255,255,.92);
+}
+
+.controlsRow{
+  position:relative; z-index:2;
+  margin-top: 12px;
+  display:flex; flex-direction:column; gap:12px;
+}
+.seg{
+  display:flex; gap:6px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.05);
+}
+.segBtn{
+  border:0;
+  border-radius:999px;
+  padding: 10px 12px;
+  background: transparent;
+  color: rgba(255,255,255,.60);
+  letter-spacing:.16em;
+  text-transform: uppercase;
+  font-size:12px;
+  display:flex; align-items:baseline; gap:10px;
+}
+.segBtn em{ font-style:normal; opacity:.55; font-size:11px; letter-spacing:.14em; }
+.segBtn.active{
+  color: rgba(255,255,255,.92);
+  background: linear-gradient(135deg, rgba(102,227,255,.18), rgba(192,132,255,.16));
+  box-shadow: 0 14px 46px rgba(0,0,0,.35);
+}
+.pageDots{ display:flex; justify-content:center; gap:6px; }
+.pDot{ width:6px; height:6px; border-radius:999px; background: rgba(255,255,255,.14); }
+.pDot.on{ width:20px; background: linear-gradient(90deg, rgba(102,227,255,.70), rgba(192,132,255,.70)); box-shadow: 0 12px 40px rgba(0,0,0,.35); }
+
+.startFloat{
+  position:absolute; left:0; right:0; bottom: 14px;
+  display:flex; justify-content:center;
+  padding: 0 16px;
+  z-index:3;
+}
+.startBtn{
+  border:0;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  width:min(520px, 100%);
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(102,227,255,.22), rgba(192,132,255,.20));
+  color: rgba(255,255,255,.95);
+  font-weight:900;
+  letter-spacing:.18em;
+  text-transform: uppercase;
+  box-shadow: 0 30px 100px rgba(0,0,0,.55);
+  border: 1px solid rgba(255,255,255,.12);
+}
+.startBtn:active{ transform: translateY(1px); }
+
+/* Play */
+.play{ position:relative; z-index:2; width: min(980px, 100%); margin: 0 auto; }
+.playHud{
+  display:flex; justify-content:space-between; gap:12px;
+  padding: 8px 4px 12px;
+  flex-wrap:wrap;
+}
+.hudKicker{ font-size:11px; letter-spacing:.26em; color: rgba(255,255,255,.46); }
+.hudTitle{ margin-top:6px; font-size:20px; font-weight:900; letter-spacing:.02em; }
+.hudMeta{ margin-top:8px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.hudRight{ display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; justify-content:flex-end; }
+.hudPill{
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.18);
+  box-shadow: 0 22px 70px rgba(0,0,0,.32);
+  display:flex; flex-direction:column; gap:6px;
+  min-width: 120px;
+}
+.hudPill .pillKey{ font-size:11px; letter-spacing:.22em; }
+.hudPill .pillVal{ font-weight:900; font-size:16px; text-align:right; }
+
+.laneStage{
+  border-radius: 30px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.03);
+  box-shadow: 0 44px 140px rgba(0,0,0,.58);
+  overflow:hidden;
+}
+.laneStage.reduceFlash *{ animation:none !important; }
+.laneFrame{
+  position:relative;
+  height: min(56vh, 560px);
+}
+.laneCanvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+.judgeImg{
+  position:absolute; left:0; right:0; top: 18px;
+  display:flex; justify-content:center;
+  opacity:0;
+  transform: translateY(-6px) scale(.98);
+  transition: .16s ease;
+  pointer-events:none;
+}
+.judgeImg.on{
+  opacity:1;
+  transform: translateY(0) scale(1);
+}
+.judgeImg img{
+  width: min(280px, 64vw);
+  filter: drop-shadow(0 18px 60px rgba(0,0,0,.60));
+}
+.tapStartOverlay{
+  position:absolute; inset:0;
+  border:0;
+  background: radial-gradient(700px 360px at 50% 10%, rgba(0,0,0,.30), rgba(0,0,0,.08));
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:10px;
+}
+.tapStartPill{
+  display:flex; align-items:center; gap:10px;
+  padding: 12px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.28);
+  box-shadow: 0 28px 90px rgba(0,0,0,.55);
+  letter-spacing:.16em;
+  text-transform: uppercase;
+  font-weight:900;
+}
+.tapStartSub{ color: rgba(255,255,255,.48); font-size:12px; letter-spacing:.14em; }
+
+.touchBar{
+  display:grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 12px;
+}
+.laneTouch{
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.03);
+  height: 74px;
+  border-radius: 22px;
+  position:relative;
+  overflow:hidden;
+  box-shadow: 0 24px 80px rgba(0,0,0,.45);
+  touch-action: manipulation;
+}
+.laneGlow{
+  position:absolute; inset:-1px;
+  background:
+    radial-gradient(240px 120px at 50% 120%, rgba(255,255,255,.18), transparent 62%),
+    radial-gradient(260px 160px at 50% 120%, rgba(102,227,255,.18), transparent 64%),
+    radial-gradient(260px 160px at 50% 120%, rgba(192,132,255,.14), transparent 64%);
+  opacity: calc(.14 + .56 * var(--flash));
+  transition: opacity .18s ease;
+}
+.laneTouch.pressed .laneGlow{ opacity:.92; }
+.laneIcon{
+  position:absolute; left:50%; top:50%;
+  width: 22px; height: 22px;
+  transform: translate(-50%,-50%);
+  opacity:.92;
+  filter: drop-shadow(0 10px 28px rgba(0,0,0,.45));
+}
+
+.playActions{
+  display:flex; gap:10px;
+  margin-top: 12px;
+  flex-wrap:wrap;
+  justify-content:center;
+}
+.ghostBtn{
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.10);
+  color: rgba(255,255,255,.85);
+  display:flex; align-items:center; gap:10px;
+  letter-spacing:.16em;
+  text-transform: uppercase;
+  box-shadow: 0 22px 70px rgba(0,0,0,.38);
+}
+.ghostBtn.danger{ border-color: rgba(255,255,255,.12); }
+.ghostBtn:active{ transform: translateY(1px); }
+
+/* Result */
+.result{ position:relative; z-index:2; display:flex; justify-content:center; padding-top: 10px; }
+.resultCard{
+  width: min(860px, 100%);
+  border-radius: 32px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+  box-shadow: 0 48px 160px rgba(0,0,0,.60);
+  overflow:hidden;
+  position:relative;
+  padding: 16px;
+}
+.resultCard:before{
+  content:"";
+  position:absolute; inset:-1px;
+  background:
+    radial-gradient(740px 360px at 18% 0%, rgba(102,227,255,.16), transparent 62%),
+    radial-gradient(740px 360px at 92% 0%, rgba(192,132,255,.16), transparent 62%);
+  opacity:.75; pointer-events:none;
+}
+.resultTop{ position:relative; z-index:2; padding: 6px 6px 0; }
+.resultTitle{ margin-top:6px; font-size:28px; font-weight:1000; letter-spacing:.02em; }
+.resultSub{ margin-top:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.gradeChip{
+  position:absolute; right:16px; top:16px;
+  width:56px; height:56px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.22);
+  display:grid; place-items:center;
+  font-weight:1000; font-size:22px;
+  box-shadow: 0 30px 110px rgba(0,0,0,.55);
+}
+.gradeChip.gS{ background: linear-gradient(135deg, rgba(102,227,255,.22), rgba(192,132,255,.22)); }
+.gradeChip.gA{ background: linear-gradient(135deg, rgba(102,227,255,.18), rgba(255,255,255,.10)); }
+.gradeChip.gB{ background: rgba(255,255,255,.06); }
+.gradeChip.gC{ background: rgba(255,255,255,.05); }
+.gradeChip.gD{ background: rgba(255,255,255,.04); }
+
+.resultBunny{
+  margin-top: 14px;
+  width:100%;
+  display:flex; justify-content:center;
+}
+.resultBunny img{
+  width: min(260px, 64vw);
+  opacity:.92;
+  filter: drop-shadow(0 24px 90px rgba(0,0,0,.60));
+}
+
+.statsGrid{
+  position:relative; z-index:2;
+  display:grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+@media(min-width:720px){
+  .statsGrid{ grid-template-columns: repeat(3, 1fr); }
+}
+.statCard{
+  border-radius: 22px;
+  background: rgba(0,0,0,.22);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 22px 70px rgba(0,0,0,.38);
+  padding: 12px;
+}
+.statLabel{
+  font-size:11px;
+  letter-spacing:.26em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.50);
+}
+.statValue{
+  font-size:22px;
+  font-weight:1000;
+  margin-top: 8px;
+}
+.resultActions{
+  position:relative; z-index:2;
+  display:flex; gap:10px;
+  justify-content:center;
+  margin-top: 14px;
+  flex-wrap:wrap;
+}
+
+/* Empty */
+.empty{ position:relative; z-index:2; display:flex; justify-content:center; padding-top: 40px; }
+.panelCard{
+  width: min(820px, 100%);
+  border-radius: 28px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 40px 120px rgba(0,0,0,.55);
+  padding: 18px 16px;
+}
+.h1{ font-weight:1000; font-size:18px; letter-spacing:.08em; }
+.p{ color: rgba(255,255,255,.55); margin-top:10px; line-height:1.7; }
+
+/* Toast */
+.toast{
+  position:fixed;
+  left:50%; bottom: calc(24px + var(--safeB));
+  transform: translateX(-50%);
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.40);
+  backdrop-filter: blur(14px);
+  color: rgba(255,255,255,.86);
+  letter-spacing:.12em;
+  box-shadow: 0 26px 90px rgba(0,0,0,.55);
+  z-index:80;
+}
+
+/* Settings sheet */
+.sheetWrap{ position:fixed; inset:0; z-index:100; display:flex; justify-content:center; align-items:flex-end; }
+.sheetBackdrop{ position:absolute; inset:0; background: rgba(0,0,0,.58); }
+.sheet{
+  width: min(920px, 100%);
+  max-height: calc(100dvh - 10px);
+  border-radius: 28px 28px 0 0;
+  background: rgba(10,11,16,.92);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 -40px 160px rgba(0,0,0,.70);
+  backdrop-filter: blur(16px);
+  overflow:hidden;
+  position:relative;
+}
+.sheetHead{
+  padding: 16px 16px 12px;
+  display:flex; justify-content:space-between; align-items:center;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.sheetTitle{ font-weight:1000; font-size:16px; letter-spacing:.12em; text-transform: uppercase; }
+.sheetSub{ color: rgba(255,255,255,.45); font-size:12px; margin-top:4px; }
+.sheetBody{
+  padding: 12px 16px calc(18px + var(--safeB));
+  overflow:auto;
+  -webkit-overflow-scrolling: touch;
+  max-height: calc(100dvh - 120px);
+  overscroll-behavior: contain;
+}
+.group{ margin-bottom: 14px; }
+.groupTitle{
+  font-size:11px;
+  letter-spacing:.34em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.44);
+  padding: 10px 6px 8px;
+}
+.row{
+  border-radius: 22px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 22px 70px rgba(0,0,0,.35);
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.row.tight{ padding: 12px 12px 10px; }
+.rowHead{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+.rowLabel{ font-weight:900; letter-spacing:.22em; font-size:12px; color: rgba(255,255,255,.78); }
+.rowValue{ font-weight:1000; color: rgba(255,255,255,.92); }
+.rowHint{ margin-top:6px; font-size:12px; color: rgba(255,255,255,.42); }
+.rowBody{ margin-top: 10px; }
+
+.seg.mini{ padding:3px; }
+.seg.mini .segBtn{ padding:8px 10px; font-size:11px; letter-spacing:.14em; }
+
+.range{ width:100%; }
+input[type="range"]{
+  -webkit-appearance:none;
+  height: 26px;
+  background: transparent;
+}
+input[type="range"]::-webkit-slider-runnable-track{
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(102,227,255,.55), rgba(192,132,255,.55));
+  opacity:.85;
+}
+input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width: 22px; height: 22px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.92);
+  border: 1px solid rgba(0,0,0,.25);
+  margin-top: -7px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.45);
+}
+.btnRow{ display:flex; gap:10px; flex-wrap:wrap; padding: 0 2px 10px; align-items:center; }
+.chip{
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.10);
+  color: rgba(255,255,255,.78);
+  letter-spacing:.20em;
+  text-transform: uppercase;
+  font-size:12px;
+}
+.chip.on{
+  background: linear-gradient(135deg, rgba(102,227,255,.18), rgba(192,132,255,.16));
+  color: rgba(255,255,255,.92);
+}
+.sheetFoot{
+  position:sticky;
+  bottom:0;
+  display:flex; gap:10px;
+  justify-content:space-between;
+  padding: 12px 2px 0;
+  background: linear-gradient(to top, rgba(10,11,16,.92), rgba(10,11,16,0));
+}
+
+/* Small screens */
+@media(max-width:420px){
+  .heroTitle{ font-size:44px; }
+  .hudPill{ min-width: 110px; }
+  .resultTitle{ font-size:24px; }
+}
+`;
+}
+
 
 
 
