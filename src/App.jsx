@@ -3033,7 +3033,7 @@ const SafariApp = () => {
       arr.push({ id: `n${i}`, x, y, s, d, hue });
     }
     return arr;
-    // eslint-disable-next-line
+
   }, [isMobile]);
 
   const links = useMemo(() => {
@@ -5191,7 +5191,7 @@ export default function App() {
       const pairs = [];
       for (const url of urls) {
         const key = url;
-        // eslint-disable-next-line no-await-in-loop
+
         const res = await loadOne(key, url);
         pairs.push(res);
       }
