@@ -5541,7 +5541,7 @@ const BeatSyncApp = () => {
     const a = audioRef.current;
     if (!a) return;
     loadTrack(trackId, { preview: false });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   // ----------------------------- GAME LOOP (logic + canvas draw) -----------------------------
@@ -7256,7 +7256,7 @@ const BeatSyncApp = () => {
     const a = audioRef.current;
     if (!a) return;
     loadTrack(trackId, { preview: false });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   // ----------------------------- GAME LOOP (logic + canvas draw) -----------------------------
