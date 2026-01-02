@@ -4998,13 +4998,7 @@ const Desktop = ({ bgm }) => {
 // ------------------------------------------------
 // 🌸🌸🎮-- 07.Game (げーむ) --🌸🌸🌸🌸🌸🌸🌸🌸
 // ------------------------------------------------
-/// ------------------------------------------------------------
-// OS_USAGI SYNC — Rebuild v3 (award-grade UX + swipe fix + no flicker + line receptors)
-// Replace entire BeatSyncApp with this.
-// ------------------------------------------------------------
-const BeatSyncApp = () => {
-  // ----------------------------- ASSETS -----------------------------
-  const ASSET = React.useMemo(
+/const ASSET = React.useMemo(
     () => ({
       judge: {
         perfect: "https://files.catbox.moe/xn8cnp.png",
@@ -5038,38 +5032,31 @@ const BeatSyncApp = () => {
     []
   );
 
-  // ----------------------------- TOKENS (brighter + more “OS” glow) -----------------------------
+  // ----------------------------- TOKENS -----------------------------
   const TOK = React.useMemo(
     () => ({
-      bg0: "#04040a",
-      bg1: "#0a0c22",
+      bg0: "#04050a",
+      bg1: "#070817",
+      ink: "rgba(255,255,255,0.92)",
+      sub: "rgba(255,255,255,0.62)",
+      faint: "rgba(255,255,255,0.42)",
+      line: "rgba(255,255,255,0.12)",
+      line2: "rgba(255,255,255,0.08)",
+      glass: "rgba(10,12,20,0.58)",
+      glass2: "rgba(255,255,255,0.055)",
 
-      ink: "rgba(255,255,255,0.94)",
-      sub: "rgba(255,255,255,0.70)",
-      faint: "rgba(255,255,255,0.46)",
+      lane0: "rgba(198,164,255,0.75)", // left
+      lane1: "rgba(122,226,255,0.70)", // down
+      lane2: "rgba(255,156,222,0.60)", // up
+      lane3: "rgba(170,255,214,0.55)", // right
 
-      line: "rgba(255,255,255,0.14)",
-      line2: "rgba(255,255,255,0.10)",
+      danger: "rgba(255,120,170,0.60)",
 
-      glass: "rgba(10,12,24,0.62)",
-      glass2: "rgba(255,255,255,0.060)",
-
-      lane0: "rgba(198,164,255,0.92)", // left
-      lane1: "rgba(122,226,255,0.88)", // down
-      lane2: "rgba(255,156,222,0.80)", // up
-      lane3: "rgba(170,255,214,0.78)", // right
-
-      danger: "rgba(255,120,170,0.70)",
-
-      aurA: "rgba(122,226,255,0.34)",
-      aurB: "rgba(198,164,255,0.30)",
-      aurC: "rgba(255,156,222,0.25)",
-      aurD: "rgba(170,255,214,0.22)",
-
-      // neutrals
-      card: "rgba(255,255,255,0.055)",
-      card2: "rgba(255,255,255,0.035)",
-      blackish: "rgba(0,0,0,0.34)",
+      // reduce flicker: keep aurora subtle & mostly static
+      aurA: "rgba(122,226,255,0.28)",
+      aurB: "rgba(198,164,255,0.26)",
+      aurC: "rgba(255,156,222,0.20)",
+      aurD: "rgba(170,255,214,0.18)",
     }),
     []
   );
@@ -5097,7 +5084,7 @@ const BeatSyncApp = () => {
   const [muted, setMuted] = React.useState(false);
   const [sfxOn, setSfxOn] = React.useState(true);
   const [latencyMs, setLatencyMs] = React.useState(0);
-  const [speed, setSpeed] = React.useState(1020);
+  const [speed, setSpeed] = React.useState(980);
 
   const [score, setScore] = React.useState(0);
   const [combo, setCombo] = React.useState(0);
@@ -5107,17 +5094,13 @@ const BeatSyncApp = () => {
 
   const [judgeFx, setJudgeFx] = React.useState(null); // { type, at }
   const [pressedLane, setPressedLane] = React.useState(-1);
-  const [pulseFx, setPulseFx] = React.useState(null); // { lane, at } for “OS breathing hit”
-  const [toast, setToast] = React.useState(null); // { text, at }
 
-  // “render driver”: lower fps on mobile to avoid GPU/blur flicker
+  // re-render throttle (fix flicker): 30fps mobile / 60 desktop
   const [frame, setFrame] = React.useState(0);
 
   // ----------------------------- REFS -----------------------------
   const rootRef = React.useRef(null);
   const fieldRef = React.useRef(null);
-  const trackStripRef = React.useRef(null);
-
   const audioRef = React.useRef(null);
 
   const rafRef = React.useRef(null);
@@ -5131,9 +5114,6 @@ const BeatSyncApp = () => {
   const actxRef = React.useRef(null);
   const sfxGainRef = React.useRef(null);
 
-  const missAccumRef = React.useRef(0);
-  const missFlushAtRef = React.useRef(0);
-
   // ----------------------------- LAYOUT -----------------------------
   const [rootW, setRootW] = React.useState(360);
   const [rootH, setRootH] = React.useState(640);
@@ -5142,8 +5122,10 @@ const BeatSyncApp = () => {
 
   const isMobile = rootW < 560;
 
-  const safeBottom = React.useMemo(() => `calc(env(safe-area-inset-bottom) + ${isMobile ? 12 : 10}px)`, [isMobile]);
-  const safeTop = React.useMemo(() => `calc(env(safe-area-inset-top) + ${isMobile ? 10 : 8}px)`, [isMobile]);
+  const safeBottom = React.useMemo(() => {
+    // keep small; too large padding was pushing sheets & creating "not fully visible"
+    return `calc(env(safe-area-inset-bottom) + ${isMobile ? 12 : 10}px)`;
+  }, [isMobile]);
 
   const measure = React.useCallback(() => {
     const r = rootRef.current;
@@ -5175,12 +5157,15 @@ const BeatSyncApp = () => {
   }, [measure]);
 
   // ----------------------------- DERIVED -----------------------------
-  const currentTrack = React.useMemo(() => ASSET.tracks.find((t) => t.id === trackId) || ASSET.tracks[0], [ASSET.tracks, trackId]);
+  const currentTrack = React.useMemo(
+    () => ASSET.tracks.find((t) => t.id === trackId) || ASSET.tracks[0],
+    [ASSET.tracks, trackId]
+  );
 
   const WINDOW = React.useMemo(() => {
-    if (difficulty === "EASY") return { perfect: 0.090, good: 0.165, miss: 0.245 };
-    if (difficulty === "NORMAL") return { perfect: 0.078, good: 0.145, miss: 0.220 };
-    return { perfect: 0.070, good: 0.132, miss: 0.205 };
+    if (difficulty === "EASY") return { perfect: 0.090, good: 0.160, miss: 0.240 };
+    if (difficulty === "NORMAL") return { perfect: 0.078, good: 0.140, miss: 0.215 };
+    return { perfect: 0.070, good: 0.130, miss: 0.200 };
   }, [difficulty]);
 
   // ----------------------------- ACCURACY -----------------------------
@@ -5234,7 +5219,7 @@ const BeatSyncApp = () => {
       const g = actx.createGain();
 
       o.type = kind === "miss" ? "sine" : "triangle";
-      o.frequency.setValueAtTime(kind === "perfect" ? 760 : kind === "good" ? 520 : 170, t0);
+      o.frequency.setValueAtTime(kind === "perfect" ? 760 : kind === "good" ? 520 : 160, t0);
 
       g.gain.setValueAtTime(0.0001, t0);
       g.gain.exponentialRampToValueAtTime(0.16 * intensity, t0 + 0.010);
@@ -5249,11 +5234,12 @@ const BeatSyncApp = () => {
     [ensureAudioContext, muted, sfxOn]
   );
 
-  // ----------------------------- CHART -----------------------------
+  // ----------------------------- CHART (same spirit, cleaned) -----------------------------
   const CHART = React.useMemo(() => {
     const mapTok = (t) => {
       if (!t || t === ".") return null;
       const m = { L: 0, D: 1, U: 2, R: 3 };
+      // chord: "L|D"
       if (t.includes("|")) {
         const parts = t
           .split("|")
@@ -5290,41 +5276,42 @@ const BeatSyncApp = () => {
 
     const MR = (s, r) => ({ toks: s.split(" ").map((x) => x.trim()), r });
 
+    // Important: reduce "spam" feel on normal; hard is denser.
     const pack = {
       overhaul: {
-        EASY: { subdiv: 8, offsetSec: 1.10, motifs: [MR("L . D . U . R .", 7), MR("L . . R . U . .", 5)] },
+        EASY:   { subdiv: 8,  offsetSec: 1.10, motifs: [MR("L . D . U . R .", 7), MR("L . . R . U . .", 5)] },
         NORMAL: { subdiv: 16, offsetSec: 1.05, motifs: [MR("L . D . U . R . L . U . D . R .", 5), MR("L . . R U . . D L . . R U . . D", 5)] },
-        HARD: { subdiv: 16, offsetSec: 1.00, motifs: [MR("L D . U . R . D L . U . R D . .", 6), MR("L|U . R . D . U . L . R . D U . .", 5)] },
+        HARD:   { subdiv: 16, offsetSec: 1.00, motifs: [MR("L D . U . R . D L . U . R D . .", 6), MR("L|U . R . D . U . L . R . D U . .", 5)] },
       },
       dawning: {
-        EASY: { subdiv: 8, offsetSec: 1.15, motifs: [MR("L . . D . . U .", 7), MR("L . U . . D . .", 5)] },
+        EASY:   { subdiv: 8,  offsetSec: 1.15, motifs: [MR("L . . D . . U .", 7), MR("L . U . . D . .", 5)] },
         NORMAL: { subdiv: 16, offsetSec: 1.10, motifs: [MR("L . D . . U . . R . U . . D . .", 6), MR("L . . D U . . R L . . D U . . R", 4)] },
-        HARD: { subdiv: 16, offsetSec: 1.04, motifs: [MR("L D . U . R . D . U . R L . D .", 6), MR("L|U . R . D . U . L . R . D U . .", 5)] },
+        HARD:   { subdiv: 16, offsetSec: 1.04, motifs: [MR("L D . U . R . D . U . R L . D .", 6), MR("L|U . R . D . U . L . R . D U . .", 5)] },
       },
       mirage: {
-        EASY: { subdiv: 8, offsetSec: 1.05, motifs: [MR("L . U . R . U .", 7), MR("L . D . U . R .", 5)] },
+        EASY:   { subdiv: 8,  offsetSec: 1.05, motifs: [MR("L . U . R . U .", 7), MR("L . D . U . R .", 5)] },
         NORMAL: { subdiv: 16, offsetSec: 1.00, motifs: [MR("L . U . R . U . L . D . U . R .", 5), MR("L . . R U . . D L . . R U . . D", 5)] },
-        HARD: { subdiv: 16, offsetSec: 0.98, motifs: [MR("L . U R . U . D L . U . R D . .", 6), MR("L|U . R . U . D . L . U . R . D U", 5)] },
+        HARD:   { subdiv: 16, offsetSec: 0.98, motifs: [MR("L . U R . U . D L . U . R D . .", 6), MR("L|U . R . U . D . L . U . R . D U", 5)] },
       },
       phantasma: {
-        EASY: { subdiv: 8, offsetSec: 1.00, motifs: [MR("L . D . U . R .", 7), MR("L . U . D . R .", 5)] },
+        EASY:   { subdiv: 8,  offsetSec: 1.00, motifs: [MR("L . D . U . R .", 7), MR("L . U . D . R .", 5)] },
         NORMAL: { subdiv: 16, offsetSec: 0.98, motifs: [MR("L . D . U . R . L . D . U . R .", 5), MR("L D . R U . D . L D . R U . D .", 4)] },
-        HARD: { subdiv: 16, offsetSec: 0.95, motifs: [MR("L D U R L . U . D . R . U . D .", 6), MR("L|U . R . D . U . L . R . D U . .", 5)] },
+        HARD:   { subdiv: 16, offsetSec: 0.95, motifs: [MR("L D U R L . U . D . R . U . D .", 6), MR("L|U . R . D . U . L . R . D U . .", 5)] },
       },
       immitation: {
-        EASY: { subdiv: 8, offsetSec: 1.10, motifs: [MR("L . U . D . U .", 7), MR("L . . R . U . .", 5)] },
+        EASY:   { subdiv: 8,  offsetSec: 1.10, motifs: [MR("L . U . D . U .", 7), MR("L . . R . U . .", 5)] },
         NORMAL: { subdiv: 16, offsetSec: 1.05, motifs: [MR("L . U . D . U . L . D . U . R .", 5), MR("L . . D U . . R L . . D U . . R", 4)] },
-        HARD: { subdiv: 16, offsetSec: 1.00, motifs: [MR("L . U R . U . D L . U . R D . .", 6), MR("L|U . R . U . D . L . U . R . D U", 5)] },
+        HARD:   { subdiv: 16, offsetSec: 1.00, motifs: [MR("L . U R . U . D L . U . R D . .", 6), MR("L|U . R . U . D . L . U . R . D U", 5)] },
       },
       checkmate: {
-        EASY: { subdiv: 8, offsetSec: 1.05, motifs: [MR("L . D . U . R .", 7), MR("L . . R . U . .", 5)] },
+        EASY:   { subdiv: 8,  offsetSec: 1.05, motifs: [MR("L . D . U . R .", 7), MR("L . . R . U . .", 5)] },
         NORMAL: { subdiv: 16, offsetSec: 1.00, motifs: [MR("L . D . U . R . L . U . D . R .", 5), MR("L D . R U . D . L D . R U . D .", 4)] },
-        HARD: { subdiv: 16, offsetSec: 0.97, motifs: [MR("L D U R . U . D L . U . R D . .", 6), MR("L|U . R . D . U . L . R . D U . .", 5)] },
+        HARD:   { subdiv: 16, offsetSec: 0.97, motifs: [MR("L D U R . U . D L . U . R D . .", 6), MR("L|U . R . D . U . L . R . D U . .", 5)] },
       },
       lockon: {
-        EASY: { subdiv: 8, offsetSec: 1.00, motifs: [MR("L . U . R . U .", 7), MR("L . D . U . R .", 5)] },
+        EASY:   { subdiv: 8,  offsetSec: 1.00, motifs: [MR("L . U . R . U .", 7), MR("L . D . U . R .", 5)] },
         NORMAL: { subdiv: 16, offsetSec: 0.98, motifs: [MR("L . U . R . U . L . D . U . R .", 5), MR("L D . R U . D . L D . R U . D .", 4)] },
-        HARD: { subdiv: 16, offsetSec: 0.94, motifs: [MR("L D U R L . U . D . R . U . D .", 6), MR("L|U . R . U . D . L . U . R D . .", 5)] },
+        HARD:   { subdiv: 16, offsetSec: 0.94, motifs: [MR("L D U R L . U . D . R . U . D .", 6), MR("L|U . R . U . D . L . U . R D . .", 5)] },
       },
     };
 
@@ -5337,7 +5324,8 @@ const BeatSyncApp = () => {
         motifs: def?.motifs ?? [],
       });
       const endAt = Math.max(10, Math.min((durationSec || 180) - 0.85, durationSec || 180));
-      return notes.filter((n) => n.t < endAt).sort((a, b) => a.t - b.t);
+      const sliced = notes.filter((n) => n.t < endAt).sort((a, b) => a.t - b.t);
+      return sliced;
     };
 
     return { build };
@@ -5362,11 +5350,7 @@ const BeatSyncApp = () => {
     lastNoteTRef.current = 0;
     durationRef.current = 0;
 
-    missAccumRef.current = 0;
-    missFlushAtRef.current = 0;
-
     setJudgeFx(null);
-    setPulseFx(null);
     setPressedLane(-1);
     setCombo(0);
     setView("lobby");
@@ -5384,15 +5368,7 @@ const BeatSyncApp = () => {
 
   React.useEffect(() => () => stopRaf(), [stopRaf]);
 
-  // ----------------------------- FINISH (define before audio effect) -----------------------------
-  const finishRun = React.useCallback(() => {
-    stopRaf();
-    const a = audioRef.current;
-    if (a) a.pause();
-    setView("result");
-  }, [stopRaf]);
-
-  // ----------------------------- LOAD MUSIC -----------------------------
+  // ----------------------------- LOAD MUSIC (always mounted audio) -----------------------------
   React.useEffect(() => {
     setReady(false);
     const a = audioRef.current;
@@ -5408,6 +5384,7 @@ const BeatSyncApp = () => {
     };
     const onMeta = () => {
       durationRef.current = a.duration || durationRef.current || 0;
+      // don't setReady here alone; canplay is stronger
     };
     const onEnded = () => finishRun();
 
@@ -5428,9 +5405,9 @@ const BeatSyncApp = () => {
       a.removeEventListener("ended", onEnded);
     };
 
-  }, [currentTrack.url, finishRun, stopRaf]);
+  }, [currentTrack.url]);
 
-  // ----------------------------- GAME LOOP (flicker fixes) -----------------------------
+  // ----------------------------- GAME LOOP (no flicker) -----------------------------
   const lastUiAtRef = React.useRef(0);
 
   const tick = React.useCallback(() => {
@@ -5441,7 +5418,7 @@ const BeatSyncApp = () => {
     const t = a.currentTime || 0;
     playTRef.current = t;
 
-    // Resolve misses in refs; flush to state at low cadence -> fewer rerenders (less flicker)
+    // miss resolve without spamming re-render
     const notes = notesRef.current;
     const missLine = t - (WINDOW.miss + 0.02) - latencyMs / 1000;
 
@@ -5463,25 +5440,13 @@ const BeatSyncApp = () => {
       }
       break;
     }
-
     if (missed > 0) {
       cursorRef.current = i;
-      missAccumRef.current += missed;
-
+      setCounts((c) => ({ ...c, miss: c.miss + missed }));
       setCombo(0);
       setJudgeFx({ type: "miss", at: now });
-      setPulseFx({ lane: -1, at: now });
       playSfx("miss", 0.9);
       navigator.vibrate?.(8);
-    }
-
-    // Flush miss counts (batched)
-    const flushEvery = isMobile ? 240 : 140; // ms
-    if (missAccumRef.current > 0 && now - (missFlushAtRef.current || 0) > flushEvery) {
-      const add = missAccumRef.current;
-      missAccumRef.current = 0;
-      missFlushAtRef.current = now;
-      setCounts((c) => ({ ...c, miss: c.miss + add }));
     }
 
     const dur = durationRef.current || a.duration || 0;
@@ -5493,8 +5458,8 @@ const BeatSyncApp = () => {
       return;
     }
 
-    // THROTTLE render driver (lower fps on mobile)
-    const targetFps = isMobile ? 24 : 45;
+    // THROTTLE UI updates -> prevents “点滅”
+    const targetFps = isMobile ? 30 : 60;
     const minDt = 1000 / targetFps;
     if (now - (lastUiAtRef.current || 0) >= minDt) {
       lastUiAtRef.current = now;
@@ -5502,9 +5467,9 @@ const BeatSyncApp = () => {
     }
 
     rafRef.current = requestAnimationFrame(tick);
-  }, [WINDOW.miss, finishRun, isMobile, latencyMs, playSfx]);
+  }, [WINDOW.miss, isMobile, latencyMs, playSfx]);
 
-  // ----------------------------- START / PAUSE / RESUME / RESTART -----------------------------
+  // ----------------------------- START / PAUSE / RESUME / FINISH -----------------------------
   const startRun = React.useCallback(() => {
     const a = audioRef.current;
     if (!a || !ready) return;
@@ -5520,15 +5485,11 @@ const BeatSyncApp = () => {
     cursorRef.current = 0;
     lastNoteTRef.current = chart.length ? chart[chart.length - 1].t : 0;
 
-    missAccumRef.current = 0;
-    missFlushAtRef.current = 0;
-
     setScore(0);
     setCombo(0);
     setMaxCombo(0);
     setCounts({ perfect: 0, good: 0, miss: 0 });
     setJudgeFx(null);
-    setPulseFx(null);
     setPressedLane(-1);
 
     a.pause();
@@ -5536,13 +5497,17 @@ const BeatSyncApp = () => {
     playTRef.current = 0;
 
     const p = a.play();
-    const go = () => {
+    if (p && typeof p.then === "function") {
+      p.then(() => {
+        setView("play");
+        stopRaf();
+        rafRef.current = requestAnimationFrame(tick);
+      }).catch(() => {});
+    } else {
       setView("play");
       stopRaf();
       rafRef.current = requestAnimationFrame(tick);
-    };
-    if (p && typeof p.then === "function") p.then(go).catch(() => {});
-    else go();
+    }
   }, [CHART, currentTrack.bpm, currentTrack.id, difficulty, ensureAudioContext, measure, ready, stopRaf, tick]);
 
   const pauseRun = React.useCallback(() => {
@@ -5559,13 +5524,17 @@ const BeatSyncApp = () => {
 
     ensureAudioContext();
     const p = a.play();
-    const go = () => {
+    if (p && typeof p.then === "function") {
+      p.then(() => {
+        setView("play");
+        stopRaf();
+        rafRef.current = requestAnimationFrame(tick);
+      }).catch(() => {});
+    } else {
       setView("play");
       stopRaf();
       rafRef.current = requestAnimationFrame(tick);
-    };
-    if (p && typeof p.then === "function") p.then(go).catch(() => {});
-    else go();
+    }
   }, [ensureAudioContext, stopRaf, tick]);
 
   const restartRun = React.useCallback(() => {
@@ -5580,15 +5549,11 @@ const BeatSyncApp = () => {
     cursorRef.current = 0;
     lastNoteTRef.current = chart.length ? chart[chart.length - 1].t : 0;
 
-    missAccumRef.current = 0;
-    missFlushAtRef.current = 0;
-
     setScore(0);
     setCombo(0);
     setMaxCombo(0);
     setCounts({ perfect: 0, good: 0, miss: 0 });
     setJudgeFx(null);
-    setPulseFx(null);
     setPressedLane(-1);
 
     a.pause();
@@ -5597,24 +5562,34 @@ const BeatSyncApp = () => {
 
     ensureAudioContext();
     const p = a.play();
-    const go = () => {
+    if (p && typeof p.then === "function") {
+      p.then(() => {
+        setView("play");
+        stopRaf();
+        rafRef.current = requestAnimationFrame(tick);
+      }).catch(() => {});
+    } else {
       setView("play");
       stopRaf();
       rafRef.current = requestAnimationFrame(tick);
-    };
-    if (p && typeof p.then === "function") p.then(go).catch(() => {});
-    else go();
+    }
   }, [CHART, currentTrack.bpm, currentTrack.id, difficulty, ensureAudioContext, ready, stopRaf, tick]);
+
+  const finishRun = React.useCallback(() => {
+    stopRaf();
+    const a = audioRef.current;
+    if (a) a.pause();
+    setView("result");
+  }, [stopRaf]);
 
   // ----------------------------- INPUT / JUDGE -----------------------------
   const LANES = 4;
   const LANE_ICON = ["left", "down", "up", "right"];
 
   const applyJudge = React.useCallback(
-    (type, laneForPulse = -1) => {
+    (type) => {
       const now = performance.now();
       setJudgeFx({ type, at: now });
-      setPulseFx({ lane: laneForPulse, at: now });
 
       if (type === "perfect") {
         setCounts((c) => ({ ...c, perfect: c.perfect + 1 }));
@@ -5685,7 +5660,7 @@ const BeatSyncApp = () => {
       }
 
       if (bestIdx === -1) {
-        applyJudge("miss", lane);
+        applyJudge("miss");
         return;
       }
 
@@ -5696,9 +5671,9 @@ const BeatSyncApp = () => {
 
       while (cursorRef.current < notes.length && notes[cursorRef.current].judged) cursorRef.current++;
 
-      if (dt <= WINDOW.perfect) applyJudge("perfect", lane);
-      else if (dt <= WINDOW.good) applyJudge("good", lane);
-      else applyJudge("miss", lane);
+      if (dt <= WINDOW.perfect) applyJudge("perfect");
+      else if (dt <= WINDOW.good) applyJudge("good");
+      else applyJudge("miss");
     },
     [WINDOW.good, WINDOW.miss, WINDOW.perfect, applyJudge, latencyMs, resumeRun, startRun, view]
   );
@@ -5744,9 +5719,10 @@ const BeatSyncApp = () => {
     const dur = durationRef.current || 0;
     const remain = dur ? Math.max(0, dur - t) : NaN;
 
-    // receptor line a bit higher, stable
-    const receptorY = clamp(Math.floor(fieldH * 0.78), 180, Math.max(210, fieldH - 78));
+    // receptor positions: align with lanes, above pads area
+    const receptorY = clamp(Math.floor(fieldH * 0.80), 190, Math.max(220, fieldH - 62));
 
+    // visible notes window
     const margin = 220;
     const spawnAhead = (receptorY + margin) / speed;
     const past = (fieldH - receptorY + margin) / speed;
@@ -5763,15 +5739,14 @@ const BeatSyncApp = () => {
       if (n.t < minT) continue;
       if (n.t > maxT) break;
       if (!n.judged) list.push(n);
-      if (list.length > (isMobile ? 62 : 110)) break;
+      if (list.length > (isMobile ? 70 : 120)) break;
     }
 
     const fxAlive = judgeFx && performance.now() - judgeFx.at < 420;
-    const pulseAlive = pulseFx && performance.now() - pulseFx.at < 520;
 
-    return { t, dur, remain, receptorY, list, fxAlive, pulseAlive };
+    return { t, dur, remain, receptorY, list, fxAlive };
 
-  }, [fieldH, speed, frame, isMobile, judgeFx, pulseFx, latencyMs]);
+  }, [fieldH, speed, frame, isMobile, judgeFx, latencyMs]);
 
   const remainText = fmtMMSS(ui.remain);
 
@@ -5786,38 +5761,20 @@ const BeatSyncApp = () => {
 
   const grade = React.useMemo(() => {
     const a = accuracy;
-    if (a >= 95) return { label: "S", glow: "rgba(122,226,255,0.42)" };
-    if (a >= 88) return { label: "A", glow: "rgba(198,164,255,0.38)" };
-    if (a >= 78) return { label: "B", glow: "rgba(255,156,222,0.32)" };
-    if (a >= 65) return { label: "C", glow: "rgba(170,255,214,0.28)" };
-    return { label: "D", glow: "rgba(255,120,170,0.30)" };
+    if (a >= 95) return { label: "S", glow: "rgba(122,226,255,0.35)" };
+    if (a >= 88) return { label: "A", glow: "rgba(198,164,255,0.32)" };
+    if (a >= 78) return { label: "B", glow: "rgba(255,156,222,0.26)" };
+    if (a >= 65) return { label: "C", glow: "rgba(170,255,214,0.20)" };
+    return { label: "D", glow: "rgba(255,120,170,0.22)" };
   }, [accuracy]);
 
-  // Track change: professional behavior
-  // - In lobby: OK
-  // - In play/pause/result: block (prevents “configで曲選ぶとロビー戻る”事故)
   const setTrackSafe = React.useCallback(
-    (id, { silent = false } = {}) => {
-      if (view !== "lobby") {
-        if (!silent) {
-          setToast({ text: "Track change is available from Lobby.", at: performance.now() });
-          navigator.vibrate?.(4);
-        }
-        return;
-      }
+    (id) => {
       setTrackId(id);
-      stopAll(); // ensures clean load; stays lobby anyway
+      stopAll();
     },
-    [stopAll, view]
+    [stopAll]
   );
-
-  // Swipe helpers (fix “端までいかない” + make it feel premium)
-  const scrollTrackBy = React.useCallback((dir) => {
-    const el = trackStripRef.current;
-    if (!el) return;
-    const step = Math.floor(el.clientWidth * 0.82);
-    el.scrollBy({ left: dir * step, behavior: "smooth" });
-  }, []);
 
   // ----------------------------- UI PRIMITIVES -----------------------------
   const Frame = ({ children, subtleMotion }) => (
@@ -5826,11 +5783,11 @@ const BeatSyncApp = () => {
       style={{
         borderColor: TOK.line,
         background: TOK.glass,
-        boxShadow: "0 26px 120px rgba(0,0,0,0.86), inset 0 1px 0 rgba(255,255,255,0.09)",
-        backdropFilter: "blur(18px)",
+        boxShadow: "0 26px 120px rgba(0,0,0,0.86), inset 0 1px 0 rgba(255,255,255,0.08)",
+        backdropFilter: "blur(20px)",
       }}
     >
-      {/* Aurora: only subtle motion outside gameplay (flicker fix) */}
+      {/* Premium aurora (low motion to avoid flicker) */}
       <div className="absolute inset-0 pointer-events-none">
         <div
           className={subtleMotion ? "osb-aurora-subtle" : ""}
@@ -5842,8 +5799,8 @@ const BeatSyncApp = () => {
               `radial-gradient(740px 520px at 82% 14%, ${TOK.aurB}, transparent 66%),` +
               `radial-gradient(820px 560px at 52% 94%, ${TOK.aurC}, transparent 72%),` +
               `radial-gradient(820px 560px at 72% 58%, ${TOK.aurD}, transparent 70%)`,
-            filter: "blur(34px)",
-            opacity: subtleMotion ? 0.52 : 0.40,
+            filter: "blur(32px)",
+            opacity: 0.38,
             transform: "translate3d(0,0,0)",
           }}
         />
@@ -5852,20 +5809,20 @@ const BeatSyncApp = () => {
             position: "absolute",
             inset: 0,
             background:
-              "radial-gradient(1000px 640px at 50% 0%, rgba(255,255,255,0.14), transparent 60%)," +
-              "radial-gradient(1300px 980px at 50% 118%, rgba(0,0,0,0.82), transparent 58%)",
+              "radial-gradient(900px 560px at 50% 0%, rgba(255,255,255,0.10), transparent 62%)," +
+              "radial-gradient(1200px 900px at 50% 115%, rgba(0,0,0,0.78), transparent 58%)",
             opacity: 0.98,
           }}
         />
-        {/* grain */}
+        {/* very light grain */}
         <div
           style={{
             position: "absolute",
             inset: 0,
-            opacity: 0.065,
+            opacity: 0.055,
             mixBlendMode: "overlay",
             backgroundImage:
-              "repeating-radial-gradient(circle at 20% 18%, rgba(255,255,255,0.20) 0px, rgba(255,255,255,0.20) 1px, transparent 1px, transparent 4px)",
+              "repeating-radial-gradient(circle at 20% 18%, rgba(255,255,255,0.18) 0px, rgba(255,255,255,0.18) 1px, transparent 1px, transparent 4px)",
           }}
         />
       </div>
@@ -5883,9 +5840,9 @@ const BeatSyncApp = () => {
       }}
       className="h-10 w-10 rounded-2xl border active:scale-[0.99]"
       style={{
-        borderColor: tone === "danger" ? "rgba(255,120,170,0.28)" : "rgba(255,255,255,0.14)",
-        background: tone === "danger" ? "rgba(255,120,170,0.12)" : "rgba(255,255,255,0.06)",
-        boxShadow: "0 18px 70px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.10)",
+        borderColor: tone === "danger" ? "rgba(255,120,170,0.22)" : "rgba(255,255,255,0.12)",
+        background: tone === "danger" ? "rgba(255,120,170,0.10)" : "rgba(255,255,255,0.05)",
+        boxShadow: "0 18px 70px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.08)",
         WebkitTapHighlightColor: "transparent",
       }}
     >
@@ -5897,12 +5854,12 @@ const BeatSyncApp = () => {
     <div
       className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5"
       style={{
-        borderColor: "rgba(255,255,255,0.12)",
-        background: "rgba(255,255,255,0.055)",
-        boxShadow: glow ? `0 0 0 1px ${glow} inset, 0 0 44px rgba(255,255,255,0.05)` : "none",
+        borderColor: "rgba(255,255,255,0.10)",
+        background: "rgba(255,255,255,0.045)",
+        boxShadow: glow ? `0 0 0 1px ${glow} inset, 0 0 40px rgba(255,255,255,0.04)` : "none",
       }}
     >
-      <span className="text-[10px] tracking-[0.30em] uppercase text-white/55">{label}</span>
+      <span className="text-[10px] tracking-[0.30em] uppercase text-white/45">{label}</span>
       <span className="text-[12px] text-white/92 tabular-nums">{value}</span>
     </div>
   );
@@ -5921,12 +5878,12 @@ const BeatSyncApp = () => {
             }}
             className="h-11 rounded-[16px] active:scale-[0.99]"
             style={{
-              background: active ? "rgba(255,255,255,0.12)" : "transparent",
-              boxShadow: active ? "0 0 0 1px rgba(255,255,255,0.09) inset, 0 12px 44px rgba(0,0,0,0.38)" : "none",
+              background: active ? "rgba(255,255,255,0.10)" : "transparent",
+              boxShadow: active ? "0 0 0 1px rgba(255,255,255,0.08) inset, 0 12px 44px rgba(0,0,0,0.35)" : "none",
             }}
           >
-            <div className="text-[11px] tracking-[0.30em] uppercase text-white/92">{opt.label}</div>
-            {opt.sub ? <div className="text-[10px] tracking-[0.32em] uppercase text-white/46">{opt.sub}</div> : null}
+            <div className="text-[11px] tracking-[0.28em] uppercase text-white/92">{opt.label}</div>
+            {opt.sub ? <div className="text-[10px] tracking-[0.30em] uppercase text-white/38">{opt.sub}</div> : null}
           </button>
         );
       })}
@@ -5934,19 +5891,19 @@ const BeatSyncApp = () => {
   );
 
   const TopBar = ({ right }) => (
-    <div className="relative z-30 px-4" style={{ paddingTop: safeTop }}>
+    <div className="relative z-30 px-4 pt-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="h-10 w-10 rounded-2xl border border-white/14 bg-white/6 overflow-hidden shrink-0 osb-breathe">
+          <div className="h-10 w-10 rounded-2xl border border-white/12 bg-white/5 overflow-hidden shrink-0">
             <img src={bunnyMood} alt="bunny" className="h-full w-full object-cover opacity-92" />
           </div>
           <div className="min-w-0">
-            <div className="text-[10px] tracking-[0.34em] uppercase text-white/60">
-              OS_USAGI <span className="text-white/92">SYNC</span>
+            <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">
+              OS_USAGI <span className="text-white/90">SYNC</span>
             </div>
             <div className="text-[12px] text-white/92 font-semibold truncate">
-              {currentTrack.title} <span className="text-white/50">· {difficulty}</span>
-              <span className="ml-2 text-white/38">BPM {currentTrack.bpm}</span>
+              {currentTrack.title} <span className="text-white/45">· {difficulty}</span>
+              <span className="ml-2 text-white/35">BPM {currentTrack.bpm}</span>
             </div>
           </div>
         </div>
@@ -5955,7 +5912,6 @@ const BeatSyncApp = () => {
     </div>
   );
 
-  // Pads: keep premium but lighter shadows (cheapness fix)
   const Pad = ({ lane, label, showIcon }) => {
     const glow = laneGlow(lane);
     const active = pressedLane === lane;
@@ -5967,25 +5923,25 @@ const BeatSyncApp = () => {
         {...bindPad(lane)}
         className="relative h-full w-full rounded-[22px] border overflow-hidden active:scale-[0.995]"
         style={{
-          borderColor: active ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.14)",
-          background: active ? "rgba(255,255,255,0.070)" : "rgba(255,255,255,0.050)",
+          borderColor: "rgba(255,255,255,0.14)",
+          background: "rgba(255,255,255,0.045)",
           touchAction: "none",
           WebkitTapHighlightColor: "transparent",
           boxShadow:
-            `0 18px 70px rgba(0,0,0,0.68),` +
-            `inset 0 1px 0 rgba(255,255,255,0.09),` +
-            `0 0 0 1px ${glow}44 inset,` +
-            `0 0 24px ${glow}2A` +
-            (active ? `, 0 0 54px ${glow}55` : ""),
+            `0 22px 90px rgba(0,0,0,0.72),` +
+            `inset 0 1px 0 rgba(255,255,255,0.08),` +
+            `0 0 0 1px ${glow}55 inset,` +
+            `0 0 26px ${glow}33` +
+            (active ? `, 0 0 60px ${glow}66` : ""),
         }}
       >
-        {/* inner glow */}
+        {/* subtle inner glow */}
         <div
           className="absolute inset-0"
           style={{
-            background: `radial-gradient(240px 170px at 30% 18%, ${glow}50, transparent 62%)`,
+            background: `radial-gradient(220px 160px at 30% 18%, ${glow}40, transparent 62%)`,
             filter: "blur(10px)",
-            opacity: active ? 0.90 : 0.70,
+            opacity: 0.7,
           }}
         />
         <div className="relative h-full w-full flex flex-col items-center justify-center gap-1">
@@ -5994,125 +5950,54 @@ const BeatSyncApp = () => {
               src={icon}
               alt={label}
               className="h-8 w-8 opacity-95"
-              style={{ filter: `drop-shadow(0 0 16px ${glow}) drop-shadow(0 0 14px rgba(255,255,255,0.08))` }}
+              style={{ filter: `drop-shadow(0 0 16px ${glow}) drop-shadow(0 0 16px rgba(255,255,255,0.08))` }}
             />
           ) : (
             <div
-              className="h-[3px] w-9 rounded-full"
+              className="h-2.5 w-2.5 rounded-full"
               style={{
-                background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.92), transparent)`,
+                background: "rgba(255,255,255,0.86)",
                 boxShadow: `0 0 18px ${glow}, 0 0 24px ${glow}`,
-                opacity: active ? 0.95 : 0.80,
+                opacity: 0.74,
               }}
             />
           )}
-          <div className="text-[10px] tracking-[0.34em] uppercase text-white/62">{label}</div>
+          <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">{label}</div>
         </div>
       </button>
     );
   };
 
-  // ----------------------------- LOBBY (make it “not boring”) -----------------------------
+  // ----------------------------- LOBBY -----------------------------
   const Lobby = () => (
     <div className="relative h-full w-full flex flex-col" style={{ paddingBottom: safeBottom }}>
       <TopBar
         right={
           <>
             <IconBtn label="config" onDown={() => setConfigOpen(true)}>
-              <span className="text-white/90 text-[16px]">⚙︎</span>
+              <span className="text-white/88 text-[16px]">⚙︎</span>
             </IconBtn>
           </>
         }
       />
 
       <div className="relative z-20 px-4 pt-3 flex-1 min-h-0">
+        {/* minimal status — no junk text */}
         <div className="flex flex-wrap items-center gap-2">
-          <Chip label="STATUS" value={ready ? "READY" : "LOADING"} glow={ready ? "rgba(122,226,255,0.20)" : ""} />
+          <Chip label="STATUS" value={ready ? "READY" : "LOADING"} glow={ready ? "rgba(122,226,255,0.16)" : ""} />
           <Chip label="LAT" value={`${latencyMs}ms`} />
           <Chip label="SPD" value={`${speed}`} />
         </div>
 
-        {/* Hero “Now Syncing” card */}
-        <div
-          className="mt-3 rounded-[24px] border overflow-hidden"
-          style={{
-            borderColor: "rgba(255,255,255,0.12)",
-            background: "rgba(0,0,0,0.28)",
-            boxShadow: "0 26px 100px rgba(0,0,0,0.55)",
-          }}
-        >
-          <div className="p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">NOW LOADED</div>
-                <div className="mt-1 text-[18px] text-white/92 font-semibold truncate">{currentTrack.title}</div>
-                <div className="mt-1 text-[11px] tracking-[0.24em] uppercase text-white/55">
-                  {difficulty} · BPM {currentTrack.bpm}
-                </div>
-              </div>
-              <div
-                className="shrink-0 h-12 w-12 rounded-2xl border flex items-center justify-center osb-breathe"
-                style={{
-                  borderColor: "rgba(255,255,255,0.14)",
-                  background: "rgba(255,255,255,0.06)",
-                  boxShadow: `0 0 0 1px rgba(255,255,255,0.06) inset, 0 0 70px rgba(122,226,255,0.14)`,
-                }}
-              >
-                <div className="text-[12px] tracking-[0.22em] uppercase text-white/82">SYNC</div>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <div className="h-[2px] rounded-full osb-glowline" style={{ "--g0": TOK.lane1, "--g1": TOK.lane0, "--g2": TOK.lane2 }}/>
-              <div className="mt-2 text-[11px] text-white/56">
-                Tap pads to start. Fine tune latency for perfect hit feel.
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Track carousel (swipe reaches end) */}
-        <div className="mt-3 rounded-[24px] border border-white/12 bg-black/20 overflow-hidden">
+        {/* Track carousel — no extra copy */}
+        <div className="mt-3 rounded-[22px] border border-white/10 bg-black/22 overflow-hidden">
           <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-            <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">TRACK</div>
-            <div className="flex items-center gap-2">
-              <button
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  scrollTrackBy(-1);
-                }}
-                className="h-8 w-8 rounded-xl border border-white/12 bg-white/5 text-white/80 active:scale-[0.99]"
-                style={{ boxShadow: "0 14px 46px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.07)" }}
-              >
-                ‹
-              </button>
-              <button
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  scrollTrackBy(1);
-                }}
-                className="h-8 w-8 rounded-xl border border-white/12 bg-white/5 text-white/80 active:scale-[0.99]"
-                style={{ boxShadow: "0 14px 46px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.07)" }}
-              >
-                ›
-              </button>
-            </div>
+            <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">TRACK</div>
+            <div className="text-[10px] tracking-[0.34em] uppercase text-white/30">SWIPE</div>
           </div>
 
-          <div className="pb-4">
-            <div
-              ref={trackStripRef}
-              className="flex gap-3 overflow-x-auto snap-x snap-mandatory osb-scroll osb-trackstrip"
-              style={{
-                WebkitOverflowScrolling: "touch",
-                paddingLeft: 16,
-                paddingRight: 16, // key for “reach end”
-                scrollPaddingLeft: 16,
-                scrollPaddingRight: 16,
-              }}
-            >
+          <div className="px-4 pb-4">
+            <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory osb-scroll" style={{ WebkitOverflowScrolling: "touch" }}>
               {ASSET.tracks.map((t, idx) => {
                 const active = t.id === trackId;
                 const accent = laneGlow(idx % 4);
@@ -6124,38 +6009,35 @@ const BeatSyncApp = () => {
                       e.stopPropagation();
                       setTrackSafe(t.id);
                     }}
-                    className="snap-center shrink-0 w-[82%] sm:w-[46%] rounded-[22px] border p-4 text-left active:scale-[0.995]"
+                    className="snap-start shrink-0 w-[78%] sm:w-[46%] rounded-[20px] border p-4 text-left active:scale-[0.995]"
                     style={{
-                      borderColor: active ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.12)",
-                      background: active ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.055)",
+                      borderColor: active ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.10)",
+                      background: active ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)",
                       boxShadow: active
-                        ? `0 0 0 1px ${accent}77 inset, 0 0 90px rgba(255,255,255,0.05), 0 26px 90px rgba(0,0,0,0.58)`
-                        : "0 22px 80px rgba(0,0,0,0.48)",
+                        ? `0 0 0 1px ${accent}66 inset, 0 0 74px rgba(255,255,255,0.05), 0 28px 90px rgba(0,0,0,0.56)`
+                        : "0 24px 84px rgba(0,0,0,0.46)",
                     }}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="text-[14px] text-white/94 font-semibold truncate">{t.title}</div>
-                        <div className="mt-1 text-[10px] tracking-[0.28em] uppercase text-white/55">BPM {t.bpm}</div>
+                        <div className="text-[14px] text-white/92 font-semibold truncate">{t.title}</div>
+                        <div className="mt-1 text-[10px] tracking-[0.28em] uppercase text-white/45">BPM {t.bpm}</div>
                       </div>
-                      <div className="text-[10px] tracking-[0.34em] uppercase text-white/70">{active ? "SELECTED" : "SELECT"}</div>
+                      <div className="text-[10px] tracking-[0.34em] uppercase text-white/60">{active ? "SELECTED" : "SELECT"}</div>
                     </div>
 
                     <div
                       className="mt-3 h-[2px] rounded-full"
                       style={{
                         background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
-                        opacity: active ? 0.98 : 0.55,
-                        boxShadow: active ? `0 0 18px ${accent}` : "none",
+                        opacity: active ? 0.95 : 0.45,
+                        boxShadow: active ? `0 0 16px ${accent}` : "none",
                       }}
                     />
                   </button>
                 );
               })}
-              {/* end spacer (extra safety for last card centering) */}
-              <div className="shrink-0 w-2" />
             </div>
-            <div className="px-4 pt-2 text-[10px] tracking-[0.34em] uppercase text-white/40">SWIPE</div>
           </div>
         </div>
 
@@ -6172,23 +6054,15 @@ const BeatSyncApp = () => {
           />
         </div>
 
-        {/* Lobby pads */}
+        {/* Lobby pads — dots only */}
         <div className="mt-3 grid grid-cols-4 gap-2" style={{ touchAction: "none" }}>
-          <div className="h-[84px]">
-            <Pad lane={0} label="LEFT" showIcon={false} />
-          </div>
-          <div className="h-[84px]">
-            <Pad lane={1} label="DOWN" showIcon={false} />
-          </div>
-          <div className="h-[84px]">
-            <Pad lane={2} label="UP" showIcon={false} />
-          </div>
-          <div className="h-[84px]">
-            <Pad lane={3} label="RIGHT" showIcon={false} />
-          </div>
+          <div className="h-[84px]"><Pad lane={0} label="LEFT" showIcon={false} /></div>
+          <div className="h-[84px]"><Pad lane={1} label="DOWN" showIcon={false} /></div>
+          <div className="h-[84px]"><Pad lane={2} label="UP" showIcon={false} /></div>
+          <div className="h-[84px]"><Pad lane={3} label="RIGHT" showIcon={false} /></div>
         </div>
 
-        {/* Start */}
+        {/* Start — minimal */}
         <button
           disabled={!ready}
           onPointerDown={(e) => {
@@ -6196,22 +6070,21 @@ const BeatSyncApp = () => {
             e.stopPropagation();
             startRun();
           }}
-          className="mt-3 h-12 w-full rounded-[18px] border border-white/16 bg-white/12 text-white/92 active:scale-[0.99] disabled:opacity-50 osb-breathe"
+          className="mt-3 h-12 w-full rounded-[18px] border border-white/14 bg-white/10 text-white/92 active:scale-[0.99] disabled:opacity-50"
           style={{
-            boxShadow: "0 26px 110px rgba(0,0,0,0.78), inset 0 1px 0 rgba(255,255,255,0.10), 0 0 74px rgba(122,226,255,0.16)",
+            boxShadow: "0 26px 98px rgba(0,0,0,0.76), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 56px rgba(122,226,255,0.12)",
           }}
         >
-          <span className="text-[11px] tracking-[0.38em] uppercase">{ready ? "START" : "LOADING"}</span>
+          <span className="text-[11px] tracking-[0.34em] uppercase">{ready ? "START" : "LOADING"}</span>
         </button>
       </div>
     </div>
   );
 
-  // ----------------------------- PLAY (no 4 squares: use lines + nodes) -----------------------------
+  // ----------------------------- PLAY -----------------------------
   const Play = () => {
+    // clarity: receptors visible as 4 “targets”
     const receptorY = ui.receptorY;
-    const pulseAlive = ui.pulseAlive;
-    const pulseLane = pulseFx?.lane ?? -1;
 
     return (
       <div className="relative h-full w-full flex flex-col" style={{ paddingBottom: safeBottom }}>
@@ -6219,7 +6092,7 @@ const BeatSyncApp = () => {
           right={
             <>
               <IconBtn label="config" onDown={() => setConfigOpen(true)}>
-                <span className="text-white/90 text-[16px]">⚙︎</span>
+                <span className="text-white/88 text-[16px]">⚙︎</span>
               </IconBtn>
               <IconBtn label="stop" onDown={stopAll} tone="danger">
                 <span className="text-white/92 text-[16px]">✕</span>
@@ -6230,85 +6103,70 @@ const BeatSyncApp = () => {
 
         <div className="relative z-20 px-4 pt-2 flex flex-wrap items-center gap-2">
           <Chip label="SCORE" value={score.toLocaleString()} />
-          <Chip label="COMBO" value={combo} glow={combo >= 10 ? "rgba(198,164,255,0.20)" : ""} />
+          <Chip label="COMBO" value={combo} glow={combo >= 10 ? "rgba(198,164,255,0.16)" : ""} />
           <Chip label="REMAIN" value={remainText} />
         </div>
 
-        {/* Field (lean layers to avoid flicker) */}
+        {/* Field (reduced blur layers -> no flicker) */}
         <div className="relative z-10 px-4 pt-3 flex-1 min-h-0">
-          <div className="h-full rounded-[24px] border border-white/12 bg-black/18 overflow-hidden osb-field">
+          <div className="h-full rounded-[22px] border border-white/10 bg-black/22 overflow-hidden">
             <div ref={fieldRef} className="relative h-full w-full">
-              {/* lane rails */}
+              {/* lane backgrounds */}
               <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute inset-0 grid grid-cols-4 opacity-[0.72]">
-                  {[0, 1, 2, 3].map((lane) => {
-                    const g = laneGlow(lane);
-                    const pulsing = pulseAlive && pulseLane === lane;
-                    return (
-                      <div key={lane} className="relative">
-                        {/* vertical glow rail */}
-                        <div
-                          className={pulsing ? "osb-rail-pulse" : ""}
-                          style={{
-                            position: "absolute",
-                            inset: 0,
-                            background: `linear-gradient(180deg, ${g}26 0%, transparent 64%)`,
-                            opacity: 1,
-                            transform: "translate3d(0,0,0)",
-                          }}
-                        />
-                        <div className="absolute inset-y-0 right-0 w-px bg-white/10" />
-                      </div>
-                    );
-                  })}
+                <div className="absolute inset-0 grid grid-cols-4 opacity-[0.65]">
+                  {[0, 1, 2, 3].map((lane) => (
+                    <div key={lane} className="relative">
+                      <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, ${laneGlow(lane)}20 0%, transparent 68%)` }} />
+                      <div className="absolute inset-y-0 right-0 w-px bg-white/10" />
+                    </div>
+                  ))}
                 </div>
+                {/* faint center glow (static) */}
                 <div
                   className="absolute inset-0"
                   style={{
-                    background: "radial-gradient(900px 560px at 50% 18%, rgba(255,255,255,0.14), transparent 62%)",
-                    opacity: 0.20,
+                    background: "radial-gradient(820px 520px at 50% 26%, rgba(255,255,255,0.10), transparent 62%)",
+                    opacity: 0.18,
                   }}
                 />
               </div>
 
-              {/* Hit line + 4 nodes (NO 4 squares) */}
-              <div className="absolute inset-x-0 z-30 pointer-events-none" style={{ top: receptorY }}>
+              {/* receptor targets */}
+              <div className="absolute inset-x-0 z-30 pointer-events-none" style={{ top: receptorY - 26 }}>
                 <div className="px-4">
-                  <div
-                    className="h-[4px] rounded-full osb-hitline"
-                    style={{
-                      "--g0": TOK.lane1,
-                      "--g1": TOK.lane0,
-                      "--g2": TOK.lane2,
-                    }}
-                  />
-                  <div className="mt-2 grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     {[0, 1, 2, 3].map((lane) => {
                       const g = laneGlow(lane);
-                      const active = pressedLane === lane;
-                      const pulsing = pulseAlive && (pulseLane === lane || pulseLane === -1);
                       return (
-                        <div key={lane} className="flex justify-center">
-                          <div
-                            className={pulsing ? "osb-node-pulse" : ""}
-                            style={{
-                              width: 14,
-                              height: 14,
-                              borderRadius: 999,
-                              background: "rgba(255,255,255,0.72)",
-                              boxShadow: `${active ? `0 0 34px ${g},` : ""} 0 0 24px ${g}, 0 0 0 1px rgba(255,255,255,0.10) inset`,
-                              opacity: active ? 1 : 0.86,
-                              transform: "translate3d(0,0,0)",
-                            }}
-                          />
-                        </div>
+                        <div
+                          key={lane}
+                          className="h-[52px] rounded-[18px] border"
+                          style={{
+                            borderColor: "rgba(255,255,255,0.14)",
+                            background: "rgba(255,255,255,0.035)",
+                            boxShadow: `0 0 0 1px ${g}40 inset, 0 0 26px ${g}26`,
+                          }}
+                        />
                       );
                     })}
                   </div>
                 </div>
+
+                {/* hit line */}
+                <div className="mt-2 px-4">
+                  <div
+                    className="h-[4px] rounded-full"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, transparent, rgba(122,226,255,0.74), rgba(198,164,255,0.66), rgba(255,156,222,0.46), transparent)",
+                      boxShadow: "0 0 22px rgba(122,226,255,0.10), 0 0 26px rgba(198,164,255,0.08)",
+                      opacity: 0.92,
+                    }}
+                  />
+                </div>
               </div>
 
-              {/* notes (simplified: remove heavy borders/filters) */}
+              {/* notes */}
               <div className="absolute inset-0 pointer-events-none z-20">
                 {ui.list.map((n) => {
                   const t = playTRef.current || 0;
@@ -6320,9 +6178,9 @@ const BeatSyncApp = () => {
                   const g = laneGlow(n.lane);
 
                   const depth = clamp(y / (fieldH || 1), 0, 1);
-                  const sc = 0.86 + depth * 0.18;
-                  const op = clamp(0.34 + depth * 0.70, 0, 1);
-                  const size = isMobile ? 44 : 50;
+                  const sc = 0.82 + depth * 0.22;
+                  const op = clamp(0.38 + depth * 0.66, 0, 1);
+                  const size = isMobile ? 50 : 56;
 
                   return (
                     <div
@@ -6336,21 +6194,22 @@ const BeatSyncApp = () => {
                         transform: `translate3d(0,0,0) scale(${sc})`,
                         opacity: op,
                         willChange: "transform, top, opacity",
-                        contain: "paint",
                       }}
                     >
                       <div
-                        className="h-full w-full rounded-[16px] flex items-center justify-center"
+                        className="h-full w-full rounded-[18px] border flex items-center justify-center"
                         style={{
-                          background: "rgba(0,0,0,0.26)",
-                          boxShadow: `0 14px 42px rgba(0,0,0,0.56), 0 0 0 1px ${g}48 inset, 0 0 16px ${g}26`,
+                          borderColor: "rgba(255,255,255,0.14)",
+                          background: "rgba(0,0,0,0.38)",
+                          // IMPORTANT: no backdrop-filter here (was causing flicker on some Android GPUs)
+                          boxShadow: `0 18px 60px rgba(0,0,0,0.62), 0 0 0 1px ${g}55 inset, 0 0 18px ${g}28`,
                         }}
                       >
                         <img
                           src={ASSET.arrows[LANE_ICON[n.lane]]}
                           alt="note"
                           className="h-7 w-7 opacity-95"
-                          style={{ filter: `drop-shadow(0 0 ${10 + depth * 8}px ${g})` }}
+                          style={{ filter: `drop-shadow(0 0 ${12 + depth * 8}px ${g})` }}
                         />
                       </div>
                     </div>
@@ -6366,7 +6225,7 @@ const BeatSyncApp = () => {
                     alt={judgeFx.type}
                     className="h-14 opacity-95"
                     style={{
-                      filter: "drop-shadow(0 0 30px rgba(122,226,255,0.14)) drop-shadow(0 0 30px rgba(198,164,255,0.12))",
+                      filter: "drop-shadow(0 0 26px rgba(122,226,255,0.12)) drop-shadow(0 0 26px rgba(198,164,255,0.10))",
                       animation: "osbJudge 420ms cubic-bezier(0.22,1,0.36,1) both",
                     }}
                   />
@@ -6379,401 +6238,382 @@ const BeatSyncApp = () => {
         {/* Controls + Pads */}
         <div className="relative z-20 px-4 pt-3">
           <div className="flex items-center justify-between gap-2">
-            <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">{view === "play" ? "SYNC" : "PAUSE"}</div>
+            <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">
+              {view === "play" ? "SYNC" : "PAUSE"}
+            </div>
 
             <div className="flex items-center gap-2">
               <button
-                className="h-10 px-4 rounded-[18px] border border-white/14 bg-white/12 text-white/92 active:scale-[0.99]"
+                className="h-10 px-4 rounded-[18px] border border-white/12 bg-white/10 text-white/92 active:scale-[0.99]"
                 onPointerDown={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   view === "play" ? pauseRun() : resumeRun();
                 }}
-                style={{ boxShadow: "0 18px 66px rgba(0,0,0,0.66), inset 0 1px 0 rgba(255,255,255,0.10)" }}
+                style={{ boxShadow: "0 18px 66px rgba(0,0,0,0.66), inset 0 1px 0 rgba(255,255,255,0.08)" }}
               >
-                <span className="text-[11px] tracking-[0.30em] uppercase">{view === "play" ? "PAUSE" : "RESUME"}</span>
+                <span className="text-[11px] tracking-[0.26em] uppercase">{view === "play" ? "PAUSE" : "RESUME"}</span>
               </button>
 
               <button
-                className="h-10 px-4 rounded-[18px] border border-white/12 bg-white/7 text-white/86 active:scale-[0.99]"
+                className="h-10 px-4 rounded-[18px] border border-white/10 bg-white/5 text-white/80 active:scale-[0.99]"
                 onPointerDown={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   restartRun();
                 }}
-                style={{ boxShadow: "0 18px 60px rgba(0,0,0,0.58), inset 0 1px 0 rgba(255,255,255,0.08)" }}
+                style={{ boxShadow: "0 18px 60px rgba(0,0,0,0.58), inset 0 1px 0 rgba(255,255,255,0.07)" }}
               >
-                <span className="text-[11px] tracking-[0.30em] uppercase">RESTART</span>
+                <span className="text-[11px] tracking-[0.26em] uppercase">RESTART</span>
               </button>
             </div>
           </div>
 
+          {/* pads are the only interaction area -> immediately clear */}
           <div className={`mt-2 grid grid-cols-4 ${isMobile ? "gap-2" : "gap-3"}`} style={{ touchAction: "none" }}>
-            <div className={isMobile ? "h-[92px]" : "h-[96px]"}>
-              <Pad lane={0} label="LEFT" showIcon />
-            </div>
-            <div className={isMobile ? "h-[92px]" : "h-[96px]"}>
-              <Pad lane={1} label="DOWN" showIcon />
-            </div>
-            <div className={isMobile ? "h-[92px]" : "h-[96px]"}>
-              <Pad lane={2} label="UP" showIcon />
-            </div>
-            <div className={isMobile ? "h-[92px]" : "h-[96px]"}>
-              <Pad lane={3} label="RIGHT" showIcon />
-            </div>
+            <div className={isMobile ? "h-[92px]" : "h-[96px]"}><Pad lane={0} label="LEFT" showIcon /></div>
+            <div className={isMobile ? "h-[92px]" : "h-[96px]"}><Pad lane={1} label="DOWN" showIcon /></div>
+            <div className={isMobile ? "h-[92px]" : "h-[96px]"}><Pad lane={2} label="UP" showIcon /></div>
+            <div className={isMobile ? "h-[92px]" : "h-[96px]"}><Pad lane={3} label="RIGHT" showIcon /></div>
           </div>
         </div>
       </div>
     );
   };
 
-  // ----------------------------- CONFIG (scroll always reaches bottom + no accidental close) -----------------------------
-  const Config = () => {
-    const canChangeTrack = view === "lobby";
-    const modalH = "min(86svh, calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)))";
-
-    return (
-      <div className="fixed inset-0 z-[999] flex items-end md:items-center justify-center p-3" style={{ paddingBottom: safeBottom, paddingTop: safeTop }}>
-        {/* scrim (close) */}
-        <div
-          className="absolute inset-0 bg-black/70"
-          onPointerDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setConfigOpen(false);
-          }}
-          style={{ backdropFilter: "blur(18px)" }}
-        />
-        <div
-          className="relative w-full max-w-[760px] rounded-[26px] border overflow-hidden"
-          style={{
-            borderColor: TOK.line,
-            background: "rgba(0,0,0,0.62)",
-            boxShadow: "0 34px 170px rgba(0,0,0,0.94), inset 0 1px 0 rgba(255,255,255,0.08)",
-            height: modalH,
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <div className="p-4 border-b" style={{ borderColor: TOK.line2 }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">CONFIG</div>
-                <div className="mt-1 text-[12px] text-white/78">Sync tuning</div>
-              </div>
-              <IconBtn label="close" onDown={() => setConfigOpen(false)}>
-                <span className="text-white/90 text-[16px]">✕</span>
-              </IconBtn>
+  // ----------------------------- CONFIG (fully visible + scroll) -----------------------------
+  const Config = () => (
+    <div
+      className="absolute inset-0 z-[999] flex items-end md:items-center justify-center p-3"
+      style={{ paddingBottom: safeBottom }}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setConfigOpen(false);
+      }}
+    >
+      <div className="absolute inset-0 bg-black/65 backdrop-blur-2xl" />
+      <div
+        className="relative w-full max-w-[720px] rounded-[26px] border overflow-hidden"
+        style={{
+          borderColor: TOK.line,
+          background: "rgba(0,0,0,0.60)",
+          boxShadow: "0 34px 160px rgba(0,0,0,0.92), inset 0 1px 0 rgba(255,255,255,0.07)",
+          maxHeight: "calc(100dvh - 120px)",
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <div className="p-4 border-b" style={{ borderColor: TOK.line2 }}>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">CONFIG</div>
+              <div className="mt-1 text-[12px] text-white/75">Sync tuning</div>
             </div>
+            <IconBtn label="close" onDown={() => setConfigOpen(false)}>
+              <span className="text-white/88 text-[16px]">✕</span>
+            </IconBtn>
           </div>
+        </div>
 
-          {/* scroll area */}
-          <div className="p-4 overflow-y-auto osb-scroll" style={{ height: "calc(100% - 72px)" }}>
-            {!canChangeTrack && (
-              <div
-                className="mb-3 rounded-[18px] border px-3 py-2"
-                style={{
-                  borderColor: "rgba(255,255,255,0.12)",
-                  background: "rgba(255,255,255,0.06)",
-                  boxShadow: "0 18px 60px rgba(0,0,0,0.40)",
-                }}
+        {/* scroll area */}
+        <div className="p-4 overflow-y-auto osb-scroll" style={{ maxHeight: "calc(100dvh - 220px)" }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="rounded-[20px] border border-white/10 bg-white/5 p-3">
+              <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">TRACK</div>
+              <select
+                className="w-full h-11 rounded-[16px] bg-white/5 border border-white/10 text-white/88 px-3 text-[13px] outline-none"
+                value={trackId}
+                onChange={(e) => setTrackSafe(e.target.value)}
               >
-                <div className="text-[10px] tracking-[0.30em] uppercase text-white/60">NOTE</div>
-                <div className="mt-1 text-[12px] text-white/74">Track selection is locked during play. Return to Lobby to switch.</div>
-              </div>
-            )}
+                {ASSET.tracks.map((t) => (
+                  <option key={t.id} value={t.id} className="bg-black">
+                    {t.title}
+                  </option>
+                ))}
+              </select>
+              <div className="mt-2 text-[10px] tracking-[0.28em] uppercase text-white/40">BPM {currentTrack.bpm}</div>
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="rounded-[20px] border border-white/12 bg-white/6 p-3">
-                <div className="text-[10px] tracking-[0.34em] uppercase text-white/55 mb-2">TRACK</div>
-                <select
-                  className="w-full h-11 rounded-[16px] bg-white/6 border border-white/12 text-white/90 px-3 text-[13px] outline-none disabled:opacity-50"
-                  value={trackId}
-                  disabled={!canChangeTrack}
-                  onChange={(e) => setTrackSafe(e.target.value)}
-                >
-                  {ASSET.tracks.map((t) => (
-                    <option key={t.id} value={t.id} className="bg-black">
-                      {t.title}
-                    </option>
-                  ))}
-                </select>
-                <div className="mt-2 text-[10px] tracking-[0.28em] uppercase text-white/50">BPM {currentTrack.bpm}</div>
-              </div>
+            <div className="rounded-[20px] border border-white/10 bg-white/5 p-3">
+              <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">DIFFICULTY</div>
+              <Seg
+                value={difficulty}
+                onChange={setDifficulty}
+                options={[
+                  { value: "EASY", label: "EASY" },
+                  { value: "NORMAL", label: "NORMAL" },
+                  { value: "HARD", label: "HARD" },
+                ]}
+              />
+            </div>
 
-              <div className="rounded-[20px] border border-white/12 bg-white/6 p-3">
-                <div className="text-[10px] tracking-[0.34em] uppercase text-white/55 mb-2">DIFFICULTY</div>
-                <Seg
-                  value={difficulty}
-                  onChange={setDifficulty}
-                  options={[
-                    { value: "EASY", label: "EASY" },
-                    { value: "NORMAL", label: "NORMAL" },
-                    { value: "HARD", label: "HARD" },
-                  ]}
+            <div className="rounded-[20px] border border-white/10 bg-white/5 p-3">
+              <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">TUNING</div>
+
+              <div className="mb-4">
+                <div className="flex items-center justify-between text-[11px] text-white/60">
+                  <span className="tracking-[0.22em] uppercase">Latency</span>
+                  <span className="tabular-nums text-white/80">{latencyMs} ms</span>
+                </div>
+                <input
+                  type="range"
+                  min={-120}
+                  max={180}
+                  value={latencyMs}
+                  onChange={(e) => setLatencyMs(parseInt(e.target.value, 10))}
+                  className="w-full osb-range"
                 />
               </div>
 
-              <div className="rounded-[20px] border border-white/12 bg-white/6 p-3">
-                <div className="text-[10px] tracking-[0.34em] uppercase text-white/55 mb-2">TUNING</div>
-
-                <div className="mb-4">
-                  <div className="flex items-center justify-between text-[11px] text-white/65">
-                    <span className="tracking-[0.24em] uppercase">Latency</span>
-                    <span className="tabular-nums text-white/86">{latencyMs} ms</span>
-                  </div>
-                  <input type="range" min={-140} max={220} value={latencyMs} onChange={(e) => setLatencyMs(parseInt(e.target.value, 10))} className="w-full osb-range" />
+              <div>
+                <div className="flex items-center justify-between text-[11px] text-white/60">
+                  <span className="tracking-[0.22em] uppercase">Speed</span>
+                  <span className="tabular-nums text-white/80">{speed} px/s</span>
                 </div>
-
-                <div>
-                  <div className="flex items-center justify-between text-[11px] text-white/65">
-                    <span className="tracking-[0.24em] uppercase">Speed</span>
-                    <span className="tabular-nums text-white/86">{speed} px/s</span>
-                  </div>
-                  <input type="range" min={720} max={1320} value={speed} onChange={(e) => setSpeed(parseInt(e.target.value, 10))} className="w-full osb-range" />
-                </div>
-              </div>
-
-              <div className="rounded-[20px] border border-white/12 bg-white/6 p-3">
-                <div className="text-[10px] tracking-[0.34em] uppercase text-white/55 mb-2">AUDIO</div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    className="h-11 rounded-[16px] border border-white/12 bg-white/6 active:scale-[0.99]"
-                    onPointerDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setMuted((m) => !m);
-                    }}
-                  >
-                    <span className="text-[11px] tracking-[0.24em] uppercase text-white/90">{muted ? "MUTE" : "ON"}</span>
-                  </button>
-
-                  <button
-                    className="h-11 rounded-[16px] border border-white/12 bg-white/6 active:scale-[0.99]"
-                    onPointerDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setSfxOn((v) => !v);
-                    }}
-                  >
-                    <span className="text-[11px] tracking-[0.24em] uppercase text-white/90">{sfxOn ? "SFX" : "OFF"}</span>
-                  </button>
-
-                  <button
-                    className="h-11 rounded-[16px] border border-white/12 bg-white/6 text-white/90 active:scale-[0.99]"
-                    onPointerDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      ensureAudioContext();
-                      const actx = actxRef.current;
-                      if (actx && actx.state === "suspended") actx.resume?.().catch(() => {});
-                      playSfx("perfect", 1.0);
-                      navigator.vibrate?.(6);
-                    }}
-                  >
-                    <span className="text-[11px] tracking-[0.24em] uppercase">TEST</span>
-                  </button>
-                </div>
-
-                <div className="mt-4">
-                  <div className="flex items-center justify-between text-[11px] text-white/65">
-                    <span className="tracking-[0.24em] uppercase">Music</span>
-                    <span className="tabular-nums text-white/86">{Math.round(musicVol * 100)}%</span>
-                  </div>
-                  <input type="range" min={0} max={1} step={0.01} value={musicVol} onChange={(e) => setMusicVol(parseFloat(e.target.value))} className="w-full osb-range" />
-                </div>
-
-                <div className="mt-4">
-                  <div className="flex items-center justify-between text-[11px] text-white/65">
-                    <span className="tracking-[0.24em] uppercase">SFX</span>
-                    <span className="tabular-nums text-white/86">{Math.round(sfxVol * 100)}%</span>
-                  </div>
-                  <input type="range" min={0} max={1} step={0.01} value={sfxVol} onChange={(e) => setSfxVol(parseFloat(e.target.value))} className="w-full osb-range" />
-                </div>
+                <input
+                  type="range"
+                  min={720}
+                  max={1240}
+                  value={speed}
+                  onChange={(e) => setSpeed(parseInt(e.target.value, 10))}
+                  className="w-full osb-range"
+                />
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button
-                className="h-11 rounded-[18px] border border-white/14 bg-white/12 text-white/92 active:scale-[0.99]"
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setConfigOpen(false);
-                }}
-                style={{ boxShadow: "0 18px 70px rgba(0,0,0,0.72), inset 0 1px 0 rgba(255,255,255,0.09)" }}
-              >
-                <span className="text-[11px] tracking-[0.24em] uppercase">DONE</span>
-              </button>
+            <div className="rounded-[20px] border border-white/10 bg-white/5 p-3">
+              <div className="text-[10px] tracking-[0.34em] uppercase text-white/45 mb-2">AUDIO</div>
 
-              <button
-                className="h-11 rounded-[18px] border border-white/12 bg-white/7 text-white/86 active:scale-[0.99]"
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  hardReset();
-                }}
-                style={{ boxShadow: "0 18px 60px rgba(0,0,0,0.64), inset 0 1px 0 rgba(255,255,255,0.08)" }}
-              >
-                <span className="text-[11px] tracking-[0.24em] uppercase">RESET</span>
-              </button>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  className="h-11 rounded-[16px] border border-white/10 bg-white/5 active:scale-[0.99]"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setMuted((m) => !m);
+                  }}
+                >
+                  <span className="text-[11px] tracking-[0.22em] uppercase text-white/88">{muted ? "MUTE" : "ON"}</span>
+                </button>
+
+                <button
+                  className="h-11 rounded-[16px] border border-white/10 bg-white/5 active:scale-[0.99]"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSfxOn((v) => !v);
+                  }}
+                >
+                  <span className="text-[11px] tracking-[0.22em] uppercase text-white/88">{sfxOn ? "SFX" : "OFF"}</span>
+                </button>
+
+                <button
+                  className="h-11 rounded-[16px] border border-white/10 bg-white/5 text-white/88 active:scale-[0.99]"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // TEST MUST WORK: ensure actx resumes and play a perfect beep
+                    ensureAudioContext();
+                    const actx = actxRef.current;
+                    if (actx && actx.state === "suspended") actx.resume?.().catch(() => {});
+                    playSfx("perfect", 1.0);
+                    navigator.vibrate?.(6);
+                  }}
+                >
+                  <span className="text-[11px] tracking-[0.22em] uppercase">TEST</span>
+                </button>
+              </div>
+
+              <div className="mt-4">
+                <div className="flex items-center justify-between text-[11px] text-white/60">
+                  <span className="tracking-[0.22em] uppercase">Music</span>
+                  <span className="tabular-nums text-white/80">{Math.round(musicVol * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={musicVol}
+                  onChange={(e) => setMusicVol(parseFloat(e.target.value))}
+                  className="w-full osb-range"
+                />
+              </div>
+
+              <div className="mt-4">
+                <div className="flex items-center justify-between text-[11px] text-white/60">
+                  <span className="tracking-[0.22em] uppercase">SFX</span>
+                  <span className="tabular-nums text-white/80">{Math.round(sfxVol * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={sfxVol}
+                  onChange={(e) => setSfxVol(parseFloat(e.target.value))}
+                  className="w-full osb-range"
+                />
+              </div>
             </div>
+          </div>
 
-            <div style={{ height: 12 }} />
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <button
+              className="h-11 rounded-[18px] border border-white/12 bg-white/10 text-white/92 active:scale-[0.99]"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setConfigOpen(false);
+              }}
+              style={{ boxShadow: "0 18px 66px rgba(0,0,0,0.70), inset 0 1px 0 rgba(255,255,255,0.07)" }}
+            >
+              <span className="text-[11px] tracking-[0.22em] uppercase">DONE</span>
+            </button>
+
+            <button
+              className="h-11 rounded-[18px] border border-white/10 bg-white/5 text-white/80 active:scale-[0.99]"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                hardReset();
+              }}
+              style={{ boxShadow: "0 18px 60px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.07)" }}
+            >
+              <span className="text-[11px] tracking-[0.22em] uppercase">RESET</span>
+            </button>
           </div>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
 
-  // ----------------------------- RESULT (more premium) -----------------------------
+  // ----------------------------- RESULT (premium card) -----------------------------
   const Result = () => (
-    <div className="absolute inset-0 z-50 flex items-center justify-center p-4" style={{ paddingBottom: safeBottom, paddingTop: safeTop }}>
-      <div className="absolute inset-0 bg-black/72" style={{ backdropFilter: "blur(18px)" }} />
+    <div className="absolute inset-0 z-50 flex items-center justify-center p-4" style={{ paddingBottom: safeBottom }}>
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-2xl" />
       <div
-        className="relative w-full max-w-[580px] rounded-[28px] border p-5"
+        className="relative w-full max-w-[560px] rounded-[26px] border p-5"
         style={{
           borderColor: TOK.line,
-          background: "rgba(0,0,0,0.62)",
-          boxShadow: `0 36px 190px rgba(0,0,0,0.92), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 110px ${grade.glow}`,
+          background: "rgba(0,0,0,0.58)",
+          boxShadow: `0 36px 170px rgba(0,0,0,0.92), inset 0 1px 0 rgba(255,255,255,0.07), 0 0 90px ${grade.glow}`,
         }}
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-[10px] tracking-[0.34em] uppercase text-white/55">RESULT</div>
+            <div className="text-[10px] tracking-[0.34em] uppercase text-white/45">RESULT</div>
             <div className="mt-1 text-[22px] font-semibold text-white/92">NEON SYNC</div>
-            <div className="mt-1 text-[11px] tracking-[0.22em] uppercase text-white/58">
+            <div className="mt-1 text-[11px] tracking-[0.22em] uppercase text-white/50">
               {currentTrack.title} · {difficulty}
             </div>
-            <div className="mt-1 text-[11px] tracking-[0.22em] uppercase text-white/46">SCORE {score.toLocaleString()}</div>
           </div>
-
           <div
-            className="h-14 w-14 rounded-[22px] border flex items-center justify-center osb-breathe"
+            className="h-12 w-12 rounded-2xl border flex items-center justify-center"
             style={{
-              borderColor: "rgba(255,255,255,0.16)",
-              background: "rgba(255,255,255,0.06)",
-              boxShadow: `0 0 0 1px rgba(255,255,255,0.06) inset, 0 0 90px ${grade.glow}`,
+              borderColor: "rgba(255,255,255,0.14)",
+              background: "rgba(255,255,255,0.05)",
+              boxShadow: `0 0 0 1px rgba(255,255,255,0.06) inset, 0 0 60px ${grade.glow}`,
             }}
           >
-            <div className="text-[20px] font-semibold text-white/92">{grade.label}</div>
+            <div className="text-[18px] font-semibold text-white/92">{grade.label}</div>
           </div>
         </div>
 
         <div className="mt-4 grid grid-cols-3 gap-2">
           {[
-            ["Perfect", counts.perfect, TOK.lane1],
-            ["Good", counts.good, TOK.lane0],
-            ["Miss", counts.miss, TOK.danger],
+            ["Perfect", counts.perfect, "rgba(122,226,255,0.22)"],
+            ["Good", counts.good, "rgba(198,164,255,0.20)"],
+            ["Miss", counts.miss, "rgba(255,120,170,0.22)"],
           ].map(([label, val, glow]) => (
             <div
               key={label}
               className="rounded-[20px] border px-3 py-3"
               style={{
-                borderColor: "rgba(255,255,255,0.12)",
-                background: "rgba(255,255,255,0.055)",
-                boxShadow: `0 0 0 1px rgba(255,255,255,0.05) inset, 0 0 54px ${glow}33`,
+                borderColor: "rgba(255,255,255,0.10)",
+                background: "rgba(255,255,255,0.04)",
+                boxShadow: `0 0 0 1px rgba(255,255,255,0.04) inset, 0 0 46px ${glow}`,
               }}
             >
-              <div className="text-[10px] tracking-[0.28em] uppercase text-white/55">{label}</div>
+              <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">{label}</div>
               <div className="mt-1 text-[18px] text-white/92 tabular-nums">{val}</div>
             </div>
           ))}
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <div className="rounded-[20px] border border-white/12 px-3 py-3" style={{ background: "rgba(255,255,255,0.045)" }}>
-            <div className="text-[10px] tracking-[0.28em] uppercase text-white/55">Max Combo</div>
+          <div className="rounded-[20px] border border-white/10 bg-white/4 px-3 py-3" style={{ background: "rgba(255,255,255,0.04)" }}>
+            <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Max Combo</div>
             <div className="mt-1 text-[18px] text-white/92 tabular-nums">{maxCombo}</div>
           </div>
-          <div className="rounded-[20px] border border-white/12 px-3 py-3" style={{ background: "rgba(255,255,255,0.045)" }}>
-            <div className="text-[10px] tracking-[0.28em] uppercase text-white/55">Accuracy</div>
+          <div className="rounded-[20px] border border-white/10 bg-white/4 px-3 py-3" style={{ background: "rgba(255,255,255,0.04)" }}>
+            <div className="text-[10px] tracking-[0.28em] uppercase text-white/45">Accuracy</div>
             <div className="mt-1 text-[18px] text-white/92 tabular-nums">{accuracy.toFixed(1)}%</div>
           </div>
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
           <button
-            className="h-11 rounded-[18px] border border-white/14 bg-white/12 text-white/92 active:scale-[0.99]"
+            className="h-11 rounded-[18px] border border-white/12 bg-white/10 text-white/92 active:scale-[0.99]"
             onPointerDown={(e) => {
               e.preventDefault();
               e.stopPropagation();
               restartRun();
             }}
-            style={{ boxShadow: "0 18px 74px rgba(0,0,0,0.76), inset 0 1px 0 rgba(255,255,255,0.09)" }}
+            style={{ boxShadow: "0 18px 66px rgba(0,0,0,0.74), inset 0 1px 0 rgba(255,255,255,0.07)" }}
           >
-            <span className="text-[11px] tracking-[0.26em] uppercase">RESTART</span>
+            <span className="text-[11px] tracking-[0.22em] uppercase">RESTART</span>
           </button>
           <button
-            className="h-11 rounded-[18px] border border-white/12 bg-white/7 text-white/86 active:scale-[0.99]"
+            className="h-11 rounded-[18px] border border-white/10 bg-white/5 text-white/80 active:scale-[0.99]"
             onPointerDown={(e) => {
               e.preventDefault();
               e.stopPropagation();
               stopAll();
             }}
-            style={{ boxShadow: "0 18px 60px rgba(0,0,0,0.64), inset 0 1px 0 rgba(255,255,255,0.08)" }}
+            style={{ boxShadow: "0 18px 60px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.07)" }}
           >
-            <span className="text-[11px] tracking-[0.26em] uppercase">BACK</span>
+            <span className="text-[11px] tracking-[0.22em] uppercase">BACK</span>
           </button>
         </div>
       </div>
     </div>
   );
 
-  // ----------------------------- TOAST -----------------------------
-  React.useEffect(() => {
-    if (!toast) return;
-    const id = setTimeout(() => setToast(null), 1600);
-    return () => clearTimeout(id);
-  }, [toast]);
-
   // ----------------------------- ROOT -----------------------------
   return (
     <div
       ref={rootRef}
-      className="relative w-full select-none"
+      className="relative h-full w-full overflow-hidden select-none"
       style={{
-        height: "100svh", // reduces Android address-bar resize flicker vs 100vh
         background: `radial-gradient(1200px 860px at 50% 0%, ${TOK.bg1}, ${TOK.bg0})`,
         WebkitTapHighlightColor: "transparent",
         overscrollBehavior: "none",
       }}
     >
+      {/* audio must be always mounted */}
       <audio ref={audioRef} preload="auto" />
 
       <div className="absolute inset-0 p-3">
+        {/* subtleMotion: lobby true / play false (avoid flicker during gameplay) */}
         <Frame subtleMotion={view !== "play"}>
           {view === "lobby" && <Lobby />}
           {(view === "play" || view === "pause") && <Play />}
           {view === "result" && <Result />}
           {configOpen && <Config />}
-
-          {/* Toast */}
-          {toast && (
-            <div className="absolute inset-x-0 top-3 z-[1000] flex justify-center pointer-events-none">
-              <div
-                className="px-4 py-2 rounded-full border"
-                style={{
-                  borderColor: "rgba(255,255,255,0.14)",
-                  background: "rgba(0,0,0,0.55)",
-                  boxShadow: "0 20px 80px rgba(0,0,0,0.70), inset 0 1px 0 rgba(255,255,255,0.08)",
-                  backdropFilter: "blur(10px)",
-                }}
-              >
-                <div className="text-[11px] tracking-[0.18em] text-white/86">{toast.text}</div>
-              </div>
-            </div>
-          )}
         </Frame>
       </div>
 
       <style>{`
+        /* FIX: reduce flicker on Android by minimizing animated heavy layers */
         @keyframes osbAuroraSubtle {
           0%   { transform: translate3d(-6px,-4px,0) scale(1.02); }
           50%  { transform: translate3d(6px,4px,0) scale(1.02); }
           100% { transform: translate3d(-6px,-4px,0) scale(1.02); }
         }
-        .osb-aurora-subtle { animation: osbAuroraSubtle 14s ease-in-out infinite; }
+        .osb-aurora-subtle {
+          animation: osbAuroraSubtle 14s ease-in-out infinite;
+        }
 
         @keyframes osbJudge {
           0%   { transform: translateY(10px) scale(.98); opacity: 0; }
@@ -6781,61 +6621,8 @@ const BeatSyncApp = () => {
           100% { transform: translateY(-10px) scale(1.00); opacity: 0; }
         }
 
-        @keyframes osbBreathe {
-          0%   { transform: translate3d(0,0,0) scale(1); filter: brightness(1); }
-          50%  { transform: translate3d(0,0,0) scale(1.01); filter: brightness(1.06); }
-          100% { transform: translate3d(0,0,0) scale(1); filter: brightness(1); }
-        }
-        .osb-breathe { animation: osbBreathe 3.6s ease-in-out infinite; }
-
-        @keyframes osbRailPulse {
-          0% { opacity: .72; }
-          45% { opacity: 1; }
-          100% { opacity: .72; }
-        }
-        .osb-rail-pulse { animation: osbRailPulse .52s ease-in-out both; }
-
-        @keyframes osbNodePulse {
-          0% { transform: translate3d(0,0,0) scale(1); }
-          45% { transform: translate3d(0,0,0) scale(1.18); }
-          100% { transform: translate3d(0,0,0) scale(1); }
-        }
-        .osb-node-pulse { animation: osbNodePulse .52s cubic-bezier(.22,1,.36,1) both; }
-
         .osb-scroll { scrollbar-width: none; }
         .osb-scroll::-webkit-scrollbar { display: none; }
-
-        /* Hit line + glow line */
-        .osb-hitline {
-          background: linear-gradient(90deg,
-            transparent,
-            var(--g0),
-            var(--g1),
-            var(--g2),
-            transparent
-          );
-          box-shadow: 0 0 24px rgba(122,226,255,0.14), 0 0 26px rgba(198,164,255,0.12);
-          opacity: .96;
-        }
-        .osb-glowline {
-          height: 2px;
-          background: linear-gradient(90deg,
-            transparent,
-            var(--g0),
-            var(--g1),
-            var(--g2),
-            transparent
-          );
-          box-shadow: 0 0 18px rgba(122,226,255,0.16), 0 0 18px rgba(198,164,255,0.12);
-          opacity: .9;
-          border-radius: 999px;
-        }
-
-        /* Field contain (stabilize paint) */
-        .osb-field { contain: layout paint; }
-
-        /* Track strip (iOS/Android smooth) */
-        .osb-trackstrip { scroll-snap-type: x mandatory; }
 
         /* Premium range styling */
         input.osb-range {
@@ -6848,8 +6635,8 @@ const BeatSyncApp = () => {
         input.osb-range::-webkit-slider-runnable-track {
           height: 10px;
           border-radius: 999px;
-          background: linear-gradient(90deg, rgba(122,226,255,0.70), rgba(198,164,255,0.64), rgba(255,156,222,0.44));
-          box-shadow: 0 0 0 1px rgba(255,255,255,0.12) inset, 0 14px 60px rgba(0,0,0,0.55);
+          background: linear-gradient(90deg, rgba(122,226,255,0.62), rgba(198,164,255,0.56), rgba(255,156,222,0.38));
+          box-shadow: 0 0 0 1px rgba(255,255,255,0.10) inset, 0 14px 60px rgba(0,0,0,0.55);
         }
         input.osb-range::-webkit-slider-thumb {
           -webkit-appearance: none;
@@ -6858,28 +6645,28 @@ const BeatSyncApp = () => {
           height: 22px;
           margin-top: -6px;
           border-radius: 999px;
-          background: rgba(255,255,255,0.94);
+          background: rgba(255,255,255,0.92);
           box-shadow:
-            0 0 0 1px rgba(255,255,255,0.20) inset,
+            0 0 0 1px rgba(255,255,255,0.18) inset,
             0 18px 60px rgba(0,0,0,0.65),
-            0 0 26px rgba(122,226,255,0.14);
+            0 0 26px rgba(122,226,255,0.12);
         }
         input.osb-range::-moz-range-track {
           height: 10px;
           border-radius: 999px;
-          background: linear-gradient(90deg, rgba(122,226,255,0.70), rgba(198,164,255,0.64), rgba(255,156,222,0.44));
-          box-shadow: 0 0 0 1px rgba(255,255,255,0.12) inset, 0 14px 60px rgba(0,0,0,0.55);
+          background: linear-gradient(90deg, rgba(122,226,255,0.62), rgba(198,164,255,0.56), rgba(255,156,222,0.38));
+          box-shadow: 0 0 0 1px rgba(255,255,255,0.10) inset, 0 14px 60px rgba(0,0,0,0.55);
         }
         input.osb-range::-moz-range-thumb {
           width: 22px;
           height: 22px;
           border-radius: 999px;
           border: none;
-          background: rgba(255,255,255,0.94);
+          background: rgba(255,255,255,0.92);
           box-shadow:
-            0 0 0 1px rgba(255,255,255,0.20) inset,
+            0 0 0 1px rgba(255,255,255,0.18) inset,
             0 18px 60px rgba(0,0,0,0.65),
-            0 0 26px rgba(122,226,255,0.14);
+            0 0 26px rgba(122,226,255,0.12);
         }
 
         button { -webkit-tap-highlight-color: transparent; }
@@ -6887,6 +6674,7 @@ const BeatSyncApp = () => {
     </div>
   );
 };
+
 
 
 
