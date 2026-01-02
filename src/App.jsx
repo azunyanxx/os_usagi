@@ -5078,6 +5078,7 @@ const BeatSyncApp = () => {
   // ----------------------------- REFS
   const rootRef = React.useRef(null);
   const audioRef = React.useRef(null);
+
   const audioCtxRef = React.useRef(null);
   const masterGainRef = React.useRef(null);
 
@@ -5097,6 +5098,20 @@ const BeatSyncApp = () => {
 
   const pressedLaneRef = React.useRef(-1);
   const [pressedLane, setPressedLane] = React.useState(-1);
+
+  // live refs (resultの取りこぼし防止 / ちらつき抑制)
+  const scoreRef = React.useRef(0);
+  const maxComboRef = React.useRef(0);
+  const judgeRef = React.useRef(null);
+  React.useEffect(() => {
+    scoreRef.current = score;
+  }, [score]);
+  React.useEffect(() => {
+    maxComboRef.current = maxCombo;
+  }, [maxCombo]);
+  React.useEffect(() => {
+    judgeRef.current = judge;
+  }, [judge]);
 
   // ----------------------------- COMPUTED
   const currentTrack = React.useMemo(
@@ -5123,7 +5138,6 @@ const BeatSyncApp = () => {
 
   // ----------------------------- UTILS
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const lerp = (a, b, t) => a + (b - a) * t;
   const nowPerf = () => performance.now();
 
   const fmtTime = (sec) => {
@@ -5148,48 +5162,50 @@ const BeatSyncApp = () => {
     masterGainRef.current = master;
   }, []);
 
-  const setMasterVolume = React.useCallback(
-    (v) => {
-      const a = audioRef.current;
-      if (a) a.volume = clamp(v, 0, 1);
-    },
-    [volume]
-  );
-
   React.useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
     a.volume = muted ? 0 : clamp(volume, 0, 1);
   }, [volume, muted]);
 
-  const playSfx = React.useCallback((kind, gain = 0.3) => {
-    ensureAudioContext();
-    const ctx = audioCtxRef.current;
-    const master = masterGainRef.current;
-    if (!ctx || !master) return;
+  const playSfx = React.useCallback(
+    (kind, gain = 0.3) => {
+      ensureAudioContext();
+      const ctx = audioCtxRef.current;
+      const master = masterGainRef.current;
+      if (!ctx || !master) return;
 
-    const t = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
 
-    const base =
-      kind === "hit" ? 420 : kind === "tap" ? 260 : kind === "miss" ? 140 : 300;
-    osc.type = kind === "hit" ? "triangle" : "sine";
-    osc.frequency.setValueAtTime(base, t);
-    osc.frequency.exponentialRampToValueAtTime(base * 0.7, t + 0.06);
+      const base =
+        kind === "hit"
+          ? 420
+          : kind === "tap"
+          ? 260
+          : kind === "miss"
+          ? 140
+          : 300;
 
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(gain, t + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+      osc.type = kind === "hit" ? "triangle" : "sine";
+      osc.frequency.setValueAtTime(base, t);
+      osc.frequency.exponentialRampToValueAtTime(base * 0.7, t + 0.06);
 
-    osc.connect(g);
-    g.connect(master);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(gain, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
 
-    osc.start(t);
-    osc.stop(t + 0.12);
-  }, [ensureAudioContext]);
+      osc.connect(g);
+      g.connect(master);
 
-  // ----------------------------- TRACK LOAD / PREVIEW
+      osc.start(t);
+      osc.stop(t + 0.12);
+    },
+    [ensureAudioContext]
+  );
+
+  // ----------------------------- RAF CONTROL
   const stopRaf = React.useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = 0;
@@ -5206,60 +5222,74 @@ const BeatSyncApp = () => {
     } catch {}
   }, []);
 
-  const loadTrack = React.useCallback((id, { preview = true } = {}) => {
-    const a = audioRef.current;
-    if (!a) return;
+  React.useEffect(() => {
+    return () => {
+      runningRef.current = false;
+      stopRaf();
+      stopPreview(0);
+    };
+  }, [stopRaf, stopPreview]);
 
-    const t = ASSET.tracks.find((x) => x.id === id) || ASSET.tracks[0];
-    setTrackId(t.id);
+  // ----------------------------- TRACK LOAD / PREVIEW (stale防止)
+  const loadTokenRef = React.useRef(0);
 
-    setLoading(true);
-    setReady(false);
+  const loadTrack = React.useCallback(
+    (id, { preview = true } = {}) => {
+      const a = audioRef.current;
+      if (!a) return;
 
-    try {
-      a.pause();
-    } catch {}
+      const t = ASSET.tracks.find((x) => x.id === id) || ASSET.tracks[0];
+      setTrackId(t.id);
 
-    try {
-      a.src = t.url;
-      a.load();
-    } catch {}
+      const token = (loadTokenRef.current = loadTokenRef.current + 1);
 
-    const onCanPlay = () => {
-      setLoading(false);
-      setReady(true);
+      setLoading(true);
+      setReady(false);
 
-      // duration capture（NaN対策）
-      const d = (isFinite(a.duration) ? a.duration : 0) || durRef.current || 180;
-      durRef.current = d;
+      try {
+        a.pause();
+      } catch {}
 
-      if (preview) {
-        try {
-          a.currentTime = 0;
-        } catch {}
-        const p = a.play();
-        if (p && typeof p.then === "function") {
-          p.catch(() => {
-            // autoplay block: ignore (still "ready")
-          });
+      try {
+        a.src = t.url;
+        a.load();
+      } catch {}
+
+      const onCanPlay = () => {
+        if (token !== loadTokenRef.current) return;
+
+        setLoading(false);
+        setReady(true);
+
+        const d = (isFinite(a.duration) ? a.duration : 0) || durRef.current || 180;
+        durRef.current = d;
+
+        if (preview) {
+          try {
+            a.currentTime = 0;
+          } catch {}
+          const p = a.play();
+          if (p && typeof p.then === "function") {
+            p.catch(() => {});
+          }
         }
-      }
-    };
+      };
 
-    a.addEventListener("canplay", onCanPlay, { once: true });
+      const onMeta = () => {
+        if (token !== loadTokenRef.current) return;
+        const d = (isFinite(a.duration) ? a.duration : 0) || durRef.current || 180;
+        durRef.current = d;
+      };
 
-    // metadata fallback
-    const onMeta = () => {
-      const d = (isFinite(a.duration) ? a.duration : 0) || durRef.current || 180;
-      durRef.current = d;
-    };
-    a.addEventListener("loadedmetadata", onMeta, { once: true });
-  }, [ASSET.tracks]);
+      a.addEventListener("canplay", onCanPlay, { once: true });
+      a.addEventListener("loadedmetadata", onMeta, { once: true });
+    },
+    [ASSET.tracks]
+  );
 
   React.useEffect(() => {
-    // initial preload
     loadTrack(trackId, { preview: false });
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ----------------------------- CHART BUILD
@@ -5271,7 +5301,6 @@ const BeatSyncApp = () => {
       const totalSteps = Math.floor(sec / step);
 
       const rng = (n) => {
-        // deterministic tiny rng
         let x = (n * 1103515245 + seed * 12345) >>> 0;
         x = (x ^ (x >>> 16)) >>> 0;
         return (x % 1000) / 1000;
@@ -5279,18 +5308,17 @@ const BeatSyncApp = () => {
 
       const notes = [];
       let lastLane = 0;
+
       for (let i = 8; i < totalSteps - 8; i++) {
         const t = i * step;
         const chance = clamp(0.22 * density, 0.14, 0.36);
         const r = rng(i);
         if (r > chance) continue;
 
-        // avoid repeats too much
         let lane = Math.floor(rng(i + 77) * lanes);
         if (lane === lastLane && rng(i + 9) < 0.65) lane = (lane + 1) % lanes;
         lastLane = lane;
 
-        // occasional double note
         const dbl = rng(i + 333) < 0.085 * density;
         notes.push({ id: `${i}-${lane}`, t, lane });
 
@@ -5300,15 +5328,29 @@ const BeatSyncApp = () => {
         }
       }
 
-      // sort by time
       notes.sort((a, b) => a.t - b.t);
+
+      // ✅ 0件/少なすぎ保険（=「開始したのに何も落ちない」を消す）
+      if (notes.length < 24) {
+        const fallback = [];
+        const every = Math.max(2, Math.floor(6 / clamp(density, 0.6, 1.3)));
+        for (let i = 10; i < totalSteps - 10; i += every) {
+          const t = i * step;
+          const lane = (i + seed) % lanes;
+          fallback.push({ id: `f-${i}-${lane}`, t, lane });
+          if (rng(i + 999) < 0.22) fallback.push({ id: `f-${i}-${(lane + 2) % lanes}`, t, lane: (lane + 2) % lanes });
+        }
+        fallback.sort((a, b) => a.t - b.t);
+        return fallback;
+      }
+
       return notes;
     };
 
     return { build };
   }, [lanes]);
 
-  // ----------------------------- FIELD MEASURE
+  // ----------------------------- FIELD MEASURE (Play突入時も必ず計測)
   React.useEffect(() => {
     const r = rootRef.current;
     if (!r) return;
@@ -5334,30 +5376,37 @@ const BeatSyncApp = () => {
     const rect = c.getBoundingClientRect();
     const dpr = Math.max(1, Math.min(2.25, window.devicePixelRatio || 1));
 
-    const w = Math.max(240, rect.width);
-    const h = Math.max(260, rect.height);
+    const w = Math.max(240, rect.width || 0);
+    const h = Math.max(260, rect.height || 0);
 
     fieldSizeRef.current = { w, h, dpr };
-    c.width = Math.floor(w * dpr);
-    c.height = Math.floor(h * dpr);
+    c.width = Math.max(1, Math.floor(w * dpr));
+    c.height = Math.max(1, Math.floor(h * dpr));
   }, []);
 
   React.useEffect(() => {
-    measureField();
     const onR = () => measureField();
     window.addEventListener("resize", onR);
     return () => window.removeEventListener("resize", onR);
   }, [measureField]);
 
+  React.useEffect(() => {
+    if (view !== "play") return;
+    // Play画面に入った瞬間、canvasがDOMに乗ってから計測
+    const id = requestAnimationFrame(() => {
+      measureField();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [view, measureField, rootW]);
+
   // ----------------------------- GAME TIME
   const getRunTimeSec = React.useCallback(() => {
     const a = audioRef.current;
     if (a && !Number.isNaN(a.currentTime) && a.currentTime > 0) return a.currentTime;
-    const t = nowPerf();
-    return (t - t0PerfRef.current) / 1000;
+    return (performance.now() - t0PerfRef.current) / 1000;
   }, []);
 
-  // ----------------------------- DRAW
+  // ----------------------------- DRAW (Reactの揺れを入れない)
   const drawFrame = React.useCallback(() => {
     const c = canvasRef.current;
     if (!c) return;
@@ -5366,8 +5415,9 @@ const BeatSyncApp = () => {
     if (!ctx) return;
 
     const { w, h, dpr } = fieldSizeRef.current;
-    const W = Math.floor(w * dpr);
-    const H = Math.floor(h * dpr);
+    const W = Math.floor((w || 0) * dpr);
+    const H = Math.floor((h || 0) * dpr);
+    if (W <= 1 || H <= 1) return;
 
     ctx.clearRect(0, 0, W, H);
 
@@ -5396,7 +5446,6 @@ const BeatSyncApp = () => {
       ctx.fillStyle = "rgba(255,255,255,0.06)";
       ctx.fillRect(x, topPad, laneW, H - topPad - 12 * dpr);
 
-      // inner gloss
       const g = ctx.createLinearGradient(x, topPad, x + laneW, topPad);
       g.addColorStop(0, "rgba(120,210,255,0.0)");
       g.addColorStop(0.5, "rgba(198,145,255,0.08)");
@@ -5409,9 +5458,9 @@ const BeatSyncApp = () => {
     ctx.fillStyle = "rgba(255,255,255,0.14)";
     ctx.fillRect(0, hitY, W, 1.5 * dpr);
 
-    // notes fall
-    const travel = (H - topPad - padH - 50 * dpr) / speed;
-    const appearBefore = 1.8; // seconds visible
+    // notes fall (hitYに合わせる)
+    const travel = (hitY - topPad) / Math.max(0.65, speed);
+    const appearBefore = Math.max(1.1, 1.85 / Math.max(0.75, speed));
     const noteH = 16 * dpr;
     const r = 12 * dpr;
 
@@ -5419,7 +5468,7 @@ const BeatSyncApp = () => {
       const n = notes[i];
       if (hitRef.current.has(n.id)) continue;
 
-      const dt = n.t - t; // positive if upcoming
+      const dt = n.t - t;
       if (dt < -DIFF.missAfter - 0.08) continue;
       if (dt > appearBefore) continue;
 
@@ -5427,15 +5476,7 @@ const BeatSyncApp = () => {
       const y = topPad + p * travel;
       const x = laneGap + n.lane * (laneW + laneGap) + laneW / 2;
 
-      // soft core glow
-      const glow = ctx.createRadialGradient(
-        x,
-        y,
-        0,
-        x,
-        y,
-        52 * dpr
-      );
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, 52 * dpr);
       glow.addColorStop(0, "rgba(120,210,255,0.22)");
       glow.addColorStop(0.55, "rgba(198,145,255,0.10)");
       glow.addColorStop(1, "rgba(0,0,0,0)");
@@ -5444,7 +5485,6 @@ const BeatSyncApp = () => {
       ctx.arc(x, y, 34 * dpr, 0, Math.PI * 2);
       ctx.fill();
 
-      // note capsule
       ctx.fillStyle = "rgba(255,255,255,0.82)";
       ctx.strokeStyle = "rgba(255,255,255,0.20)";
       ctx.lineWidth = 1 * dpr;
@@ -5453,7 +5493,6 @@ const BeatSyncApp = () => {
       const rw = laneW * 0.64;
       const ry = y - noteH / 2;
 
-      // rounded rect
       ctx.beginPath();
       const rr = r;
       ctx.moveTo(rx + rr, ry);
@@ -5508,88 +5547,95 @@ const BeatSyncApp = () => {
       }
     }
 
-    // judge flash
-    if (judge) {
-      const age = (nowPerf() - judge.t) / 1000;
+    // judge flash (ref)
+    const j = judgeRef.current;
+    if (j) {
+      const age = (nowPerf() - j.t) / 1000;
       if (age < 0.35) {
         const alpha = (1 - age / 0.35) * 0.9;
-        const cx = laneGap + judge.lane * (laneW + laneGap) + laneW / 2;
+        const cx = laneGap + j.lane * (laneW + laneGap) + laneW / 2;
         const cy = hitY - 18 * dpr;
-        const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 90 * dpr);
-        glow.addColorStop(0, `rgba(120,210,255,${0.25 * alpha})`);
-        glow.addColorStop(0.55, `rgba(198,145,255,${0.18 * alpha})`);
-        glow.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = glow;
+        const gg = ctx.createRadialGradient(cx, cy, 0, cx, cy, 90 * dpr);
+        gg.addColorStop(0, `rgba(120,210,255,${0.25 * alpha})`);
+        gg.addColorStop(0.55, `rgba(198,145,255,${0.18 * alpha})`);
+        gg.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = gg;
         ctx.beginPath();
         ctx.arc(cx, cy, 64 * dpr, 0, Math.PI * 2);
         ctx.fill();
       }
     }
-  }, [DIFF.missAfter, getRunTimeSec, judge, lanes, speed]);
+  }, [DIFF.missAfter, getRunTimeSec, lanes, speed]);
 
   // ----------------------------- HIT / JUDGE
-  const evalHit = React.useCallback((lane) => {
-    if (!runningRef.current) return;
+  const evalHit = React.useCallback(
+    (lane) => {
+      if (!runningRef.current) return;
 
-    const t = getRunTimeSec();
-    const notes = notesRef.current;
+      const t = getRunTimeSec();
+      const notes = notesRef.current;
 
-    let best = null;
-    let bestAbs = Infinity;
+      let best = null;
+      let bestAbs = Infinity;
 
-    for (let i = 0; i < notes.length; i++) {
-      const n = notes[i];
-      if (n.lane !== lane) continue;
-      if (hitRef.current.has(n.id)) continue;
+      for (let i = 0; i < notes.length; i++) {
+        const n = notes[i];
+        if (n.lane !== lane) continue;
+        if (hitRef.current.has(n.id)) continue;
 
-      const dt = t - n.t;
-      const ad = Math.abs(dt);
-      if (ad < bestAbs) {
-        bestAbs = ad;
-        best = { n, dt };
+        const dt = t - n.t;
+        const ad = Math.abs(dt);
+        if (ad < bestAbs) {
+          bestAbs = ad;
+          best = { n, dt };
+        }
+        if (n.t > t + DIFF.windowOk) break;
       }
-      if (n.t > t + DIFF.windowOk) break;
-    }
 
-    if (!best || bestAbs > DIFF.windowOk) {
-      // miss tap
-      setCombo(0);
-      playSfx("miss", 0.18);
-      setJudge({ lane, kind: "MISS", t: nowPerf() });
-      return;
-    }
+      if (!best || bestAbs > DIFF.windowOk) {
+        setCombo(0);
+        playSfx("miss", 0.18);
+        const j = { lane, kind: "MISS", t: nowPerf() };
+        setJudge(j);
+        judgeRef.current = j;
+        return;
+      }
 
-    const { n, dt } = best;
-    hitRef.current.add(n.id);
+      const { n, dt } = best;
+      hitRef.current.add(n.id);
 
-    let add = 0;
-    let kind = "OK";
-    const ad = Math.abs(dt);
+      let add = 0;
+      let kind = "OK";
+      const ad = Math.abs(dt);
 
-    if (ad <= DIFF.windowPerfect) {
-      add = 300;
-      kind = "PERF";
-      playSfx("hit", 0.34);
-    } else if (ad <= DIFF.windowGood) {
-      add = 180;
-      kind = "GOOD";
-      playSfx("hit", 0.26);
-    } else {
-      add = 90;
-      kind = "OK";
-      playSfx("tap", 0.22);
-    }
+      if (ad <= DIFF.windowPerfect) {
+        add = 300;
+        kind = "PERF";
+        playSfx("hit", 0.34);
+      } else if (ad <= DIFF.windowGood) {
+        add = 180;
+        kind = "GOOD";
+        playSfx("hit", 0.26);
+      } else {
+        add = 90;
+        kind = "OK";
+        playSfx("tap", 0.22);
+      }
 
-    setScore((s) => s + add);
-    setCombo((c) => {
-      const nc = c + 1;
-      setMaxCombo((m) => Math.max(m, nc));
-      return nc;
-    });
+      setScore((s) => s + add);
+      setCombo((c) => {
+        const nc = c + 1;
+        setMaxCombo((m) => Math.max(m, nc));
+        return nc;
+      });
 
-    lastJudgeRef.current = kind;
-    setJudge({ lane, kind, t: nowPerf() });
-  }, [DIFF.windowGood, DIFF.windowOk, DIFF.windowPerfect, getRunTimeSec, playSfx]);
+      lastJudgeRef.current = kind;
+      const j = { lane, kind, t: nowPerf() };
+      setJudge(j);
+      judgeRef.current = j;
+    },
+    [DIFF.windowGood, DIFF.windowOk, DIFF.windowPerfect, getRunTimeSec, playSfx]
+  );
 
   const checkMiss = React.useCallback(() => {
     if (!runningRef.current) return;
@@ -5601,6 +5647,7 @@ const BeatSyncApp = () => {
     for (let i = 0; i < notes.length; i++) {
       const n = notes[i];
       if (hitRef.current.has(n.id)) continue;
+
       if (t - n.t > DIFF.missAfter) {
         hitRef.current.add(n.id);
         missed = true;
@@ -5611,69 +5658,66 @@ const BeatSyncApp = () => {
 
     if (missed) {
       setCombo(0);
-      setJudge({ lane: 0, kind: "MISS", t: nowPerf() });
+      const j = { lane: 0, kind: "MISS", t: nowPerf() };
+      setJudge(j);
+      judgeRef.current = j;
     }
   }, [DIFF.missAfter, getRunTimeSec]);
 
-  // ----------------------------- LOOP
-  const tick = React.useCallback(() => {
-    if (!runningRef.current) return;
+  // ----------------------------- LOOP (✅白画面の原因: tick自己参照depsを排除)
+  const tick = React.useCallback(
+    function frame() {
+      if (!runningRef.current) return;
 
-    checkMiss();
-    drawFrame();
+      checkMiss();
+      drawFrame();
 
-    // end detection
-    const t = getRunTimeSec();
-    const dur = durRef.current || 0;
-    const done =
-      dur > 0
-        ? t > dur + 0.35
-        : hitRef.current.size >= notesRef.current.length;
+      const t = getRunTimeSec();
+      const dur = durRef.current || 0;
 
-    if (done && !endedRef.current) {
-      endedRef.current = true;
-      runningRef.current = false;
+      const total = notesRef.current.length || 0;
+      const done =
+        dur > 0 ? t > dur + 0.35 : total > 0 ? hitRef.current.size >= total : t > 2.0;
 
-      stopRaf();
-      stopPreview(0);
+      if (done && !endedRef.current) {
+        endedRef.current = true;
+        runningRef.current = false;
 
-      const total = notesRef.current.length || 1;
-      const hit = hitRef.current.size;
-      const acc = Math.round((hit / total) * 1000) / 10;
+        stopRaf();
+        stopPreview(0);
 
-      setResult({
-        score,
-        maxCombo,
-        acc,
-        track: currentTrack,
-        diff: difficulty,
-        speed,
-      });
-      setView("result");
-      return;
-    }
+        const totalNotes = Math.max(1, notesRef.current.length || 1);
+        const hitCount = hitRef.current.size;
+        const acc = Math.round((hitCount / totalNotes) * 1000) / 10;
 
-    rafRef.current = requestAnimationFrame(tick);
-  }, [
-    checkMiss,
-    currentTrack,
-    difficulty,
-    drawFrame,
-    maxCombo,
-    score,
-    speed,
-    stopPreview,
-    stopRaf,
-    tick,
-    getRunTimeSec,
-  ]);
+        setResult({
+          score: scoreRef.current,
+          maxCombo: maxComboRef.current,
+          acc,
+          track: currentTrack,
+          diff: difficulty,
+          speed,
+        });
+        setView("result");
+        return;
+      }
+
+      rafRef.current = requestAnimationFrame(frame);
+    },
+    [checkMiss, currentTrack, difficulty, drawFrame, getRunTimeSec, speed, stopPreview, stopRaf]
+  );
 
   // ----------------------------- START / RESTART
   const startRun = React.useCallback(() => {
     const a = audioRef.current;
     if (!a) return;
 
-    // audio may still be buffering; we start the loop anyway (no "started but nothing happens")
+    // ✅ Playに入る前にcanvas計測（「開始したのに落ちない」を根絶）
+    setView("play");
+    setTimeout(() => {
+      measureField();
+    }, 0);
+
     if (!a.src || a.src !== currentTrack.url) {
       try {
         a.src = currentTrack.url;
@@ -5688,20 +5732,20 @@ const BeatSyncApp = () => {
     endedRef.current = false;
     runningRef.current = true;
 
-    setView("play");
     setScore(0);
     setCombo(0);
     setMaxCombo(0);
     setJudge(null);
     setResult(null);
+    scoreRef.current = 0;
+    maxComboRef.current = 0;
+    judgeRef.current = null;
 
     hitRef.current = new Set();
 
-    // duration fallback (NaN対策)
     const dur = (isFinite(a.duration) ? a.duration : 0) || durRef.current || 180;
     durRef.current = dur;
 
-    // build chart
     notesRef.current = CHART.build({
       bpm: currentTrack.bpm,
       dur,
@@ -5709,28 +5753,25 @@ const BeatSyncApp = () => {
       seed: currentTrack.bpm,
     });
 
-    // time base
     t0PerfRef.current = nowPerf();
     try {
       a.currentTime = 0;
     } catch {}
 
-    // play (gesture started here)
     const p = a.play();
     if (p && typeof p.then === "function") {
-      p.catch(() => {
-        // if blocked, we still run via perf clock
-      });
+      p.catch(() => {});
     }
 
     stopRaf();
     rafRef.current = requestAnimationFrame(tick);
-  }, [CHART, DIFF.density, currentTrack, stopPreview, stopRaf, tick]);
+  }, [CHART, DIFF.density, currentTrack, measureField, stopPreview, stopRaf, tick]);
 
   const restartRun = React.useCallback(() => {
     const a = audioRef.current;
     if (!a) return;
 
+    measureField();
     stopPreview(120);
 
     endedRef.current = false;
@@ -5741,13 +5782,20 @@ const BeatSyncApp = () => {
     setMaxCombo(0);
     setJudge(null);
     setResult(null);
+    scoreRef.current = 0;
+    maxComboRef.current = 0;
+    judgeRef.current = null;
 
     hitRef.current = new Set();
 
     if (!a.src || a.src !== currentTrack.url) {
-      try { a.src = currentTrack.url; } catch {}
+      try {
+        a.src = currentTrack.url;
+      } catch {}
     }
-    try { a.load(); } catch {}
+    try {
+      a.load();
+    } catch {}
 
     const dur = (isFinite(a.duration) ? a.duration : 0) || durRef.current || 180;
     durRef.current = dur;
@@ -5760,7 +5808,9 @@ const BeatSyncApp = () => {
     });
 
     t0PerfRef.current = nowPerf();
-    try { a.currentTime = 0; } catch {}
+    try {
+      a.currentTime = 0;
+    } catch {}
 
     const p = a.play();
     if (p && typeof p.then === "function") {
@@ -5769,7 +5819,7 @@ const BeatSyncApp = () => {
 
     stopRaf();
     rafRef.current = requestAnimationFrame(tick);
-  }, [CHART, DIFF.density, currentTrack, stopPreview, stopRaf, tick]);
+  }, [CHART, DIFF.density, currentTrack, measureField, stopPreview, stopRaf, tick]);
 
   // ----------------------------- INPUT (PADS)
   const bindPad = React.useCallback(
@@ -5804,10 +5854,16 @@ const BeatSyncApp = () => {
     [ensureAudioContext, evalHit]
   );
 
-  // ----------------------------- TAP vs SCROLL (曲選択の“戻る/選べない”根絶) -----------------------------
-  // scroll中は絶対に選択を発火しない（iOSの“慣性止まりクリック”もガード）
+  // ----------------------------- TAP vs SCROLL (曲選択の“戻る/選べない”根絶)
   const trackListRef = React.useRef(null);
-  const gestureRef = React.useRef({ active: false, pointerId: -1, x: 0, y: 0, startScrollTop: 0, moved: false });
+  const gestureRef = React.useRef({
+    active: false,
+    pointerId: -1,
+    x: 0,
+    y: 0,
+    startScrollTop: 0,
+    moved: false,
+  });
 
   const trackItemHandlers = React.useCallback(
     (id) => ({
@@ -5848,6 +5904,7 @@ const BeatSyncApp = () => {
         const sc = trackListRef.current;
         if (g.moved) return;
         if (sc && Math.abs(sc.scrollTop - g.startScrollTop) > 2) return;
+
         ensureAudioContext();
         playSfx("tap", 0.26);
         loadTrack(id, { preview: true });
@@ -5947,9 +6004,7 @@ const BeatSyncApp = () => {
             <Chip tone="a">
               BPM <span className="text-white/92">{currentTrack.bpm}</span>
             </Chip>
-            <Chip tone="b">
-              {loading ? "LOADING" : ready ? "READY" : "SYNC"}
-            </Chip>
+            <Chip tone="b">{loading ? "LOADING" : ready ? "READY" : "SYNC"}</Chip>
           </div>
         </div>
       </div>
@@ -5961,19 +6016,22 @@ const BeatSyncApp = () => {
               <div className="text-[11px] text-white/60 tracking-[0.22em] uppercase">
                 Tracks
               </div>
-              <div className="text-[11px] text-white/45">
-                {fmtTime(durRef.current)}
-              </div>
+              <div className="text-[11px] text-white/45">{fmtTime(durRef.current)}</div>
             </div>
 
             <div
               ref={trackListRef}
               className="flex flex-col gap-3 h-full overflow-y-auto osb-scroll"
-              style={{ WebkitOverflowScrolling: "touch", overscrollBehaviorY: "contain", touchAction: "pan-y" }}
+              style={{
+                WebkitOverflowScrolling: "touch",
+                overscrollBehaviorY: "contain",
+                touchAction: "pan-y",
+              }}
             >
               {ASSET.tracks.map((t) => {
                 const active = t.id === trackId;
                 const h = trackItemHandlers(t.id);
+
                 return (
                   <div
                     key={t.id}
@@ -6033,7 +6091,10 @@ const BeatSyncApp = () => {
       </div>
 
       <div className="relative z-30 px-4 pt-3 pb-3">
-        <div className="max-h-[38vh] overflow-y-auto osb-scroll pr-1" style={{ WebkitOverflowScrolling: "touch", overscrollBehaviorY: "contain" }}>
+        <div
+          className="max-h-[38vh] overflow-y-auto osb-scroll pr-1"
+          style={{ WebkitOverflowScrolling: "touch", overscrollBehaviorY: "contain" }}
+        >
           <Glass className="p-3">
             <div className="flex items-center justify-between">
               <div className="text-[11px] text-white/60 tracking-[0.22em] uppercase">
@@ -6104,24 +6165,24 @@ const BeatSyncApp = () => {
             </div>
           </Glass>
         </div>
-        <div className="pt-3" style={{ paddingBottom: safeBottom }}>
 
-        <button
-          type="button"
-          onPointerDown={(e) => {
-            e.preventDefault();
-            ensureAudioContext();
-            playSfx("tap", 0.22);
-            startRun();
-          }}
-          className="mt-3 h-12 w-full rounded-[18px] border border-white/10 bg-white/[0.07] text-white/92 transition-transform active:scale-[0.99]"
-          style={{
-            boxShadow:
-              "0 0 0 1px rgba(120,210,255,.10) inset, 0 10px 40px rgba(0,0,0,.55)",
-          }}
-        >
-          <span className="text-[11px] tracking-[0.34em] uppercase">START</span>
-        </button>
+        <div className="pt-3" style={{ paddingBottom: safeBottom }}>
+          <button
+            type="button"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              ensureAudioContext();
+              playSfx("tap", 0.22);
+              startRun();
+            }}
+            className="mt-3 h-12 w-full rounded-[18px] border border-white/10 bg-white/[0.07] text-white/92 transition-transform active:scale-[0.99]"
+            style={{
+              boxShadow:
+                "0 0 0 1px rgba(120,210,255,.10) inset, 0 10px 40px rgba(0,0,0,.55)",
+            }}
+          >
+            <span className="text-[11px] tracking-[0.34em] uppercase">START</span>
+          </button>
         </div>
       </div>
     </div>
@@ -6165,7 +6226,6 @@ const BeatSyncApp = () => {
             <div className="relative h-full w-full overflow-hidden rounded-[18px] border border-white/10 bg-black/20">
               <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
 
-              {/* pads overlay (hit area) */}
               <div className="absolute inset-x-0 bottom-0 grid grid-cols-4 gap-2 p-3">
                 {Array.from({ length: lanes }).map((_, i) => (
                   <button
@@ -6180,7 +6240,6 @@ const BeatSyncApp = () => {
                 ))}
               </div>
 
-              {/* judge label */}
               {judge && (
                 <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
                   <div
@@ -6241,7 +6300,8 @@ const BeatSyncApp = () => {
               {result?.track?.title || currentTrack.title}
             </div>
             <div className="mt-0.5 text-[11px] text-white/55 tracking-[0.08em]">
-              {result?.diff?.toUpperCase?.() || difficulty.toUpperCase()} • x{(result?.speed ?? speed).toFixed(1)}
+              {result?.diff?.toUpperCase?.() || difficulty.toUpperCase()} • x
+              {(result?.speed ?? speed).toFixed(1)}
             </div>
           </div>
           <Chip tone="b">RESULT</Chip>
@@ -6333,6 +6393,7 @@ const BeatSyncApp = () => {
   return (
     <div ref={rootRef} className="relative h-full w-full select-none p-3">
       <audio ref={audioRef} preload="auto" crossOrigin="anonymous" />
+
       <div
         className="absolute inset-0 rounded-[26px] border border-white/10"
         style={{
@@ -6348,9 +6409,21 @@ const BeatSyncApp = () => {
         {view === "play" && <Play />}
         {view === "result" && <Result />}
       </div>
+
+      <style>{`
+        .osb-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) rgba(255,255,255,.04); }
+        .osb-scroll::-webkit-scrollbar { width: 10px; }
+        .osb-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,.03); border-radius: 12px; }
+        .osb-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 12px; border: 2px solid rgba(0,0,0,.25); }
+        input[type="range"] { -webkit-appearance: none; appearance: none; height: 22px; background: transparent; }
+        input[type="range"]::-webkit-slider-runnable-track { height: 6px; border-radius: 999px; background: rgba(255,255,255,.12); }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; margin-top: -6px; border-radius: 999px; background: rgba(255,255,255,.86); border: 1px solid rgba(255,255,255,.25); box-shadow: 0 10px 26px rgba(0,0,0,.55), 0 0 0 1px rgba(120,210,255,.10) inset; }
+        * { -webkit-tap-highlight-color: transparent; }
+      `}</style>
     </div>
   );
 };
+
 
 
 
