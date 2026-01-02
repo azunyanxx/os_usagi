@@ -5001,27 +5001,48 @@ const Desktop = ({ bgm }) => {
 
 
 
+
 /**
- * OS_USAGI SYNC — Mobile-first premium rewrite (single-file)
- * Replace src/App.jsx with this.
+ * OS_USAGI — BEAT SYNC (Premium mobile-first rewrite)
+ * Single-file App.jsx
  *
- * Fixes:
- * - Lobby swipe reaches true ends (spacers) + no “pulled back” snap fights
- * - START always visible (mobile fixed CTA + safe-area + dock padding)
- * - Settings fully scrollable, footer fixed, no jump-to-top
- * - Music preview inside Settings (with error surface)
- * - Play layout never clipped under dock, better tap zones
- * - Optional judge/result images via ASSETS (fallback to text)
+ * ✅ Lobby: swipe-to-ends (no snap-back), start always visible
+ * ✅ Settings: fully scrollable, no jump-to-top on button taps
+ * ✅ TEST: actually plays selected music (short preview) + optional beep
+ * ✅ Play: no clipping (safe areas + OS dock padding), touch-first lanes
+ * ✅ Judge assets: perfect/good/miss overlays
+ * ✅ Result: premium layout + bunny reaction + judge icons
  */
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 
 function formatTime(sec) {
-  const s = Math.max(0, Math.floor(sec));
+  const s = Math.max(0, Math.floor(sec || 0));
   const m = Math.floor(s / 60);
   const r = String(s % 60).padStart(2, "0");
   return `${m}:${r}`;
+}
+
+function hashColor(id = "x") {
+  // deterministic nice accent pair
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+  const a = h >>> 0;
+  const hue1 = a % 360;
+  const hue2 = (hue1 + 120 + ((a >>> 8) % 80)) % 360;
+  return [`hsl(${hue1} 90% 65%)`, `hsl(${hue2} 85% 62%)`];
+}
+
+function binSearchFirstGreater(arr, x) {
+  // arr sorted by .t
+  let lo = 0, hi = arr.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (arr[mid].t < x) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
 }
 
 function seededRng(seed) {
@@ -5036,131 +5057,126 @@ function seededRng(seed) {
   };
 }
 
-/** =========================
- *  CONFIG
- *  ========================= */
-
-/** 🔥 Put YOUR tracks here */
-const TRACKS = [
-   {
-     id: "dawning",
-     title: "The Dawning",
-     artist: "OS_USAGI",
-     bpm: 120,
-     url: "https://files.catbox.moe/o667wd.mp3",
-     cover: "/covers/dawning.png",
-     accent: ["#66e3ff", "#c084ff"],
-   },
-];
-
-/** Optional images (place in /public and set path) */
-const ASSETS = {
-  judge: {
-    PERFECT: "/judge/perfect.png",
-    GOOD: "/judge/good.png",
-    MISS: "/judge/miss.png",
-  },
-  result: {
-    // e.g. badge images etc (optional)
-  },
-};
-
-const DEFAULTS = {
-  latencyMs: 70,
-  speedPxPerSec: 980, // note fall speed
-  musicVol: 0.86,
-  sfxVol: 0.55,
-  sfxOn: true,
-  reduceFlash: true,
-  dockH: 92, // reserve for your OS dock (adjust if needed)
-};
-
-const HIT_WINDOWS = {
+const HIT = {
   perfect: 0.06,
   good: 0.12,
 };
 
 const DIFF = {
-  easy: { name: "EASY", density: 0.75, lanes: 4 },
-  normal: { name: "NORMAL", density: 1.0, lanes: 4 },
-  hard: { name: "HARD", density: 1.25, lanes: 4 },
+  easy:   { key: "easy",   label: "EASY",   density: 0.78, lanes: 4, speedMul: 0.96 },
+  normal: { key: "normal", label: "NORMAL", density: 1.00, lanes: 4, speedMul: 1.00 },
+  hard:   { key: "hard",   label: "HARD",   density: 1.26, lanes: 4, speedMul: 1.06 },
 };
 
-function usePrefersReducedMotion() {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-    if (!mq) return;
-    const on = () => setReduced(!!mq.matches);
-    on();
-    mq.addEventListener?.("change", on);
-    return () => mq.removeEventListener?.("change", on);
-  }, []);
-  return reduced;
+export default function App() {
+  return <BeatSyncApp />;
 }
 
-/** =========================
- *  APP
- *  ========================= */
-export default function App() {
-  const prefersReducedMotion = usePrefersReducedMotion();
+function BeatSyncApp() {
+  // ----------------------------- ASSETS -----------------------------
+  const ASSET = useMemo(
+    () => ({
+      judge: {
+        perfect: "https://files.catbox.moe/xn8cnp.png",
+        good: "https://files.catbox.moe/6taoa0.png",
+        miss: "https://files.catbox.moe/9ywa9l.png",
+      },
+      arrows: {
+        up: "https://files.catbox.moe/zb8qnn.png",
+        right: "https://files.catbox.moe/zg5lru.png",
+        down: "https://files.catbox.moe/v4g9e7.png",
+        left: "https://files.catbox.moe/rmbi75.png",
+      },
+      bunny: {
+        front: "https://files.catbox.moe/cdsn2q.jpg",
+        idle: "https://files.catbox.moe/3revxm.png",
+        runR: "https://files.catbox.moe/p45obb.png",
+        yayR: "https://files.catbox.moe/mkceap.png",
+        dizzy: "https://files.catbox.moe/gxng27.png",
+        flop: "https://files.catbox.moe/dwiqep.png",
+        starR: "https://files.catbox.moe/5zvxy0.png",
+      },
+      tracks: [
+        { id: "overhaul",    title: "Overhaul",                 url: "https://files.catbox.moe/po0sn4.mp3", bpm: 124 },
+        { id: "dawning",     title: "The Dawning",              url: "https://files.catbox.moe/p17dic.mp3", bpm: 120 },
+        { id: "mirage",      title: "mirage",                   url: "https://files.catbox.moe/ttlaul.mp3", bpm: 132 },
+        { id: "phantasma",   title: "廻る世界とファンタズマ",     url: "https://files.catbox.moe/ns5til.mp3", bpm: 150 },
+        { id: "immitation",  title: "Immitation Girl",          url: "https://files.catbox.moe/7lccok.mp3", bpm: 128 },
+        { id: "checkmate",   title: "checkmate",                url: "https://files.catbox.moe/3dutdo.mp3", bpm: 140 },
+        { id: "lockon",      title: "ロックオン",                url: "https://files.catbox.moe/o667wd.mp3", bpm: 160 },
+      ],
+    }),
+    []
+  );
 
+  // preload key images (reduces “表示されない”事故)
+  useEffect(() => {
+    const urls = [
+      ...Object.values(ASSET.judge),
+      ...Object.values(ASSET.arrows),
+      ...Object.values(ASSET.bunny),
+    ];
+    urls.forEach((u) => {
+      const img = new Image();
+      img.src = u;
+    });
+  }, [ASSET]);
+
+  // ----------------------------- STATE -----------------------------
+  const TRACKS = ASSET.tracks;
   const [view, setView] = useState("lobby"); // lobby | play | result
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [trackIndex, setTrackIndex] = useState(0);
   const [difficulty, setDifficulty] = useState("normal");
 
-  const [latencyMs, setLatencyMs] = useState(DEFAULTS.latencyMs);
-  const [speed, setSpeed] = useState(DEFAULTS.speedPxPerSec);
-  const [musicVol, setMusicVol] = useState(DEFAULTS.musicVol);
-  const [sfxVol, setSfxVol] = useState(DEFAULTS.sfxVol);
-  const [sfxOn, setSfxOn] = useState(DEFAULTS.sfxOn);
-  const [reduceFlash, setReduceFlash] = useState(DEFAULTS.reduceFlash);
+  const [latencyMs, setLatencyMs] = useState(70);
+  const [noteSpeed, setNoteSpeed] = useState(1020); // px/s base
+  const [musicVol, setMusicVol] = useState(0.88);
+  const [sfxOn, setSfxOn] = useState(true);
+  const [sfxVol, setSfxVol] = useState(0.55);
+  const [reduceFlash, setReduceFlash] = useState(true);
 
-  const hasTracks = TRACKS.length > 0;
-  const track = hasTracks ? TRACKS[clamp(trackIndex, 0, TRACKS.length - 1)] : null;
+  const track = TRACKS[clamp(trackIndex, 0, TRACKS.length - 1)];
+  const accent = useMemo(() => hashColor(track?.id || track?.title || "os"), [track]);
+  const diff = DIFF[difficulty] || DIFF.normal;
 
-  const accent = useMemo(() => {
-    if (!track?.accent) return ["#66e3ff", "#c084ff"];
-    return track.accent;
-  }, [track]);
-
-  // Audio
+  // ----------------------------- AUDIO -----------------------------
   const musicRef = useRef(null);
+  const previewRef = useRef(null);
   const beepCtxRef = useRef(null);
 
-  const [audioError, setAudioError] = useState("");
-  const [previewing, setPreviewing] = useState(false);
-
-  // Lobby rail
-  const railRef = useRef(null);
-  const snapTimerRef = useRef(0);
-
-  // Game runtime
-  const rafRef = useRef(0);
-  const runningRef = useRef(false);
-  const seedRef = useRef(1);
-  const notesRef = useRef([]); // {t,lane,hit,judged}
-  const statsRef = useRef({ perfect: 0, good: 0, miss: 0, combo: 0, maxCombo: 0, score: 0 });
-
-  const [hud, setHud] = useState({ score: 0, combo: 0, remain: 0, status: "READY" });
-  const [lastJudge, setLastJudge] = useState(null);
-  const [result, setResult] = useState(null);
-
-  const pressedLaneRef = useRef([0, 0, 0, 0]);
-  const laneFlashRef = useRef([0, 0, 0, 0]);
-
-  const [needsUserStart, setNeedsUserStart] = useState(true); // hide “tap to start” after first valid gesture
-
-  const breathe = (reduceFlash || prefersReducedMotion) ? 0.25 : 1.0;
-
-  // Live volume update
   useEffect(() => {
     if (musicRef.current) musicRef.current.volume = clamp(musicVol, 0, 1);
   }, [musicVol]);
 
-  // Prevent background scroll when settings open
+  const playBeep = useCallback((freq = 880, dur = 0.06) => {
+    if (!sfxOn) return;
+    try {
+      if (!beepCtxRef.current) beepCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = beepCtxRef.current;
+      const now = ctx.currentTime;
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "sine";
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(clamp(sfxVol, 0, 1) * 0.34 + 0.0001, now + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+      o.connect(g).connect(ctx.destination);
+      o.start(now);
+      o.stop(now + dur + 0.02);
+    } catch {}
+  }, [sfxOn, sfxVol]);
+
+  const stopAllAudio = useCallback(() => {
+    const a = musicRef.current;
+    if (a) { try { a.pause(); } catch {} }
+    const p = previewRef.current;
+    if (p) { try { p.pause(); p.currentTime = 0; } catch {} }
+  }, []);
+
+  // Settings open: lock background scroll (sheetだけスクロール)
   useEffect(() => {
     if (!settingsOpen) return;
     const prev = document.body.style.overflow;
@@ -5168,38 +5184,32 @@ export default function App() {
     return () => { document.body.style.overflow = prev; };
   }, [settingsOpen]);
 
-  // Beep (SFX test)
-  const playBeep = useCallback((freq = 880, dur = 0.06) => {
-    if (!sfxOn) return;
-    try {
-      if (!beepCtxRef.current) beepCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      const ctx = beepCtxRef.current;
-      const now = ctx.currentTime;
+  // ----------------------------- LOBBY CAROUSEL -----------------------------
+  const railRef = useRef(null);
+  const snappingRef = useRef(false);
+  const userDragRef = useRef(false);
+  const scrollEndTimerRef = useRef(null);
 
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.type = "sine";
-      o.frequency.value = freq;
-
-      g.gain.setValueAtTime(0.0001, now);
-      g.gain.exponentialRampToValueAtTime(clamp(sfxVol, 0, 1) * 0.35 + 0.0001, now + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-
-      o.connect(g).connect(ctx.destination);
-      o.start(now);
-      o.stop(now + dur + 0.02);
-    } catch {}
-  }, [sfxOn, sfxVol]);
-
-  /** -------------------------
-   *  Lobby helpers
-   *  ------------------------- */
-  const getNearestIndex = useCallback(() => {
+  const scrollToIndex = useCallback((idx, smooth = true) => {
     const el = railRef.current;
-    if (!el) return 0;
-    const cards = Array.from(el.querySelectorAll("[data-card='track']"));
-    if (!cards.length) return 0;
+    if (!el) return;
+    const cards = el.querySelectorAll("[data-card='track']");
+    const card = cards[idx];
+    if (!card) return;
+    snappingRef.current = true;
+    const left = card.offsetLeft - (el.clientWidth - card.clientWidth) / 2;
+    el.scrollTo({ left, behavior: smooth ? "smooth" : "auto" });
+    window.clearTimeout(scrollEndTimerRef.current);
+    scrollEndTimerRef.current = window.setTimeout(() => {
+      snappingRef.current = false;
+    }, smooth ? 360 : 0);
+  }, []);
 
+  const snapToNearest = useCallback(() => {
+    const el = railRef.current;
+    if (!el) return;
+    const cards = Array.from(el.querySelectorAll("[data-card='track']"));
+    if (!cards.length) return;
     const center = el.scrollLeft + el.clientWidth / 2;
     let best = 0;
     let bestDist = Infinity;
@@ -5209,87 +5219,179 @@ export default function App() {
       const d = Math.abs(cx - center);
       if (d < bestDist) { bestDist = d; best = i; }
     }
-    return best;
-  }, []);
-
-  const scrollToIndex = useCallback((idx, smooth = true) => {
-    const el = railRef.current;
-    if (!el) return;
-    const cards = el.querySelectorAll("[data-card='track']");
-    const card = cards[idx];
-    if (!card) return;
-    const left = card.offsetLeft - (el.clientWidth - card.clientWidth) / 2;
-    el.scrollTo({ left, behavior: smooth ? "smooth" : "auto" });
-  }, []);
-
-  const onRailScroll = useCallback(() => {
-    // Do not fight the swipe. Only “snap” after user stops.
-    window.clearTimeout(snapTimerRef.current);
-    snapTimerRef.current = window.setTimeout(() => {
-      const idx = getNearestIndex();
-      setTrackIndex(idx);
-      scrollToIndex(idx, true);
-    }, 120);
-  }, [getNearestIndex, scrollToIndex]);
-
-  const nextTrack = useCallback(() => {
-    const ni = clamp(trackIndex + 1, 0, Math.max(0, TRACKS.length - 1));
-    setTrackIndex(ni);
-    scrollToIndex(ni, true);
-  }, [trackIndex, scrollToIndex]);
-
-  const prevTrack = useCallback(() => {
-    const ni = clamp(trackIndex - 1, 0, Math.max(0, TRACKS.length - 1));
-    setTrackIndex(ni);
-    scrollToIndex(ni, true);
-  }, [trackIndex, scrollToIndex]);
+    setTrackIndex(best);
+    scrollToIndex(best, true);
+  }, [scrollToIndex]);
 
   useEffect(() => {
-    if (view !== "lobby") return;
-    if (!hasTracks) return;
+    const el = railRef.current;
+    if (!el) return;
+
+    const onPointerDown = () => { userDragRef.current = true; };
+    const onPointerUp = () => {
+      userDragRef.current = false;
+      // when user stops, snap once
+      window.clearTimeout(scrollEndTimerRef.current);
+      scrollEndTimerRef.current = window.setTimeout(() => snapToNearest(), 120);
+    };
+
+    const onScroll = () => {
+      if (!userDragRef.current) return;
+      // do not fight user scroll; only snap at end (timer)
+      window.clearTimeout(scrollEndTimerRef.current);
+      scrollEndTimerRef.current = window.setTimeout(() => {
+        if (!userDragRef.current) snapToNearest();
+      }, 140);
+    };
+
+    el.addEventListener("scroll", onScroll, { passive: true });
+    el.addEventListener("pointerdown", onPointerDown, { passive: true });
+    window.addEventListener("pointerup", onPointerUp, { passive: true });
+
+    // initial align
     requestAnimationFrame(() => scrollToIndex(trackIndex, false));
-  }, [view, hasTracks, trackIndex, scrollToIndex]);
 
-  /** -------------------------
-   *  Chart
-   *  ------------------------- */
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      el.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.clearTimeout(scrollEndTimerRef.current);
+    };
+  }, [snapToNearest, scrollToIndex, trackIndex]);
+
+  const nextTrack = useCallback(() => {
+    const ni = clamp(trackIndex + 1, 0, TRACKS.length - 1);
+    setTrackIndex(ni);
+    scrollToIndex(ni, true);
+  }, [TRACKS.length, trackIndex, scrollToIndex]);
+
+  const prevTrack = useCallback(() => {
+    const ni = clamp(trackIndex - 1, 0, TRACKS.length - 1);
+    setTrackIndex(ni);
+    scrollToIndex(ni, true);
+  }, [trackIndex, scrollToIndex]);
+
+  // ----------------------------- GAME RUNTIME -----------------------------
+  const rafRef = useRef(0);
+  const runningRef = useRef(false);
+  const notesRef = useRef([]); // { t, lane, judged, hit }
+  const seedRef = useRef(1);
+
+  const statsRef = useRef({ perfect: 0, good: 0, miss: 0, combo: 0, maxCombo: 0, score: 0 });
+  const [hud, setHud] = useState({ score: 0, combo: 0, remain: 0, status: "READY" });
+
+  const [judgeOverlay, setJudgeOverlay] = useState(null); // "perfect"|"good"|"miss"|null
+  const judgeTRef = useRef(null);
+
+  const pressedRef = useRef([0, 0, 0, 0]);
+  const flashRef = useRef([0, 0, 0, 0]);
+
+  const [result, setResult] = useState(null);
+
   const buildChart = useCallback((bpm, seconds, diffKey) => {
-    const diff = DIFF[diffKey] || DIFF.normal;
-    const rnd = seededRng(seedRef.current);
+    const d = DIFF[diffKey] || DIFF.normal;
 
-    const beat = 60 / bpm;
-    const density = diff.density;
+    const seedStr = `${track?.id || track?.title || "x"}-${diffKey}`;
+    let seed = 2166136261;
+    for (let i = 0; i < seedStr.length; i++) seed = Math.imul(seed ^ seedStr.charCodeAt(i), 16777619);
+    seedRef.current = seed >>> 0;
+
+    const rnd = seededRng(seedRef.current);
+    const beat = 60 / (bpm || 120);
+    const density = d.density;
 
     const notes = [];
-    let t = 1.4;
-    const end = seconds;
+    let t = 1.25; // lead-in
+    const end = Math.max(25, seconds || 180);
 
-    while (t < end) {
-      const count = rnd() < 0.18 ? 2 : 1;
-      for (let i = 0; i < count; i++) {
-        const lane = Math.floor(rnd() * diff.lanes);
+    while (t < end - 0.5) {
+      const chord = rnd() < 0.18 ? 2 : 1;
+      for (let i = 0; i < chord; i++) {
+        const lane = Math.floor(rnd() * d.lanes);
         const off = (rnd() - 0.5) * beat * 0.18;
-        notes.push({ t: t + off, lane, hit: false, judged: false });
+        notes.push({ t: t + off, lane, judged: false, hit: false });
       }
-      const step = beat / density * (rnd() < 0.12 ? 1.5 : 1.0);
+      const step = (beat / density) * (rnd() < 0.10 ? 1.5 : 1.0);
       t += step;
     }
-
     notes.sort((a, b) => a.t - b.t);
     return notes;
-  }, []);
+  }, [track]);
 
-  /** -------------------------
-   *  Game control
-   *  ------------------------- */
-  const stopGame = useCallback(() => {
+  const hardStop = useCallback(() => {
     runningRef.current = false;
     cancelAnimationFrame(rafRef.current);
-    const audio = musicRef.current;
-    if (audio) {
-      try { audio.pause(); } catch {}
-    }
+    stopAllAudio();
+  }, [stopAllAudio]);
+
+  const toLobby = useCallback(() => {
+    hardStop();
+    setView("lobby");
+    setResult(null);
+    setHud({ score: 0, combo: 0, remain: 0, status: "READY" });
+  }, [hardStop]);
+
+  const showJudge = useCallback((k) => {
+    setJudgeOverlay(k);
+    window.clearTimeout(judgeTRef.current);
+    judgeTRef.current = window.setTimeout(() => setJudgeOverlay(null), 240);
   }, []);
+
+  const startGame = useCallback(() => {
+    if (!track?.url) return;
+
+    // reset runtime
+    hardStop();
+    setResult(null);
+    statsRef.current = { perfect: 0, good: 0, miss: 0, combo: 0, maxCombo: 0, score: 0 };
+    pressedRef.current = [0, 0, 0, 0];
+    flashRef.current = [0, 0, 0, 0];
+    setHud({ score: 0, combo: 0, remain: 0, status: "LOADING" });
+    setJudgeOverlay(null);
+
+    // move view first (layout ready)
+    setView("play");
+
+    const audio = musicRef.current;
+    if (!audio) return;
+
+    // IMPORTANT: keep this in the SAME user gesture frame as much as possible.
+    // Set src and attempt play immediately.
+    audio.src = track.url;
+    audio.volume = clamp(musicVol, 0, 1);
+    audio.currentTime = 0;
+    audio.preload = "auto";
+
+    // generate chart once metadata known; fallback duration if not
+    const onMeta = () => {
+      const dur = Number.isFinite(audio.duration) ? audio.duration : 180;
+      notesRef.current = buildChart(track.bpm || 120, dur, difficulty);
+    };
+    audio.addEventListener("loadedmetadata", onMeta, { once: true });
+
+    // attempt play (gesture-safe)
+    const p = audio.play();
+    if (p && typeof p.then === "function") {
+      p.then(() => {
+        setHud((h) => ({ ...h, status: "SYNC" }));
+      }).catch(() => {
+        // if blocked: show status; user can tap lanes to retry play
+        setHud((h) => ({ ...h, status: "TAP" }));
+      });
+    } else {
+      setHud((h) => ({ ...h, status: "SYNC" }));
+    }
+
+    // if metadata not fired fast, create chart after short fallback
+    window.setTimeout(() => {
+      if (!notesRef.current.length) {
+        const dur = Number.isFinite(audio.duration) ? audio.duration : 180;
+        notesRef.current = buildChart(track.bpm || 120, dur, difficulty);
+      }
+    }, 240);
+
+    runningRef.current = true;
+  }, [track, musicVol, buildChart, difficulty, hardStop]);
 
   const endGame = useCallback(() => {
     const s = statsRef.current;
@@ -5301,10 +5403,15 @@ export default function App() {
       acc >= 0.78 ? "B" :
       acc >= 0.65 ? "C" : "D";
 
+    const bunny =
+      grade === "S" || grade === "A" ? ASSET.bunny.yayR :
+      grade === "B" || grade === "C" ? ASSET.bunny.dizzy :
+      ASSET.bunny.flop;
+
     setResult({
-      title: track?.title || "UNKNOWN",
-      artist: track?.artist || "",
-      diff: DIFF[difficulty]?.name || "NORMAL",
+      trackTitle: track?.title || "UNKNOWN",
+      bpm: track?.bpm || 120,
+      diff: DIFF[difficulty]?.label || "NORMAL",
       perfect: s.perfect,
       good: s.good,
       miss: s.miss,
@@ -5312,138 +5419,115 @@ export default function App() {
       score: s.score,
       accuracy: acc,
       grade,
+      bunny,
     });
 
-    stopGame();
+    hardStop();
     setView("result");
-  }, [difficulty, stopGame, track]);
+  }, [ASSET.bunny, difficulty, hardStop, track]);
 
-  const startGame = useCallback(async () => {
-    if (!track?.url) return;
-
-    setAudioError("");
-    setPreviewing(false);
-
-    setResult(null);
-    setLastJudge(null);
-    setNeedsUserStart(true);
-
-    statsRef.current = { perfect: 0, good: 0, miss: 0, combo: 0, maxCombo: 0, score: 0 };
-    pressedLaneRef.current = [0, 0, 0, 0];
-    laneFlashRef.current = [0, 0, 0, 0];
-
-    const seedStr = `${track.id || track.title}-${difficulty}`;
-    let seed = 2166136261;
-    for (let i = 0; i < seedStr.length; i++) seed = Math.imul(seed ^ seedStr.charCodeAt(i), 16777619);
-    seedRef.current = seed >>> 0;
-
+  const togglePause = useCallback(() => {
     const audio = musicRef.current;
     if (!audio) return;
-
-    try { audio.pause(); } catch {}
-    audio.currentTime = 0;
-    audio.volume = clamp(musicVol, 0, 1);
-
-    setView("play");
-    setHud({ score: 0, combo: 0, remain: 0, status: "READY" });
-
-    // Ensure metadata
-    if (audio.readyState < 2) {
-      await new Promise((res) => {
-        const on = () => res();
-        audio.addEventListener("canplay", on, { once: true });
-      });
+    if (audio.paused) {
+      audio.play().catch(() => {});
+      setHud((h) => ({ ...h, status: "SYNC" }));
+    } else {
+      audio.pause();
+      setHud((h) => ({ ...h, status: "PAUSED" }));
     }
+  }, []);
 
-    const duration = Number.isFinite(audio.duration) ? audio.duration : 180;
-    notesRef.current = buildChart(track.bpm || 120, duration, difficulty);
+  const restart = useCallback(() => {
+    startGame();
+  }, [startGame]);
 
-    runningRef.current = true;
-    rafRef.current = requestAnimationFrame(() => {});
-  }, [track, difficulty, musicVol, buildChart]);
-
-  const startPlaybackIfNeeded = useCallback(async () => {
+  // Core judge
+  const ensurePlay = useCallback(() => {
     const audio = musicRef.current;
     if (!audio) return;
-
-    if (!audio.paused) return;
-    try {
-      await audio.play(); // user gesture required (lane tap / preview button is OK)
-      setHud((h) => ({ ...h, status: "LIVE" }));
-      setNeedsUserStart(false);
-    } catch (e) {
-      setAudioError("音声の再生に失敗しました（URL / 404 / CORS / 自動再生制限の可能性）");
-      setHud((h) => ({ ...h, status: "ERROR" }));
+    if (audio.paused) {
+      audio.play().then(() => {
+        setHud((h) => ({ ...h, status: "SYNC" }));
+      }).catch(() => {
+        setHud((h) => ({ ...h, status: "TAP" }));
+      });
     }
   }, []);
 
   const judgeLane = useCallback((lane) => {
+    ensurePlay();
+
     const audio = musicRef.current;
     if (!audio) return;
 
-    startPlaybackIfNeeded();
-
-    const nowT = audio.currentTime + (latencyMs / 1000);
+    const nowT = (audio.currentTime || 0) + (latencyMs / 1000);
     const notes = notesRef.current;
+    if (!notes.length) return;
+
+    // search around current time window for this lane
+    const searchFrom = binSearchFirstGreater(notes, nowT - 0.35);
+    const searchTo = Math.min(notes.length, searchFrom + 80);
 
     let bestIdx = -1;
     let bestDt = Infinity;
 
-    for (let i = 0; i < notes.length; i++) {
+    for (let i = searchFrom; i < searchTo; i++) {
       const n = notes[i];
       if (n.judged || n.lane !== lane) continue;
       const dt = n.t - nowT;
       const adt = Math.abs(dt);
-      if (adt < bestDt) {
-        bestDt = adt;
-        bestIdx = i;
-      }
-      if (n.t > nowT + HIT_WINDOWS.good) break;
+      if (adt < bestDt) { bestDt = adt; bestIdx = i; }
+      if (n.t > nowT + HIT.good) break;
     }
 
     const s = statsRef.current;
 
-    if (bestIdx >= 0 && bestDt <= HIT_WINDOWS.good) {
+    if (bestIdx >= 0 && bestDt <= HIT.good) {
       const n = notes[bestIdx];
       n.judged = true;
       n.hit = true;
 
-      if (bestDt <= HIT_WINDOWS.perfect) {
+      if (bestDt <= HIT.perfect) {
         s.perfect += 1;
         s.combo += 1;
         s.score += 1200;
-        setLastJudge("PERFECT");
+        showJudge("perfect");
         playBeep(1046, 0.045);
-        laneFlashRef.current[lane] = 1.0;
+        flashRef.current[lane] = 1.0;
       } else {
         s.good += 1;
         s.combo += 1;
-        s.score += 700;
-        setLastJudge("GOOD");
+        s.score += 760;
+        showJudge("good");
         playBeep(880, 0.04);
-        laneFlashRef.current[lane] = 0.65;
+        flashRef.current[lane] = 0.75;
       }
       s.maxCombo = Math.max(s.maxCombo, s.combo);
     } else {
+      // miss tap -> combo break (not extra miss count; feels better)
       s.combo = 0;
-      setLastJudge("MISS");
-      if (sfxOn) playBeep(220, 0.03);
+      showJudge("miss");
+      playBeep(220, 0.03);
+      flashRef.current[lane] = 0.35;
     }
-  }, [latencyMs, playBeep, sfxOn, startPlaybackIfNeeded]);
 
-  const onLaneDown = useCallback((lane, e) => {
-    if (e?.preventDefault) e.preventDefault();
-    pressedLaneRef.current[lane] = 1;
+    setHud((h) => ({ ...h, score: s.score, combo: s.combo }));
+  }, [ensurePlay, latencyMs, playBeep, showJudge]);
+
+  const onLaneDown = useCallback((lane) => {
+    pressedRef.current[lane] = 1;
     judgeLane(lane);
   }, [judgeLane]);
 
   const onLaneUp = useCallback((lane) => {
-    pressedLaneRef.current[lane] = 0;
+    pressedRef.current[lane] = 0;
   }, []);
 
-  // Tick loop (throttled HUD updates)
+  // Game loop: auto-miss + HUD update throttled
   useEffect(() => {
     if (view !== "play") return;
+
     const audio = musicRef.current;
     if (!audio) return;
 
@@ -5452,36 +5536,48 @@ export default function App() {
     const tick = (ts) => {
       if (!runningRef.current) return;
 
-      // End
-      if (!audio.paused && Number.isFinite(audio.duration) && audio.currentTime >= audio.duration - 0.02) {
-        endGame();
-        return;
-      }
+      const now = (audio.currentTime || 0) + (latencyMs / 1000);
 
-      const s = statsRef.current;
+      // auto-miss passed notes
       const notes = notesRef.current;
-      const nowT = audio.currentTime + (latencyMs / 1000);
-      const remain = Number.isFinite(audio.duration) ? Math.max(0, audio.duration - audio.currentTime) : 0;
-
-      // Auto miss overdue
-      for (let i = 0; i < notes.length; i++) {
+      const s = statsRef.current;
+      const start = binSearchFirstGreater(notes, now - 0.6);
+      for (let i = Math.max(0, start - 60); i < Math.min(notes.length, start + 10); i++) {
         const n = notes[i];
         if (n.judged) continue;
-        if (n.t < nowT - HIT_WINDOWS.good) {
+        if (n.t < now - HIT.good) {
           n.judged = true;
           n.hit = false;
           s.miss += 1;
           s.combo = 0;
-        } else break;
+        }
       }
 
-      // Decay flash
-      for (let l = 0; l < 4; l++) laneFlashRef.current[l] = Math.max(0, laneFlashRef.current[l] - 0.06);
+      // flash decay
+      for (let l = 0; l < 4; l++) {
+        flashRef.current[l] = Math.max(0, flashRef.current[l] - 0.08);
+      }
 
-      // Throttle HUD state (avoid “cheap” flicker + perf)
-      if (ts - lastHudAt > 80) {
+      // remain
+      const dur = Number.isFinite(audio.duration) ? audio.duration : 0;
+      const remain = dur ? Math.max(0, dur - audio.currentTime) : 0;
+
+      // end detection
+      if (dur && audio.currentTime >= dur - 0.02) {
+        endGame();
+        return;
+      }
+
+      // throttle HUD updates
+      if (ts - lastHudAt > 110) {
         lastHudAt = ts;
-        setHud((h) => ({ ...h, remain, score: s.score, combo: s.combo }));
+        setHud((h) => ({
+          ...h,
+          remain,
+          score: s.score,
+          combo: s.combo,
+          status: audio.paused ? (h.status === "PAUSED" ? "PAUSED" : "TAP") : (h.status === "PAUSED" ? "SYNC" : h.status),
+        }));
       }
 
       rafRef.current = requestAnimationFrame(tick);
@@ -5492,563 +5588,491 @@ export default function App() {
     return () => cancelAnimationFrame(rafRef.current);
   }, [view, latencyMs, endGame]);
 
-  const togglePause = useCallback(async () => {
-    const audio = musicRef.current;
-    if (!audio) return;
-
-    if (audio.paused) {
-      try {
-        await audio.play();
-        setHud((h) => ({ ...h, status: "LIVE" }));
-      } catch {
-        setAudioError("再生できませんでした（URL / CORS / 制限の可能性）");
-      }
-    } else {
-      audio.pause();
-      setHud((h) => ({ ...h, status: "PAUSED" }));
-    }
-  }, []);
-
-  const restart = useCallback(() => {
-    stopGame();
-    startGame();
-  }, [startGame, stopGame]);
-
-  const backToLobby = useCallback(() => {
-    stopGame();
-    setView("lobby");
-  }, [stopGame]);
-
   // ESC/back
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "Escape") {
-        if (settingsOpen) setSettingsOpen(false);
-        else if (view === "play") backToLobby();
-        else if (view === "result") setView("lobby");
-      }
+      if (e.key !== "Escape") return;
+      if (settingsOpen) setSettingsOpen(false);
+      else if (view === "play") toLobby();
+      else if (view === "result") setView("lobby");
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [settingsOpen, view, backToLobby]);
+  }, [settingsOpen, view, toLobby]);
 
-  // Audio error hook
-  const onAudioError = useCallback(() => {
-    setAudioError("音声読み込みに失敗しました（URLが404 / CORS / https混在 の可能性）");
-  }, []);
-
-  // Music preview in settings
-  const togglePreview = useCallback(async () => {
-    const audio = musicRef.current;
-    if (!audio) return;
-    setAudioError("");
+  // TEST: preview selected track (short play)
+  const testMusic = useCallback(() => {
+    const p = previewRef.current;
+    if (!p || !track?.url) return;
 
     try {
-      if (audio.paused) {
-        audio.currentTime = clamp(audio.currentTime, 0, Math.max(0, (audio.duration || 9999) - 0.2));
-        await audio.play();
-        setPreviewing(true);
+      p.src = track.url;
+      p.volume = clamp(musicVol, 0, 1);
+      p.currentTime = 0;
+      const promise = p.play();
+      if (promise && typeof promise.then === "function") {
+        promise.then(() => {
+          // stop after 1.2s (preview)
+          window.setTimeout(() => {
+            try { p.pause(); p.currentTime = 0; } catch {}
+          }, 1200);
+        }).catch(() => {
+          // fallback: beep so user knows it registered
+          playBeep(880, 0.06);
+          playBeep(1174, 0.06);
+        });
       } else {
-        audio.pause();
-        setPreviewing(false);
+        window.setTimeout(() => {
+          try { p.pause(); p.currentTime = 0; } catch {}
+        }, 1200);
       }
     } catch {
-      setAudioError("プレビュー再生できませんでした（URL / CORS / 制限の可能性）");
-      setPreviewing(false);
+      playBeep(880, 0.06);
     }
-  }, []);
+  }, [musicVol, playBeep, track]);
 
-  const playRender = useMemo(() => {
-    if (view !== "play") return null;
-    return { title: track?.title || "", diff: DIFF[difficulty]?.name || "NORMAL" };
-  }, [view, track, difficulty]);
-
+  // ----------------------------- RENDER -----------------------------
   return (
-    <div className="app" data-view={view}>
-      <style>{css(accent, breathe, DEFAULTS.dockH)}</style>
+    <div className="bsApp" data-view={view}>
+      <style>{css(accent, reduceFlash)}</style>
 
-      <audio
-        ref={musicRef}
-        src={track?.url || ""}
-        preload="auto"
-        onError={onAudioError}
-      />
+      {/* Main audio */}
+      <audio ref={musicRef} preload="auto" crossOrigin="anonymous" />
+      {/* Preview audio for TEST (separate so it won't break main state) */}
+      <audio ref={previewRef} preload="none" crossOrigin="anonymous" />
 
       <header className="topbar">
         <div className="brand">
-          <div className="brandMark" aria-hidden />
-          <div className="brandText">
-            <div className="brandTitle">OS_USAGI <span>SYNC</span></div>
-            <div className="brandSub">beat tuning • glass minimal • mobile-first</div>
+          <div className="mark">
+            <img src={ASSET.bunny.front} alt="" />
+          </div>
+          <div className="brandTxt">
+            <div className="title">
+              OS_USAGI <span>SYNC</span>
+            </div>
+            <div className="sub">beat sync • minimal neon OS</div>
           </div>
         </div>
 
         <div className="topActions">
           {view !== "lobby" && (
-            <button className="iconBtn" type="button" onClick={() => (view === "play" ? backToLobby() : setView("lobby"))} aria-label="Back">
+            <button className="iconBtn" onClick={toLobby} aria-label="Back">
               <ArrowLeft size={18} />
             </button>
           )}
-          <button className="iconBtn" type="button" onClick={() => setSettingsOpen(true)} aria-label="Settings">
+          <button className="iconBtn" onClick={() => setSettingsOpen(true)} aria-label="Settings">
             <Settings size={18} />
           </button>
         </div>
       </header>
 
       <main className="stage">
-        <div className="bg" aria-hidden>
-          <div className="bgNoise" />
-          <div className="bgGlow a" />
-          <div className="bgGlow b" />
-          <div className="bgGrid" />
+        <div className="bg">
+          <div className="grain" />
+          <div className="glow a" />
+          <div className="glow b" />
+          <div className="grid" />
         </div>
 
-        {!hasTracks ? (
-          <div className="empty">
-            <div className="card emptyCard">
-              <div className="emptyTitle">TRACKS が未設定</div>
-              <div className="emptyBody">
-                <div>この <code>App.jsx</code> の <code>TRACKS</code> に <b>mp3 URL</b> と <b>cover</b> を入れてください。</div>
-                <div className="emptyHint">（今のプレイリスト配列をコピペでOK）</div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <>
-            {view === "lobby" && (
-              <Lobby
-                track={track}
-                trackIndex={trackIndex}
-                total={TRACKS.length}
-                difficulty={difficulty}
-                setDifficulty={setDifficulty}
-                railRef={railRef}
-                onRailScroll={onRailScroll}
-                onPrev={prevTrack}
-                onNext={nextTrack}
-                onStart={startGame}
-              />
-            )}
+        {view === "lobby" && (
+          <Lobby
+            ASSET={ASSET}
+            TRACKS={TRACKS}
+            trackIndex={trackIndex}
+            track={track}
+            difficulty={difficulty}
+            setDifficulty={setDifficulty}
+            railRef={railRef}
+            onPrev={prevTrack}
+            onNext={nextTrack}
+            onStart={startGame}
+            onSnapToIndex={(i) => scrollToIndex(i, true)}
+          />
+        )}
 
-            {view === "play" && (
-              <Play
-                meta={playRender}
-                hud={hud}
-                notesRef={notesRef}
-                laneFlashRef={laneFlashRef}
-                pressedLaneRef={pressedLaneRef}
-                speed={speed}
-                latencyMs={latencyMs}
-                reduceFlash={reduceFlash || prefersReducedMotion}
-                onLaneDown={onLaneDown}
-                onLaneUp={onLaneUp}
-                onPause={togglePause}
-                onRestart={restart}
-                onFinish={endGame}
-                lastJudge={lastJudge}
-                assets={ASSETS}
-                needsUserStart={needsUserStart}
-                audioError={audioError}
-              />
-            )}
+        {view === "play" && (
+          <Play
+            ASSET={ASSET}
+            track={track}
+            diff={diff}
+            accent={accent}
+            hud={hud}
+            notesRef={notesRef}
+            noteSpeed={noteSpeed}
+            latencyMs={latencyMs}
+            pressedRef={pressedRef}
+            flashRef={flashRef}
+            judgeOverlay={judgeOverlay}
+            onLaneDown={onLaneDown}
+            onLaneUp={onLaneUp}
+            onPause={togglePause}
+            onRestart={restart}
+            onEnd={endGame}
+          />
+        )}
 
-            {view === "result" && (
-              <Result
-                result={result}
-                assets={ASSETS}
-                onRestart={restart}
-                onBack={() => setView("lobby")}
-              />
-            )}
-          </>
+        {view === "result" && (
+          <Result
+            ASSET={ASSET}
+            result={result}
+            onRestart={restart}
+            onBack={() => setView("lobby")}
+          />
         )}
       </main>
 
       {settingsOpen && (
         <SettingsSheet
-          onClose={() => setSettingsOpen(false)}
+          ASSET={ASSET}
           track={track}
           difficulty={difficulty}
           setDifficulty={setDifficulty}
           latencyMs={latencyMs}
           setLatencyMs={setLatencyMs}
-          speed={speed}
-          setSpeed={setSpeed}
+          noteSpeed={noteSpeed}
+          setNoteSpeed={setNoteSpeed}
           musicVol={musicVol}
           setMusicVol={setMusicVol}
-          sfxVol={sfxVol}
-          setSfxVol={setSfxVol}
           sfxOn={sfxOn}
           setSfxOn={setSfxOn}
+          sfxVol={sfxVol}
+          setSfxVol={setSfxVol}
           reduceFlash={reduceFlash}
           setReduceFlash={setReduceFlash}
-          onTest={() => {
-            playBeep(880, 0.05);
-            setTimeout(() => playBeep(1174, 0.05), 120);
-          }}
-          onTogglePreview={togglePreview}
-          previewing={previewing}
-          audioError={audioError}
+          onClose={() => setSettingsOpen(false)}
+          onTestMusic={testMusic}
+          onTestBeep={() => { playBeep(880, 0.06); window.setTimeout(() => playBeep(1174, 0.06), 110); }}
         />
       )}
     </div>
   );
 }
 
-/** =========================
- *  LOBBY
- *  ========================= */
 function Lobby({
-  track,
+  ASSET,
+  TRACKS,
   trackIndex,
-  total,
+  track,
   difficulty,
   setDifficulty,
   railRef,
-  onRailScroll,
   onPrev,
   onNext,
   onStart,
+  onSnapToIndex,
 }) {
+  // Keep Start always visible: sticky bottom control bar
   return (
     <section className="lobby">
-      <div className="heroCard">
+      <div className="hero">
         <div className="heroTop">
-          <div className="heroNow">PORTAL</div>
-          <div className="heroTitle">BEAT SYNC</div>
-          <div className="heroMeta">
-            <span className="pill strong">{track.title}</span>
-            <span className="pill">{DIFF[difficulty]?.name || "NORMAL"}</span>
-            <span className="pill">BPM {track.bpm || 120}</span>
-          </div>
-          <div className="heroDesc">
-            tap pads • connect • keep the signal alive
+          <div className="kicker">PORTAL</div>
+          <div className="hTitle">BEAT SYNC</div>
+          <div className="hSub">tap pads • connect • keep the signal alive</div>
+
+          <div className="now">
+            <div className="nowLeft">
+              <div className="nowLabel">OS_USAGI • BEAT SYNC</div>
+              <div className="nowTitle">{track?.title}</div>
+              <div className="nowMeta">
+                <span className="pill">{DIFF[difficulty]?.label || "NORMAL"}</span>
+                <span className="dot" />
+                <span className="pill">BPM {track?.bpm || 120}</span>
+              </div>
+            </div>
+
+            <div className="nowRight">
+              <div className="statusPill">
+                <span className="muted">STATUS</span>
+                <span className="ready">READY</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="carousel">
-          <button className="navBtn" type="button" onClick={onPrev} aria-label="Previous track">
+        <div className="carouselWrap">
+          <button className="navBtn" onClick={onPrev} aria-label="Previous track">
             <ChevronLeft size={18} />
           </button>
 
-          <div className="rail" ref={railRef} onScroll={onRailScroll}>
-            {/* spacers (critical for reaching end) */}
-            <div className="railSpacer" aria-hidden />
+          <div className="rail" ref={railRef} aria-label="Track carousel">
             {TRACKS.map((t, i) => (
-              <div className={`trackCard ${i === trackIndex ? "isActive" : ""}`} data-card="track" key={t.id || `${t.title}-${i}`}>
-                <div className="cover" style={t.cover ? { backgroundImage: `url(${t.cover})` } : undefined}>
-                  {!t.cover && <div className="coverFallback" />}
+              <button
+                key={t.id}
+                type="button"
+                className={`tCard ${i === trackIndex ? "active" : ""}`}
+                data-card="track"
+                onClick={() => onSnapToIndex(i)}
+              >
+                <div className="tTop">
+                  <img className="bunnyStamp" src={ASSET.bunny.idle} alt="" />
+                  <div className="tBadge">{i === trackIndex ? "SELECT" : "TRACK"}</div>
                 </div>
-
-                <div className="trackInfo">
-                  <div className="trackTitle">{t.title}</div>
-                  <div className="trackSub">
-                    <span>{t.artist || "OS_USAGI"}</span>
-                    <span className="sep">•</span>
-                    <span>BPM {t.bpm || 120}</span>
-                  </div>
+                <div className="tTitle">{t.title}</div>
+                <div className="tMeta">
+                  <span className="muted">BPM</span> {t.bpm}
                 </div>
-
-                <div className={`selectedBadge ${i === trackIndex ? "on" : ""}`}>{i === trackIndex ? "SELECTED" : "SELECT"}</div>
-              </div>
+                <div className="tGlow" />
+              </button>
             ))}
-            <div className="railSpacer" aria-hidden />
           </div>
 
-          <button className="navBtn" type="button" onClick={onNext} aria-label="Next track">
+          <button className="navBtn" onClick={onNext} aria-label="Next track">
             <ChevronRight size={18} />
           </button>
         </div>
 
-        <div className="pageDots" aria-hidden>
-          {Array.from({ length: total }).map((_, i) => (
-            <span key={i} className={`pDot ${i === trackIndex ? "on" : ""}`} />
-          ))}
-        </div>
-
-        {/* Desktop controls */}
-        <div className="controls desktopOnly">
+        <div className="lobbyBottom">
           <div className="seg">
             {["easy", "normal", "hard"].map((k) => (
               <button
                 key={k}
                 type="button"
-                className={`segBtn ${difficulty === k ? "active" : ""}`}
+                className={`segBtn ${difficulty === k ? "on" : ""}`}
                 onClick={() => setDifficulty(k)}
               >
-                {DIFF[k].name}
+                {DIFF[k].label}
               </button>
             ))}
           </div>
 
-          <button className="startBtn" type="button" onClick={onStart}>
+          <button className="start" onClick={onStart} type="button">
             <Play size={18} />
             START
           </button>
         </div>
-      </div>
 
-      {/* Mobile fixed CTA (START never disappears) */}
-      <div className="mobileCta">
-        <div className="ctaInner">
-          <div className="ctaLeft">
-            <div className="ctaLabel">STATUS</div>
-            <div className="ctaValue">READY</div>
-          </div>
-
-          <div className="ctaMid">
-            <div className="seg mini">
-              {["easy", "normal", "hard"].map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  className={`segBtn ${difficulty === k ? "active" : ""}`}
-                  onClick={() => setDifficulty(k)}
-                >
-                  {DIFF[k].name}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <button className="startBtn ctaStart" type="button" onClick={onStart} aria-label="Start">
-            <Play size={18} />
-            START
-          </button>
+        <div className="dots" aria-hidden>
+          {TRACKS.map((_, i) => (
+            <span key={i} className={`dotx ${i === trackIndex ? "on" : ""}`} />
+          ))}
         </div>
       </div>
     </section>
   );
 }
 
-/** =========================
- *  PLAY
- *  ========================= */
 function Play({
-  meta,
+  ASSET,
+  track,
+  diff,
+  accent,
   hud,
   notesRef,
-  laneFlashRef,
-  pressedLaneRef,
-  speed,
+  noteSpeed,
   latencyMs,
-  reduceFlash,
+  pressedRef,
+  flashRef,
+  judgeOverlay,
   onLaneDown,
   onLaneUp,
   onPause,
   onRestart,
-  onFinish,
-  lastJudge,
-  assets,
-  needsUserStart,
-  audioError,
+  onEnd,
 }) {
   const lanes = 4;
-  const audioEl = useRef(null);
-  const noteLayerRef = useRef(null);
 
-  const [now, setNow] = useState(0);
-  const [layerH, setLayerH] = useState(420);
-
-  useEffect(() => {
-    audioEl.current = document.querySelector("audio");
-  }, []);
-
-  useLayoutEffect(() => {
-    const el = noteLayerRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => {
-      setLayerH(el.clientHeight || 420);
-    });
-    ro.observe(el);
-    setLayerH(el.clientHeight || 420);
-    return () => ro.disconnect();
-  }, []);
-
+  // local render tick for smooth note motion (visual-only)
+  const [, setTick] = useState(0);
   useEffect(() => {
     let raf = 0;
-    const tick = () => {
-      const a = audioEl.current;
-      setNow(a ? a.currentTime : 0);
-      raf = requestAnimationFrame(tick);
+    const loop = () => {
+      setTick((t) => (t + 1) % 1000000);
+      raf = requestAnimationFrame(loop);
     };
-    raf = requestAnimationFrame(tick);
+    raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  const nowT = now + (latencyMs / 1000);
-  const notes = notesRef.current;
+  const audio = document.querySelector("audio"); // main is first audio in DOM
+  const nowT = ((audio?.currentTime || 0) + (latencyMs / 1000));
 
-  // Geometry
-  const hitY = layerH - 16; // px
-  const spawnY = -48;
+  // travel time derived from speed and stage height feel
+  // (visual tuned for mobile)
+  const travelSec = 0.92 / (diff.speedMul || 1);
+  const spawnY = -120;
 
-  const judgeIcon = assets?.judge?.[lastJudge || ""] || "";
+  const notes = notesRef.current || [];
+  const from = Math.max(0, binSearchFirstGreater(notes, nowT - 0.25) - 40);
+  const to = Math.min(notes.length, from + 130);
+  const visible = notes.slice(from, to);
+
+  const arrowByLane = [ASSET.arrows.left, ASSET.arrows.down, ASSET.arrows.up, ASSET.arrows.right];
 
   return (
-    <section className={`play ${reduceFlash ? "reduceFlash" : ""}`}>
-      <div className="playHud">
-        <div className="hudLeft">
-          <div className="hudTitle">{meta?.title || ""}</div>
-          <div className="hudSub">
-            <span className="pill">{meta?.diff || "NORMAL"}</span>
+    <section className="play">
+      <div className="pHud">
+        <div className="pLeft">
+          <div className="pTitle">{track?.title}</div>
+          <div className="pSub">
+            <span className="pill">{diff.label}</span>
             <span className="dot" />
-            <span className="pill">SYNC</span>
+            <span className="pill">BPM {track?.bpm || 120}</span>
           </div>
         </div>
 
-        <div className="hudRight">
-          <div className="hudStat">
-            <div className="hudLabel">SCORE</div>
-            <div className="hudValue">{Math.floor(hud.score || 0).toLocaleString()}</div>
+        <div className="pRight">
+          <div className="stat">
+            <div className="k">SCORE</div>
+            <div className="v">{Math.floor(hud.score || 0).toLocaleString()}</div>
           </div>
-          <div className="hudStat">
-            <div className="hudLabel">COMBO</div>
-            <div className="hudValue">{hud.combo || 0}</div>
+          <div className="stat">
+            <div className="k">COMBO</div>
+            <div className="v">{hud.combo || 0}</div>
           </div>
-          <div className="hudStat">
-            <div className="hudLabel">REMAIN</div>
-            <div className="hudValue">{formatTime(hud.remain || 0)}</div>
+          <div className="stat">
+            <div className="k">REMAIN</div>
+            <div className="v">{formatTime(hud.remain || 0)}</div>
           </div>
         </div>
       </div>
 
-      {audioError ? (
-        <div className="toast error">
-          <AlertTriangle size={16} />
-          <span>{audioError}</span>
-        </div>
-      ) : null}
-
       <div className="laneStage">
         <div className="laneFrame">
-          <div className="laneLines" aria-hidden>
+          <div className="laneLines">
             {Array.from({ length: lanes + 1 }).map((_, i) => (
               <div key={i} className="laneLine" style={{ left: `${(i / lanes) * 100}%` }} />
             ))}
           </div>
 
-          <div className="noteLayer" ref={noteLayerRef}>
-            {/* Notes */}
-            {notes.slice(0, 520).map((n, idx) => {
+          <div className="noteLayer" aria-hidden>
+            {visible.map((n, idx) => {
               const dt = n.t - nowT;
-              const y = hitY - dt * speed; // px/s => px
+              const prog = 1 - clamp(dt / travelSec, 0, 1);
+              if (dt > travelSec || dt < -0.22) return null;
+
+              const y = lerp(spawnY, 0, prog);
               const xPct = ((n.lane + 0.5) / lanes) * 100;
 
-              const visible = y > spawnY && y < hitY + 80;
-              if (!visible) return null;
+              const opacity = clamp(1 - Math.abs(dt) * 1.7, 0.12, 1);
+              const s = n.hit ? 0.94 : 1.0;
 
-              const alpha = clamp(1 - Math.abs(dt) * 2.2, 0.05, 1);
               return (
                 <div
-                  key={`${idx}-${n.t}`}
+                  key={`${from + idx}-${n.t}`}
                   className={`note ${n.hit ? "hit" : ""}`}
                   style={{
-                    left: `${xPct}%`,
-                    transform: `translate3d(-50%, ${y}px, 0)`,
-                    opacity: alpha,
+                    transform: `translate3d(${xPct}%, ${y}px, 0) scale(${s})`,
+                    opacity,
                   }}
-                />
+                >
+                  <img src={arrowByLane[n.lane]} alt="" />
+                </div>
               );
             })}
-
-            <div className="hitLine" />
           </div>
 
-          {needsUserStart && (
-            <div className="tapToStart" aria-hidden>
-              <div className="tapPill">Tap any lane to start</div>
+          <div className="hitLine" />
+
+          <div className={`hudStatus ${hud.status}`}>
+            {hud.status === "PAUSED" ? "PAUSED" : hud.status === "TAP" ? "TAP TO START AUDIO" : "SYNC"}
+          </div>
+
+          {judgeOverlay && (
+            <div className="judgeOverlay" aria-hidden>
+              <img
+                src={judgeOverlay === "perfect" ? ASSET.judge.perfect : judgeOverlay === "good" ? ASSET.judge.good : ASSET.judge.miss}
+                alt=""
+              />
             </div>
           )}
-
-          <div className={`judge ${lastJudge ? "on" : ""}`}>
-            {judgeIcon ? (
-              <img className="judgeImg" src={judgeIcon} alt={lastJudge || ""} />
-            ) : (
-              <div className={`judgeText ${lastJudge || ""}`}>{lastJudge || ""}</div>
-            )}
-          </div>
         </div>
       </div>
 
       <div className="touchBar" role="group" aria-label="Lanes">
         {Array.from({ length: lanes }).map((_, lane) => {
-          const pressed = pressedLaneRef.current[lane] > 0;
-          const flash = laneFlashRef.current[lane];
+          const pressed = pressedRef.current[lane] > 0;
+          const flash = flashRef.current[lane] || 0;
           return (
             <button
               key={lane}
               type="button"
               className={`laneTouch ${pressed ? "pressed" : ""}`}
-              style={{ "--flash": flash }}
-              onPointerDown={(e) => {
-                e.currentTarget.setPointerCapture?.(e.pointerId);
-                onLaneDown(lane, e);
-              }}
-              onPointerUp={() => onLaneUp(lane)}
-              onPointerCancel={() => onLaneUp(lane)}
+              style={{ "--flash": flash, "--a0": accent[0], "--a1": accent[1] }}
+              onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture?.(e.pointerId); onLaneDown(lane); }}
+              onPointerUp={(e) => { e.preventDefault(); onLaneUp(lane); }}
+              onPointerCancel={(e) => { e.preventDefault(); onLaneUp(lane); }}
             >
-              <span className="laneGlow" aria-hidden />
-              <span className="laneHint" aria-hidden>{lane === 0 ? "LEFT" : lane === 1 ? "DOWN" : lane === 2 ? "UP" : "RIGHT"}</span>
+              <span className="touchGlow" />
+              <img className="touchIcon" src={arrowByLane[lane]} alt="" />
             </button>
           );
         })}
       </div>
 
       <div className="playActions">
-        <button className="ghostBtn" type="button" onClick={onPause}>
+        <button className="ghost" type="button" onPointerDown={(e) => e.preventDefault()} onClick={onPause}>
           {hud.status === "PAUSED" ? <Play size={18} /> : <Pause size={18} />}
           {hud.status === "PAUSED" ? "RESUME" : "PAUSE"}
         </button>
-        <button className="ghostBtn" type="button" onClick={onRestart}>
-          <RotateCcw size={18} /> RESTART
+        <button className="ghost" type="button" onPointerDown={(e) => e.preventDefault()} onClick={onRestart}>
+          <RotateCcw size={18} />
+          RESTART
         </button>
-        <button className="ghostBtn danger" type="button" onClick={onFinish}>
-          <X size={18} /> END
+        <button className="ghost danger" type="button" onPointerDown={(e) => e.preventDefault()} onClick={onEnd}>
+          <X size={18} />
+          END
         </button>
       </div>
     </section>
   );
 }
 
-/** =========================
- *  RESULT
- *  ========================= */
-function Result({ result, assets, onRestart, onBack }) {
-  const accPct = Math.round((result?.accuracy || 0) * 1000) / 10;
+function Result({ ASSET, result, onRestart, onBack }) {
+  const r = result || {
+    trackTitle: "BEAT SYNC",
+    diff: "NORMAL",
+    bpm: 120,
+    perfect: 0,
+    good: 0,
+    miss: 0,
+    maxCombo: 0,
+    score: 0,
+    accuracy: 0,
+    grade: "D",
+    bunny: ASSET.bunny.flop,
+  };
+  const accPct = Math.round((r.accuracy || 0) * 1000) / 10;
 
   return (
     <section className="result">
       <div className="resultCard">
-        <div className="resultHead">
-          <div className="rLabel">RESULT</div>
-          <div className="rTitle">{result?.title || "NEON SYNC"}</div>
-          <div className="rSub">
-            <span className="pill">{result?.diff || "NORMAL"}</span>
+        <div className="rHead">
+          <div className="rKicker">RESULT</div>
+          <div className="rTitle">{r.trackTitle}</div>
+          <div className="rMeta">
+            <span className="pill">{r.diff}</span>
             <span className="dot" />
-            <span className="pill">{result?.artist || "OS_USAGI"}</span>
+            <span className="pill">BPM {r.bpm}</span>
           </div>
 
-          <div className={`grade ${result?.grade || "D"}`}>
-            <span>{result?.grade || "D"}</span>
+          <div className={`grade ${r.grade}`}>
+            <span>{r.grade}</span>
           </div>
         </div>
 
-        <div className="statsGrid">
-          <Stat label="PERFECT" value={result?.perfect ?? 0} icon={assets?.judge?.PERFECT} />
-          <Stat label="GOOD" value={result?.good ?? 0} icon={assets?.judge?.GOOD} />
-          <Stat label="MISS" value={result?.miss ?? 0} icon={assets?.judge?.MISS} />
-          <Stat label="MAX COMBO" value={result?.maxCombo ?? 0} />
-          <Stat label="ACCURACY" value={`${accPct}%`} />
-          <Stat label="SCORE" value={(result?.score ?? 0).toLocaleString()} />
+        <div className="rBody">
+          <div className="bunnyCard">
+            <img src={r.bunny} alt="" />
+            <div className="bunnyCap">OS_USAGI reaction</div>
+          </div>
+
+          <div className="stats">
+            <Stat icon={ASSET.judge.perfect} label="PERFECT" value={r.perfect} />
+            <Stat icon={ASSET.judge.good} label="GOOD" value={r.good} />
+            <Stat icon={ASSET.judge.miss} label="MISS" value={r.miss} />
+            <Stat label="MAX COMBO" value={r.maxCombo} />
+            <Stat label="ACCURACY" value={`${accPct}%`} />
+            <Stat label="SCORE" value={(r.score || 0).toLocaleString()} />
+          </div>
         </div>
 
-        <div className="resultActions">
-          <button className="startBtn" type="button" onClick={onRestart}>
+        <div className="rActions">
+          <button className="start" type="button" onPointerDown={(e) => e.preventDefault()} onClick={onRestart}>
             <RotateCcw size={18} />
             RESTART
           </button>
-          <button className="ghostBtn" type="button" onClick={onBack}>
+          <button className="ghost" type="button" onPointerDown={(e) => e.preventDefault()} onClick={onBack}>
             <ArrowLeft size={18} />
             BACK
           </button>
@@ -6058,90 +6082,98 @@ function Result({ result, assets, onRestart, onBack }) {
   );
 }
 
-function Stat({ label, value, icon }) {
+function Stat({ icon, label, value }) {
   return (
     <div className="statCard">
-      <div className="statTop">
-        <div className="statLabel">{label}</div>
-        {icon ? <img className="statIcon" src={icon} alt="" /> : null}
+      <div className="sTop">
+        {icon ? <img src={icon} alt="" /> : <span className="sDot" />}
+        <div className="sLabel">{label}</div>
       </div>
-      <div className="statValue">{value}</div>
+      <div className="sVal">{value}</div>
     </div>
   );
 }
 
-/** =========================
- *  SETTINGS
- *  ========================= */
 function SettingsSheet({
-  onClose,
   track,
   difficulty,
   setDifficulty,
   latencyMs,
   setLatencyMs,
-  speed,
-  setSpeed,
+  noteSpeed,
+  setNoteSpeed,
   musicVol,
   setMusicVol,
-  sfxVol,
-  setSfxVol,
   sfxOn,
   setSfxOn,
+  sfxVol,
+  setSfxVol,
   reduceFlash,
   setReduceFlash,
-  onTest,
-  onTogglePreview,
-  previewing,
-  audioError,
+  onClose,
+  onTestMusic,
+  onTestBeep,
 }) {
   const bodyRef = useRef(null);
+
+  // keep scroll position stable even when state changes
+  const lastScrollRef = useRef(0);
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    const onScroll = () => { lastScrollRef.current = el.scrollTop; };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    // restore (prevents “ボタン押したら上に戻る”系の体感)
+    el.scrollTop = lastScrollRef.current;
+  });
+
+  const noFocusScroll = (e) => e.preventDefault();
 
   return (
     <div className="sheetWrap" role="dialog" aria-modal="true">
       <div className="sheetBackdrop" onClick={onClose} />
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+      <div className="sheet">
         <div className="sheetHead">
-          <div>
-            <div className="sheetTitle">Sync tuning</div>
-            <div className="sheetSub">{track?.title || "—"}</div>
+          <div className="shLeft">
+            <div className="shTitle">Sync tuning</div>
+            <div className="shSub">{track?.title || "—"}</div>
           </div>
-          <button className="iconBtn" type="button" onClick={onClose} aria-label="Close">
+          <button className="iconBtn" type="button" onPointerDown={noFocusScroll} onClick={onClose} aria-label="Close">
             <X size={18} />
           </button>
         </div>
 
         <div className="sheetBody" ref={bodyRef}>
-          {audioError ? (
-            <div className="toast error">
-              <AlertTriangle size={16} />
-              <span>{audioError}</span>
-            </div>
-          ) : null}
-
           <div className="group">
-            <div className="groupTitle">TRACK</div>
+            <div className="gTitle">TRACK</div>
             <div className="row">
               <div className="rowHead">
-                <div className="rowLabel">NOW</div>
-                <div className="rowValue">{track?.title || "—"}</div>
+                <div className="rowLabel">DIFFICULTY</div>
+                <div className="rowValue">{DIFF[difficulty]?.label}</div>
               </div>
-              <div className="rowHint">プレビューでURL不備（404/CORS）がわかります</div>
-              <div className="btnRow">
-                <button className={`chip on`} type="button" onClick={onTogglePreview}>
-                  <Music2 size={16} style={{ marginRight: 8, verticalAlign: "middle" }} />
-                  {previewing ? "STOP PREVIEW" : "MUSIC PREVIEW"}
-                </button>
-                <button className="chip" type="button" onClick={onTest}>
-                  <Volume2 size={16} style={{ marginRight: 8, verticalAlign: "middle" }} />
-                  SFX TEST
-                </button>
+              <div className="seg mini">
+                {["easy", "normal", "hard"].map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    className={`segBtn ${difficulty === k ? "on" : ""}`}
+                    onPointerDown={noFocusScroll}
+                    onClick={() => setDifficulty(k)}
+                  >
+                    {DIFF[k].label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
 
           <div className="group">
-            <div className="groupTitle">TUNING</div>
+            <div className="gTitle">TUNING</div>
 
             <Row label="LATENCY" value={`${latencyMs} ms`} hint="Tap timing compensation">
               <input
@@ -6154,20 +6186,34 @@ function SettingsSheet({
               />
             </Row>
 
-            <Row label="SPEED" value={`${speed} px/s`} hint="Note fall speed (feel)">
+            <Row label="SPEED" value={`${noteSpeed} px/s`} hint="Note travel speed">
               <input
                 className="range"
                 type="range"
-                min={700}
+                min={760}
                 max={1500}
-                value={speed}
-                onChange={(e) => setSpeed(Number(e.target.value))}
+                value={noteSpeed}
+                onChange={(e) => setNoteSpeed(Number(e.target.value))}
               />
             </Row>
           </div>
 
           <div className="group">
-            <div className="groupTitle">AUDIO</div>
+            <div className="gTitle">AUDIO</div>
+
+            <div className="btnRow">
+              <button className={`chip ${sfxOn ? "on" : ""}`} type="button" onPointerDown={noFocusScroll} onClick={() => setSfxOn((v) => !v)}>
+                SFX {sfxOn ? "ON" : "OFF"}
+              </button>
+
+              <button className="chip" type="button" onPointerDown={noFocusScroll} onClick={onTestBeep}>
+                TEST BEEP
+              </button>
+
+              <button className="chip strong" type="button" onPointerDown={noFocusScroll} onClick={onTestMusic}>
+                <Volume2 size={16} /> TEST MUSIC
+              </button>
+            </div>
 
             <Row label="MUSIC" value={`${Math.round(musicVol * 100)}%`}>
               <input
@@ -6190,59 +6236,43 @@ function SettingsSheet({
                 onChange={(e) => setSfxVol(Number(e.target.value) / 100)}
               />
             </Row>
-
-            <div className="btnRow">
-              <button className={`chip ${sfxOn ? "on" : ""}`} type="button" onClick={() => setSfxOn((v) => !v)}>
-                SFX {sfxOn ? "ON" : "OFF"}
-              </button>
-            </div>
           </div>
 
           <div className="group">
-            <div className="groupTitle">VISUAL</div>
-
-            <div className="btnRow">
-              <button className={`chip ${reduceFlash ? "on" : ""}`} type="button" onClick={() => setReduceFlash((v) => !v)}>
-                Reduce flash
-              </button>
-              <div className="seg mini">
-                {["easy", "normal", "hard"].map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    className={`segBtn ${difficulty === k ? "active" : ""}`}
-                    onClick={() => setDifficulty(k)}
-                  >
-                    {DIFF[k].name}
-                  </button>
-                ))}
+            <div className="gTitle">VISUAL</div>
+            <div className="row">
+              <div className="rowHead">
+                <div className="rowLabel">REDUCE FLASH</div>
+                <div className="rowValue">{reduceFlash ? "ON" : "OFF"}</div>
+              </div>
+              <div className="btnRow" style={{ padding: 0 }}>
+                <button className={`chip ${reduceFlash ? "on" : ""}`} type="button" onPointerDown={noFocusScroll} onClick={() => setReduceFlash((v) => !v)}>
+                  Reduce flash
+                </button>
               </div>
             </div>
           </div>
 
-          {/* Bottom padding to ensure last control can be reached */}
-          <div style={{ height: 14 }} />
-        </div>
-
-        {/* Footer fixed (no jump-to-top) */}
-        <div className="sheetFootFixed">
-          <button className="startBtn" type="button" onClick={onClose}>DONE</button>
-          <button
-            className="ghostBtn"
-            type="button"
-            onClick={() => {
-              setLatencyMs(DEFAULTS.latencyMs);
-              setSpeed(DEFAULTS.speedPxPerSec);
-              setMusicVol(DEFAULTS.musicVol);
-              setSfxVol(DEFAULTS.sfxVol);
-              setSfxOn(DEFAULTS.sfxOn);
-              setReduceFlash(DEFAULTS.reduceFlash);
-              // keep scroll position stable
-              requestAnimationFrame(() => bodyRef.current?.scrollTo({ top: 0, behavior: "smooth" }));
-            }}
-          >
-            RESET
-          </button>
+          <div className="sheetFoot">
+            <button className="start" type="button" onPointerDown={noFocusScroll} onClick={onClose}>
+              DONE
+            </button>
+            <button
+              className="ghost"
+              type="button"
+              onPointerDown={noFocusScroll}
+              onClick={() => {
+                setLatencyMs(70);
+                setNoteSpeed(1020);
+                setMusicVol(0.88);
+                setSfxOn(true);
+                setSfxVol(0.55);
+                setReduceFlash(true);
+              }}
+            >
+              RESET
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -6262,124 +6292,110 @@ function Row({ label, value, hint, children }) {
   );
 }
 
-/** =========================
- *  CSS
- *  ========================= */
-function css(accent, breathe, dockH) {
+function css(accent, reduceFlash) {
   const a0 = accent?.[0] || "#66e3ff";
   const a1 = accent?.[1] || "#c084ff";
 
   return `
   :root{
     --bg:#06070b;
-    --panel: rgba(255,255,255,.05);
-    --panel2: rgba(255,255,255,.07);
-    --stroke: rgba(255,255,255,.10);
-    --stroke2: rgba(255,255,255,.14);
     --txt: rgba(255,255,255,.92);
     --muted: rgba(255,255,255,.62);
     --muted2: rgba(255,255,255,.44);
-    --shadow: rgba(0,0,0,.55);
+    --stroke: rgba(255,255,255,.10);
+    --stroke2: rgba(255,255,255,.14);
+    --panel: rgba(255,255,255,.06);
+    --panel2: rgba(255,255,255,.08);
+    --shadow: rgba(0,0,0,.58);
     --a0:${a0};
     --a1:${a1};
-    --r: 24px;
+    --r: 26px;
     --r2: 18px;
     --safeB: env(safe-area-inset-bottom);
     --safeT: env(safe-area-inset-top);
-    --breathe:${breathe};
-    --dockH:${dockH}px;
-    --cardW:min(320px, 78vw);
+    /* OS dock overlap estimate (your bottom dock) */
+    --dock: 92px;
   }
 
-  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  *{ box-sizing:border-box; }
   html,body{ height:100%; background:var(--bg); }
   body{
     margin:0;
-    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
     color:var(--txt);
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
     overflow-x:hidden;
+    -webkit-tap-highlight-color: transparent;
   }
-  button{ font: inherit; }
+  button{ font:inherit; color:inherit; }
+  img{ display:block; max-width:100%; }
 
-  .app{
+  .bsApp{
     min-height:100dvh;
-    background: radial-gradient(1200px 600px at 20% 0%, rgba(102,227,255,.10), transparent 60%),
-                radial-gradient(900px 500px at 85% 10%, rgba(192,132,255,.12), transparent 55%),
-                var(--bg);
+    background:
+      radial-gradient(1200px 600px at 18% -10%, color-mix(in oklab, var(--a0) 18%, transparent), transparent 60%),
+      radial-gradient(900px 520px at 92% 0%, color-mix(in oklab, var(--a1) 18%, transparent), transparent 58%),
+      var(--bg);
   }
 
   .topbar{
-    position: sticky; top:0; z-index:30;
-    padding: calc(14px + var(--safeT)) 16px 12px;
+    position: sticky; top:0; z-index:40;
+    padding: calc(12px + var(--safeT)) 14px 10px;
     display:flex; align-items:center; justify-content:space-between;
-    backdrop-filter: blur(16px);
-    background: linear-gradient(to bottom, rgba(6,7,11,.92), rgba(6,7,11,.45));
+    background: linear-gradient(to bottom, rgba(6,7,11,.92), rgba(6,7,11,.44));
     border-bottom: 1px solid rgba(255,255,255,.08);
+    backdrop-filter: blur(14px);
   }
-
-  .brand{ display:flex; gap:12px; align-items:center; min-width:0; }
-  .brandMark{
-    width:34px; height:34px; border-radius:12px;
-    background:
-      radial-gradient(circle at 35% 35%, rgba(255,255,255,.65), transparent 38%),
-      radial-gradient(circle at 65% 65%, rgba(255,255,255,.18), transparent 45%),
-      linear-gradient(135deg, rgba(102,227,255,.38), rgba(192,132,255,.34));
-    box-shadow: 0 18px 50px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.10) inset;
-    position:relative;
+  .brand{ display:flex; align-items:center; gap:10px; min-width:0; }
+  .mark{
+    width:34px; height:34px; border-radius: 14px;
+    background: linear-gradient(135deg, color-mix(in oklab, var(--a0) 30%, transparent), color-mix(in oklab, var(--a1) 26%, transparent));
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 20px 70px rgba(0,0,0,.48);
+    overflow:hidden;
   }
-  .brandMark:after{
-    content:"";
-    position:absolute; inset:0;
-    border-radius:12px;
-    background: radial-gradient(circle at 50% 45%, rgba(255,255,255,.22), transparent 55%);
-    opacity: .9;
-    animation: breathe 6.6s ease-in-out infinite;
-    animation-play-state: calc(var(--breathe)) > 0 ? running : paused;
-  }
-  @keyframes breathe{ 0%,100%{ transform:scale(1); opacity:.55; } 50%{ transform:scale(1.06); opacity:.95; } }
-
-  .brandText{ min-width:0; }
-  .brandTitle{ letter-spacing:.24em; font-weight:800; font-size:12px; color:rgba(255,255,255,.78); }
-  .brandTitle span{ color:rgba(255,255,255,.95); text-shadow:0 0 18px rgba(255,255,255,.18); }
-  .brandSub{ font-size:12px; color:rgba(255,255,255,.40); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mark img{ width:100%; height:100%; object-fit:cover; opacity:.88; filter:saturate(.9) contrast(1.05); }
+  .brandTxt{ min-width:0; }
+  .title{ font-size:12px; letter-spacing:.26em; font-weight:800; color:rgba(255,255,255,.78); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .title span{ color:rgba(255,255,255,.96); text-shadow:0 0 18px rgba(255,255,255,.16); }
+  .sub{ font-size:12px; color:rgba(255,255,255,.42); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   .topActions{ display:flex; gap:10px; }
   .iconBtn{
-    width:40px; height:40px; border-radius:14px;
+    width:40px; height:40px; border-radius: 16px;
     background: rgba(255,255,255,.06);
     border: 1px solid rgba(255,255,255,.10);
-    color: rgba(255,255,255,.85);
+    box-shadow: 0 22px 70px rgba(0,0,0,.40);
     display:grid; place-items:center;
-    box-shadow: 0 16px 50px rgba(0,0,0,.35);
+    touch-action: manipulation;
   }
   .iconBtn:active{ transform: translateY(1px); }
 
   .stage{
     position:relative;
-    padding: 18px 16px calc(22px + var(--safeB) + var(--dockH));
-    min-height: calc(100dvh - 76px);
+    padding: 14px 14px calc(18px + var(--safeB) + var(--dock));
+    min-height: calc(100dvh - 70px);
   }
 
   .bg{ position:absolute; inset:0; pointer-events:none; overflow:hidden; border-radius: 34px; }
-  .bgNoise{
+  .grain{
     position:absolute; inset:-40px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
     opacity:.10;
     mix-blend-mode: overlay;
   }
-  .bgGlow{
+  .glow{
     position:absolute; width:720px; height:720px; border-radius:50%;
-    filter: blur(44px);
-    opacity: .9;
+    filter: blur(42px);
+    opacity: .95;
   }
-  .bgGlow.a{ left:-280px; top:-240px; background: radial-gradient(circle at 30% 30%, rgba(102,227,255,.24), transparent 60%); }
-  .bgGlow.b{ right:-320px; top:-260px; background: radial-gradient(circle at 55% 40%, rgba(192,132,255,.20), transparent 60%); }
-  .bgGrid{
+  .glow.a{ left:-320px; top:-260px; background: radial-gradient(circle at 30% 30%, color-mix(in oklab, var(--a0) 26%, transparent), transparent 60%); }
+  .glow.b{ right:-340px; top:-280px; background: radial-gradient(circle at 55% 40%, color-mix(in oklab, var(--a1) 24%, transparent), transparent 62%); }
+  .grid{
     position:absolute; inset:0;
     background:
-      linear-gradient(to bottom, rgba(255,255,255,.06), transparent 40%),
-      repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0, rgba(255,255,255,.05) 1px, transparent 1px, transparent 44px),
-      repeating-linear-gradient(0deg, rgba(255,255,255,.04) 0, rgba(255,255,255,.04) 1px, transparent 1px, transparent 44px);
+      linear-gradient(to bottom, rgba(255,255,255,.06), transparent 42%),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0, rgba(255,255,255,.05) 1px, transparent 1px, transparent 46px),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.04) 0, rgba(255,255,255,.04) 1px, transparent 1px, transparent 46px);
     opacity:.08;
     mask-image: radial-gradient(620px 620px at 50% 26%, black 0, black 56%, transparent 78%);
   }
@@ -6389,365 +6405,290 @@ function css(accent, breathe, dockH) {
     border-radius: 999px;
     background: rgba(255,255,255,.06);
     border: 1px solid rgba(255,255,255,.10);
-    color: rgba(255,255,255,.80);
     font-size:12px;
-    letter-spacing:.08em;
+    letter-spacing:.10em;
     text-transform:uppercase;
-  }
-  .pill.strong{
-    background: linear-gradient(135deg, rgba(102,227,255,.12), rgba(192,132,255,.10));
-    border-color: rgba(255,255,255,.14);
-    color: rgba(255,255,255,.92);
+    color: rgba(255,255,255,.82);
   }
   .dot{ width:4px; height:4px; border-radius:50%; background: rgba(255,255,255,.30); }
 
-  .toast{
-    display:flex; align-items:center; gap:10px;
-    padding: 10px 12px;
-    border-radius: 16px;
-    background: rgba(0,0,0,.28);
-    border: 1px solid rgba(255,255,255,.12);
-    box-shadow: 0 26px 90px rgba(0,0,0,.45);
-    margin: 0 auto 10px;
+  /* Lobby */
+  .lobby{ position:relative; z-index:2; display:flex; justify-content:center; }
+  .hero{
     width: min(980px, 100%);
-    color: rgba(255,255,255,.86);
-    backdrop-filter: blur(14px);
-  }
-  .toast.error{
-    background: linear-gradient(180deg, rgba(255,70,70,.12), rgba(0,0,0,.22));
-    border-color: rgba(255,255,255,.14);
-  }
-
-  /* LOBBY */
-  .lobby{ position:relative; z-index:2; display:flex; justify-content:center; padding-top: 10px; }
-  .heroCard{
-    width: min(980px, 100%);
-    border-radius: 32px;
-    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    border-radius: 34px;
+    background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
     border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 44px 140px rgba(0,0,0,.58);
+    box-shadow: 0 46px 160px rgba(0,0,0,.58);
+    overflow:hidden;
     padding: 18px 16px 16px;
     position:relative;
-    overflow:hidden;
   }
-  .heroCard:before{
+  .hero:before{
     content:"";
     position:absolute; inset:-1px;
-    background: radial-gradient(900px 400px at 20% 0%, rgba(102,227,255,.16), transparent 65%),
-                radial-gradient(800px 420px at 90% 0%, rgba(192,132,255,.16), transparent 60%);
-    opacity:.72;
+    background:
+      radial-gradient(900px 420px at 20% 0%, color-mix(in oklab, var(--a0) 18%, transparent), transparent 62%),
+      radial-gradient(880px 420px at 90% 0%, color-mix(in oklab, var(--a1) 18%, transparent), transparent 62%);
+    opacity:.65;
     pointer-events:none;
   }
-  .heroTop{ position:relative; z-index:2; padding: 6px 6px 14px; }
-  .heroNow{ font-size:11px; letter-spacing:.34em; color: rgba(255,255,255,.50); }
-  .heroTitle{ font-size:30px; font-weight:900; letter-spacing:.08em; margin-top:8px; }
-  .heroMeta{ display:flex; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap; }
-  .heroDesc{
-    margin-top: 12px;
-    color: rgba(255,255,255,.42);
-    letter-spacing:.22em;
-    text-transform: lowercase;
-    font-size: 12px;
-  }
+  .heroTop{ position:relative; z-index:2; }
+  .kicker{ font-size:11px; letter-spacing:.34em; color: rgba(255,255,255,.54); }
+  .hTitle{ font-size:32px; font-weight:900; letter-spacing:.04em; margin-top:6px; }
+  .hSub{ margin-top:10px; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color: rgba(255,255,255,.42); }
 
-  .carousel{ position:relative; z-index:2; display:flex; align-items:center; gap:10px; margin-top: 12px; }
-  .navBtn{
-    width:42px; height:42px; border-radius:16px;
+  .now{
+    margin-top: 16px;
+    display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+    padding: 14px 14px;
+    border-radius: 26px;
+    background: rgba(0,0,0,.20);
     border: 1px solid rgba(255,255,255,.10);
-    background: rgba(255,255,255,.06);
-    color: rgba(255,255,255,.85);
-    display:grid; place-items:center;
-    box-shadow: 0 20px 60px rgba(0,0,0,.35);
-    flex: 0 0 auto;
+    box-shadow: 0 26px 90px rgba(0,0,0,.44);
   }
+  .nowLabel{ font-size:12px; letter-spacing:.18em; color: rgba(255,255,255,.62); text-transform:uppercase; }
+  .nowTitle{ font-size:20px; font-weight:900; margin-top:6px; }
+  .nowMeta{ display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
+  .statusPill{
+    display:flex; gap:10px; align-items:center;
+    padding: 10px 12px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.10);
+    white-space:nowrap;
+  }
+  .statusPill .muted{ font-size:12px; letter-spacing:.16em; color: rgba(255,255,255,.52); }
+  .statusPill .ready{ font-size:12px; font-weight:900; letter-spacing:.16em; color: rgba(255,255,255,.92); }
 
+  .carouselWrap{
+    position:relative; z-index:2;
+    display:flex; align-items:center; gap:10px;
+    margin-top: 14px;
+  }
+  .navBtn{
+    width:42px; height:42px; border-radius: 16px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.10);
+    box-shadow: 0 22px 70px rgba(0,0,0,.40);
+    display:grid; place-items:center;
+    flex: 0 0 auto;
+    touch-action: manipulation;
+  }
   .rail{
-    flex: 1 1 auto;
+    flex:1 1 auto;
     display:flex;
     gap:12px;
     overflow-x:auto;
     scroll-snap-type: x mandatory;
+    scroll-padding: 24px;
     -webkit-overflow-scrolling: touch;
-    padding: 10px 2px 12px;
-    scrollbar-width: none;
+    padding: 8px 6px 12px;
+    scrollbar-width:none;
     overscroll-behavior-x: contain;
   }
   .rail::-webkit-scrollbar{ display:none; }
-
-  .railSpacer{
-    flex: 0 0 calc((100% - var(--cardW)) / 2);
-  }
-
-  .trackCard{
-    scroll-snap-align: center;
-    flex: 0 0 var(--cardW);
-    border-radius: 24px;
+  .tCard{
+    scroll-snap-align:center;
+    flex: 0 0 min(320px, 78vw);
+    border-radius: 26px;
+    padding: 14px 14px;
     background: rgba(0,0,0,.22);
     border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 24px 80px rgba(0,0,0,.45);
-    padding: 14px;
+    box-shadow: 0 30px 110px rgba(0,0,0,.50);
     position:relative;
     overflow:hidden;
-    transform: translateZ(0);
+    text-align:left;
+    touch-action: manipulation;
   }
-  .trackCard:after{
-    content:"";
+  .tCard:active{ transform: translateY(1px); }
+  .tGlow{
     position:absolute; inset:-1px;
-    background: radial-gradient(420px 220px at 20% 0%, rgba(102,227,255,.14), transparent 65%),
-                radial-gradient(420px 220px at 90% 0%, rgba(192,132,255,.14), transparent 60%);
+    background:
+      radial-gradient(420px 240px at 18% 0%, color-mix(in oklab, var(--a0) 16%, transparent), transparent 62%),
+      radial-gradient(420px 240px at 92% 0%, color-mix(in oklab, var(--a1) 16%, transparent), transparent 62%);
     opacity:.55;
     pointer-events:none;
   }
-  .trackCard.isActive{
-    border-color: rgba(255,255,255,.16);
-    box-shadow: 0 30px 110px rgba(0,0,0,.55);
-  }
-
-  .cover{
-    width:100%;
-    aspect-ratio: 16/9;
-    border-radius: 18px;
-    background-size: cover;
-    background-position: center;
+  .tTop{ display:flex; justify-content:space-between; align-items:center; position:relative; z-index:2; }
+  .bunnyStamp{
+    width:32px; height:32px; border-radius: 14px;
     border: 1px solid rgba(255,255,255,.12);
-    box-shadow: 0 18px 60px rgba(0,0,0,.45);
-    position:relative;
-    overflow:hidden;
-  }
-  .coverFallback{
-    position:absolute; inset:0;
-    background:
-      radial-gradient(circle at 35% 35%, rgba(255,255,255,.18), transparent 45%),
-      linear-gradient(135deg, rgba(102,227,255,.18), rgba(192,132,255,.16));
-  }
-
-  .trackInfo{ position:relative; z-index:2; padding-top: 12px; }
-  .trackTitle{ font-weight:900; font-size:18px; letter-spacing:.02em; }
-  .trackSub{ color: rgba(255,255,255,.56); font-size:12px; margin-top:6px; display:flex; gap:8px; align-items:center; }
-  .sep{ opacity:.5; }
-
-  .selectedBadge{
-    position:absolute; right:14px; top:14px;
-    font-size:11px; letter-spacing:.22em;
-    padding: 6px 10px; border-radius:999px;
     background: rgba(255,255,255,.06);
+    box-shadow: 0 18px 60px rgba(0,0,0,.45);
+    object-fit: cover;
+    opacity:.92;
+  }
+  .tBadge{
+    font-size:11px;
+    letter-spacing:.26em;
+    text-transform:uppercase;
+    padding: 8px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.05);
     border: 1px solid rgba(255,255,255,.10);
-    color: rgba(255,255,255,.55);
-    text-transform: uppercase;
+    color: rgba(255,255,255,.64);
+  }
+  .tCard.active .tBadge{
+    color: rgba(255,255,255,.92);
+    background: linear-gradient(135deg, color-mix(in oklab, var(--a0) 18%, transparent), color-mix(in oklab, var(--a1) 16%, transparent));
+    border-color: rgba(255,255,255,.14);
+  }
+  .tTitle{ position:relative; z-index:2; margin-top: 12px; font-size:18px; font-weight:900; letter-spacing:.02em; }
+  .tMeta{ position:relative; z-index:2; margin-top: 8px; color: rgba(255,255,255,.62); letter-spacing:.08em; font-size:12px; }
+  .tMeta .muted{ color: rgba(255,255,255,.44); margin-right:8px; }
+
+  .lobbyBottom{
+    position: sticky;
+    bottom: 0;
+    margin-top: 14px;
+    display:flex; gap:12px; align-items:center; justify-content:space-between;
+    padding-top: 12px;
+    background: linear-gradient(to top, rgba(6,7,11,.86), rgba(6,7,11,0));
     z-index:3;
   }
-  .selectedBadge.on{
-    color: rgba(255,255,255,.92);
-    border-color: rgba(255,255,255,.16);
-    background: linear-gradient(135deg, rgba(102,227,255,.14), rgba(192,132,255,.12));
-    box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset;
-  }
-
-  .pageDots{
-    position:relative; z-index:2;
-    display:flex; justify-content:center; gap:6px;
-    margin-top: 12px;
-    padding-bottom: 2px;
-  }
-  .pDot{
-    width:6px; height:6px; border-radius:999px;
-    background: rgba(255,255,255,.16);
-  }
-  .pDot.on{
-    width:18px;
-    background: linear-gradient(90deg, rgba(102,227,255,.70), rgba(192,132,255,.70));
-    box-shadow: 0 10px 30px rgba(0,0,0,.35);
-  }
-
-  .controls{
-    position:relative; z-index:2;
-    display:flex; gap:12px; align-items:center;
-    margin-top: 14px;
-    flex-wrap:wrap;
-    justify-content: space-between;
-  }
-
   .seg{
-    display:flex; background: rgba(255,255,255,.05);
-    border: 1px solid rgba(255,255,255,.10);
-    border-radius: 999px;
+    display:flex; gap:6px;
     padding: 4px;
-    gap: 4px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.10);
   }
-  .seg.mini{ padding:3px; }
   .segBtn{
-    border: 0;
+    border:0;
     padding: 10px 14px;
     border-radius: 999px;
     background: transparent;
-    color: rgba(255,255,255,.60);
+    color: rgba(255,255,255,.62);
     letter-spacing:.18em;
     font-size:12px;
-    text-transform: uppercase;
+    text-transform:uppercase;
+    touch-action: manipulation;
   }
-  .seg.mini .segBtn{ padding:8px 10px; font-size:11px; letter-spacing:.14em; }
-  .segBtn.active{
-    color: rgba(255,255,255,.92);
-    background: linear-gradient(135deg, rgba(102,227,255,.18), rgba(192,132,255,.16));
-    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  .segBtn.on{
+    color: rgba(255,255,255,.95);
+    background: linear-gradient(135deg, color-mix(in oklab, var(--a0) 18%, transparent), color-mix(in oklab, var(--a1) 16%, transparent));
+    box-shadow: 0 18px 60px rgba(0,0,0,.42);
   }
 
-  .startBtn{
-    border: 0;
+  .start{
+    border:0;
     display:flex; align-items:center; gap:10px;
     padding: 14px 18px;
-    border-radius: 16px;
-    background: linear-gradient(135deg, rgba(102,227,255,.22), rgba(192,132,255,.20));
-    color: rgba(255,255,255,.95);
+    border-radius: 18px;
+    background: linear-gradient(135deg, color-mix(in oklab, var(--a0) 22%, transparent), color-mix(in oklab, var(--a1) 20%, transparent));
+    color: rgba(255,255,255,.96);
     font-weight:900;
     letter-spacing:.18em;
-    text-transform: uppercase;
-    box-shadow: 0 26px 80px rgba(0,0,0,.55);
+    text-transform:uppercase;
     border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 30px 120px rgba(0,0,0,.56);
+    touch-action: manipulation;
   }
-  .startBtn:active{ transform: translateY(1px); }
+  .start:active{ transform: translateY(1px); }
 
-  .desktopOnly{ display:none; }
-  @media(min-width:900px){
-    .desktopOnly{ display:flex; }
-  }
+  .dots{ display:flex; justify-content:center; gap:6px; margin-top: 10px; }
+  .dotx{ width:6px; height:6px; border-radius:999px; background: rgba(255,255,255,.16); }
+  .dotx.on{ width:18px; background: linear-gradient(90deg, color-mix(in oklab, var(--a0) 75%, transparent), color-mix(in oklab, var(--a1) 75%, transparent)); }
 
-  .mobileCta{
-    position: fixed;
-    left: 0; right: 0;
-    bottom: calc(var(--dockH) + var(--safeB) + 10px);
-    z-index: 25;
-    padding: 0 12px;
-    display: block;
-  }
-  @media(min-width:900px){
-    .mobileCta{ display:none; }
-  }
-  .ctaInner{
-    width: min(980px, 100%);
-    margin: 0 auto;
-    border-radius: 22px;
-    background: rgba(10,11,16,.72);
-    border: 1px solid rgba(255,255,255,.12);
-    box-shadow: 0 30px 120px rgba(0,0,0,.55);
-    backdrop-filter: blur(16px);
-    padding: 10px 10px;
-    display:flex; align-items:center; gap:10px;
-  }
-  .ctaLeft{ padding: 0 6px; }
-  .ctaLabel{ font-size:11px; letter-spacing:.26em; color: rgba(255,255,255,.46); }
-  .ctaValue{ margin-top: 3px; font-weight:900; letter-spacing:.12em; }
-  .ctaMid{ flex: 1 1 auto; display:flex; justify-content:center; }
-  .ctaStart{ flex: 0 0 auto; padding: 12px 14px; border-radius: 18px; }
-
-  /* PLAY */
+  /* Play */
   .play{ position:relative; z-index:2; width: min(980px, 100%); margin: 0 auto; }
-  .play.reduceFlash *{ animation: none !important; }
-
-  .playHud{
+  .pHud{
     display:flex; justify-content:space-between; gap:12px;
-    padding: 10px 6px 12px;
+    padding: 10px 4px 12px;
     flex-wrap:wrap;
   }
-  .hudTitle{ font-size:18px; font-weight:900; letter-spacing:.02em; }
-  .hudSub{ display:flex; gap:10px; align-items:center; margin-top:8px; }
-
-  .hudRight{ display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; justify-content:flex-end; }
-  .hudStat{
+  .pTitle{ font-size:18px; font-weight:900; letter-spacing:.02em; }
+  .pSub{ display:flex; gap:10px; align-items:center; margin-top:8px; flex-wrap:wrap; }
+  .pRight{ display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; justify-content:flex-end; }
+  .stat{
+    min-width: 118px;
+    text-align:right;
     padding: 10px 12px;
-    border-radius: 16px;
+    border-radius: 18px;
     background: rgba(255,255,255,.04);
     border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 20px 60px rgba(0,0,0,.32);
-    min-width: 120px;
-    text-align:right;
+    box-shadow: 0 22px 80px rgba(0,0,0,.40);
   }
-  .hudLabel{ font-size:11px; color: rgba(255,255,255,.45); letter-spacing:.22em; text-transform: uppercase; }
-  .hudValue{ font-size:18px; font-weight:900; margin-top:4px; }
+  .stat .k{ font-size:11px; color: rgba(255,255,255,.46); letter-spacing:.26em; text-transform:uppercase; }
+  .stat .v{ font-size:18px; font-weight:900; margin-top:4px; }
 
   .laneStage{
-    border-radius: 30px;
+    border-radius: 32px;
     background: rgba(255,255,255,.03);
     border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 44px 140px rgba(0,0,0,.58);
+    box-shadow: 0 46px 160px rgba(0,0,0,.58);
     overflow:hidden;
-    position:relative;
   }
   .laneFrame{
-    height: min(52vh, 520px);
-    min-height: 360px;
     position:relative;
-    padding: 14px 14px 14px;
+    height: min(54vh, 560px);
+    padding: 16px 14px 86px;
   }
+
   .laneLines{ position:absolute; inset:0; pointer-events:none; }
   .laneLine{
     position:absolute; top:0; bottom:0;
     width:1px;
-    background: linear-gradient(to bottom, transparent, rgba(255,255,255,.10), transparent);
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,.12), transparent);
     opacity:.85;
   }
 
-  .noteLayer{
-    position:absolute; left:0; right:0; top:14px; bottom:14px;
-    overflow:hidden;
-  }
-
+  .noteLayer{ position:absolute; left:0; right:0; top:16px; bottom:86px; overflow:hidden; }
   .note{
     position:absolute;
-    width: 42px;
-    height: 10px;
+    left:0;
+    top: 50%;
+    width: 56px;
+    height: 18px;
     border-radius: 999px;
-    background: linear-gradient(90deg, rgba(102,227,255,.95), rgba(192,132,255,.95));
-    box-shadow: 0 10px 40px rgba(0,0,0,.35), 0 0 18px rgba(255,255,255,.12);
+    background: linear-gradient(90deg, color-mix(in oklab, var(--a0) 82%, white 0%), color-mix(in oklab, var(--a1) 82%, white 0%));
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 20px 80px rgba(0,0,0,.42), 0 0 22px rgba(255,255,255,.10);
+    margin-left: -28px;
+    display:grid; place-items:center;
     will-change: transform, opacity;
   }
-  .note.hit{ opacity:.12; filter: blur(1px); }
+  .note img{ width: 26px; height: 26px; opacity:.92; filter: drop-shadow(0 10px 24px rgba(0,0,0,.45)); }
+  .note.hit{ opacity:.18; filter: blur(1px); }
 
   .hitLine{
-    position:absolute; left:0; right:0; bottom: 16px;
+    position:absolute; left:0; right:0; bottom:86px;
     height:1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,.32), transparent);
-    box-shadow: 0 0 26px rgba(255,255,255,.10);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.30), transparent);
+    box-shadow: 0 0 30px rgba(255,255,255,.12);
   }
 
-  .tapToStart{
-    position:absolute; left:0; right:0; bottom: 48px;
-    display:flex; justify-content:center;
-    pointer-events:none;
-  }
-  .tapPill{
-    padding: 10px 14px;
+  .hudStatus{
+    position:absolute; left:12px; top:12px;
+    padding: 10px 12px;
     border-radius: 999px;
-    background: rgba(0,0,0,.30);
+    background: rgba(0,0,0,.26);
     border: 1px solid rgba(255,255,255,.12);
-    color: rgba(255,255,255,.82);
-    letter-spacing:.18em;
-    text-transform: uppercase;
     font-size:12px;
-    box-shadow: 0 24px 80px rgba(0,0,0,.45);
-    animation: float 2.8s ease-in-out infinite;
-    opacity: calc(.35 + .45 * var(--breathe));
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color: rgba(255,255,255,.80);
+    box-shadow: 0 24px 90px rgba(0,0,0,.52);
   }
-  @keyframes float{ 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(-6px);} }
+  .hudStatus.PAUSED{ opacity:.95; }
+  .hudStatus.TAP{ opacity:.95; }
 
-  .judge{
-    position:absolute; left:0; right:0; top: 18px;
+  .judgeOverlay{
+    position:absolute; left:0; right:0; top: 22px;
     display:flex; justify-content:center;
-    opacity:0; transform: translateY(-6px);
-    transition: .18s ease;
     pointer-events:none;
-    text-shadow: 0 18px 60px rgba(0,0,0,.65);
+    animation: pop .18s ease-out;
   }
-  .judge.on{ opacity: 1; transform: translateY(0); }
-  .judgeImg{ height: 42px; width:auto; filter: drop-shadow(0 18px 36px rgba(0,0,0,.6)); }
-  .judgeText{
-    font-weight:1000;
-    letter-spacing:.26em;
-    text-transform: uppercase;
+  .judgeOverlay img{
+    width: min(240px, 62vw);
+    filter: drop-shadow(0 30px 100px rgba(0,0,0,.62));
+    opacity:.98;
   }
-  .judgeText.PERFECT{ color: rgba(255,255,255,.96); }
-  .judgeText.GOOD{ color: rgba(255,255,255,.84); }
-  .judgeText.MISS{ color: rgba(255,255,255,.55); }
+  @keyframes pop{
+    from{ transform: translateY(-6px) scale(.98); opacity:.0; }
+    to{ transform: translateY(0) scale(1); opacity:1; }
+  }
 
   .touchBar{
     display:grid;
@@ -6756,195 +6697,218 @@ function css(accent, breathe, dockH) {
     margin-top: 12px;
   }
   .laneTouch{
-    border: 1px solid rgba(255,255,255,.10);
-    background: rgba(255,255,255,.03);
     height: 78px;
-    border-radius: 22px;
+    border-radius: 24px;
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.10);
+    box-shadow: 0 28px 110px rgba(0,0,0,.50);
     position:relative;
     overflow:hidden;
-    box-shadow: 0 26px 90px rgba(0,0,0,.45);
     touch-action: manipulation;
   }
-  .laneGlow{
+  .touchGlow{
     position:absolute; inset:-1px;
     background:
-      radial-gradient(220px 90px at 50% 110%, rgba(255,255,255,.18), transparent 62%),
-      radial-gradient(240px 140px at 50% 110%, rgba(102,227,255,.18), transparent 64%),
-      radial-gradient(240px 140px at 50% 110%, rgba(192,132,255,.14), transparent 64%);
-    opacity: calc(.14 + .54 * var(--flash));
-    transition: opacity .18s ease;
+      radial-gradient(260px 120px at 50% 120%, rgba(255,255,255,.18), transparent 62%),
+      radial-gradient(280px 140px at 50% 120%, color-mix(in oklab, var(--a0) 18%, transparent), transparent 64%),
+      radial-gradient(280px 140px at 50% 120%, color-mix(in oklab, var(--a1) 16%, transparent), transparent 64%);
+    opacity: calc(.12 + .62 * var(--flash));
+    transition: opacity .16s ease;
   }
-  .laneTouch.pressed .laneGlow{ opacity: .92; }
-  .laneHint{
-    position:absolute; left:0; right:0; bottom: 10px;
-    text-align:center;
-    font-size: 11px;
-    letter-spacing:.22em;
-    color: rgba(255,255,255,.40);
-    text-transform: uppercase;
+  .laneTouch.pressed .touchGlow{ opacity: .92; }
+  .touchIcon{
+    position:absolute; inset:0;
+    margin:auto;
+    width: 30px; height: 30px;
+    opacity:.90;
+    filter: drop-shadow(0 14px 38px rgba(0,0,0,.58));
   }
 
   .playActions{
-    display:flex; gap:10px;
+    display:flex; gap:10px; flex-wrap:wrap;
+    justify-content:center;
     margin-top: 12px;
-    flex-wrap:wrap;
-    justify-content: center;
   }
-  .ghostBtn{
-    border-radius: 16px;
+  .ghost{
+    border-radius: 18px;
     padding: 12px 14px;
     background: rgba(255,255,255,.04);
     border: 1px solid rgba(255,255,255,.10);
-    color: rgba(255,255,255,.85);
+    box-shadow: 0 24px 90px rgba(0,0,0,.44);
     display:flex; align-items:center; gap:10px;
     letter-spacing:.16em;
-    text-transform: uppercase;
-    box-shadow: 0 22px 70px rgba(0,0,0,.38);
+    text-transform:uppercase;
+    touch-action: manipulation;
   }
-  .ghostBtn.danger{ color: rgba(255,255,255,.88); border-color: rgba(255,255,255,.12); }
-  .ghostBtn:active{ transform: translateY(1px); }
+  .ghost.danger{ border-color: rgba(255,255,255,.12); }
 
-  /* RESULT */
-  .result{ position:relative; z-index:2; display:flex; justify-content:center; padding-top: 14px; }
+  /* Result */
+  .result{ position:relative; z-index:2; display:flex; justify-content:center; }
   .resultCard{
-    width: min(860px, 100%);
-    border-radius: 32px;
-    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    width: min(920px, 100%);
+    border-radius: 34px;
+    background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
     border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 44px 140px rgba(0,0,0,.58);
+    box-shadow: 0 54px 190px rgba(0,0,0,.62);
+    overflow:hidden;
     padding: 18px 16px 16px;
     position:relative;
-    overflow:hidden;
   }
   .resultCard:before{
     content:"";
     position:absolute; inset:-1px;
-    background: radial-gradient(700px 320px at 20% 0%, rgba(102,227,255,.16), transparent 60%),
-                radial-gradient(700px 320px at 90% 0%, rgba(192,132,255,.16), transparent 60%);
-    opacity:.75;
+    background:
+      radial-gradient(820px 380px at 20% 0%, color-mix(in oklab, var(--a0) 18%, transparent), transparent 62%),
+      radial-gradient(820px 380px at 90% 0%, color-mix(in oklab, var(--a1) 18%, transparent), transparent 62%);
+    opacity:.70;
     pointer-events:none;
   }
-  .resultHead{ position:relative; z-index:2; padding: 8px 6px 14px; }
-  .rLabel{ font-size:11px; letter-spacing:.34em; color: rgba(255,255,255,.52); }
-  .rTitle{ font-size:28px; font-weight:1000; margin-top:6px; }
-  .rSub{ display:flex; gap:10px; align-items:center; margin-top:10px; flex-wrap:wrap; }
+  .rHead{ position:relative; z-index:2; padding: 6px 6px 10px; }
+  .rKicker{ font-size:11px; letter-spacing:.34em; color: rgba(255,255,255,.54); }
+  .rTitle{ font-size:28px; font-weight:1000; margin-top: 8px; letter-spacing:.02em; }
+  .rMeta{ display:flex; gap:10px; align-items:center; margin-top:10px; flex-wrap:wrap; }
 
   .grade{
-    position:absolute; right:16px; top:18px;
-    width:56px; height:56px;
-    border-radius: 18px;
+    position:absolute; right:14px; top:16px;
+    width:60px; height:60px;
+    border-radius: 20px;
     display:grid; place-items:center;
-    font-weight:1000;
     font-size:22px;
-    letter-spacing:.06em;
+    font-weight:1000;
     background: rgba(0,0,0,.26);
     border: 1px solid rgba(255,255,255,.12);
-    box-shadow: 0 26px 90px rgba(0,0,0,.52);
+    box-shadow: 0 28px 110px rgba(0,0,0,.56);
   }
-  .grade.S{ background: linear-gradient(135deg, rgba(102,227,255,.22), rgba(192,132,255,.22)); }
-  .grade.A{ background: linear-gradient(135deg, rgba(102,227,255,.18), rgba(255,255,255,.10)); }
-  .grade.B{ background: rgba(255,255,255,.06); }
-  .grade.C{ background: rgba(255,255,255,.05); }
-  .grade.D{ background: rgba(255,255,255,.04); }
+  .grade.S, .grade.A{
+    background: linear-gradient(135deg, color-mix(in oklab, var(--a0) 22%, transparent), color-mix(in oklab, var(--a1) 22%, transparent));
+  }
 
-  .statsGrid{
+  .rBody{
     position:relative; z-index:2;
+    display:grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  @media(min-width:820px){
+    .rBody{ grid-template-columns: 0.45fr 0.55fr; align-items:stretch; }
+  }
+
+  .bunnyCard{
+    border-radius: 28px;
+    background: rgba(0,0,0,.22);
+    border: 1px solid rgba(255,255,255,.10);
+    box-shadow: 0 30px 120px rgba(0,0,0,.52);
+    padding: 14px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+  .bunnyCard img{
+    width: min(260px, 62vw);
+    filter: drop-shadow(0 30px 110px rgba(0,0,0,.62));
+    opacity:.95;
+  }
+  .bunnyCap{
+    margin-top: 10px;
+    font-size:12px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color: rgba(255,255,255,.52);
+  }
+
+  .stats{
     display:grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
-    margin-top: 6px;
   }
   @media(min-width:720px){
-    .statsGrid{ grid-template-columns: repeat(3, 1fr); }
+    .stats{ grid-template-columns: repeat(3, 1fr); }
   }
   .statCard{
     border-radius: 22px;
     background: rgba(0,0,0,.22);
     border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 22px 70px rgba(0,0,0,.38);
+    box-shadow: 0 26px 100px rgba(0,0,0,.46);
     padding: 12px 12px;
     overflow:hidden;
   }
-  .statTop{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
-  .statLabel{
+  .sTop{ display:flex; align-items:center; gap:10px; }
+  .statCard img{ width:26px; height:26px; opacity:.92; filter: drop-shadow(0 14px 34px rgba(0,0,0,.58)); }
+  .sDot{ width:10px; height:10px; border-radius:50%; background: rgba(255,255,255,.22); box-shadow: 0 0 0 1px rgba(255,255,255,.10) inset; }
+  .sLabel{
     font-size:11px;
     letter-spacing:.26em;
-    text-transform: uppercase;
+    text-transform:uppercase;
     color: rgba(255,255,255,.52);
   }
-  .statIcon{ height: 18px; width:auto; opacity:.85; }
-  .statValue{
-    font-size:22px;
-    font-weight:1000;
-    margin-top: 8px;
-  }
-  .resultActions{
+  .sVal{ font-size:22px; font-weight:1000; margin-top: 10px; }
+
+  .rActions{
     position:relative; z-index:2;
-    display:flex;
-    gap:10px;
+    display:flex; gap:10px; flex-wrap:wrap;
     justify-content:center;
     margin-top: 14px;
-    flex-wrap:wrap;
   }
 
-  /* SETTINGS */
-  .sheetWrap{ position:fixed; inset:0; z-index:60; display:flex; justify-content:center; align-items:flex-end; }
-  .sheetBackdrop{ position:absolute; inset:0; background: rgba(0,0,0,.55); }
+  /* Settings */
+  .sheetWrap{
+    position:fixed; inset:0; z-index:70;
+    display:flex; justify-content:center; align-items:flex-end;
+  }
+  .sheetBackdrop{ position:absolute; inset:0; background: rgba(0,0,0,.58); }
   .sheet{
-    width: min(920px, 100%);
-    max-height: calc(100dvh - 12px);
-    border-radius: 28px 28px 0 0;
+    width: min(960px, 100%);
+    max-height: calc(100dvh - 10px);
+    border-radius: 30px 30px 0 0;
     background: rgba(10,11,16,.92);
     border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 -40px 140px rgba(0,0,0,.65);
-    backdrop-filter: blur(18px);
-    position:relative;
+    box-shadow: 0 -46px 180px rgba(0,0,0,.70);
+    backdrop-filter: blur(16px);
     overflow:hidden;
+    position:relative;
   }
   .sheetHead{
     padding: 16px 16px 12px;
     display:flex; justify-content:space-between; align-items:center;
     border-bottom: 1px solid rgba(255,255,255,.08);
   }
-  .sheetTitle{ font-weight:1000; font-size:16px; letter-spacing:.12em; text-transform: uppercase; }
-  .sheetSub{ color: rgba(255,255,255,.45); font-size:12px; margin-top:4px; }
-
+  .shTitle{ font-size:16px; font-weight:1000; letter-spacing:.12em; text-transform:uppercase; }
+  .shSub{ margin-top:4px; font-size:12px; color: rgba(255,255,255,.46); }
   .sheetBody{
-    padding: 12px 16px 18px;
+    padding: 12px 16px calc(16px + var(--safeB));
     overflow:auto;
     -webkit-overflow-scrolling: touch;
-    max-height: calc(100dvh - 170px);
+    max-height: calc(100dvh - 120px);
     overscroll-behavior: contain;
   }
-
   .group{ margin-bottom: 14px; }
-  .groupTitle{
+  .gTitle{
+    padding: 10px 6px 8px;
     font-size:11px;
     letter-spacing:.34em;
-    text-transform: uppercase;
+    text-transform:uppercase;
     color: rgba(255,255,255,.44);
-    padding: 10px 6px 8px;
   }
   .row{
     border-radius: 22px;
     background: rgba(255,255,255,.04);
     border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 22px 70px rgba(0,0,0,.35);
+    box-shadow: 0 24px 92px rgba(0,0,0,.44);
     padding: 12px 12px;
     margin-bottom: 10px;
   }
   .rowHead{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
-  .rowLabel{ font-weight:900; letter-spacing:.22em; font-size:12px; color: rgba(255,255,255,.78); }
+  .rowLabel{ font-size:12px; font-weight:900; letter-spacing:.22em; color: rgba(255,255,255,.78); }
   .rowValue{ font-weight:1000; color: rgba(255,255,255,.92); }
-  .rowHint{ margin-top:6px; font-size:12px; color: rgba(255,255,255,.42); line-height:1.5; }
+  .rowHint{ margin-top:6px; font-size:12px; color: rgba(255,255,255,.42); }
   .rowBody{ margin-top: 10px; }
 
-  input[type="range"]{ -webkit-appearance:none; height: 26px; background: transparent; width:100%; }
+  .range{ width:100%; }
+  input[type="range"]{ -webkit-appearance:none; height: 28px; background: transparent; }
   input[type="range"]::-webkit-slider-runnable-track{
-    height: 8px;
-    border-radius: 999px;
-    background: linear-gradient(90deg, rgba(102,227,255,.55), rgba(192,132,255,.55));
-    opacity:.9;
+    height: 8px; border-radius: 999px;
+    background: linear-gradient(90deg, color-mix(in oklab, var(--a0) 55%, transparent), color-mix(in oklab, var(--a1) 55%, transparent));
+    opacity:.90;
   }
   input[type="range"]::-webkit-slider-thumb{
     -webkit-appearance:none;
@@ -6953,10 +6917,10 @@ function css(accent, breathe, dockH) {
     background: rgba(255,255,255,.92);
     border: 1px solid rgba(0,0,0,.25);
     margin-top: -7px;
-    box-shadow: 0 12px 40px rgba(0,0,0,.45);
+    box-shadow: 0 16px 60px rgba(0,0,0,.55);
   }
 
-  .btnRow{ display:flex; gap:10px; flex-wrap:wrap; padding: 0 2px 10px; align-items:center; }
+  .btnRow{ display:flex; gap:10px; flex-wrap:wrap; padding: 2px 2px 10px; align-items:center; }
   .chip{
     padding: 10px 12px;
     border-radius: 999px;
@@ -6964,44 +6928,41 @@ function css(accent, breathe, dockH) {
     border: 1px solid rgba(255,255,255,.10);
     color: rgba(255,255,255,.78);
     letter-spacing:.18em;
-    text-transform: uppercase;
+    text-transform:uppercase;
     font-size:12px;
-    display:flex;
-    align-items:center;
+    display:flex; align-items:center; gap:8px;
+    touch-action: manipulation;
   }
   .chip.on{
-    background: linear-gradient(135deg, rgba(102,227,255,.18), rgba(192,132,255,.16));
+    background: linear-gradient(135deg, color-mix(in oklab, var(--a0) 18%, transparent), color-mix(in oklab, var(--a1) 16%, transparent));
     color: rgba(255,255,255,.92);
   }
-
-  .sheetFootFixed{
-    padding: 10px 16px calc(10px + var(--safeB));
-    border-top: 1px solid rgba(255,255,255,.08);
-    background: rgba(10,11,16,.92);
-    display:flex;
-    gap:10px;
-    justify-content:space-between;
+  .chip.strong{
+    background: rgba(255,255,255,.07);
+    border-color: rgba(255,255,255,.12);
   }
 
-  /* EMPTY */
-  .empty{ position:relative; z-index:2; display:flex; justify-content:center; padding-top: 40px; }
-  .emptyCard{
-    width: min(820px, 100%);
-    border-radius: 28px;
-    background: rgba(255,255,255,.04);
-    border: 1px solid rgba(255,255,255,.10);
-    box-shadow: 0 40px 120px rgba(0,0,0,.55);
-    padding: 18px 16px;
-  }
-  .emptyTitle{ font-weight:1000; font-size:18px; letter-spacing:.08em; }
-  .emptyBody{ color: rgba(255,255,255,.55); margin-top:10px; line-height:1.7; }
-  .emptyHint{ margin-top:6px; color: rgba(255,255,255,.42); }
+  .seg.mini{ padding:3px; gap:4px; width: fit-content; }
+  .seg.mini .segBtn{ padding: 9px 12px; font-size:11px; }
 
+  .sheetFoot{
+    display:flex; gap:10px; justify-content:space-between;
+    position: sticky; bottom: 0;
+    padding: 10px 2px 0;
+    background: linear-gradient(to top, rgba(10,11,16,.92), rgba(10,11,16,0));
+  }
+
+  /* Small screens */
   @media(max-width:420px){
-    .hudStat{ min-width: 106px; }
-    .heroTitle{ font-size: 26px; }
-    .rTitle{ font-size: 24px; }
+    .hTitle{ font-size:28px; }
+    .stat{ min-width: 106px; }
+    .rTitle{ font-size:24px; }
   }
+
+  /* Reduce flash */
+  ${reduceFlash ? `
+    .note, .judgeOverlay img{ filter: none; }
+  ` : ``}
   `;
 }
 
