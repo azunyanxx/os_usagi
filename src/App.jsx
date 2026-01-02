@@ -3033,7 +3033,7 @@ const SafariApp = () => {
       arr.push({ id: `n${i}`, x, y, s, d, hue });
     }
     return arr;
-    // eslint-disable-next-line
+
   }, [isMobile]);
 
   const links = useMemo(() => {
@@ -5521,7 +5521,7 @@ const BeatSyncApp = () => {
     const a = audioRef.current;
     if (!a) return;
     loadTrack(trackId, { preview: false });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   // ----------------------------- GAME LOOP (logic + canvas draw) -----------------------------
