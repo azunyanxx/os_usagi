@@ -3033,7 +3033,7 @@ const SafariApp = () => {
       arr.push({ id: `n${i}`, x, y, s, d, hue });
     }
     return arr;
-
+    // eslint-disable-next-line
   }, [isMobile]);
 
   const links = useMemo(() => {
@@ -4998,7 +4998,13 @@ const Desktop = ({ bgm }) => {
 // ------------------------------------------------
 // 🌸🌸🎮-- 07.Game (げーむ) --🌸🌸🌸🌸🌸🌸🌸🌸
 // ------------------------------------------------
-/const ASSET = React.useMemo(
+// ------------------------------------------------------------
+// OS_USAGI SYNC — Rebuild v2 (premium UX + no flicker + clarity)
+// Replace entire BeatSyncApp with this.
+// ------------------------------------------------------------
+const BeatSyncApp = () => {
+  // ----------------------------- ASSETS -----------------------------
+  const ASSET = React.useMemo(
     () => ({
       judge: {
         perfect: "https://files.catbox.moe/xn8cnp.png",
@@ -6677,9 +6683,6 @@ const Desktop = ({ bgm }) => {
 
 
 
-
-
-
 // -------------------------------------------------------------------------
 // -------------------------------------------------------------------------
 // -------------------------------------------------------------------------
@@ -6713,7 +6716,7 @@ const GLOBAL_CSS = `
 body { margin: 0; background: #000; overflow: hidden; height: 100vh; height: 100dvh; }
 `;
 
-export function os_usagi_xxxx() {
+export default function os_usagi_xxxx() {
   const [mode, setMode] = useState("power");
   const bgm = useBGM(PLAYLIST);
 
