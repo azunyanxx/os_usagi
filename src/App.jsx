@@ -5116,6 +5116,7 @@ const BeatSyncApp = () => {
   const [view, setView] = useState("select"); // select | play | result
   const [difficulty, setDifficulty] = useState("EASY"); // EASY | NORMAL | HARD
   const [selectedIdx, setSelectedIdx] = useState(0);
+  const [castKey, setCastKey] = useState(() => BS_ASSETS.tracks?.[0]?.cover || "front");
   const [audioReady, setAudioReady] = useState(false);
   const [showAudioPill, setShowAudioPill] = useState(false);
   const [assetsReady, setAssetsReady] = useState(false);
@@ -5222,7 +5223,7 @@ const BeatSyncApp = () => {
       try { a.pause(); } catch {}
       a.removeEventListener("ended", onEnded);
     };
-
+    
   }, []);
 
   const BS_setSettings = (patch) => {
@@ -5471,26 +5472,30 @@ const BeatSyncApp = () => {
   // ---------- canvas sizing ----------
   const resizeCanvas = useCallback(() => {
     const c = canvasRef.current;
-    const root = rootRef.current;
-    if (!c || !root) return;
-    const rect = root.getBoundingClientRect();
+    if (!c) return;
+    // IMPORTANT: size by the canvas' rendered box (not the whole root),
+    // otherwise iOS will stretch / mis-map coordinates.
+    const rect = c.getBoundingClientRect();
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const w = Math.max(1, Math.floor(rect.width));
     const h = Math.max(1, Math.floor(rect.height));
     c.width = Math.floor(w * dpr);
     c.height = Math.floor(h * dpr);
-    c.style.width = `${w}px`;
-    c.style.height = `${h}px`;
     const ctx = c.getContext("2d");
     if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }, []);
-
-  useEffect(() => {
+useEffect(() => {
     resizeCanvas();
     const onR = () => resizeCanvas();
     window.addEventListener("resize", onR);
     return () => window.removeEventListener("resize", onR);
   }, [resizeCanvas]);
+
+  useEffect(() => {
+    if (view !== "play") return;
+    const id = requestAnimationFrame(() => resizeCanvas());
+    return () => cancelAnimationFrame(id);
+  }, [view, resizeCanvas]);
 
   // ---------- gameplay ----------
   const stopRaf = useCallback(() => {
@@ -5603,13 +5608,23 @@ const BeatSyncApp = () => {
     // spawn notes
     spawnNotesUpTo(tNow, params);
 
-    const w = root.clientWidth;
-    const h = root.clientHeight;
+    const w = c.clientWidth || root.clientWidth;
+    const h = c.clientHeight || root.clientHeight;
 
     // layout
-    const padH = Math.max(120, Math.min(180, h * 0.22));
-    const judgeY = h - padH - 18;
+    const judgeY = h - 28;
     const laneW = w / 4;
+
+    const drawContain = (img, cx, cy, box) => {
+      if (!img) return;
+      const iw = img.naturalWidth || img.width || 1;
+      const ih = img.naturalHeight || img.height || 1;
+      const s = box / Math.max(iw, ih);
+      const dw = iw * s;
+      const dh = ih * s;
+      ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
+    };
+
 
     // background
     ctx.clearRect(0, 0, w, h);
@@ -5731,14 +5746,14 @@ const BeatSyncApp = () => {
 
         ctx.save();
         ctx.globalAlpha = 0.92;
-        ctx.drawImage(bonusImg, x, y - size / 2, size, size);
+        drawContain(bonusImg, cx, y, size);
         ctx.restore();
       } else {
         const img = arrowImgs[n.lane];
         if (img) {
           ctx.save();
           ctx.globalAlpha = 0.95;
-          ctx.drawImage(img, x, y - size / 2, size, size);
+          drawContain(img, cx, y, size);
           ctx.restore();
         } else {
           // fallback
@@ -5749,35 +5764,9 @@ const BeatSyncApp = () => {
     }
     g.notes = still;
 
-    // pad area backdrop
-    ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
-    ctx.fillRect(0, h - padH, w, padH);
-    ctx.restore();
+        // (pads are DOM buttons below the canvas)
 
-    // pad icons (use arrow images)
-    for (let i = 0; i < 4; i++) {
-      const cx = i * laneW + laneW / 2;
-      const cy = h - padH / 2 + 12;
-      const icon = arrowImgs[i];
-      const s = Math.max(34, Math.min(54, laneW * 0.34));
-      ctx.save();
-      ctx.globalAlpha = 0.55;
-      ctx.strokeStyle = "rgba(255,255,255,0.18)";
-      ctx.lineWidth = 1;
-      BS_roundRectPath(ctx, cx - laneW * 0.38, cy - padH * 0.30, laneW * 0.76, padH * 0.60, 18);
-      ctx.stroke();
-      ctx.restore();
-
-      if (icon) {
-        ctx.save();
-        ctx.globalAlpha = 0.55;
-        ctx.drawImage(icon, cx - s / 2, cy - s / 2, s, s);
-        ctx.restore();
-      }
-    }
-
-    // judge popup on canvas
+// judge popup on canvas
     if (judgeUi && performance.now() - judgeUiAt < 420) {
       const key = judgeUi;
       const img = BS_img(BS_ASSETS.judge[key]);
@@ -5933,12 +5922,21 @@ const BeatSyncApp = () => {
     if (!el) return;
     const child = el.querySelector(`[data-idx="${idx}"]`);
     if (!child) return;
-    try {
-      child.scrollIntoView({ behavior: settings.reducedMotion ? "auto" : "smooth", inline: "center", block: "nearest" });
-    } catch {}
-  };
 
-  useEffect(() => {
+    // iOS Safari: scrollIntoView can shift the whole page/window.
+    // Do a local scrollLeft adjustment instead.
+    const elRect = el.getBoundingClientRect();
+    const childRect = child.getBoundingClientRect();
+    const delta = (childRect.left - elRect.left) - (elRect.width / 2 - childRect.width / 2);
+    const next = el.scrollLeft + delta;
+
+    try {
+      el.scrollTo({ left: next, behavior: settings.reducedMotion ? "auto" : "smooth" });
+    } catch {
+      el.scrollLeft = next;
+    }
+  };
+useEffect(() => {
     scrollToIdx(selectedIdx);
 
   }, [selectedIdx]);
@@ -5964,7 +5962,7 @@ const BeatSyncApp = () => {
   return (
     <div
       ref={rootRef}
-      className="relative w-full h-full bg-[#050505] overflow-hidden"
+      className="relative w-full h-full bg-[#050505] overflow-hidden flex flex-col"
       onPointerDown={onFirstGesture}
     >
       {/* Safari-like glass overlay */}
@@ -5974,7 +5972,7 @@ const BeatSyncApp = () => {
       </div>
 
       {/* Header */}
-      <div className="relative z-10 px-4 pt-4 pb-3">
+      <div className="relative z-10 px-4 pt-3 pb-2 sm:pt-4 sm:pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[11px] tracking-[0.20em] text-white/55">OS Bunny / Safari</div>
@@ -6113,15 +6111,17 @@ const BeatSyncApp = () => {
       </div>
 
       {/* Main */}
-      <div className="relative z-10 px-4 pb-[calc(env(safe-area-inset-bottom)+16px)]">
+      <div className="relative z-10 px-4 pb-[calc(env(safe-area-inset-bottom)+14px)] flex-1 min-h-0 flex flex-col overflow-hidden">
         {view === "select" && (
-          <>
+          <div className="flex-1 min-h-0 overflow-y-auto -mx-4 px-4">
             {/* Carousel */}
             <div
               ref={carouselRef}
-              className="osb-bs-carousel flex gap-3 overflow-x-auto pb-3 -mx-1 px-1"
+              className="osb-bs-carousel flex gap-3 overflow-x-auto pb-3 -mx-4 px-4"
               style={{
                 scrollSnapType: "x mandatory",
+                scrollPaddingLeft: "16px",
+                scrollPaddingRight: "16px",
                 WebkitOverflowScrolling: "touch",
               }}
             >
@@ -6210,31 +6210,68 @@ const BeatSyncApp = () => {
             </div>
 
             {/* “asset tray” (shows all sprites & judge icons, Safari-ish) */}
+            
+            {/* CAST (pick a buddy to bring along) */}
             <div className="mt-4 px-4 py-3 rounded-[22px] bg-white/[0.05] border border-white/[0.10] backdrop-blur-md">
-              <div className="text-[11px] tracking-[0.18em] text-white/45 mb-2">CAST / UI</div>
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <div className="text-[11px] tracking-[0.18em] text-white/45">CAST</div>
+                <div className="text-[10px] tracking-[0.16em] text-white/30">tap to select</div>
+              </div>
+
               <div className="flex items-center gap-2 overflow-x-auto osb-bs-tray pb-1">
-                {/* judge icons */}
+                {Object.entries(BS_ASSETS.bunnies)
+                  .filter(([k]) => k !== "button")
+                  .map(([k, u]) => {
+                    const sel = castKey === k;
+                    return (
+                      <button
+                        key={k}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          BS_playSfx("tap");
+                          setCastKey(k);
+                        }}
+                        className={`shrink-0 w-10 h-10 rounded-[14px] overflow-hidden border ${
+                          sel ? "bg-white/[0.12] border-white/[0.22]" : "bg-black/25 border-white/[0.10]"
+                        }`}
+                        style={{
+                          WebkitTapHighlightColor: "transparent",
+                          touchAction: "manipulation",
+                        }}
+                        aria-label={`cast-${k}`}
+                      >
+                        <img src={u} alt="" className="w-full h-full object-cover opacity-95" draggable={false} />
+                      </button>
+                    );
+                  })}
+              </div>
+
+              <div className="mt-2 text-[11px] tracking-[0.16em] text-white/35">
+                Selected cast appears in-play and on result.
+              </div>
+            </div>
+
+            {/* UI / assets preview (all provided materials) */}
+            <div className="mt-3 px-4 py-3 rounded-[22px] bg-white/[0.04] border border-white/[0.09] backdrop-blur-md">
+              <div className="text-[11px] tracking-[0.18em] text-white/45 mb-2">UI</div>
+              <div className="flex items-center gap-2 overflow-x-auto osb-bs-tray pb-1">
                 <img src={BS_ASSETS.judge.perfect} alt="" className="h-8 w-auto opacity-90" draggable={false} />
                 <img src={BS_ASSETS.judge.good} alt="" className="h-8 w-auto opacity-90" draggable={false} />
                 <img src={BS_ASSETS.judge.miss} alt="" className="h-8 w-auto opacity-90" draggable={false} />
                 <div className="w-px h-8 bg-white/10 mx-1" />
-                {/* arrows */}
                 <img src={BS_ASSETS.arrows.up} alt="" className="h-8 w-8 opacity-80" draggable={false} />
                 <img src={BS_ASSETS.arrows.right} alt="" className="h-8 w-8 opacity-80" draggable={false} />
                 <img src={BS_ASSETS.arrows.down} alt="" className="h-8 w-8 opacity-80" draggable={false} />
                 <img src={BS_ASSETS.arrows.left} alt="" className="h-8 w-8 opacity-80" draggable={false} />
                 <div className="w-px h-8 bg-white/10 mx-1" />
-                {/* bunnies (all) */}
-                {Object.values(BS_ASSETS.bunnies).map((u) => (
-                  <img key={u} src={u} alt="" className="h-8 w-8 rounded-lg object-cover opacity-85 border border-white/10" draggable={false} />
-                ))}
+                <img src={BS_ASSETS.bunnies.button} alt="" className="h-8 w-8 rounded-lg object-cover opacity-85 border border-white/10" draggable={false} />
               </div>
             </div>
-          </>
+</div>
         )}
 
         {view === "play" && (
-          <>
+          <div className="flex flex-col flex-1 min-h-0">
             {/* HUD */}
             <div className="mb-3 flex items-center justify-between gap-2">
               <div className="px-4 py-2 rounded-[18px] bg-white/[0.06] border border-white/[0.10] backdrop-blur-md">
@@ -6262,52 +6299,73 @@ const BeatSyncApp = () => {
               </div>
             </div>
 
-            {/* Canvas */}
-            <div className="relative w-full rounded-[26px] overflow-hidden border border-white/[0.10] bg-black/30">
-              {!assetsReady && (
-                <div className="absolute inset-0 flex items-center justify-center text-white/60 text-[12px] tracking-[0.16em]">
-                  LOADING ASSETS…
-                </div>
-              )}
+            {/* Stage */}
+            <div className="flex flex-col flex-1 min-h-0">
+              <div className="relative flex-1 min-h-[260px] w-full rounded-[26px] overflow-hidden border border-white/[0.10] bg-black/30 backdrop-blur-md">
+                {!assetsReady && (
+                  <div className="absolute inset-0 flex items-center justify-center text-white/60 text-[12px] tracking-[0.16em]">
+                    LOADING ASSETS…
+                  </div>
+                )}
 
-              <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute inset-0 bg-gradient-to-b from-white/[0.04] via-transparent to-black/[0.30]" />
+                {/* cast badge */}
+                <div className="absolute top-3 left-3 z-10 flex items-center gap-2 px-3 py-2 rounded-[18px] bg-white/[0.06] border border-white/[0.10] backdrop-blur-md">
+                  <div className="w-8 h-8 rounded-[14px] overflow-hidden border border-white/[0.12] bg-black/30">
+                    <img
+                      src={BS_ASSETS.bunnies[castKey] || BS_ASSETS.bunnies.front}
+                      alt=""
+                      className="w-full h-full object-cover opacity-90"
+                      draggable={false}
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] tracking-[0.18em] text-white/40">CAST</div>
+                    <div className="text-[12px] font-medium text-white/80 leading-tight truncate">
+                      {track.title}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/[0.05] via-transparent to-black/[0.32]" />
+                  <div className="absolute -inset-24 opacity-[0.16] blur-3xl bg-[radial-gradient(circle_at_55%_30%,rgba(255,255,255,0.55),transparent_55%)]" />
+                </div>
+
+                <canvas ref={canvasRef} className="block w-full h-full" />
+
+                {/* subtle hit-line glow */}
+                <div className="absolute inset-x-0 bottom-0 h-16 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.18),transparent_65%)] opacity-60" />
               </div>
 
-              <canvas ref={canvasRef} className="block w-full" style={{ height: "min(66vh, 560px)" }} />
-
-              {/* pads (invisible overlay for tap targets) */}
+              {/* Tap pads (always visible, safe-area aware) */}
               <div
-                className="absolute inset-x-0 bottom-0 grid grid-cols-4 gap-0"
-                style={{
-                  height: "min(30vh, 200px)",
-                  paddingBottom: "env(safe-area-inset-bottom)",
-                }}
+                className="mt-3 grid grid-cols-4 gap-2 pb-[calc(env(safe-area-inset-bottom)+4px)]"
+                style={{ WebkitTapHighlightColor: "transparent" }}
               >
-                {[0, 1, 2, 3].map((lane) => (
-                  <button
-                    key={lane}
-                    className="w-full h-full"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onPad(lane);
-                    }}
-                    onPointerDown={(e) => {
-                      e.stopPropagation();
-                      onPad(lane);
-                    }}
-                    style={{
-                      background: "transparent",
-                      WebkitTapHighlightColor: "transparent",
-                      touchAction: "manipulation",
-                    }}
-                    aria-label={`lane-${lane}`}
-                  />
-                ))}
+                {[0, 1, 2, 3].map((lane) => {
+                  const icon = [BS_ASSETS.arrows.left, BS_ASSETS.arrows.down, BS_ASSETS.arrows.up, BS_ASSETS.arrows.right][lane];
+                  return (
+                    <button
+                      key={lane}
+                      className="osb-bs-pad h-[72px] sm:h-[78px] rounded-[22px] bg-white/[0.06] border border-white/[0.12] backdrop-blur-md active:scale-[0.99]"                      onPointerDown={(e) => {
+                        onFirstGesture(e);
+                        onPad(lane);
+                      }}
+                      style={{
+                        touchAction: "manipulation",
+                      }}
+                      aria-label={`lane-${lane}`}
+                    >
+                      <div className="w-full h-full flex items-center justify-center">
+                        <img src={icon} alt="" className="w-8 h-8 object-contain opacity-90" draggable={false} />
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="mt-3 flex items-center justify-between gap-2">
+<div className="mt-3 flex items-center justify-between gap-2">
               <div className="text-white/45 text-[11px] tracking-[0.18em]">
                 {track.title} / {difficulty}
               </div>
@@ -6315,7 +6373,7 @@ const BeatSyncApp = () => {
                 Tap lanes • Bonus bunny = +320
               </div>
             </div>
-          </>
+          </div>
         )}
 
         {view === "result" && result && (
