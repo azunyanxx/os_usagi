@@ -6,7 +6,6 @@ import React, {
   useMemo,
 } from "react";
 import {
-  
   Wifi,
   Folder,
   Image as ImageIcon,
@@ -61,7 +60,6 @@ import {
   User,
   Hash,
   Command,
-  Ghost,
   Clock,
   Palette,
   Plus,
@@ -74,7 +72,7 @@ import {
   Brush,
   Rabbit,
   Waves,
-  Feather
+  Feather,
 } from "lucide-react";
 /**
  * 🐇 OS_USAGI
@@ -91,6 +89,558 @@ const ASSETS = {
   dataBg:
     "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=2070&auto=format&fit=crop",
 };
+
+// --- 1b. VISUAL THEMES / WALLPAPERS (INTEGRATED, NON-BREAKING) ---
+const WALLPAPERS = [
+  ASSETS.wallpaper,
+  "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2070&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=1974&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?q=80&w=1974&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1635776062127-d379bfcbb9f8?q=80&w=2000&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?q=80&w=2070&auto=format&fit=crop",
+];
+
+const THEMES = {
+  cyan: { hex: "#00d4ff", sumi: "#004455", glow: "rgba(0, 212, 255, 0.7)" },
+  pink: { hex: "#ff7da8", sumi: "#552233", glow: "rgba(255, 125, 168, 0.7)" },
+  green: { hex: "#85ffb0", sumi: "#224433", glow: "rgba(133, 255, 176, 0.7)" },
+  purple: { hex: "#c48dff", sumi: "#332244", glow: "rgba(196, 141, 255, 0.7)" },
+  black: { hex: "#ffffff", sumi: "#000000", glow: "rgba(255, 255, 255, 0.4)" },
+};
+
+const RIPPLE_MODES = [
+  { id: "ink", icon: Waves },
+  { id: "sumi", icon: Brush },
+  { id: "sparkle", icon: Zap },
+  { id: "bloomy", icon: Sun },
+];
+
+const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+
+const CarrotBattery = ({ themeKey = "cyan", onClick }) => {
+  const currentHex = THEMES[themeKey]?.hex || "#00d4ff";
+  return (
+    <button
+      onClick={onClick}
+      className="relative flex items-center gap-1.5 translate-y-[1px] group active:scale-90 transition-transform focus:outline-none"
+      aria-label="Carrot Battery"
+      type="button"
+      data-os-ui="true"
+    >
+      <div className="relative w-9 h-5">
+        <svg viewBox="0 0 40 20" className="w-full h-full overflow-visible">
+          <path
+            d="M38,10 C38,10 35,3 10,5 C5,10 5,10 10,15 C35,17 38,10 38,10 Z"
+            fill="rgba(255,255,255,0.05)"
+            stroke="rgba(255,255,255,0.1)"
+            strokeWidth="1"
+          />
+          <path
+            d="M36,10 C36,10 33,5 12,6.5 C9,10 9,10 12,13.5 C33,15 36,10 36,10 Z"
+            fill={currentHex}
+            className="transition-colors duration-1000"
+            style={{ clipPath: "inset(0 15% 0 0)" }}
+          />
+          <path
+            d="M8,8 C6,3 2,4 4,9 C1,10 2,14 7,12"
+            fill="#4ade80"
+            stroke="#22c55e"
+            strokeWidth="0.5"
+          />
+          <path
+            d="M20,7 L20,13 M28,8 L28,12"
+            stroke="rgba(0,0,0,0.15)"
+            strokeWidth="0.8"
+            strokeLinecap="round"
+          />
+        </svg>
+      </div>
+      <span className="text-[10px] font-mono opacity-30 tracking-tighter group-hover:opacity-60 transition-opacity">
+        85%
+      </span>
+    </button>
+  );
+};
+
+// --- Toast (anchored to TopBar; not "floating widgets") ---
+const Toast = ({ message }) => (
+  <div className="flex items-center gap-3.5 px-5 py-3 bg-white/10 backdrop-blur-[80px] border border-white/20 rounded-[2.2rem] shadow-[0_30px_60px_rgba(0,0,0,0.4)] animate-iphone-notif text-white max-w-sm pointer-events-auto">
+    <div className="w-9 h-9 rounded-2xl bg-white/15 flex items-center justify-center shadow-inner shrink-0 ring-1 ring-white/10">
+      <Rabbit size={20} className="text-white/90" strokeWidth={1.5} />
+    </div>
+    <div className="flex-1 text-[13px] font-light tracking-widest leading-relaxed pr-2">
+      {message}
+    </div>
+  </div>
+);
+
+// --- Visual modal (does NOT replace existing Window) ---
+const VisualWindow = ({ open, title, onClose, children }) => {
+  const isMobile = typeof window !== "undefined" ? window.innerWidth < 768 : false;
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[220] flex items-center justify-center p-4"
+      data-os-ui="true"
+    >
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-[8px]"
+        onClick={onClose}
+      />
+      <div
+        className={`relative w-full ${
+          isMobile ? "max-w-[520px] rounded-2xl" : "max-w-3xl rounded-3xl"
+        } bg-[#0a0a0a]/70 border border-white/10 shadow-[0_40px_120px_rgba(0,0,0,0.6)] overflow-hidden`}
+      >
+        <div className="h-12 px-5 flex items-center justify-between bg-white/[0.04] border-b border-white/5">
+          <div className="text-[10px] font-mono tracking-[0.35em] text-white/50 uppercase">
+            {title}
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/70"
+            type="button"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <div className="p-4 max-h-[70vh] overflow-y-auto scrollbar-hide">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Memo board (anchored; avoids free-floating notes) ---
+const MemoBoard = ({ memos, onAdd, onEdit, accentHex }) => {
+  return (
+    <div
+      className="absolute left-4 md:left-6 bottom-24 md:bottom-28 z-[95] pointer-events-auto"
+      data-os-ui="true"
+    >
+      <div className="w-[260px] rounded-2xl bg-black/35 backdrop-blur-2xl border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.6)] overflow-hidden">
+        <div className="px-4 py-3 flex items-center justify-between border-b border-white/5">
+          <div className="flex items-center gap-2 text-white/70">
+            <MemoIcon size={14} />
+            <span className="text-[10px] font-mono tracking-[0.35em] uppercase">
+              MEMO
+            </span>
+          </div>
+          <button
+            onClick={onAdd}
+            className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/70 active:scale-95 transition-transform"
+            type="button"
+            aria-label="Add memo"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
+
+        <div className="p-3 space-y-2">
+          {memos.length === 0 ? (
+            <div className="px-3 py-6 text-center text-[11px] text-white/35 font-mono tracking-[0.2em]">
+              no notes
+            </div>
+          ) : (
+            memos.slice(0, 4).map((m) => (
+              <button
+                key={m.id}
+                onClick={() => onEdit(m)}
+                className="w-full text-left px-3 py-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/5 transition-colors"
+                type="button"
+              >
+                <div className="text-[11px] text-white/70 leading-relaxed line-clamp-3">
+                  {m.text || "..."}
+                </div>
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-[9px] font-mono tracking-[0.25em] text-white/25 uppercase">
+                    rabbit_note
+                  </span>
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ background: accentHex, boxShadow: `0 0 10px ${accentHex}` }}
+                  />
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- 3. CORE VISUAL ENGINE (container-bound; accurate tap position; single RAF) ---
+const VisualEngine = ({
+  containerRef,
+  themeKey,
+  rippleMode,
+  stardustMode,
+  isSakura,
+  reduced,
+}) => {
+  const canvasRef = useRef(null);
+  const rafRef = useRef(0);
+  const state = useRef({
+    effects: [],
+    paws: [],
+    stardust: [],
+    hearts: [],
+    mouse: { x: 0, y: 0, lastX: 0, lastY: 0 },
+    strokeDist: 0,
+    isHolding: false,
+    w: 0,
+    h: 0,
+    dpr: 1,
+  });
+
+  useEffect(() => {
+    const host = containerRef?.current;
+    const canvas = canvasRef.current;
+    if (!host || !canvas) return;
+
+    const ctx = canvas.getContext("2d", { alpha: true });
+    if (!ctx) return;
+
+    const ensureStardust = () => {
+      const s = state.current.stardust;
+      const target = reduced ? 80 : 200;
+      if (s.length >= target) return;
+      for (let i = s.length; i < target; i++) {
+        s.push({
+          x: Math.random() * state.current.w,
+          y: Math.random() * state.current.h,
+          vx: (Math.random() - 0.5) * 0.25,
+          vy: (Math.random() - 0.5) * 0.25,
+          size: Math.random() * 1.4 + 0.35,
+          phase: Math.random() * Math.PI * 2,
+          phaseSpeed: 0.005 + Math.random() * 0.01,
+          rotation: Math.random() * Math.PI * 2,
+          rotSpeed: (Math.random() - 0.5) * 0.04,
+        });
+      }
+    };
+
+    const resize = () => {
+      const rect = host.getBoundingClientRect();
+      const dpr = clamp(window.devicePixelRatio || 1, 1, 2);
+      state.current.w = rect.width;
+      state.current.h = rect.height;
+      state.current.dpr = dpr;
+      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ensureStardust();
+    };
+
+    const ro = new ResizeObserver(resize);
+    ro.observe(host);
+    resize();
+
+    const isUI = (target) => {
+      if (!(target instanceof Element)) return false;
+      return !!target.closest('[data-os-ui="true"]');
+    };
+
+    const addEffectAt = (x, y) => {
+      const theme = THEMES[themeKey] || THEMES.cyan;
+      const effects = state.current.effects;
+
+      if (rippleMode === "bloomy") {
+        for (let i = 0; i < 8; i++) {
+          effects.push({
+            mode: "bloomy",
+            x,
+            y,
+            vx: Math.cos(i) * 4.8,
+            vy: Math.sin(i) * 4.8,
+            r: Math.random() * 7 + 2,
+            a: 1,
+            color: theme.hex,
+            decay: 0.018 + Math.random() * 0.008,
+          });
+        }
+      } else if (rippleMode === "sumi") {
+        effects.push({
+          mode: "sumi",
+          x,
+          y,
+          r: 0,
+          maxR: 150,
+          a: 0.9,
+          color: theme.sumi,
+          decay: 0.006,
+          layers: [
+            { ox: (Math.random() - 0.5) * 10, oy: (Math.random() - 0.5) * 10, rMult: 0.55, blur: 7 },
+            { ox: (Math.random() - 0.5) * 14, oy: (Math.random() - 0.5) * 14, rMult: 0.82, blur: 12 },
+            { ox: (Math.random() - 0.5) * 18, oy: (Math.random() - 0.5) * 18, rMult: 1.05, blur: 18 },
+          ],
+        });
+      } else if (rippleMode === "sparkle") {
+        for (let i = 0; i < 7; i++) {
+          effects.push({
+            mode: "sparkle",
+            x,
+            y,
+            vx: (Math.random() - 0.5) * 10,
+            vy: (Math.random() - 0.5) * 10,
+            r: Math.random() * 3 + 1,
+            a: 1,
+            color: "#FFFFFF",
+            decay: 0.035,
+          });
+        }
+      } else {
+        const inkColor = themeKey === "black" ? "#111111" : theme.hex;
+        effects.push({
+          mode: "ink",
+          x,
+          y,
+          r: 0,
+          maxR: 125,
+          a: 0.85,
+          color: inkColor,
+          decay: 0.0042,
+        });
+      }
+
+      if (Math.random() > 0.76) {
+        const paws = state.current.paws;
+        paws.push({ x, y, a: 1, size: 26 + Math.random() * 18 });
+        if (paws.length > 10) paws.shift();
+      }
+
+      const limit = reduced ? 26 : 48;
+      if (effects.length > limit) effects.splice(0, effects.length - limit);
+    };
+
+    const onPointerDown = (e) => {
+      if (isUI(e.target)) return;
+      const rect = host.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      state.current.mouse = { x, y, lastX: x, lastY: y };
+      state.current.isHolding = true;
+      state.current.strokeDist = 0;
+
+      addEffectAt(x, y);
+
+      try {
+        host.setPointerCapture(e.pointerId);
+      } catch {}
+    };
+
+    const onPointerUp = () => {
+      state.current.isHolding = false;
+      state.current.strokeDist = 0;
+    };
+
+    const onPointerMove = (e) => {
+      if (!state.current.isHolding) return;
+      const rect = host.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      const dx = x - state.current.mouse.lastX;
+      const dy = y - state.current.mouse.lastY;
+      state.current.strokeDist += Math.sqrt(dx * dx + dy * dy);
+
+      if (state.current.strokeDist > (reduced ? 180 : 140)) {
+        state.current.hearts.push({
+          x,
+          y,
+          vx: (Math.random() - 0.5) * 1.8,
+          vy: -0.6 - Math.random() * 1.2,
+          a: 1,
+          size: 10 + Math.random() * 10,
+        });
+        state.current.strokeDist = 0;
+        if (state.current.hearts.length > (reduced ? 12 : 22)) {
+          state.current.hearts.shift();
+        }
+      }
+
+      state.current.mouse.lastX = x;
+      state.current.mouse.lastY = y;
+      state.current.mouse.x = x;
+      state.current.mouse.y = y;
+    };
+
+    host.addEventListener("pointerdown", onPointerDown, { passive: true });
+    host.addEventListener("pointerup", onPointerUp, { passive: true });
+    host.addEventListener("pointercancel", onPointerUp, { passive: true });
+    host.addEventListener("pointermove", onPointerMove, { passive: true });
+
+    const drawSakura = (x, y, size, rotation) => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rotation);
+      ctx.fillStyle = "rgba(255, 183, 197, 0.85)";
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo(-size, -size * 1.5, size, -size * 1.5, 0, 0);
+      ctx.fill();
+      ctx.restore();
+    };
+
+    const tick = () => {
+      rafRef.current = requestAnimationFrame(tick);
+      ctx.clearRect(0, 0, state.current.w, state.current.h);
+
+      // Ripples
+      const effects = state.current.effects;
+      for (let i = 0; i < effects.length; i++) {
+        const eff = effects[i];
+        if (eff.mode === "bloomy" || eff.mode === "sparkle") {
+          eff.x += eff.vx;
+          eff.y += eff.vy;
+          eff.vx *= 0.96;
+          eff.vy *= 0.96;
+          eff.a -= eff.decay;
+          if (eff.a <= 0) continue;
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, eff.a);
+          ctx.fillStyle = eff.color;
+          ctx.beginPath();
+          ctx.arc(eff.x, eff.y, eff.r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        } else if (eff.mode === "sumi") {
+          eff.r += (eff.maxR - eff.r) * 0.012;
+          eff.a -= eff.decay;
+          if (eff.a <= 0) continue;
+          ctx.save();
+          for (const l of eff.layers) {
+            ctx.filter = `blur(${l.blur}px)`;
+            ctx.globalAlpha = Math.max(0, eff.a) * 0.55;
+            ctx.fillStyle = eff.color;
+            ctx.beginPath();
+            ctx.arc(eff.x + l.ox, eff.y + l.oy, eff.r * l.rMult, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.filter = "none";
+          ctx.restore();
+        } else {
+          eff.r += (eff.maxR - eff.r) * 0.015;
+          eff.a -= eff.decay;
+          if (eff.a <= 0) continue;
+          const grad = ctx.createRadialGradient(eff.x, eff.y, 0, eff.x, eff.y, eff.r);
+          grad.addColorStop(0, eff.color);
+          grad.addColorStop(0.72, "rgba(0,0,0,0)");
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, eff.a);
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(eff.x, eff.y, eff.r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+      state.current.effects = effects.filter((e) => e.a > 0);
+
+      // Hearts
+      const hearts = state.current.hearts;
+      for (let i = 0; i < hearts.length; i++) {
+        const h = hearts[i];
+        h.x += h.vx;
+        h.y += h.vy;
+        h.a -= 0.012;
+        if (h.a <= 0) continue;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, h.a * 0.5);
+        ctx.fillStyle = "#ffb3c1";
+        ctx.font = `${h.size}px serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("❤", h.x, h.y);
+        ctx.restore();
+      }
+      state.current.hearts = hearts.filter((h) => h.a > 0);
+
+      // Paws
+      const paws = state.current.paws;
+      for (let i = 0; i < paws.length; i++) {
+        const p = paws[i];
+        p.a -= 0.006;
+        if (p.a <= 0) continue;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.a);
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = `${p.size}px serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "rgba(255,255,255,0.2)";
+        ctx.fillText("🐾", p.x, p.y);
+        ctx.restore();
+      }
+      state.current.paws = paws.filter((p) => p.a > 0);
+
+      // Stardust / Sakura
+      if (!reduced) ensureStardust();
+      const stardust = state.current.stardust;
+      for (let i = 0; i < stardust.length; i++) {
+        const s = stardust[i];
+
+        if (stardustMode && state.current.isHolding) {
+          const dx = state.current.mouse.x - s.x;
+          const dy = state.current.mouse.y - s.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          s.vx += (dx / dist) * 0.45;
+          s.vy += (dy / dist) * 0.45;
+          s.vx *= 0.92;
+          s.vy *= 0.92;
+        } else {
+          s.phase += s.phaseSpeed;
+          s.vx += Math.sin(s.phase) * 0.02;
+          s.vy += Math.cos(s.phase * 0.8) * 0.02;
+          s.vx *= 0.985;
+          s.vy *= 0.985;
+          s.rotation += s.rotSpeed;
+        }
+
+        s.x += s.vx;
+        s.y += s.vy;
+
+        if (isSakura) drawSakura(s.x, s.y, s.size * 5, s.rotation);
+        else {
+          ctx.fillStyle = "rgba(255, 255, 255, 0.22)";
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        if (s.x < -40) s.x = state.current.w + 40;
+        else if (s.x > state.current.w + 40) s.x = -40;
+        if (s.y < -40) s.y = state.current.h + 40;
+        else if (s.y > state.current.h + 40) s.y = -40;
+      }
+    };
+
+    tick();
+
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      ro.disconnect();
+      host.removeEventListener("pointerdown", onPointerDown);
+      host.removeEventListener("pointerup", onPointerUp);
+      host.removeEventListener("pointercancel", onPointerUp);
+      host.removeEventListener("pointermove", onPointerMove);
+    };
+  }, [containerRef, themeKey, rippleMode, stardustMode, isSakura, reduced]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 pointer-events-none z-[15]"
+      aria-hidden="true"
+    />
+  );
+};
+
 // -------------------------------------------------------------------------
 // -------------------------------------------------------------------------
 // -------------------------------------------------------------------------
@@ -4651,7 +5201,7 @@ const IntroScreen = ({ onComplete }) => {
   );
 };
 
-const Window = ({ app, isActive, onClose, onFocus, bgm, onRhythmPlayStateChange }) => {
+const Window = ({ app, isActive, onClose, onFocus, bgm }) => {
   const [isMaximized, setIsMaximized] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [isOpening, setIsOpening] = useState(true);
@@ -4771,576 +5321,40 @@ const Window = ({ app, isActive, onClose, onFocus, bgm, onRhythmPlayStateChange 
         {app.id === "safari" && <SafariApp />}
         {app.id === "system" && <SystemApp />}
         {app.id === "calendar" && <CalendarApp />}
-        {app.id === "photos" && <BeatSyncApp onPlayStateChange={onRhythmPlayStateChange} /> }
-      </div>
-    </div>
-  );
-};
-
-
-// --- OSB VISUAL / NOTE / NOTIFICATION LAYER (NON-BREAKING ADDON) ---
-const OSB_WALLPAPERS = [
-  ASSETS.wallpaper,
-  "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1964&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2070&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=1974&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?q=80&w=1974&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1635776062127-d379bfcbb9f8?q=80&w=2000&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?q=80&w=2070&auto=format&fit=crop",
-];
-
-const OSB_THEMES = {
-  cyan: { hex: "#00d4ff", sumi: "#004455", glow: "rgba(0, 212, 255, 0.7)", hue: 0 },
-  pink: { hex: "#ff7da8", sumi: "#552233", glow: "rgba(255, 125, 168, 0.7)", hue: 140 },
-  green: { hex: "#85ffb0", sumi: "#224433", glow: "rgba(133, 255, 176, 0.7)", hue: 260 },
-  purple: { hex: "#c48dff", sumi: "#332244", glow: "rgba(196, 141, 255, 0.7)", hue: 100 },
-  black: { hex: "#ffffff", sumi: "#000000", glow: "rgba(255, 255, 255, 0.4)", hue: 0, mono: true },
-};
-
-const OSB_RIPPLE_MODES = [
-  { id: "ink", icon: Waves },
-  { id: "sumi", icon: Brush },
-  { id: "sparkle", icon: Zap },
-  { id: "bloomy", icon: Sun },
-];
-
-const OSBCarrotBattery = ({ themeKey = "cyan", onClick }) => {
-  const currentHex = OSB_THEMES[themeKey]?.hex || OSB_THEMES.cyan.hex;
-  return (
-    <button
-      onClick={onClick}
-      className="relative flex items-center gap-1.5 translate-y-[1px] group active:scale-90 transition-transform focus:outline-none"
-      aria-label="Carrot Battery"
-      type="button"
-    >
-      <div className="relative w-9 h-5">
-        <svg viewBox="0 0 40 20" className="w-full h-full overflow-visible">
-          <path
-            d="M38,10 C38,10 35,3 10,5 C5,10 5,10 10,15 C35,17 38,10 38,10 Z"
-            fill="rgba(255,255,255,0.05)"
-            stroke="rgba(255,255,255,0.1)"
-            strokeWidth="1"
-          />
-          <path
-            d="M36,10 C36,10 33,5 12,6.5 C9,10 9,10 12,13.5 C33,15 36,10 36,10 Z"
-            fill={currentHex}
-            className="transition-colors duration-1000"
-            style={{ clipPath: "inset(0 15% 0 0)" }}
-          />
-          <path
-            d="M8,8 C6,3 2,4 4,9 C1,10 2,14 7,12"
-            fill="#4ade80"
-            stroke="#22c55e"
-            strokeWidth="0.5"
-          />
-          <path
-            d="M20,7 L20,13 M28,8 L28,12"
-            stroke="rgba(0,0,0,0.15)"
-            strokeWidth="0.8"
-            strokeLinecap="round"
-          />
-        </svg>
-      </div>
-      <span className="text-[10px] font-mono opacity-30 tracking-tighter group-hover:opacity-60 transition-opacity">
-        85%
-      </span>
-    </button>
-  );
-};
-
-const OSBNotification = ({ message }) => (
-  <div className="flex items-center gap-3.5 px-6 py-3.5 bg-white/10 backdrop-blur-[80px] border border-white/20 rounded-[2.2rem] shadow-[0_30px_60px_rgba(0,0,0,0.4)] animate-iphone-notif text-white max-w-sm pointer-events-auto">
-    <div className="w-9 h-9 rounded-2xl bg-white/15 flex items-center justify-center shadow-inner shrink-0 ring-1 ring-white/10">
-      <Rabbit size={20} className="text-white/90" strokeWidth={1.5} />
-    </div>
-    <div className="flex-1 text-[13.5px] font-light tracking-widest leading-relaxed pr-2">
-      {message}
-    </div>
-  </div>
-);
-
-const OSBStickyNote = ({ id, initialX, initialY, initialText, color, onRemove }) => {
-  const [pos, setPos] = useState({ x: initialX, y: initialY });
-  const [text, setText] = useState(initialText);
-  const [isDragging, setIsDragging] = useState(false);
-  const offset = useRef({ x: 0, y: 0 });
-
-  const start = (e) => {
-    e.stopPropagation();
-    setIsDragging(true);
-    offset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
-  };
-
-  useEffect(() => {
-    if (!isDragging) return;
-
-    const move = (e) => setPos({ x: e.clientX - offset.current.x, y: e.clientY - offset.current.y });
-    const stop = () => setIsDragging(false);
-
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", stop);
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", stop);
-    };
-  }, [isDragging]);
-
-  return (
-    <div
-      className={`absolute p-6 w-56 h-56 ${color} backdrop-blur-xl border border-white/20 shadow-2xl select-none transition-transform ${
-        isDragging ? "z-[600] scale-105 shadow-white/10" : "z-[100] rotate-1 hover:rotate-0"
-      }`}
-      style={{ left: pos.x, top: pos.y, touchAction: "none" }}
-    >
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove();
-        }}
-        className="absolute top-2 right-2 opacity-20 hover:opacity-100 p-1 z-20 text-black focus:outline-none"
-        type="button"
-        aria-label="Remove note"
-      >
-        <X size={16} />
-      </button>
-
-      <div onPointerDown={start} className="flex items-center gap-2 mb-3 opacity-30 cursor-move text-black">
-        <MemoIcon size={12} />
-        <span className="text-[9px] font-mono tracking-widest uppercase italic font-bold">rabbit_note</span>
-      </div>
-
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onPointerDown={(e) => e.stopPropagation()}
-        className="w-full h-full bg-transparent border-none outline-none resize-none text-[13px] font-hand text-black/90 leading-relaxed placeholder:opacity-30 scrollbar-hide"
-        placeholder="..."
-      />
-    </div>
-  );
-};
-
-const OSBVisualEngine = ({
-  targetRef,
-  themeKey = "cyan",
-  rippleMode = "ink",
-  stardustMode = false,
-  isSakura = false,
-  reduced = false,
-}) => {
-  const canvasRef = useRef(null);
-  const cfgRef = useRef({ themeKey, rippleMode, stardustMode, isSakura, reduced });
-  const dataRef = useRef({
-    effects: [],
-    paws: [],
-    stardust: [],
-    hearts: [],
-    mouse: { x: 0, y: 0, lastX: 0 },
-    strokeDist: 0,
-    isHolding: false,
-    dpr: 1,
-    w: 0,
-    h: 0,
-  });
-  const rafRef = useRef(0);
-
-  useEffect(() => {
-    cfgRef.current = { themeKey, rippleMode, stardustMode, isSakura, reduced };
-  }, [themeKey, rippleMode, stardustMode, isSakura, reduced]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const host = targetRef?.current;
-    if (!canvas || !host) return;
-
-    const ctx = canvas.getContext("2d", { alpha: true });
-    if (!ctx) return;
-
-    const d = dataRef.current;
-
-    const resize = () => {
-      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-      d.dpr = dpr;
-      d.w = host.clientWidth || window.innerWidth;
-      d.h = host.clientHeight || window.innerHeight;
-      canvas.width = Math.floor(d.w * dpr);
-      canvas.height = Math.floor(d.h * dpr);
-      canvas.style.width = `${d.w}px`;
-      canvas.style.height = `${d.h}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      const want = cfgRef.current.reduced ? 60 : 200;
-      if (d.stardust.length > want) d.stardust.splice(want);
-      while (d.stardust.length < want) {
-        d.stardust.push({
-          x: Math.random() * d.w,
-          y: Math.random() * d.h,
-          vx: (Math.random() - 0.5) * 0.3,
-          vy: (Math.random() - 0.5) * 0.3,
-          size: Math.random() * 1.5 + 0.3,
-          phase: Math.random() * Math.PI * 2,
-          phaseSpeed: 0.005 + Math.random() * 0.01,
-          rotation: Math.random() * Math.PI * 2,
-          rotSpeed: (Math.random() - 0.5) * 0.05,
-        });
-      }
-    };
-
-    const shouldIgnore = (e) => {
-      const t = e.target;
-      if (!t || !t.closest) return false;
-      return !!t.closest("button, textarea, input, a, .z-ui-layer");
-    };
-
-    const onDown = (e) => {
-      if (shouldIgnore(e)) return;
-      const x = e.clientX;
-      const y = e.clientY;
-      d.mouse = { x, y, lastX: x };
-      d.isHolding = true;
-
-      const theme = OSB_THEMES[cfgRef.current.themeKey] || OSB_THEMES.cyan;
-      const mode = cfgRef.current.rippleMode;
-
-      // keep effect budget small on reduced mode
-      const maxEffects = cfgRef.current.reduced ? 20 : 50;
-
-      if (mode === "bloomy") {
-        const n = cfgRef.current.reduced ? 6 : 10;
-        for (let i = 0; i < n; i++) {
-          d.effects.push({
-            x,
-            y,
-            vx: Math.cos(i) * 5,
-            vy: Math.sin(i) * 5,
-            r: Math.random() * 7 + 2,
-            a: 1.0,
-            mode: "bloomy",
-            color: theme.hex,
-            decay: 0.015 + Math.random() * 0.01,
-          });
-        }
-      } else if (mode === "sumi") {
-        d.effects.push({
-          x,
-          y,
-          r: 0,
-          maxR: 155,
-          a: 0.9,
-          mode: "sumi",
-          color: theme.sumi,
-          decay: 0.005,
-          layers: Array.from({ length: 3 }, (_, i) => ({
-            ox: (Math.random() - 0.5) * 15,
-            oy: (Math.random() - 0.5) * 15,
-            rMult: 0.5 + i * 0.25,
-            blur: 6 + i * 6,
-          })),
-        });
-      } else if (mode === "sparkle") {
-        const n = cfgRef.current.reduced ? 5 : 8;
-        for (let i = 0; i < n; i++) {
-          d.effects.push({
-            x,
-            y,
-            vx: (Math.random() - 0.5) * 11,
-            vy: (Math.random() - 0.5) * 11,
-            r: Math.random() * 3 + 1,
-            a: 1.0,
-            mode: "sparkle",
-            color: "#FFFFFF",
-            decay: 0.03,
-          });
-        }
-      } else {
-        const inkColor = cfgRef.current.themeKey === "black" ? "#111111" : theme.hex;
-        d.effects.push({ x, y, r: 0, maxR: 125, a: 0.8, mode: "ink", color: inkColor, decay: 0.0035 });
-      }
-
-      if (!cfgRef.current.reduced && Math.random() > 0.7) {
-        d.paws.push({ x, y, a: 1.0, size: 30 + Math.random() * 20 });
-        if (d.paws.length > 10) d.paws.shift();
-      }
-
-      while (d.effects.length > maxEffects) d.effects.shift();
-    };
-
-    const onUp = (e) => {
-      if (shouldIgnore(e)) return;
-      d.isHolding = false;
-      d.strokeDist = 0;
-    };
-
-    const onMove = (e) => {
-      if (shouldIgnore(e)) return;
-
-      const dx = Math.abs(e.clientX - d.mouse.lastX);
-      d.strokeDist += dx;
-
-      if (!cfgRef.current.reduced && d.strokeDist > 140) {
-        d.hearts.push({
-          x: e.clientX,
-          y: e.clientY,
-          vx: (Math.random() - 0.5) * 2,
-          vy: -0.5 - Math.random() * 1.5,
-          a: 1.0,
-          size: 8 + Math.random() * 10,
-        });
-        d.strokeDist = 0;
-      }
-
-      d.mouse = { x: e.clientX, y: e.clientY, lastX: e.clientX };
-    };
-
-    const drawSakura = (x, y, size, rotation) => {
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(rotation);
-      ctx.fillStyle = "rgba(255, 183, 197, 0.85)";
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.bezierCurveTo(-size, -size * 1.5, size, -size * 1.5, 0, 0);
-      ctx.fill();
-      ctx.restore();
-    };
-
-    const tick = () => {
-      ctx.clearRect(0, 0, d.w, d.h);
-
-      // Ripples
-      for (const eff of d.effects) {
-        ctx.save();
-
-        if (eff.mode === "bloomy" || eff.mode === "sparkle") {
-          eff.x += eff.vx;
-          eff.y += eff.vy;
-          eff.vx *= 0.96;
-          eff.vy *= 0.96;
-          eff.a -= eff.decay;
-
-          ctx.fillStyle = eff.color + Math.floor(Math.max(0, eff.a) * 255).toString(16).padStart(2, "0");
-          ctx.beginPath();
-          ctx.arc(eff.x, eff.y, eff.r, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (eff.mode === "sumi") {
-          eff.r += (eff.maxR - eff.r) * 0.012;
-          eff.a -= eff.decay;
-
-          for (const l of eff.layers) {
-            ctx.beginPath();
-            ctx.filter = `blur(${l.blur}px)`;
-            ctx.fillStyle = eff.color + Math.floor(Math.max(0, eff.a) * 160).toString(16).padStart(2, "0");
-            ctx.arc(eff.x + l.ox, eff.y + l.oy, eff.r * l.rMult, 0, Math.PI * 2);
-            ctx.fill();
-          }
-          ctx.filter = "none";
-        } else {
-          eff.r += (eff.maxR - eff.r) * 0.015;
-          eff.a -= eff.decay;
-
-          const grad = ctx.createRadialGradient(eff.x, eff.y, 0, eff.x, eff.y, eff.r);
-          const op = Math.floor(Math.max(0, eff.a) * 255).toString(16).padStart(2, "0");
-          grad.addColorStop(0, eff.color + op);
-          grad.addColorStop(0.7, eff.color + "00");
-          ctx.fillStyle = grad;
-          ctx.beginPath();
-          ctx.arc(eff.x, eff.y, eff.r, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        ctx.restore();
-      }
-      d.effects = d.effects.filter((e) => e.a > 0);
-
-      // Hearts
-      for (const h of d.hearts) {
-        h.x += h.vx;
-        h.y += h.vy;
-        h.a -= 0.012;
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, h.a * 0.5);
-        ctx.fillStyle = "#ffb3c1";
-        ctx.font = `${h.size}px serif`;
-        ctx.textAlign = "center";
-        ctx.fillText("❤", h.x, h.y);
-        ctx.restore();
-      }
-      d.hearts = d.hearts.filter((h) => h.a > 0);
-
-      // Paws
-      for (const p of d.paws) {
-        p.a -= 0.005;
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, p.a);
-        ctx.fillStyle = "#FFFFFF";
-        ctx.font = `${p.size}px serif`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = "rgba(255,255,255,0.2)";
-        ctx.fillText("🐾", p.x, p.y);
-        ctx.restore();
-      }
-      d.paws = d.paws.filter((p) => p.a > 0);
-
-      // Stardust / Sakura (reduced on perf)
-      const cfg = cfgRef.current;
-      const stardustEnabled = cfg.stardustMode && d.isHolding && !cfg.reduced;
-      for (const s of d.stardust) {
-        if (stardustEnabled) {
-          const dx = d.mouse.x - s.x;
-          const dy = d.mouse.y - s.y;
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-          s.vx += (dx / dist) * 0.55;
-          s.vy += (dy / dist) * 0.55;
-          s.vx *= 0.92;
-          s.vy *= 0.92;
-        } else {
-          s.phase += s.phaseSpeed;
-          s.vx += Math.sin(s.phase) * 0.02;
-          s.vy += Math.cos(s.phase * 0.8) * 0.02;
-          s.vx *= 0.985;
-          s.vy *= 0.985;
-          s.rotation += s.rotSpeed;
-        }
-
-        s.x += s.vx;
-        s.y += s.vy;
-
-        if (cfg.isSakura) drawSakura(s.x, s.y, s.size * 5, s.rotation);
-        else {
-          ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
-          ctx.beginPath();
-          ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        if (s.x < -40) s.x = d.w + 40;
-        else if (s.x > d.w + 40) s.x = -40;
-        if (s.y < -40) s.y = d.h + 40;
-        else if (s.y > d.h + 40) s.y = -40;
-      }
-
-      rafRef.current = requestAnimationFrame(tick);
-    };
-
-    resize();
-    window.addEventListener("resize", resize);
-
-    // Attach pointer listeners to Desktop root (NOT window) per spec.
-    host.addEventListener("pointerdown", onDown, { passive: true });
-    host.addEventListener("pointermove", onMove, { passive: true });
-    host.addEventListener("pointerup", onUp, { passive: true });
-    host.addEventListener("pointercancel", onUp, { passive: true });
-
-    rafRef.current = requestAnimationFrame(tick);
-
-    return () => {
-      cancelAnimationFrame(rafRef.current);
-      window.removeEventListener("resize", resize);
-      host.removeEventListener("pointerdown", onDown);
-      host.removeEventListener("pointermove", onMove);
-      host.removeEventListener("pointerup", onUp);
-      host.removeEventListener("pointercancel", onUp);
-    };
-  }, [targetRef]);
-
-  return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-[12]" />;
-};
-
-const OSBModal = ({ open, title, children, onClose }) => {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-[900] flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-2xl"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      <div className="relative w-full max-w-[860px] max-h-[78vh] rounded-[2.5rem] bg-black/60 border border-white/10 shadow-2xl overflow-hidden">
-        <div className="h-12 flex items-center justify-between px-8 bg-white/5 border-b border-white/5 z-ui-layer">
-          <div className="text-[10px] uppercase font-mono tracking-widest opacity-40">{title}</div>
-          <button
-            onClick={onClose}
-            className="w-4 h-4 rounded-full bg-rose-500/40 hover:bg-rose-500 transition-all focus:outline-none"
-            type="button"
-            aria-label="Close"
-          />
-        </div>
-        <div className="p-6 overflow-y-auto scrollbar-hide">{children}</div>
-      </div>
-    </div>
-  );
-};
-
-const OSBSleepOverlay = ({ open, themeKey, onCancel, onSleep, onRestart }) => {
-  if (!open) return null;
-  const t = OSB_THEMES[themeKey] || OSB_THEMES.cyan;
-  return (
-    <div className="fixed inset-0 bg-black/98 backdrop-blur-[150px] z-[3000] flex flex-col items-center justify-center p-6 text-center animate-fade-in overflow-hidden z-ui-layer">
-      <div
-        className="absolute inset-0 opacity-10 pointer-events-none"
-        style={{ backgroundImage: `radial-gradient(circle at 50% 50%, ${t.hex} 0%, transparent 80%)` }}
-      />
-      <div className="relative mb-20 animate-float-slow">
-        <div className="absolute inset-0 bg-white/5 blur-3xl rounded-full scale-[2.5]" />
-        <Rabbit size={100} className="text-white/20 animate-pulse-slow" strokeWidth={0.8} />
-        <div className="absolute -top-4 -right-4">
-          <Heart size={26} className="text-rose-400 fill-rose-500 animate-ping opacity-20" />
-        </div>
-      </div>
-
-      <div className="text-[12px] font-mono tracking-[1em] text-white/30 mb-20 uppercase animate-fade-in-slow">
-        ARE YOU REALLY GOING TO SLEEP?
-      </div>
-
-      <div className="flex gap-20 items-center relative z-10">
-        <button
-          onClick={onSleep}
-          className="group flex flex-col items-center gap-4 transition-all hover:scale-110 active:scale-95 focus:outline-none"
-          type="button"
-        >
-          <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shadow-2xl group-hover:bg-white/10 transition-all duration-700">
-            <Moon size={32} className="text-white/20 group-hover:text-white/80 transition-all" strokeWidth={1} />
-          </div>
-          <span className="text-[11px] tracking-[0.5em] text-white/20 group-hover:text-white/50 transition-colors uppercase">
-            おやすみ
-          </span>
-      
-
-        <button
-          onClick={() => (onRestart ? onRestart() : onCancel?.())}
-          className="group flex flex-col items-center gap-4 transition-all hover:scale-110 active:scale-95 focus:outline-none"
-          type="button"
-        >
-          <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shadow-2xl group-hover:bg-white/10 transition-all duration-700">
-            <RotateCcw size={30} className="text-white/20 group-hover:text-white/80 transition-all" strokeWidth={1} />
-          </div>
-          <span className="text-[11px] tracking-[0.5em] text-white/20 group-hover:text-white/50 transition-colors uppercase">さいきどう</span>
-        </button>  </button>
-
-        <button
-          onClick={onCancel}
-          className="group flex flex-col items-center gap-4 transition-all hover:scale-110 active:scale-95 focus:outline-none"
-          type="button"
-        >
-          <div className="w-20 h-20 rounded-full bg-rose-500/5 border border-rose-500/10 flex items-center justify-center shadow-2xl group-hover:bg-rose-500/10 transition-all duration-700">
-            <Heart size={32} className="text-rose-400/20 group-hover:text-rose-400/80 transition-all" strokeWidth={1} />
-          </div>
-          <span className="text-[11px] tracking-[0.5em] text-rose-400/20 group-hover:text-rose-400/50 transition-colors uppercase">
-            おきてる！
-          </span>
-        </button>
+        {app.id === "photos" && <BeatSyncApp />}
       </div>
     </div>
   );
 };
 
 const Desktop = ({ bgm }) => {
+  const desktopRef = useRef(null);
+
   const [mounted, setMounted] = useState(false);
   const [openApps, setOpenApps] = useState([]);
   const [activeApp, setActiveApp] = useState(null);
   const [droneActive, setDroneActive] = useState(false);
+
+  // --- Integrated controls (do NOT break existing apps/game) ---
+  const [themeKey, setThemeKey] = useState("cyan");
+  const [rippleMode, setRippleMode] = useState("ink");
+  const [stardustMode, setStardustMode] = useState(false);
+  const [isSakura, setIsSakura] = useState(false);
+  const [wallpaperIndex, setWallpaperIndex] = useState(0);
+
+  const [ccOpen, setCcOpen] = useState(false);
+  const [wpOpen, setWpOpen] = useState(false);
+
+  const [toasts, setToasts] = useState([]);
+  const [memos, setMemos] = useState([
+    {
+      id: 1,
+      text:
+        "おしらせ：\n背景/テーマ/波紋/ほし/さくら/メモを統合したよ。\n（ゲームや既存アプリは壊さない設計）",
+    },
+  ]);
+  const [editingMemo, setEditingMemo] = useState(null);
+
   const time = useTime();
   const timeStr = time.toLocaleTimeString("en-US", {
     hour: "2-digit",
@@ -5348,109 +5362,35 @@ const Desktop = ({ bgm }) => {
   });
   const isMobile = useIsMobile();
 
-  const desktopRootRef = useRef(null);
+  const accent = THEMES[themeKey] || THEMES.cyan;
 
-  // --- OSB Add-on state (Theme / Wallpaper / Ripples / Notes / Notifs) ---
-  const [osbTheme, setOsbTheme] = useState("cyan");
-  const [osbRippleMode, setOsbRippleMode] = useState("ink");
-  const [osbStardustMode, setOsbStardustMode] = useState(false);
-  const [osbIsSakura, setOsbIsSakura] = useState(false);
-  const [osbWallpaperIdx, setOsbWallpaperIdx] = useState(0);
-  const [osbWallpaperOpen, setOsbWallpaperOpen] = useState(false);
-  const [osbSleepOpen, setOsbSleepOpen] = useState(false);
-  const [osbRestarting, setOsbRestarting] = useState(false);
-  const [osbRhythmPlaying, setOsbRhythmPlaying] = useState(false);
-
-  const [osbNotifications, setOsbNotifications] = useState([]);
-  const [osbMemos, setOsbMemos] = useState([
-    {
-      id: 1,
-      initialX: 120,
-      initialY: 420,
-      initialText: "おしらせ：\n付箋も肉球も復活させたよ。\n背景・テーマ・波紋は右上から。🐾",
-      color: "bg-yellow-200/30",
-    },
-  ]);
-
-  const osbThemeObj = OSB_THEMES[osbTheme] || OSB_THEMES.cyan;
-  const osbReduced = !!(osbRhythmPlaying || activeApp === "photos");
-
-  const osbNotify = useCallback((msg) => {
+  const pushToast = useCallback((message) => {
     const id = Date.now() + Math.random();
-    setOsbNotifications((p) => [...p, { id, msg }]);
-    window.setTimeout(() => setOsbNotifications((p) => p.filter((n) => n.id !== id)), 3500);
-  }, []);
-
-  const osbGreeting = useCallback(() => {
-    const h = new Date().getHours();
-    if (h >= 5 && h < 11) return "あ、おきた？🐾";
-    if (h >= 11 && h < 18) return "こんにちは、なにする...？";
-    if (h >= 18 && h < 22) return "おつかれさま、ゆっくりしよ。";
-    if (h >= 22 || h < 2) return "まったりー、この時間すき。";
-    return "ねむいね...むにゃむにゃ。";
-  }, []);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => osbNotify(osbGreeting()), 1200);
-    return () => window.clearTimeout(t);
-  }, [osbNotify, osbGreeting]);
-
-  const osbAddMemo = useCallback(() => {
-    setOsbMemos((p) => [
-      ...p,
-      {
-        id: Date.now(),
-        initialX: isMobile ? 28 : 220,
-        initialY: isMobile ? 160 : 300,
-        initialText: "",
-        color: "bg-cyan-200/30",
-      },
-    ]);
-    osbNotify("付箋、ふえた…📝");
-  }, [isMobile, osbNotify]);
-
-  const osbChangeTheme = useCallback(
-    (k) => {
-      setOsbTheme(k);
-      if (k === "black") osbNotify("まっくろになっちゃった…⚫️");
-    },
-    [osbNotify]
-  );
-
-  const osbChangeWallpaper = useCallback(
-    (idx) => {
-      setOsbWallpaperIdx(idx);
-      setOsbWallpaperOpen(false);
-      osbNotify("ころもがえ…🐾");
-    },
-    [osbNotify]
-  );
-
-  const osbBatteryClick = useCallback(() => {
-    const lines = ["それはにんじんだよ…🥕", "おなかいっぱいだよ", "にんじん、たべる？🐾"];
-    osbNotify(lines[Math.floor(Math.random() * lines.length)]);
-  }, [osbNotify]);
-
-  const osbRestart = useCallback(() => {
-    setOsbSleepOpen(false);
-    setOsbRestarting(true);
+    setToasts((p) => [...p, { id, message }]);
     window.setTimeout(() => {
-      setOsbRestarting(false);
-      osbNotify("ちょっと、ねむねむしてきた…✨");
-    }, 2000);
-  }, [osbNotify]);
-
-  const osbSleep = useCallback(() => {
-    // non-breaking: reload the page after a short fade (keeps existing boot flow intact)
-    window.setTimeout(() => window.location.reload(), 1200);
+      setToasts((p) => p.filter((t) => t.id !== id));
+    }, 3200);
   }, []);
 
-
   useEffect(() => {
-    setTimeout(() => {
+    const t = setTimeout(() => {
       setMounted(true);
       bgm.play();
     }, 500);
+    return () => clearTimeout(t);
+  }, [bgm]);
+
+  // Close control center when app window is interacted
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        setCcOpen(false);
+        setWpOpen(false);
+        setEditingMemo(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   const toggleApp = (id) => {
@@ -5490,8 +5430,47 @@ const Desktop = ({ bgm }) => {
     if (activeApp === id) setActiveApp(null);
   };
 
+  const handleBatteryClick = () => {
+    const lines = ["それはにんじんだよ...🥕", "おなかいっぱいだよ", "にんじん、たべる？🐾"];
+    pushToast(lines[Math.floor(Math.random() * lines.length)]);
+  };
+
+  const changeTheme = (k) => {
+    setThemeKey(k);
+    if (k === "black") pushToast("まっくろになっちゃった...⚫️");
+  };
+
+  const openWallpaperPicker = () => {
+    setCcOpen(false);
+    setWpOpen(true);
+  };
+
+  const changeWallpaper = (idx) => {
+    setWallpaperIndex(idx);
+    setWpOpen(false);
+    pushToast("ころもがえ...🐾");
+  };
+
+  const addMemo = () => {
+    const id = Date.now();
+    const next = { id, text: "" };
+    setMemos((p) => [next, ...p]);
+    setEditingMemo(next);
+    pushToast("めも、かいて...？");
+  };
+
+  const isGameHeavy =
+    activeApp === "photos" || openApps.includes("photos"); // reduce visuals while BeatSync window is up
+
   return (
-    <div ref={desktopRootRef} className="fixed inset-0 w-full h-full overflow-hidden select-none bg-black" style={{ "--osb-accent": osbThemeObj.hex }}>
+    <div
+      ref={desktopRef}
+      className="fixed inset-0 w-full h-full overflow-hidden select-none bg-black relative"
+      style={{
+        "--os-accent": accent.hex,
+        "--os-glow": accent.glow,
+      }}
+    >
       <CustomCursor />
       <NoiseOverlay />
       <Scanline />
@@ -5503,14 +5482,21 @@ const Desktop = ({ bgm }) => {
             ? "opacity-100 scale-100 blur-0"
             : "opacity-0 scale-110 blur-2xl"
         }`}
-        style={{
-            backgroundImage: `url(${OSB_WALLPAPERS[osbWallpaperIdx] || ASSETS.wallpaper})`,
-            filter: `brightness(0.45) saturate(1.3) hue-rotate(${osbThemeObj.hue || 0}deg) ${osbThemeObj.mono ? "grayscale(1)" : ""}`,
-          }}
+        style={{ backgroundImage: `url(${WALLPAPERS[wallpaperIndex] || ASSETS.wallpaper})` }}
       >
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/60"></div>
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/60" />
       </div>
+
+      {/* VisualEngine (container-bound; not window listeners) */}
+      <VisualEngine
+        containerRef={desktopRef}
+        themeKey={themeKey}
+        rippleMode={rippleMode}
+        stardustMode={stardustMode && !isGameHeavy}
+        isSakura={isSakura}
+        reduced={isGameHeavy}
+      />
 
       {/* Interactive Drone (Flying Rabbit) */}
       <div
@@ -5521,6 +5507,7 @@ const Desktop = ({ bgm }) => {
             : "animate-fly-across scale-50 hover:scale-75"
         } ${mounted ? "opacity-100" : "opacity-0"} `}
         style={{ animationPlayState: droneActive ? "paused" : "running" }}
+        data-os-ui="true"
       >
         <img
           src={ASSETS.flyingObj}
@@ -5530,200 +5517,16 @@ const Desktop = ({ bgm }) => {
               ? "drop-shadow-[0_0_50px_#a8eaff] opacity-100 brightness-150"
               : "drop-shadow-[0_0_10px_rgba(168,234,255,0.3)] opacity-60"
           } `}
+          draggable="false"
         />
-      
-      {/* OSB VisualEngine (behind UI, pointer on Desktop root only) */}
-      <OSBVisualEngine
-        targetRef={desktopRootRef}
-        themeKey={osbTheme}
-        rippleMode={osbRippleMode}
-        stardustMode={osbStardustMode}
-        isSakura={osbIsSakura}
-        reduced={osbReduced}
-      />
-
-      {/* OSB Notifications */}
-      <div className="fixed top-6 left-0 right-0 z-[1100] flex flex-col items-center gap-3 pointer-events-none px-6">
-        {osbNotifications.map((n) => (
-          <div key={n.id} className="drop-shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
-            <OSBNotification message={n.msg} />
-          </div>
-        ))}
       </div>
-
-      {/* OSB Sticky Notes */}
-      {osbMemos.map((m) => (
-        <OSBStickyNote
-          key={m.id}
-          {...m}
-          onRemove={() => setOsbMemos((p) => p.filter((note) => note.id !== m.id))}
-        />
-      ))}
-
-      {/* OSB Right Hub */}
-      <div className={`absolute z-[520] z-ui-layer ${isMobile ? "top-14 right-4" : "top-16 right-10"}`}>
-        <div className="bg-black/50 backdrop-blur-[60px] border border-white/5 p-5 rounded-[2.5rem] shadow-2xl flex flex-col items-center gap-6 group transition-all hover:bg-black/60">
-          <div className="flex flex-col items-center gap-4">
-            <button
-              onClick={() => {
-                setOsbIsSakura((v) => !v);
-                osbNotify(!osbIsSakura ? "さくら、さかせたよ…🌸" : "ちっちゃった…");
-              }}
-              className={`w-10 h-10 rounded-full border transition-all flex items-center justify-center active:scale-90 focus:outline-none ${
-                osbIsSakura
-                  ? "bg-pink-500/20 border-pink-400/40 text-pink-300 shadow-[0_0_15px_rgba(255,182,193,0.4)]"
-                  : "bg-white/5 border-white/10 text-white/30 hover:text-white/60"
-              }`}
-              title="Sakura Mode"
-              type="button"
-            >
-              <Flower size={19} strokeWidth={1.5} />
-            </button>
-
-            <button
-              onClick={() => {
-                setOsbStardustMode((v) => !v);
-                if (!osbStardustMode) osbNotify("ほし、あつめるの…？");
-              }}
-              className={`w-10 h-10 rounded-full border transition-all flex items-center justify-center active:scale-90 focus:outline-none ${
-                osbStardustMode
-                  ? "bg-white/20 border-white/40 text-white shadow-[0_0_15px_rgba(255,255,255,0.3)]"
-                  : "bg-white/5 border-white/10 text-white/30 hover:text-white/60"
-              }`}
-              title="Collect Mode"
-              type="button"
-            >
-              <Sparkles size={19} strokeWidth={1.5} />
-            </button>
-
-            <button
-              onClick={osbAddMemo}
-              className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center active:scale-90 transition-all hover:bg-white/10 text-white/40 hover:text-white/80 focus:outline-none"
-              title="Add Memo"
-              type="button"
-            >
-              <MemoIcon size={19} strokeWidth={1.5} />
-            </button>
-
-            <button
-              onClick={() => setOsbWallpaperOpen(true)}
-              className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center active:scale-90 transition-all hover:bg-white/10 text-white/40 hover:text-white/80 focus:outline-none"
-              title="Wallpapers"
-              type="button"
-            >
-              <ImageIcon size={19} strokeWidth={1.5} />
-            </button>
-
-            <button
-              onClick={() => setOsbSleepOpen(true)}
-              className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center active:scale-90 transition-all hover:bg-white/10 text-white/40 hover:text-white/80 focus:outline-none"
-              title="Power"
-              type="button"
-            >
-              <Power size={18} strokeWidth={1.5} />
-            </button>
-          </div>
-
-          <div className="h-[0.5px] bg-white/10 w-8" />
-
-          <div className="flex flex-col items-center gap-5">
-            <div className="flex flex-col gap-5 py-2">
-              {Object.keys(OSB_THEMES).map((k) => (
-                <button
-                  key={k}
-                  onClick={() => osbChangeTheme(k)}
-                  className={`relative w-4 h-4 rounded-full transition-all duration-700 focus:outline-none ${
-                    osbTheme === k ? "scale-150" : "opacity-20 hover:opacity-60"
-                  }`}
-                  style={{
-                    background: k === "black" ? "#ffffff" : OSB_THEMES[k].hex,
-                    boxShadow:
-                      osbTheme === k ? `0 0 15px ${OSB_THEMES[k].glow}, 0 0 30px ${OSB_THEMES[k].glow}` : "none",
-                  }}
-                  type="button"
-                  aria-label={`theme-${k}`}
-                >
-                  {osbTheme === k && (
-                    <div
-                      className="absolute inset-[-12px] rounded-full animate-pulse opacity-40 blur-[5px]"
-                      style={{ background: OSB_THEMES[k].hex }}
-                    />
-                  )}
-                </button>
-              ))}
-            </div>
-
-            <div className="h-[0.5px] bg-white/10 w-8" />
-
-            <div className="flex flex-col gap-4">
-              {OSB_RIPPLE_MODES.map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => setOsbRippleMode(m.id)}
-                  className={`transition-all p-2 rounded-full relative focus:outline-none ${
-                    osbRippleMode === m.id ? "text-white" : "text-white/15 hover:text-white/40"
-                  }`}
-                  type="button"
-                  aria-label={`ripple-${m.id}`}
-                >
-                  <m.icon size={19} strokeWidth={1.2} />
-                  {osbRippleMode === m.id && <div className="absolute inset-0 bg-white/10 rounded-full scale-150 blur-lg animate-pulse" />}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* OSB Wallpaper Selector */}
-      <OSBModal open={osbWallpaperOpen} title="Deep Memory Lens" onClose={() => setOsbWallpaperOpen(false)}>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {OSB_WALLPAPERS.map((url, idx) => (
-            <button
-              key={idx}
-              onClick={() => osbChangeWallpaper(idx)}
-              className={`aspect-video rounded-2xl border-2 transition-all overflow-hidden focus:outline-none ${
-                osbWallpaperIdx === idx ? "border-white shadow-[0_0_20px_white]" : "border-transparent opacity-40 hover:opacity-100 hover:scale-[1.03]"
-              }`}
-              type="button"
-            >
-              <img src={url} className="w-full h-full object-cover" alt={`WP ${idx}`} />
-            </button>
-          ))}
-        </div>
-      </OSBModal>
-
-      {/* OSB Sleep / Restart overlays */}
-      <OSBSleepOverlay
-        open={osbSleepOpen}
-        themeKey={osbTheme}
-        onCancel={() => {
-          setOsbSleepOpen(false);
-          osbNotify("よかった…いっしょにいようね🐾");
-        }}
-        onSleep={osbSleep}
-        onRestart={() => {
-          setOsbSleepOpen(false);
-          osbRestart();
-        }}
-      />
-
-      {osbRestarting && (
-        <div className="fixed inset-0 bg-black z-[2000] flex flex-col items-center justify-center animate-fade-in text-white/50 z-ui-layer">
-          <div className="relative w-20 h-20 flex items-center justify-center mb-8">
-            <Rabbit size={40} className="animate-bounce" />
-            <div className="absolute inset-0 border border-white/10 rounded-full animate-spin-slow" />
-          </div>
-          <div className="text-[11px] font-mono tracking-[0.8em] uppercase animate-pulse">System Rebooting...</div>
-        </div>
-      )}
-</div>
 
       {/* Top Bar */}
       <div
         className={`absolute top-0 w-full h-10 px-6 flex items-center justify-between z-[60] transition-transform duration-1000 delay-300 ${
           mounted ? "translate-y-0" : "-translate-y-full"
         } backdrop-blur-sm bg-black/10`}
+        data-os-ui="true"
       >
         <div className="flex items-center gap-4">
           <RabbitLogo className="w-5 h-5 opacity-90" />
@@ -5731,19 +5534,295 @@ const Desktop = ({ bgm }) => {
             os_usagi <span className="text-[#a8eaff]">Sync</span>
           </span>
         </div>
-        <div className="flex items-center gap-6 text-[10px] font-mono text-white/60 z-ui-layer">
+
+        <div className="flex items-center gap-3 text-[10px] font-mono text-white/60">
           <div className="hidden sm:flex items-center gap-2 hover:text-cyan-400 transition-colors">
-            <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.5)]"></div>
-            <span className="tracking-[0.3em]">OSB // ONLINE</span>
+            <span className="w-2 h-2 bg-[#6ee7b7] rounded-full animate-pulse" />
+            <span>ONLINE</span>
           </div>
 
-          <div className="flex items-center gap-4">
-            <Wifi size={14} className="opacity-40" />
-            <OSBCarrotBattery themeKey={osbTheme} onClick={osbBatteryClick} />
-            <span className="text-white/90 font-bold">{timeStr}</span>
+          <Wifi size={16} className="opacity-30 hidden sm:block" />
+
+          <CarrotBattery themeKey={themeKey} onClick={handleBatteryClick} />
+
+          <button
+            onClick={() => setCcOpen((v) => !v)}
+            className={`ml-1 w-9 h-9 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] flex items-center justify-center active:scale-95 transition-transform ${
+              ccOpen ? "shadow-[0_0_0_1px_rgba(255,255,255,0.18)]" : ""
+            }`}
+            type="button"
+            aria-label="Open Control Center"
+          >
+            <Palette size={16} className="opacity-75" />
+          </button>
+
+          <div className="text-white/30 tabular-nums w-[56px] text-right">
+            {timeStr}
+          </div>
+        </div>
+
+        {/* Control Center Panel (anchored to TopBar; mobile becomes sheet-like) */}
+        <div
+          className={`absolute right-4 top-12 z-[120] transition-all duration-300 ${
+            ccOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
+          }`}
+        >
+          <div
+            className={`${
+              isMobile ? "w-[calc(100vw-2rem)]" : "w-[340px]"
+            } rounded-2xl bg-black/55 backdrop-blur-2xl border border-white/10 shadow-[0_30px_90px_rgba(0,0,0,0.65)] overflow-hidden`}
+            data-os-ui="true"
+          >
+            <div className="px-4 py-3 flex items-center justify-between border-b border-white/5">
+              <div className="text-[10px] font-mono tracking-[0.35em] text-white/50 uppercase">
+                CONTROL_CENTER
+              </div>
+              <button
+                onClick={() => setCcOpen(false)}
+                className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/70 active:scale-95 transition-transform"
+                type="button"
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              {/* quick toggles */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setIsSakura((v) => !v);
+                    pushToast(!isSakura ? "さくら、さかせたよ...🌸" : "ちっちゃった...");
+                  }}
+                  className={`flex-1 px-3 py-3 rounded-xl border transition-colors ${
+                    isSakura
+                      ? "bg-pink-500/15 border-pink-400/30 text-pink-200"
+                      : "bg-white/[0.03] border-white/10 text-white/60 hover:bg-white/[0.05]"
+                  }`}
+                  type="button"
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Flower size={16} />
+                    <span className="text-[10px] font-mono tracking-[0.25em] uppercase">
+                      SAKURA
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const next = !stardustMode;
+                    setStardustMode(next);
+                    if (next) pushToast("ほし、あつめるの...？");
+                  }}
+                  className={`flex-1 px-3 py-3 rounded-xl border transition-colors ${
+                    stardustMode
+                      ? "bg-white/15 border-white/25 text-white"
+                      : "bg-white/[0.03] border-white/10 text-white/60 hover:bg-white/[0.05]"
+                  }`}
+                  type="button"
+                  disabled={isGameHeavy}
+                  title={isGameHeavy ? "ゲーム中は負荷低減" : "Stardust"}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Sparkles size={16} />
+                    <span className="text-[10px] font-mono tracking-[0.25em] uppercase">
+                      STAR
+                    </span>
+                  </div>
+                </button>
+              </div>
+
+              {/* theme chips */}
+              <div>
+                <div className="text-[9px] font-mono tracking-[0.35em] text-white/30 uppercase mb-2">
+                  THEME
+                </div>
+                <div className="flex items-center gap-3">
+                  {Object.keys(THEMES).map((k) => (
+                    <button
+                      key={k}
+                      onClick={() => changeTheme(k)}
+                      className={`relative w-6 h-6 rounded-full border transition-transform ${
+                        themeKey === k
+                          ? "scale-110 border-white/30"
+                          : "border-white/10 opacity-70 hover:opacity-100"
+                      }`}
+                      style={{
+                        background: k === "black" ? "#ffffff" : THEMES[k].hex,
+                        boxShadow:
+                          themeKey === k
+                            ? `0 0 14px ${THEMES[k].glow}, 0 0 28px ${THEMES[k].glow}`
+                            : "none",
+                      }}
+                      type="button"
+                      aria-label={`Theme ${k}`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* ripple modes */}
+              <div>
+                <div className="text-[9px] font-mono tracking-[0.35em] text-white/30 uppercase mb-2">
+                  RIPPLE
+                </div>
+                <div className="flex items-center gap-2">
+                  {RIPPLE_MODES.map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => setRippleMode(m.id)}
+                      className={`flex-1 px-3 py-3 rounded-xl border transition-colors ${
+                        rippleMode === m.id
+                          ? "bg-white/10 border-white/20 text-white"
+                          : "bg-white/[0.03] border-white/10 text-white/50 hover:bg-white/[0.05]"
+                      }`}
+                      type="button"
+                      aria-label={`Ripple ${m.id}`}
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <m.icon size={16} />
+                        <span className="text-[10px] font-mono tracking-[0.25em] uppercase">
+                          {m.id}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={openWallpaperPicker}
+                  className="flex-1 px-3 py-3 rounded-xl border bg-white/[0.03] border-white/10 text-white/60 hover:bg-white/[0.05] transition-colors"
+                  type="button"
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <ImageIcon size={16} />
+                    <span className="text-[10px] font-mono tracking-[0.25em] uppercase">
+                      WALLPAPER
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={addMemo}
+                  className="px-3 py-3 rounded-xl border bg-white/[0.03] border-white/10 text-white/60 hover:bg-white/[0.05] transition-colors"
+                  type="button"
+                  aria-label="Add memo"
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <MemoIcon size={16} />
+                    <span className="text-[10px] font-mono tracking-[0.25em] uppercase">
+                      MEMO
+                    </span>
+                  </div>
+                </button>
+              </div>
+
+              <div className="text-[10px] text-white/30 font-mono tracking-[0.15em] leading-relaxed">
+                Tap/press empty desktop to spawn ripple. UI上では発火しません（ゲーム・ウィンドウ保護）。
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Toasts (anchored under TopBar) */}
+      <div className="absolute top-12 left-0 right-0 z-[110] flex flex-col items-center gap-3 pointer-events-none px-4" data-os-ui="true">
+        {toasts.map((t) => (
+          <div key={t.id} className="pointer-events-none">
+            <div className="pointer-events-auto drop-shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
+              <Toast message={t.message} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Memo board (anchored; not floating) */}
+      {!isMobile && (
+        <MemoBoard
+          memos={memos}
+          accentHex={accent.hex}
+          onAdd={addMemo}
+          onEdit={(m) => setEditingMemo(m)}
+        />
+      )}
+
+      {/* Wallpaper picker */}
+      <VisualWindow
+        open={wpOpen}
+        title="Deep Memory Lens"
+        onClose={() => setWpOpen(false)}
+      >
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {WALLPAPERS.map((url, idx) => (
+            <button
+              key={idx}
+              onClick={() => changeWallpaper(idx)}
+              className={`aspect-video rounded-2xl border-2 transition-all overflow-hidden ${
+                wallpaperIndex === idx
+                  ? "border-white shadow-[0_0_20px_rgba(255,255,255,0.35)]"
+                  : "border-transparent opacity-60 hover:opacity-100 hover:scale-[1.02]"
+              }`}
+              type="button"
+            >
+              <img src={url} className="w-full h-full object-cover" alt={`WP ${idx}`} />
+            </button>
+          ))}
+        </div>
+      </VisualWindow>
+
+      {/* Memo editor (mobile + desktop edit) */}
+      <VisualWindow
+        open={!!editingMemo}
+        title="rabbit_note"
+        onClose={() => setEditingMemo(null)}
+      >
+        {editingMemo && (
+          <div className="space-y-3">
+            <textarea
+              value={editingMemo.text}
+              onChange={(e) => {
+                const v = e.target.value;
+                setEditingMemo((p) => ({ ...p, text: v }));
+                setMemos((list) =>
+                  list.map((m) => (m.id === editingMemo.id ? { ...m, text: v } : m))
+                );
+              }}
+              className="w-full min-h-[220px] bg-white/5 border border-white/10 rounded-2xl p-4 text-white/80 text-[13px] leading-relaxed outline-none resize-none"
+              placeholder="..."
+              data-os-ui="true"
+            />
+
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => {
+                  setMemos((p) => p.filter((m) => m.id !== editingMemo.id));
+                  setEditingMemo(null);
+                  pushToast("けしたよ");
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-200/70 hover:bg-rose-500/15 transition-colors"
+                type="button"
+              >
+                delete
+              </button>
+
+              <button
+                onClick={() => {
+                  setEditingMemo(null);
+                  pushToast("OK");
+                }}
+                className="px-4 py-2 rounded-xl bg-white/10 border border-white/10 text-white/80 hover:bg-white/15 transition-colors"
+                type="button"
+              >
+                close
+              </button>
+            </div>
+          </div>
+        )}
+      </VisualWindow>
 
       {/* Clock Widget */}
       <div
@@ -5752,7 +5831,7 @@ const Desktop = ({ bgm }) => {
         } hidden md:block pointer-events-none z-10`}
       >
         <div className="mb-4 flex items-center gap-3">
-          <div className="h-[1px] w-8 bg-[#a8eaff]/50"></div>
+          <div className="h-[1px] w-8 bg-[#a8eaff]/50" />
           <div className="text-[10px] font-bold text-[#a8eaff]/80 tracking-[0.4em] uppercase">
             System Active
           </div>
@@ -5768,7 +5847,7 @@ const Desktop = ({ bgm }) => {
       </div>
 
       {/* Window Layer */}
-      <div className="absolute inset-0 z-30 pointer-events-none">
+      <div className="absolute inset-0 z-30 pointer-events-none" data-os-ui="true">
         {openApps.map((id) => {
           const app = APPS.find((a) => a.id === id);
           return (
@@ -5779,7 +5858,6 @@ const Desktop = ({ bgm }) => {
               isActive={activeApp === id}
               onFocus={() => bringToFront(id)}
               onClose={() => closeApp(id)}
-              onRhythmPlayStateChange={setOsbRhythmPlaying}
             />
           );
         })}
@@ -5794,6 +5872,7 @@ const Desktop = ({ bgm }) => {
         } z-[100] transition-all duration-1000 delay-500 bg-gradient-to-t from-black/90 to-transparent ${
           mounted ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0"
         }`}
+        data-os-ui="true"
       >
         <div
           className={`bg-white/[0.03] backdrop-blur-2xl border border-white/5 rounded-2xl ${
@@ -5804,50 +5883,28 @@ const Desktop = ({ bgm }) => {
             const isOpen = openApps.includes(app.id);
             const isActive = activeApp === app.id;
             return (
-              <div
+              <button
                 key={app.id}
-                className="relative group flex flex-col items-center"
+                onClick={() => toggleApp(app.id)}
+                className={`relative flex flex-col items-center justify-center ${
+                  isMobile ? "w-12 h-12" : "w-14 h-14"
+                } rounded-xl transition-all duration-300 active:scale-95 ${
+                  isActive
+                    ? "bg-white/[0.08] border border-white/10"
+                    : "hover:bg-white/[0.05]"
+                }`}
+                type="button"
               >
-                {!isMobile && (
-                  <div className="absolute -top-14 bg-[#111] text-white text-[10px] font-mono py-1 px-3 rounded border border-white/10 opacity-0 group-hover:opacity-100 transition-all duration-200 tracking-widest translate-y-2 group-hover:translate-y-0 pointer-events-none">
-                    {app.label}
-                  </div>
+                <app.icon
+                  size={isMobile ? 20 : 22}
+                  className={`${
+                    isOpen ? app.color : "text-white/40"
+                  } transition-colors duration-300`}
+                />
+                {isOpen && (
+                  <span className="absolute -bottom-1 w-1 h-1 rounded-full bg-white/70 shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
                 )}
-                <button
-                  onClick={() => toggleApp(app.id)}
-                  className={` ${
-                    isMobile ? "w-10 h-10" : "w-14 h-14"
-                  } rounded-xl flex items-center justify-center transition-all duration-300 ease-out relative overflow-hidden group-hover:-translate-y-2 active:scale-90 ${
-                    isActive
-                      ? "bg-white/10 ring-1 ring-white/20"
-                      : "bg-transparent hover:bg-white/5"
-                  } `}
-                >
-                  <app.icon
-                    size={isMobile ? 18 : 22}
-                    strokeWidth={1.5}
-                    style={{ color: isActive ? "#fff" : undefined }}
-                    className={`transition-all duration-300 relative z-10 ${
-                      isActive
-                        ? "scale-110"
-                        : "text-white/50 group-hover:text-white group-hover:scale-110"
-                    }`}
-                  />
-                  {isActive && (
-                    <div
-                      className="absolute inset-0 opacity-20"
-                      style={{
-                        background: `linear-gradient(to top, ${app.hex}, transparent)`,
-                      }}
-                    />
-                  )}
-                </button>
-                <div
-                  className={`absolute -bottom-1 w-1 h-1 rounded-full bg-[#a8eaff] transition-all duration-300 ${
-                    isOpen ? "opacity-100 scale-100" : "opacity-0 scale-0"
-                  }`}
-                ></div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -5855,19 +5912,12 @@ const Desktop = ({ bgm }) => {
     </div>
   );
 };
-
-
-
-
-
-
-
 // ------------------------------------------------
 // 🌸🌸🎮-- 07.Game (げーむ) --🌸🌸🌸🌸🌸🌸🌸🌸
 // ------------------------------------------------
 
 // 🎮 -- 07.Game (げーむ)  BeatSyncApp
-const BeatSyncApp = ({ onPlayStateChange }) => {
+const BeatSyncApp = () => {
   // ----------------------------- ASSETS -----------------------------
   const ASSET = React.useMemo(
     () => ({
@@ -5940,18 +5990,6 @@ const BeatSyncApp = ({ onPlayStateChange }) => {
 
   // ----------------------------- STATE -----------------------------
   const [view, setView] = React.useState("lobby"); // lobby | play | pause | result
-
-  // Notify Desktop to reduce background effects while playing
-  React.useEffect(() => {
-    try {
-      onPlayStateChange?.(view === "play");
-    } catch {}
-    return () => {
-      try {
-        onPlayStateChange?.(false);
-      } catch {}
-    };
-  }, [view, onPlayStateChange]);
   const [trackId, setTrackId] = React.useState("dawning");
   const [difficulty, setDifficulty] = React.useState("EASY");
 
@@ -7629,28 +7667,26 @@ const GLOBAL_CSS = `
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* 100dvh support fallback */
+
+
+@keyframes pulse-slow { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.05); } }
+@keyframes ping-slow { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.8); opacity: 0; } }
+@keyframes float-slow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+@keyframes iphone-notif {
+  0% { opacity: 0; transform: translateY(-90px) scale(0.88); filter: blur(18px); }
+  70% { opacity: 1; transform: translateY(10px) scale(1.02); filter: blur(0px); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-pulse-slow { animation: pulse-slow 4s ease-in-out infinite; }
+.animate-ping-slow { animation: ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite; }
+.animate-float-slow { animation: float-slow 6s ease-in-out infinite; }
+.animate-iphone-notif { animation: iphone-notif 0.9s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards; }
+
+.font-hand { font-family: ui-rounded, "Shadows Into Light", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+* { -webkit-tap-highlight-color: transparent; }
 body { margin: 0; background: #000; overflow: hidden; height: 100vh; height: 100dvh; }
-
-
-  /* --- OSB Add-on utilities (non-breaking) --- */
-  @import url('https://fonts.googleapis.com/css2?family=Shadows+Into+Light&display=swap');
-  .font-hand { font-family: 'Shadows Into Light', cursive; }
-
-  @keyframes fade-in-slow { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes pulse-slow { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.05); } }
-  @keyframes ping-slow { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.8); opacity: 0; } }
-  @keyframes float-slow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
-  @keyframes iphone-notif {
-    0% { opacity: 0; transform: translateY(-100px) scale(0.85); filter: blur(20px); }
-    65% { opacity: 1; transform: translateY(10px) scale(1.02); filter: blur(0px); }
-    100% { opacity: 1; transform: translateY(0) scale(1); }
-  }
-
-  .animate-fade-in-slow { animation: fade-in-slow 1.2s ease forwards; }
-  .animate-pulse-slow { animation: pulse-slow 4s ease-in-out infinite; }
-  .animate-ping-slow { animation: ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite; }
-  .animate-float-slow { animation: float-slow 6s ease-in-out infinite; }
-  .animate-iphone-notif { animation: iphone-notif 0.9s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards; }
 `;
 
 export default function os_usagi_xxxx() {
