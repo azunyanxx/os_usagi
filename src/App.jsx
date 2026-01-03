@@ -5901,17 +5901,18 @@ const handleRestart = () => {
         ))}
       </div>
 
-      {/* Memo board (anchored; not floating) */}
-      {!isMobile && (
-{/* Sticky Notes */}
-{memos.map((m) => (
-  <StickyNote
-    key={m.id}
-    {...m}
-    onRemove={() => setMemos((p) => p.filter((note) => note.id !== m.id))}
-  />
-))}
-      )}
+   {!isMobile && (
+  <>
+    {/* Sticky Notes */}
+    {memos.map((m) => (
+      <StickyNote
+        key={m.id}
+        {...m}
+        onRemove={() => setMemos((p) => p.filter((note) => note.id !== m.id))}
+      />
+    ))}
+  </>
+)}
 
       {/* Wallpaper picker */}
       <VisualWindow
