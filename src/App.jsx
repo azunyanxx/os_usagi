@@ -213,6 +213,85 @@ const VisualWindow = ({ open, title, onClose, children }) => {
 };
 
 // --- Memo board (anchored; avoids free-floating notes) ---
+
+// --- Sticky Notes (floating, draggable) ---
+const StickyNote = ({ id, initialX, initialY, initialText, color, onRemove }) => {
+  const [pos, setPos] = useState({ x: initialX, y: initialY });
+  const [text, setText] = useState(initialText || "");
+  const [isDragging, setIsDragging] = useState(false);
+  const offset = useRef({ x: 0, y: 0 });
+
+  const clampPos = (nx, ny) => {
+    const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
+    const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+    const W = 224;
+    const H = 224;
+    const safeTop = 56;
+    const safeBottom = 120;
+    const x = Math.max(10, Math.min(vw - W - 10, nx));
+    const y = Math.max(safeTop, Math.min(vh - H - safeBottom, ny));
+    return { x, y };
+  };
+
+  const handleStart = (e) => {
+    e.stopPropagation();
+    setIsDragging(true);
+    offset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const move = (e) => {
+      const nx = e.clientX - offset.current.x;
+      const ny = e.clientY - offset.current.y;
+      setPos(clampPos(nx, ny));
+    };
+    const stop = () => setIsDragging(false);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", stop);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", stop);
+    };
+  }, [isDragging]);
+
+  return (
+    <div
+      className={`absolute z-ui-layer p-6 w-56 h-56 ${color} backdrop-blur-xl border border-white/20 shadow-2xl select-none transition-transform ${
+        isDragging ? "z-[1200] scale-[1.03] shadow-white/10" : "z-[650] rotate-1 hover:rotate-0"
+      }`}
+      style={{ left: pos.x, top: pos.y, touchAction: "none" }}
+      data-os-ui="1"
+    >
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove?.();
+        }}
+        className="absolute top-2 right-2 opacity-20 hover:opacity-100 p-1 z-20 text-black focus:outline-none"
+        type="button"
+        aria-label="Close memo"
+      >
+        <X size={16} />
+      </button>
+
+      <div onPointerDown={handleStart} className="flex items-center gap-2 mb-3 opacity-30 cursor-move text-black">
+        <MemoIcon size={12} />
+        <span className="text-[9px] font-mono tracking-widest uppercase italic font-bold">rabbit_note</span>
+      </div>
+
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="w-full h-full bg-transparent border-none outline-none resize-none text-[13px] font-hand text-black/90 leading-relaxed placeholder:opacity-30 scrollbar-hide"
+        placeholder="..."
+      />
+    </div>
+  );
+};
+
+
 const MemoBoard = ({ memos, onAdd, onEdit, accentHex }) => {
   return (
     <div
@@ -271,69 +350,6 @@ const MemoBoard = ({ memos, onAdd, onEdit, accentHex }) => {
   );
 };
 
-
-const StickyNote = ({ id, initialX, initialY, initialText, color, onRemove }) => {
-  const [pos, setPos] = useState({ x: initialX, y: initialY });
-  const [text, setText] = useState(initialText);
-  const [isDragging, setIsDragging] = useState(false);
-  const offset = useRef({ x: 0, y: 0 });
-
-  const handleStart = (e) => {
-    e.stopPropagation();
-    setIsDragging(true);
-    offset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
-  };
-
-  useEffect(() => {
-    if (!isDragging) return;
-    const move = (e) =>
-      setPos({ x: e.clientX - offset.current.x, y: e.clientY - offset.current.y });
-    const stop = () => setIsDragging(false);
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", stop);
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", stop);
-    };
-  }, [isDragging]);
-
-  return (
-    <div
-      data-os-ui
-      className={`absolute p-6 w-56 h-56 ${color} backdrop-blur-xl border border-white/20 shadow-2xl select-none transition-transform ${
-        isDragging ? "z-[600] scale-105 shadow-white/10" : "z-[120] rotate-1 hover:rotate-0"
-      }`}
-      style={{ left: pos.x, top: pos.y, touchAction: "none" }}
-    >
-      <button
-        onClick={onRemove}
-        className="absolute top-2 right-2 opacity-20 hover:opacity-100 p-1 z-20 text-black focus:outline-none"
-        aria-label="remove memo"
-      >
-        <X size={16} />
-      </button>
-
-      <div
-        onPointerDown={handleStart}
-        className="flex items-center gap-2 mb-3 opacity-30 cursor-move text-black"
-      >
-        <MemoIcon size={12} />
-        <span className="text-[9px] font-mono tracking-widest uppercase italic font-bold">
-          rabbit_note
-        </span>
-      </div>
-
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onPointerDown={(e) => e.stopPropagation()}
-        className="w-full h-full bg-transparent border-none outline-none resize-none text-[13px] font-hand text-black/90 leading-relaxed placeholder:opacity-30 scrollbar-hide"
-        placeholder="..."
-      />
-    </div>
-  );
-};
-
 // --- 3. CORE VISUAL ENGINE (container-bound; accurate tap position; single RAF) ---
 const VisualEngine = ({
   containerRef,
@@ -342,7 +358,6 @@ const VisualEngine = ({
   stardustMode,
   isSakura,
   reduced,
-  engineApiRef,
 }) => {
   const canvasRef = useRef(null);
   const rafRef = useRef(0);
@@ -406,7 +421,7 @@ const VisualEngine = ({
 
     const isUI = (target) => {
       if (!(target instanceof Element)) return false;
-      return !!target.closest('[data-os-ui="true"], [data-os-bunny="true"]');
+      return !!target.closest('[data-os-ui="true"]');
     };
 
     const addEffectAt = (x, y) => {
@@ -503,48 +518,40 @@ const VisualEngine = ({
     };
 
     const onPointerMove = (e) => {
-  if (!host) return;
-  if (!state.current.isHolding) return;
-  const rect = host.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-  state.current.mouse.x = x;
-  state.current.mouse.y = y;
-  state.current.mouse.lastX = x;
-  state.current.mouse.lastY = y;
-};
+      if (!state.current.isHolding) return;
+      const rect = host.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      const dx = x - state.current.mouse.lastX;
+      const dy = y - state.current.mouse.lastY;
+      state.current.strokeDist += Math.sqrt(dx * dx + dy * dy);
+
+      if (state.current.strokeDist > (reduced ? 180 : 140)) {
+        state.current.hearts.push({
+          x,
+          y,
+          vx: (Math.random() - 0.5) * 1.8,
+          vy: -0.6 - Math.random() * 1.2,
+          a: 1,
+          size: 10 + Math.random() * 10,
+        });
+        state.current.strokeDist = 0;
+        if (state.current.hearts.length > (reduced ? 12 : 22)) {
+          state.current.hearts.shift();
+        }
+      }
+
+      state.current.mouse.lastX = x;
+      state.current.mouse.lastY = y;
+      state.current.mouse.x = x;
+      state.current.mouse.y = y;
+    };
 
     host.addEventListener("pointerdown", onPointerDown, { passive: true });
     host.addEventListener("pointerup", onPointerUp, { passive: true });
     host.addEventListener("pointercancel", onPointerUp, { passive: true });
     host.addEventListener("pointermove", onPointerMove, { passive: true });
-
-
-// expose a tiny API so other UI elements (e.g., bunny petting) can emit particles
-if (engineApiRef) {
-  engineApiRef.current = {
-    emitHeart: (x, y, intensity = 1) => {
-      const n = Math.max(1, Math.min(6, Math.round(intensity * 2)));
-      for (let i = 0; i < n; i++) {
-        state.current.hearts.push({
-          x: x + (Math.random() - 0.5) * 14,
-          y: y + (Math.random() - 0.5) * 10,
-          vx: (Math.random() - 0.5) * 1.8,
-          vy: -0.8 - Math.random() * 1.6,
-          a: 1.0,
-          size: 10 + Math.random() * 10,
-        });
-      }
-      if (state.current.hearts.length > 80)
-        state.current.hearts.splice(0, state.current.hearts.length - 80);
-    },
-    emitPaw: (x, y) => {
-      state.current.paws.push({ x, y, a: 1.0, size: 30 + Math.random() * 20 });
-      if (state.current.paws.length > 12) state.current.paws.shift();
-    },
-  };
-}
-
 
     const drawSakura = (x, y, size, rotation) => {
       ctx.save();
@@ -701,7 +708,6 @@ if (engineApiRef) {
       host.removeEventListener("pointerup", onPointerUp);
       host.removeEventListener("pointercancel", onPointerUp);
       host.removeEventListener("pointermove", onPointerMove);
-      if (engineApiRef) engineApiRef.current = null;
     };
   }, [containerRef, themeKey, rippleMode, stardustMode, isSakura, reduced]);
 
@@ -2405,6 +2411,10 @@ const SystemApp = () => {
 };
 
 
+
+
+
+
 // ------------------------------------------------
 // 🌸🌸 01.FINDER APP (ふぁいんだー) 📁📂🗃️🌸🌸
 // ------------------------------------------------
@@ -2787,6 +2797,12 @@ const FinderApp = () => {
     </div>
   );
 };
+
+
+
+
+
+
 
 
 // ------------------------------------------------
@@ -3489,6 +3505,15 @@ const GalleryApp = () => {
 };
 
 
+
+
+
+
+
+
+
+
+
 // ------------------------------------------------
 // 🌸03.MUSIC APP みゅ＾じっく)🎵🌸🌸🌸🌸🌸🌸🌸 --
 // ------------------------------------------------
@@ -3611,6 +3636,9 @@ const MusicApp = ({ bgm }) => {
     </div>
   );
 };
+
+
+
 
 
 // ------------------------------------------------
@@ -3843,7 +3871,7 @@ const SafariApp = () => {
       >
         <div
           className={[
-            "relative w-12 h-12 rounded-2xl border overflow-hidden",
+            "relative w-[clamp(44px,14vw,56px)] h-[clamp(44px,14vw,56px)] rounded-2xl border overflow-hidden",
             "bg-black/45 backdrop-blur-2xl",
             "shadow-[0_24px_70px_rgba(0,0,0,0.85)]",
             "transition-all duration-300",
@@ -4566,6 +4594,16 @@ System: Emotional Device`}
 };
 
 
+
+
+
+
+
+
+
+
+
+
 // ------------------------------------------------
 // 🌸🌸🌸 05.TERMINAL APP (たーみなる) 🌸🌸🌸🌸🌸
 // ------------------------------------------------
@@ -4941,6 +4979,9 @@ const TerminalApp = () => {
     </div>
   );
 };
+
+
+
 
 
 // --- 5. SYSTEM LAYERS & FLOW ---
@@ -5368,16 +5409,6 @@ const Window = ({ app, isActive, onClose, onFocus, bgm }) => {
 const Desktop = ({ bgm }) => {
   const desktopRef = useRef(null);
 
-const engineApiRef = useRef(null);
-
-// power (as per pasted code)
-const [isPowerMenuOpen, setIsPowerMenuOpen] = useState(false);
-const [isConfirmingOff, setIsConfirmingOff] = useState(false);
-const [isFullyOff, setIsFullyOff] = useState(false);
-const [isRestarting, setIsRestarting] = useState(false);
-
-const petRef = useRef({ active: false, count: 0 });
-
   const [mounted, setMounted] = useState(false);
   const [openApps, setOpenApps] = useState([]);
   const [activeApp, setActiveApp] = useState(null);
@@ -5394,17 +5425,24 @@ const petRef = useRef({ active: false, count: 0 });
   const [wpOpen, setWpOpen] = useState(false);
 
   const [toasts, setToasts] = useState([]);
-  
-const [memos, setMemos] = useState(() => [
-  {
-    id: 1,
-    initialX: 120,
-    initialY: 420,
-    initialText:
-      "おしらせ：\n付箋も肉球も復活させたよ。\n電源ボタンからは、特別な「おやすみ」ができるんだよ🐾",
-    color: "bg-yellow-200/30",
-  },
-]);
+  const [memos, setMemos] = useState([
+    {
+      id: 1,
+      initialX: 120,
+      initialY: 420,
+      initialText: "おしらせ：
+付箋、復活。
+なでなでハート、復活。
+電源、復活。",
+      color: "bg-yellow-200/30",
+    },
+  ]);
+
+  // Power menu (sleep/reboot)
+  const [isPowerMenuOpen, setIsPowerMenuOpen] = useState(false);
+  const [isConfirmingOff, setIsConfirmingOff] = useState(false);
+  const [isFullyOff, setIsFullyOff] = useState(false);
+  const [isRestarting, setIsRestarting] = useState(false);
 
   const time = useTime();
   const timeStr = time.toLocaleTimeString("en-US", {
@@ -5436,7 +5474,8 @@ const [memos, setMemos] = useState(() => [
     const onKey = (e) => {
       if (e.key === "Escape") {
         setCcOpen(false);
-        setWpOpen(false);      }
+        setWpOpen(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -5502,27 +5541,15 @@ const [memos, setMemos] = useState(() => [
 
   
 const addMemo = () => {
-  const id = Date.now();
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+  const x = Math.max(16, Math.min(vw - 240, isMobile ? 24 : 200));
+  const y = Math.max(80, Math.min(vh - 360, isMobile ? 140 : 300));
   setMemos((p) => [
     ...p,
-    {
-      id,
-      initialX: isMobile ? 60 : 200,
-      initialY: 280,
-      initialText: "",
-      color: "bg-cyan-200/30",
-    },
+    { id: Date.now(), initialX: x, initialY: y, initialText: "", color: "bg-cyan-200/30" },
   ]);
-  pushToast("付箋、増えた…🐾");
-};
-
-const handleRestart = () => {
-  setIsPowerMenuOpen(false);
-  setIsRestarting(true);
-  setTimeout(() => {
-    setIsRestarting(false);
-    pushToast("ちょっと、ねむねむしてきた…✨");
-  }, 2000);
+  pushToast("めも、かいて...？");
 };
 
 
@@ -5532,7 +5559,7 @@ const handleRestart = () => {
   return (
     <div
       ref={desktopRef}
-      className={`fixed inset-0 w-full h-full overflow-hidden select-none bg-black relative ${isFullyOff ? "opacity-0 pointer-events-none" : "opacity-100"}`}
+      className="fixed inset-0 w-full h-full overflow-hidden select-none bg-black relative"
       style={{
         "--os-accent": accent.hex,
         "--os-glow": accent.glow,
@@ -5551,6 +5578,149 @@ const handleRestart = () => {
         }`}
         style={{ backgroundImage: `url(${WALLPAPERS[wallpaperIndex] || ASSETS.wallpaper})` }}
       >
+
+{/* --- LEFT CONTROL: LENS & POWER --- */}
+<div
+  className={`absolute z-[700] z-ui-layer flex flex-col items-center gap-8 ${
+    isMobile ? "top-28 left-4" : "top-32 left-10"
+  }`}
+  data-os-ui="1"
+>
+  <button
+    onClick={() => {
+      setWpOpen(true);
+      pushToast("ころもがえ…🐾");
+    }}
+    className="relative w-14 h-14 md:w-16 md:h-16 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white/40 hover:text-white/90 hover:bg-white/10 transition-all shadow-xl active:scale-90 focus:outline-none"
+    type="button"
+    aria-label="Wallpaper"
+  >
+    <ImageIcon size={28} strokeWidth={1} />
+    <div className="absolute inset-0 border border-white/5 rounded-full animate-spin-slow scale-110 opacity-30" />
+  </button>
+
+  <div className="relative flex flex-col items-center">
+    <button
+      onClick={() => {
+        setIsPowerMenuOpen((v) => !v);
+        if (!isPowerMenuOpen) pushToast("なにするの…？");
+      }}
+      className={`relative w-14 h-14 rounded-full border-2 transition-all duration-700 flex items-center justify-center active:scale-90 shadow-2xl focus:outline-none ${
+        isPowerMenuOpen
+          ? "bg-rose-500/30 border-rose-400/50 text-rose-100"
+          : "bg-black/20 border-white/5 text-white/15 hover:text-white/40"
+      }`}
+      type="button"
+      aria-label="Power"
+    >
+      <Power size={24} strokeWidth={1.5} className={isPowerMenuOpen ? "animate-pulse" : ""} />
+      <div className="absolute inset-[-6px] rounded-full bg-rose-500/10 blur-xl animate-pulse-slow opacity-0 hover:opacity-100 transition-opacity" />
+      {!isPowerMenuOpen && (
+        <div className="absolute inset-[-12px] border border-rose-500/5 rounded-full animate-ping-slow opacity-20 pointer-events-none" />
+      )}
+    </button>
+
+    <div
+      className={`absolute left-16 top-0 flex flex-col gap-4 transition-all duration-700 ease-out ${
+        isPowerMenuOpen ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-6 pointer-events-none"
+      }`}
+    >
+      <button
+        className="flex items-center gap-3 group focus:outline-none"
+        onClick={() => {
+          setIsPowerMenuOpen(false);
+          setIsRestarting(true);
+          setTimeout(() => {
+            setIsRestarting(false);
+            pushToast("ちょっと、ねむねむしてきた…✨");
+          }, 2000);
+        }}
+        type="button"
+        aria-label="Reboot"
+      >
+        <div className="w-12 h-12 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white/30 group-hover:text-white/90 group-hover:bg-white/10 group-hover:border-white/20 transition-all shadow-lg active:scale-90">
+          <RotateCcw size={18} />
+        </div>
+      </button>
+
+      <button
+        className="flex items-center gap-3 group focus:outline-none"
+        onClick={() => {
+          setIsPowerMenuOpen(false);
+          setIsConfirmingOff(true);
+        }}
+        type="button"
+        aria-label="Sleep"
+      >
+        <div className="w-12 h-12 bg-rose-500/10 backdrop-blur-3xl border border-rose-500/20 rounded-full flex items-center justify-center text-rose-400/40 group-hover:text-rose-100 group-hover:bg-rose-500/20 group-hover:border-rose-400/30 transition-all shadow-lg active:scale-90">
+          <Moon size={18} />
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+
+{/* --- POWER OFF OVERLAY --- */}
+{isConfirmingOff && (
+  <div className="fixed inset-0 bg-black/98 backdrop-blur-[150px] z-[3000] flex flex-col items-center justify-center p-6 text-center animate-fade-in overflow-hidden">
+    <div
+      className="absolute inset-0 opacity-10 pointer-events-none"
+      style={{
+        backgroundImage: `radial-gradient(circle at 50% 50%, ${accent.hex} 0%, transparent 80%)`,
+      }}
+    />
+    <div className="relative mb-14 animate-float-slow">
+      <div className="absolute inset-0 bg-white/5 blur-3xl rounded-full scale-[2.5]" />
+      <Rabbit size={92} className="text-white/20 animate-pulse-slow" strokeWidth={0.8} />
+      <div className="absolute -top-4 -right-4">
+        <Heart size={24} className="text-rose-400 fill-rose-500 animate-ping opacity-20" />
+      </div>
+    </div>
+
+    <div className="flex gap-16 items-center relative z-10">
+      <button
+        onClick={() => {
+          setIsFullyOff(true);
+          setTimeout(() => window.location.reload(), 4000);
+        }}
+        className="group flex flex-col items-center gap-4 transition-all hover:scale-110 active:scale-95 focus:outline-none"
+        type="button"
+        aria-label="Sleep now"
+      >
+        <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shadow-2xl group-hover:bg-white/10 transition-all duration-700">
+          <Moon size={30} className="text-white/20 group-hover:text-white/80 transition-all" strokeWidth={1} />
+        </div>
+      </button>
+
+      <button
+        onClick={() => {
+          setIsConfirmingOff(false);
+          pushToast("よかった…いっしょにいようね🐾");
+        }}
+        className="group flex flex-col items-center gap-4 transition-all hover:scale-110 active:scale-95 focus:outline-none"
+        type="button"
+        aria-label="Cancel sleep"
+      >
+        <div className="w-20 h-20 rounded-full bg-rose-500/5 border border-rose-500/10 flex items-center justify-center shadow-2xl group-hover:bg-rose-500/10 transition-all duration-700">
+          <Heart size={30} className="text-rose-400/20 group-hover:text-rose-400/80 transition-all" strokeWidth={1} />
+        </div>
+      </button>
+    </div>
+  </div>
+)}
+
+{/* RESTART OVERLAY */}
+{isRestarting && (
+  <div className="fixed inset-0 bg-black z-[2600] flex flex-col items-center justify-center animate-fade-in text-white/50">
+    <div className="relative w-20 h-20 flex items-center justify-center mb-8">
+      <Rabbit size={40} className="animate-bounce" />
+      <div className="absolute inset-0 border border-white/10 rounded-full animate-spin-slow" />
+    </div>
+    <div className="text-[11px] font-mono tracking-[0.8em] uppercase animate-pulse">System Rebooting...</div>
+  </div>
+)}
+
+
         <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/60" />
       </div>
@@ -5563,45 +5733,11 @@ const handleRestart = () => {
         stardustMode={stardustMode && !isGameHeavy}
         isSakura={isSakura}
         reduced={isGameHeavy}
-        engineApiRef={engineApiRef}
       />
 
       {/* Interactive Drone (Flying Rabbit) */}
       <div
-        data-os-ui="true"
-        data-os-bunny="true"
         onClick={() => setDroneActive(!droneActive)}
-        onPointerDown={() => {
-          petRef.current.active = true;
-          petRef.current.count = 0;
-        }}
-        onPointerMove={(e) => {
-          if (!petRef.current.active) return;
-          if (!(e.buttons === 1 || e.pointerType === "touch")) return;
-          if (!desktopRef.current) return;
-          const rect = desktopRef.current.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const y = e.clientY - rect.top;
-
-          engineApiRef.current?.emitHeart(x, y, 1.2);
-          if (Math.random() < 0.18)
-            engineApiRef.current?.emitPaw(
-              x + (Math.random() - 0.5) * 18,
-              y + 10
-            );
-
-          petRef.current.count += 1;
-          if (petRef.current.count === 40) pushToast("…そこ、すき🐾");
-        }}
-        onPointerUp={() => {
-          petRef.current.active = false;
-        }}
-        onPointerCancel={() => {
-          petRef.current.active = false;
-        }}
-        onPointerLeave={() => {
-          petRef.current.active = false;
-        }}
         className={` absolute top-1/3 cursor-pointer transition-all duration-1000 ease-in-out z-20 ${
           droneActive
             ? "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 scale-150"
@@ -5620,67 +5756,7 @@ const handleRestart = () => {
           } `}
           draggable="false"
         />
-      
-
-{/* Left Controls (Lens & Power) */}
-<div
-  data-os-ui
-  className={`absolute z-[210] z-ui-layer flex flex-col items-center gap-8 ${
-    isMobile ? "top-32 left-5" : "top-36 left-10"
-  }`}
->
-  <button
-    onClick={() => setWallpaperStudioOpen(true)}
-    className="relative w-14 h-14 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white/40 hover:text-white/90 hover:bg-white/15 transition-all shadow-xl active:scale-90 focus:outline-none"
-    aria-label="open wallpaper"
-  >
-    <ImageIcon size={26} strokeWidth={1} />
-    <div className="absolute inset-0 border border-white/5 rounded-full animate-spin-slow scale-110 opacity-25" />
-  </button>
-
-  <div className="relative flex flex-col items-center group">
-    <button
-      onClick={() => {
-        setIsPowerMenuOpen((v) => !v);
-        if (!isPowerMenuOpen) pushToast("なにするの…？");
-      }}
-      className={`relative w-12 h-12 rounded-full border-2 transition-all duration-700 flex items-center justify-center active:scale-90 shadow-2xl focus:outline-none ${
-        isPowerMenuOpen
-          ? "bg-rose-500/25 border-rose-400/50 text-rose-100"
-          : "bg-black/20 border-white/10 text-white/20 hover:text-white/40"
-      }`}
-      aria-label="power"
-    >
-      <Power size={22} strokeWidth={1.5} className={isPowerMenuOpen ? "animate-pulse" : ""} />
-      <div className="absolute inset-[-10px] rounded-full bg-rose-500/10 blur-xl animate-pulse-slow opacity-0 group-hover:opacity-100 transition-opacity" />
-    </button>
-
-    <div
-      className={`absolute left-16 top-0 flex flex-col gap-4 transition-all duration-700 ${
-        isPowerMenuOpen ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-6 pointer-events-none"
-      }`}
-    >
-      <button onClick={handleRestart} className="flex items-center gap-3 group/item" aria-label="reboot">
-        <div className="w-11 h-11 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-full flex items-center justify-center text-white/30 group-hover/item:text-white/90 group-hover/item:bg-white/15 group-hover/item:border-white/30 transition-all shadow-lg active:scale-90">
-          <RotateCcw size={18} />
-        </div>
-      </button>
-
-      <button
-        onClick={() => {
-          setIsPowerMenuOpen(false);
-          setIsConfirmingOff(true);
-        }}
-        className="flex items-center gap-3 group/item"
-        aria-label="sleep"
-      >
-        <div className="w-11 h-11 bg-rose-500/10 backdrop-blur-3xl border border-rose-500/20 rounded-full flex items-center justify-center text-rose-300/40 group-hover/item:text-rose-100 group-hover/item:bg-rose-500/25 group-hover/item:border-rose-400/40 transition-all shadow-lg active:scale-90">
-          <Moon size={18} />
-        </div>
-      </button>
-    </div>
-  </div>
-</div></div>
+      </div>
 
       {/* Top Bar */}
       <div
@@ -5736,7 +5812,7 @@ const handleRestart = () => {
           >
             <div className="px-4 py-3 flex items-center justify-between border-b border-white/5">
               <div className="text-[10px] font-mono tracking-[0.35em] text-white/50 uppercase">
-                CONTROL_CENTER
+                
               </div>
               <button
                 onClick={() => setCcOpen(false)}
@@ -5765,9 +5841,7 @@ const handleRestart = () => {
                 >
                   <div className="flex items-center justify-center gap-2">
                     <Flower size={16} />
-                    <span className="text-[10px] font-mono tracking-[0.25em] uppercase">
-                      SAKURA
-                    </span>
+                    
                   </div>
                 </button>
 
@@ -5788,9 +5862,7 @@ const handleRestart = () => {
                 >
                   <div className="flex items-center justify-center gap-2">
                     <Sparkles size={16} />
-                    <span className="text-[10px] font-mono tracking-[0.25em] uppercase">
-                      STAR
-                    </span>
+                    
                   </div>
                 </button>
               </div>
@@ -5844,9 +5916,7 @@ const handleRestart = () => {
                     >
                       <div className="flex items-center justify-center gap-2">
                         <m.icon size={16} />
-                        <span className="text-[10px] font-mono tracking-[0.25em] uppercase">
-                          {m.id}
-                        </span>
+                        
                       </div>
                     </button>
                   ))}
@@ -5861,9 +5931,7 @@ const handleRestart = () => {
                 >
                   <div className="flex items-center justify-center gap-2">
                     <ImageIcon size={16} />
-                    <span className="text-[10px] font-mono tracking-[0.25em] uppercase">
-                      WALLPAPER
-                    </span>
+                    
                   </div>
                 </button>
 
@@ -5875,9 +5943,7 @@ const handleRestart = () => {
                 >
                   <div className="flex items-center justify-center gap-2">
                     <MemoIcon size={16} />
-                    <span className="text-[10px] font-mono tracking-[0.25em] uppercase">
-                      MEMO
-                    </span>
+                    
                   </div>
                 </button>
               </div>
@@ -5901,18 +5967,19 @@ const handleRestart = () => {
         ))}
       </div>
 
-   {!isMobile && (
-  <>
-    {/* Sticky Notes */}
-    {memos.map((m) => (
-      <StickyNote
-        key={m.id}
-        {...m}
-        onRemove={() => setMemos((p) => p.filter((note) => note.id !== m.id))}
-      />
-    ))}
-  </>
-)}
+      
+{/* Sticky Notes */}
+{memos.map((m) => (
+  <StickyNote
+    key={m.id}
+    id={m.id}
+    initialX={m.initialX}
+    initialY={m.initialY}
+    initialText={m.initialText}
+    color={m.color}
+    onRemove={() => setMemos((p) => p.filter((x) => x.id !== m.id))}
+  />
+))}
 
       {/* Wallpaper picker */}
       <VisualWindow
@@ -5938,7 +6005,12 @@ const handleRestart = () => {
         </div>
       </VisualWindow>
 
-      
+      {/* Memo editor (mobile + desktop edit) */}
+      <VisualWindow
+        open={!!null}
+        title="rabbit_note"
+      >
+        </VisualWindow>
 
       {/* Clock Widget */}
       <div
@@ -5979,100 +6051,52 @@ const handleRestart = () => {
         })}
       </div>
 
-
-{/* Sleep confirm overlay */}
-{isConfirmingOff && (
-  <div className="fixed inset-0 bg-black/98 backdrop-blur-[150px] z-[3000] flex flex-col items-center justify-center p-6 text-center animate-fade-in overflow-hidden">
-    <div
-      className="absolute inset-0 opacity-10 pointer-events-none"
-      style={{
-        backgroundImage: `radial-gradient(circle at 50% 50%, ${THEMES[themeKey].hex} 0%, transparent 80%)`,
-      }}
-    />
-    <div className="relative mb-16 animate-float-slow">
-      <div className="absolute inset-0 bg-white/5 blur-3xl rounded-full scale-[2.5]" />
-      <Rabbit size={96} className="text-white/20 animate-pulse-slow" strokeWidth={0.8} />
-      <div className="absolute -top-4 -right-4">
-        <Heart size={24} className="text-rose-400 fill-rose-500 animate-ping opacity-20" />
+      {/* Dock */}
+      <div
+        className={`absolute bottom-0 left-0 right-0 ${
+          isMobile ? "h-20" : "h-28"
+        } flex justify-center items-end ${
+          isMobile ? "pb-4" : "pb-8"
+        } z-[100] transition-all duration-1000 delay-500 bg-gradient-to-t from-black/90 to-transparent ${
+          mounted ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0"
+        }`}
+        data-os-ui="true"
+      >
+        <div
+          className={`bg-white/[0.03] backdrop-blur-2xl border border-white/5 rounded-2xl ${
+            isMobile ? "px-2 py-2 gap-2" : "px-4 py-3 gap-4"
+          } flex items-center shadow-2xl hover:bg-white/[0.06] transition-colors duration-500`}
+        >
+          {APPS.map((app) => {
+            const isOpen = openApps.includes(app.id);
+            const isActive = activeApp === app.id;
+            return (
+              <button
+                key={app.id}
+                onClick={() => toggleApp(app.id)}
+                className={`relative flex flex-col items-center justify-center ${
+                  isMobile ? "w-[clamp(44px,14vw,56px)] h-[clamp(44px,14vw,56px)]" : "w-[clamp(44px,14vw,56px)] h-[clamp(44px,14vw,56px)]"
+                } rounded-xl transition-all duration-300 active:scale-95 ${
+                  isActive
+                    ? "bg-white/[0.08] border border-white/10"
+                    : "hover:bg-white/[0.05]"
+                }`}
+                type="button"
+              >
+                <app.icon
+                  size={isMobile ? 20 : 22}
+                  className={`${
+                    isOpen ? app.color : "text-white/40"
+                  } transition-colors duration-300`}
+                />
+                {isOpen && (
+                  <span className="absolute -bottom-1 w-1 h-1 rounded-full bg-white/70 shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
-    </div>
-
-    <div className="flex gap-16 items-center relative z-10">
-      <button
-        onClick={() => {
-          setIsFullyOff(true);
-          setTimeout(() => window.location.reload(), 4000);
-        }}
-        className="group flex flex-col items-center gap-3 transition-all hover:scale-110 active:scale-95 focus:outline-none"
-        aria-label="confirm sleep"
-      >
-        <div className="w-[76px] h-[76px] rounded-full bg-white/5 border border-white/10 flex items-center justify-center shadow-2xl group-hover:bg-white/10 transition-all duration-700">
-          <Moon size={28} className="text-white/25 group-hover:text-white/80 transition-all" strokeWidth={1} />
-        </div>
-      </button>
-
-      <button
-        onClick={() => {
-          setIsConfirmingOff(false);
-          pushToast("よかった…いっしょにいようね🐾");
-        }}
-        className="group flex flex-col items-center gap-3 transition-all hover:scale-110 active:scale-95 focus:outline-none"
-        aria-label="cancel sleep"
-      >
-        <div className="w-[76px] h-[76px] rounded-full bg-rose-500/5 border border-rose-500/10 flex items-center justify-center shadow-2xl group-hover:bg-rose-500/10 transition-all duration-700">
-          <Heart size={28} className="text-rose-400/30 group-hover:text-rose-400/80 transition-all" strokeWidth={1} />
-        </div>
-      </button>
-    </div>
-  </div>
-)}
-
-{/* Restart overlay */}
-{isRestarting && (
-  <div className="fixed inset-0 bg-black z-[2600] flex flex-col items-center justify-center animate-fade-in text-white/50">
-    <div className="relative w-20 h-20 flex items-center justify-center mb-8">
-      <Rabbit size={40} className="animate-bounce" />
-      <div className="absolute inset-0 border border-white/10 rounded-full animate-spin-slow" />
-    </div>
-  </div>
-)}
-
-
-{/* Dock */}
-<div
-  className="fixed left-0 right-0 z-[220] flex justify-center pointer-events-none"
-  style={{ bottom: `calc(env(safe-area-inset-bottom) + 14px)` }}
->
-  <div
-    data-os-ui
-    className="pointer-events-auto bg-black/30 backdrop-blur-[50px] border border-white/10 rounded-full shadow-2xl flex items-center"
-    style={{
-      width: "min(520px, calc(100vw - 24px))",
-      padding: "10px 14px",
-    }}
-  >
-    <div className="flex w-full items-end justify-between">
-      {APPS.map((app) => {
-        const isOpen = openApps.has(app.id);
-        return (
-          <button
-            key={app.id}
-            onClick={() => openApp(app.id)}
-            className={`relative w-12 h-12 rounded-full flex items-center justify-center transition-transform active:scale-95 ${
-              isOpen ? "-translate-y-1 scale-105" : "hover:scale-105"
-            }`}
-            aria-label={app.title}
-          >
-            <app.icon size={20} strokeWidth={1.2} className={`${app.color} opacity-80`} />
-            {isOpen && (
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-white/90 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
-            )}
-          </button>
-        );
-      })}
-    </div>
-  </div>
-</div>
     </div>
   );
 };
@@ -7707,7 +7731,7 @@ const BeatSyncApp = () => {
   return (
     <div
       ref={rootRef}
-      className="relative h-full w-full overflow-hidden select-none"
+      className={`relative h-full w-full overflow-hidden select-none ${isFullyOff ? "opacity-0 pointer-events-none" : "opacity-100"}`}
       style={{
         background: `radial-gradient(1200px 860px at 50% 0%, ${TOK.bg1}, ${TOK.bg0})`,
         WebkitTapHighlightColor: "transparent",
@@ -7795,6 +7819,10 @@ const BeatSyncApp = () => {
     </div>
   );
 };
+
+
+
+
 
 
 // -------------------------------------------------------------------------
