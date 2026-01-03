@@ -6587,7 +6587,6 @@ useEffect(() => {
         .osb-bs-carousel::-webkit-scrollbar { height: 8px; }
         .osb-bs-carousel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 999px; }
               `}</style>
-    </div>
   );
 };
 
