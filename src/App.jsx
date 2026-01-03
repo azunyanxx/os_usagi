@@ -5222,7 +5222,7 @@ const BeatSyncApp = () => {
       try { a.pause(); } catch {}
       a.removeEventListener("ended", onEnded);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   const BS_setSettings = (patch) => {
@@ -5940,7 +5940,7 @@ const BeatSyncApp = () => {
 
   useEffect(() => {
     scrollToIdx(selectedIdx);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [selectedIdx]);
 
   // ---------- top-level gesture capture for iOS audio ----------
