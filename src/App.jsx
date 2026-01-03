@@ -5114,10 +5114,12 @@ const BeatSyncApp = () => {
 
   // ---------- view state ----------
   const [view, setView] = useState("select"); // select | play | result
-  const [difficulty, setDifficulty] = useState("EASY"); // EASY | NORMAL | HARD
+  const [isMobile, setIsMobile] = useState(() => (typeof window !== "undefined" ? window.innerWidth < 640 : true));
+const [difficulty, setDifficulty] = useState("EASY"); // EASY | NORMAL | HARD
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const [castKey, setCastKey] = useState(() => BS_ASSETS.tracks?.[0]?.cover || "front");
-  const [audioReady, setAudioReady] = useState(false);
+  const [castKey, setCastKey] = useState(() => "standL"); // buddy pose key
+  const [castOpen, setCastOpen] = useState(false);
+const [audioReady, setAudioReady] = useState(false);
   const [showAudioPill, setShowAudioPill] = useState(false);
   const [assetsReady, setAssetsReady] = useState(false);
 
@@ -5204,6 +5206,13 @@ const BeatSyncApp = () => {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // ---------- responsive (mobile vs desktop) ----------
+  useEffect(() => {
+    const onR = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", onR, { passive: true });
+    return () => window.removeEventListener("resize", onR);
   }, []);
 
   // ---------- audio init ----------
@@ -5487,8 +5496,17 @@ const BeatSyncApp = () => {
 useEffect(() => {
     resizeCanvas();
     const onR = () => resizeCanvas();
-    window.addEventListener("resize", onR);
-    return () => window.removeEventListener("resize", onR);
+    window.addEventListener("resize", onR, { passive: true });
+    let ro;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => resizeCanvas());
+      if (rootRef.current) ro.observe(rootRef.current);
+      if (canvasRef.current) ro.observe(canvasRef.current);
+    }
+    return () => {
+      window.removeEventListener("resize", onR);
+      if (ro) ro.disconnect();
+    };
   }, [resizeCanvas]);
 
   useEffect(() => {
@@ -5506,6 +5524,9 @@ useEffect(() => {
   const resetGameState = useCallback(() => {
     stopRaf();
     const g = gameRef.current;
+    g.diff = difficulty;
+    g.coverKey = track.cover;
+    g.castKey = castKey;
     g.state = "idle";
     g.startAtPerf = 0;
     g.lastT = 0;
@@ -5514,7 +5535,7 @@ useEffect(() => {
     g.ripples = [];
     g.stats = { score: 0, combo: 0, maxCombo: 0, perfect: 0, good: 0, miss: 0, total: 0, bonus: 0 };
     setJudgeUi(null);
-  }, [stopRaf]);
+  }, [stopRaf, difficulty, selectedIdx, castKey]);
 
   const markJudgeUi = (kind) => {
     setJudgeUi(kind);
@@ -5592,7 +5613,7 @@ useEffect(() => {
     const g = gameRef.current;
     if (g.state !== "playing") return;
 
-    const params = BS_getDiffParams(difficulty);
+    const params = BS_getDiffParams(gameRef.current.diff || difficulty);
 
     // time source = audio currentTime (more stable for sync)
     let tNow = 0;
@@ -5638,7 +5659,7 @@ useEffect(() => {
     ctx.fillRect(0, 0, w, h);
 
     // watermark bunny
-    const wm = BS_img(BS_ASSETS.bunnies.front);
+    const wm = BS_img(BS_ASSETS.bunnies[g.coverKey] || BS_ASSETS.bunnies.front);
     if (wm) {
       const scale = Math.min(w, h) * 0.62;
       const ratio = wm.width / wm.height;
@@ -5822,6 +5843,10 @@ useEffect(() => {
 
     // init gameplay timeline
     const g = gameRef.current;
+    g.diff = difficulty;
+    g.coverKey = BS_getTrack(selectedIdx).cover;
+    g.castKey = castKey;
+
     g.state = "playing";
     g.lastT = 0;
     g.nextSpawnT = 0;
@@ -5854,7 +5879,7 @@ useEffect(() => {
       const a = audioRef.current;
       if (!a) return;
 
-      const params = BS_getDiffParams(difficulty);
+      const params = BS_getDiffParams(gameRef.current.diff || difficulty);
       const tNow = a.currentTime || 0;
 
       // nearest note in this lane
@@ -5953,6 +5978,10 @@ useEffect(() => {
   // ---------- derived UI ----------
   const track = BS_getTrack();
   const coverUrl = BS_ASSETS.bunnies[track.cover] || BS_ASSETS.bunnies.front;
+  const castUrl = BS_ASSETS.bunnies[castKey] || BS_ASSETS.bunnies.front;
+  const diffLocked = view !== "select";
+  const uiBottomPad = isMobile ? 92 : 16; // extra to avoid OS Dock overlap
+  const now = typeof performance !== "undefined" ? performance.now() : Date.now();
 
   const stats = gameRef.current.stats; // refreshed via hudTick
   void hudTick;
@@ -5971,7 +6000,41 @@ useEffect(() => {
         <div className="absolute -inset-24 opacity-[0.18] blur-3xl bg-[radial-gradient(circle_at_30%_20%,rgba(170,255,255,0.9),transparent_40%),radial-gradient(circle_at_70%_30%,rgba(210,170,255,0.9),transparent_45%),radial-gradient(circle_at_55%_80%,rgba(255,255,255,0.7),transparent_45%)]" />
       </div>
 
-      {/* Header */}
+      
+      {/* Dynamic background bunny (linked to song + cast) */}
+      <div className="absolute inset-0 pointer-events-none">
+        <img
+          src={coverUrl}
+          alt=""
+          className="absolute right-[-10%] bottom-[-14%] w-[78%] max-w-[560px] object-contain"
+          draggable={false}
+          style={{
+            opacity: view === "play" ? 0.10 : 0.16,
+            filter: "blur(0px) drop-shadow(0 0 22px rgba(170,255,255,0.10))",
+            transform: "translateZ(0)",
+          }}
+        />
+        <img
+          src={castUrl}
+          alt=""
+          className="absolute left-[-14%] top-[-10%] w-[56%] max-w-[420px] object-contain"
+          draggable={false}
+          style={{
+            opacity: view === "play" ? 0.06 : 0.10,
+            filter: "blur(0px) drop-shadow(0 0 18px rgba(255,180,255,0.10))",
+            transform: "translateZ(0)",
+          }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(900px 520px at 18% 18%, rgba(170,255,255,0.08), transparent 55%), radial-gradient(900px 520px at 86% 72%, rgba(220,180,255,0.06), transparent 55%)",
+          }}
+        />
+      </div>
+
+{/* Header */}
       <div className="relative z-10 px-4 pt-3 pb-2 sm:pt-4 sm:pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -5983,18 +6046,26 @@ useEffect(() => {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {/* Audio pill */}
-            {showAudioPill && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  BS_unlockAudio();
-                }}
-                className="px-3 py-2 rounded-full bg-white/[0.08] border border-white/[0.12] text-white/80 text-[12px] tracking-[0.14em] hover:bg-white/[0.10] active:scale-[0.99]"
-              >
-                AUDIO
-              </button>
-            )}
+            {/* Audio button (always visible) */}
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                BS_playSfx("tap");
+                if (!audioReady) {
+                  await BS_unlockAudio();
+                }
+              }}
+              className="px-3 py-2 rounded-full bg-white/[0.06] border border-white/[0.10] backdrop-blur-md text-white/75 text-[12px] tracking-[0.14em] hover:bg-white/[0.10] flex items-center gap-2"
+            >
+              <img
+                src={BS_ASSETS.bunnies.button}
+                alt=""
+                className="w-5 h-5 object-contain opacity-90"
+                draggable={false}
+              />
+              <span>AUDIO</span>
+              {!audioReady && <span className="w-2 h-2 rounded-full bg-white/70" />}
+            </button>
 
             {view !== "select" && (
               <button
@@ -6011,113 +6082,123 @@ useEffect(() => {
         </div>
 
         {/* Settings row (integrated, no separate screen) */}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <div className="px-3 py-2 rounded-2xl bg-white/[0.06] border border-white/[0.10] backdrop-blur-md flex items-center gap-3">
-            <button
-              className={`px-2.5 py-1.5 rounded-full text-[12px] tracking-[0.12em] border ${
-                settings.sfxOn ? "bg-white/[0.10] border-white/[0.16] text-white/85" : "bg-transparent border-white/[0.10] text-white/55"
-              }`}
-              onClick={(e) => {
-                e.stopPropagation();
-                BS_playSfx("tap");
-                BS_setSettings({ sfxOn: !settings.sfxOn });
-              }}
+        <div className="px-4 pt-2 pb-3">
+          <div className="flex flex-col gap-2">
+            {/* Audio panel */}
+            <div
+              className="w-full rounded-[22px] bg-white/[0.06] border border-white/[0.12] backdrop-blur-xl px-3 py-2"
+              style={{ maxWidth: "100%" }}
             >
-              SFX
-            </button>
+              <div className="flex flex-wrap items-center gap-2" style={{ maxWidth: "100%" }}>
+                <button
+                  className={`px-2.5 py-1.5 rounded-full text-[12px] tracking-[0.12em] border ${
+                    settings.sfxOn ? "bg-white/[0.12] border-white/[0.18] text-white/85" : "bg-transparent border-white/[0.10] text-white/55"
+                  }`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    BS_playSfx("tap");
+                    BS_setSettings({ sfxOn: !settings.sfxOn });
+                  }}
+                >
+                  SFX
+                </button>
 
-            <div className="flex items-center gap-2">
-              <div className="text-[11px] text-white/45 tracking-[0.12em]">SFX</div>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={settings.sfxVol}
-                onChange={(e) => BS_setSettings({ sfxVol: Number(e.target.value) })}
-                onPointerUp={() => BS_playSfx("tap")}
-                className="w-24 accent-white/80"
-              />
+                <div className="flex items-center gap-2 flex-1 min-w-[160px]" style={{ minWidth: isMobile ? "160px" : "220px" }}>
+                  <div className="text-[11px] tracking-[0.18em] text-white/45 whitespace-nowrap">SFX VOL</div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={settings.sfxVol}
+                    onChange={(e) => BS_setSettings({ sfxVol: Number(e.target.value) })}
+                    className="flex-1 min-w-0"
+                    style={{ width: "100%" }}
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 flex-1 min-w-[160px]" style={{ minWidth: isMobile ? "160px" : "220px" }}>
+                  <div className="text-[11px] tracking-[0.18em] text-white/45 whitespace-nowrap">MUSIC</div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={settings.musicVol}
+                    onChange={(e) => BS_setSettings({ musicVol: Number(e.target.value) })}
+                    className="flex-1 min-w-0"
+                    style={{ width: "100%" }}
+                  />
+                </div>
+
+                <button
+                  className={`px-2.5 py-1.5 rounded-full text-[12px] tracking-[0.12em] border ${
+                    settings.haptics ? "bg-white/[0.12] border-white/[0.18] text-white/85" : "bg-transparent border-white/[0.10] text-white/55"
+                  }`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    BS_playSfx("tap");
+                    BS_setSettings({ haptics: !settings.haptics });
+                  }}
+                >
+                  HAPTIC
+                </button>
+
+                <button
+                  className={`px-2.5 py-1.5 rounded-full text-[12px] tracking-[0.12em] border ${
+                    settings.reducedMotion ? "bg-white/[0.12] border-white/[0.18] text-white/85" : "bg-transparent border-white/[0.10] text-white/55"
+                  }`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    BS_playSfx("tap");
+                    BS_setSettings({ reducedMotion: !settings.reducedMotion });
+                  }}
+                >
+                  MOTION
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="text-[11px] text-white/45 tracking-[0.12em]">MUSIC</div>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={settings.musicVol}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  BS_setSettings({ musicVol: v });
-                  // live apply (preview/play)
-                  const a = audioRef.current;
-                  if (a) {
-                    const base = BS_clamp(v / 100, 0, 1);
-                    a.volume = view === "select" ? base * 0.55 : base;
-                  }
-                }}
-                className="w-28 accent-white/80"
-              />
+            {/* Difficulty chips */}
+            <div className="w-full flex items-center justify-between gap-3">
+              <div className="text-[11px] tracking-[0.18em] text-white/45">DIFFICULTY</div>
+              {diffLocked && (
+                <div className="text-[10px] tracking-[0.16em] text-white/30">locked in play</div>
+              )}
             </div>
-
-            <button
-              className={`px-2.5 py-1.5 rounded-full text-[12px] tracking-[0.12em] border ${
-                settings.haptics ? "bg-white/[0.10] border-white/[0.16] text-white/85" : "bg-transparent border-white/[0.10] text-white/55"
-              }`}
-              onClick={(e) => {
-                e.stopPropagation();
-                BS_playSfx("tap");
-                BS_setSettings({ haptics: !settings.haptics });
-              }}
-            >
-              HAPTIC
-            </button>
-
-            <button
-              className={`px-2.5 py-1.5 rounded-full text-[12px] tracking-[0.12em] border ${
-                settings.reducedMotion ? "bg-white/[0.10] border-white/[0.16] text-white/85" : "bg-transparent border-white/[0.10] text-white/55"
-              }`}
-              onClick={(e) => {
-                e.stopPropagation();
-                BS_playSfx("tap");
-                BS_setSettings({ reducedMotion: !settings.reducedMotion });
-              }}
-            >
-              MOTION
-            </button>
-          </div>
-
-          {/* Difficulty chips */}
-          <div className="px-3 py-2 rounded-2xl bg-white/[0.06] border border-white/[0.10] backdrop-blur-md flex items-center gap-2">
-            {["EASY", "NORMAL", "HARD"].map((d) => (
-              <button
-                key={d}
-                className={`px-3 py-1.5 rounded-full text-[12px] tracking-[0.14em] border ${
-                  difficulty === d
-                    ? "bg-white/[0.12] border-white/[0.18] text-white/90"
-                    : "bg-transparent border-white/[0.10] text-white/55 hover:bg-white/[0.06]"
-                }`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  BS_playSfx("select");
-                  setDifficulty(d);
-                }}
-              >
-                {d}
-              </button>
-            ))}
+            <div className="w-full flex items-center gap-2 flex-wrap">
+              {["EASY", "NORMAL", "HARD"].map((d) => {
+                const active = difficulty === d;
+                return (
+                  <button
+                    key={d}
+                    disabled={diffLocked}
+                    className={`px-3 py-2 rounded-full text-[12px] tracking-[0.14em] border transition ${
+                      active ? "bg-white/[0.14] border-white/[0.20] text-white/90" : "bg-transparent border-white/[0.10] text-white/60 hover:bg-white/[0.06]"
+                    } ${diffLocked ? "opacity-50" : ""}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (diffLocked) return;
+                      BS_playSfx("select");
+                      setDifficulty(d);
+                    }}
+                  >
+                    {d}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Main */}
-      <div className="relative z-10 px-4 pb-[calc(env(safe-area-inset-bottom)+14px)] flex-1 min-h-0 flex flex-col overflow-hidden">
+{/* Main */}
+      <div className="relative z-10 px-4 flex-1 min-h-0 flex flex-col overflow-x-hidden overflow-y-auto"
+        style={{ paddingBottom: `calc(env(safe-area-inset-bottom) + ${uiBottomPad}px)` }}>
         {view === "select" && (
           <div className="flex-1 min-h-0 overflow-y-auto -mx-4 px-4">
             {/* Carousel */}
             <div
               ref={carouselRef}
               className="osb-bs-carousel flex gap-3 overflow-x-auto pb-3 -mx-4 px-4"
+              style={{ scrollPaddingLeft: "16px", scrollPaddingRight: "16px", WebkitOverflowScrolling: "touch" }}
               style={{
                 scrollSnapType: "x mandatory",
                 scrollPaddingLeft: "16px",
@@ -6211,66 +6292,76 @@ useEffect(() => {
 
             {/* “asset tray” (shows all sprites & judge icons, Safari-ish) */}
             
-            {/* CAST (pick a buddy to bring along) */}
-            <div className="mt-4 px-4 py-3 rounded-[22px] bg-white/[0.05] border border-white/[0.10] backdrop-blur-md">
-              <div className="flex items-center justify-between gap-3 mb-2">
-                <div className="text-[11px] tracking-[0.18em] text-white/45">CAST</div>
-                <div className="text-[10px] tracking-[0.16em] text-white/30">tap to select</div>
-              </div>
-
-              <div className="flex items-center gap-2 overflow-x-auto osb-bs-tray pb-1">
-                {Object.entries(BS_ASSETS.bunnies)
-                  .filter(([k]) => k !== "button")
-                  .map(([k, u]) => {
-                    const sel = castKey === k;
-                    return (
-                      <button
-                        key={k}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          BS_playSfx("tap");
-                          setCastKey(k);
-                        }}
-                        className={`shrink-0 w-10 h-10 rounded-[14px] overflow-hidden border ${
-                          sel ? "bg-white/[0.12] border-white/[0.22]" : "bg-black/25 border-white/[0.10]"
-                        }`}
-                        style={{
-                          WebkitTapHighlightColor: "transparent",
-                          touchAction: "manipulation",
-                        }}
-                        aria-label={`cast-${k}`}
-                      >
-                        <img src={u} alt="" className="w-full h-full object-cover opacity-95" draggable={false} />
-                      </button>
-                    );
-                  })}
-              </div>
-
-              <div className="mt-2 text-[11px] tracking-[0.16em] text-white/35">
-                Selected cast appears in-play and on result.
-              </div>
+            {/* CAST (compact) */}
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  BS_playSfx("tap");
+                  setCastOpen(true);
+                }}
+                className="px-3 py-2 rounded-full bg-white/[0.06] border border-white/[0.12] backdrop-blur-md flex items-center gap-2 max-w-full"
+                style={{ maxWidth: "100%" }}
+              >
+                <div className="w-7 h-7 rounded-full overflow-hidden border border-white/[0.14] bg-black/35 flex-shrink-0">
+                  <img src={castUrl} alt="" className="w-full h-full object-contain opacity-90" draggable={false} />
+                </div>
+                <div className="text-[11px] tracking-[0.18em] text-white/75">CAST</div>
+                <div className="text-[11px] text-white/50 truncate">tap to change</div>
+              </button>
+              <div className="text-[10px] tracking-[0.16em] text-white/30 text-right">buddy changes bg + result</div>
             </div>
 
-            {/* UI / assets preview (all provided materials) */}
-            <div className="mt-3 px-4 py-3 rounded-[22px] bg-white/[0.04] border border-white/[0.09] backdrop-blur-md">
-              <div className="text-[11px] tracking-[0.18em] text-white/45 mb-2">UI</div>
-              <div className="flex items-center gap-2 overflow-x-auto osb-bs-tray pb-1">
-                <img src={BS_ASSETS.judge.perfect} alt="" className="h-8 w-auto opacity-90" draggable={false} />
-                <img src={BS_ASSETS.judge.good} alt="" className="h-8 w-auto opacity-90" draggable={false} />
-                <img src={BS_ASSETS.judge.miss} alt="" className="h-8 w-auto opacity-90" draggable={false} />
-                <div className="w-px h-8 bg-white/10 mx-1" />
-                <img src={BS_ASSETS.arrows.up} alt="" className="h-8 w-8 opacity-80" draggable={false} />
-                <img src={BS_ASSETS.arrows.right} alt="" className="h-8 w-8 opacity-80" draggable={false} />
-                <img src={BS_ASSETS.arrows.down} alt="" className="h-8 w-8 opacity-80" draggable={false} />
-                <img src={BS_ASSETS.arrows.left} alt="" className="h-8 w-8 opacity-80" draggable={false} />
-                <div className="w-px h-8 bg-white/10 mx-1" />
-                <img src={BS_ASSETS.bunnies.button} alt="" className="h-8 w-8 rounded-lg object-cover opacity-85 border border-white/10" draggable={false} />
+            {/* Cast picker (overlay) */}
+            {castOpen && (
+              <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center" onClick={() => setCastOpen(false)}>
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                <div
+                  className="relative w-full sm:w-[560px] max-h-[78vh] rounded-[30px] bg-white/[0.08] border border-white/[0.14] backdrop-blur-xl p-4 m-3 overflow-hidden"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div className="text-white/80 text-[12px] tracking-[0.18em]">CAST</div>
+                    <button
+                      className="px-3 py-2 rounded-full bg-white/[0.06] border border-white/[0.12] text-white/70 text-[12px] tracking-[0.14em] hover:bg-white/[0.10]"
+                      onClick={() => setCastOpen(false)}
+                    >
+                      CLOSE
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 overflow-y-auto pr-1" style={{ maxHeight: "62vh" }}>
+                    {Object.entries(BS_ASSETS.bunnies)
+                      .filter(([k]) => k !== "button")
+                      .map(([k, u]) => {
+                        const sel = castKey === k;
+                        return (
+                          <button
+                            key={k}
+                            className={`rounded-[22px] p-3 border transition ${
+                              sel ? "bg-white/[0.12] border-white/[0.22]" : "bg-white/[0.06] border-white/[0.12] hover:bg-white/[0.10]"
+                            }`}
+                            onClick={() => {
+                              BS_playSfx("select");
+                              setCastKey(k);
+                              setCastOpen(false);
+                            }}
+                          >
+                            <div className="w-full aspect-square rounded-[18px] bg-black/35 border border-white/[0.10] overflow-hidden">
+                              <img src={u} alt="" className="w-full h-full object-contain opacity-95" draggable={false} />
+                            </div>
+                            <div className="mt-2 text-[10px] tracking-[0.16em] text-white/55">{k.toUpperCase()}</div>
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
 </div>
         )}
 
-        {view === "play" && (
+
+{view === "play" && (
           <div className="flex flex-col flex-1 min-h-0">
             {/* HUD */}
             <div className="mb-3 flex items-center justify-between gap-2">
@@ -6333,14 +6424,64 @@ useEffect(() => {
 
                 <canvas ref={canvasRef} className="block w-full h-full" />
 
-                {/* subtle hit-line glow */}
-                <div className="absolute inset-x-0 bottom-0 h-16 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.18),transparent_65%)] opacity-60" />
+                {/* Lane guides + OS Bunny overlays */}
+              <div className="absolute inset-0 pointer-events-none">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="absolute top-0 bottom-0 w-px bg-white/10"
+                    style={{
+                      left: `${i * 25}%`,
+                      boxShadow: "0 0 18px rgba(170,255,255,0.18)",
+                    }}
+                  />
+                ))}
+                <div
+                  className="absolute left-0 right-0"
+                  style={{
+                    bottom: isMobile ? "92px" : "22px",
+                    height: "1px",
+                    background: "rgba(255,255,255,0.14)",
+                    boxShadow: "0 0 18px rgba(170,255,255,0.22)",
+                  }}
+                />
+                {judgeUi && (
+                  <div className="absolute inset-0 flex items-center justify-center" style={{ transform: "translateY(-10%)" }}>
+                    <img
+                      src={BS_ASSETS.judge[judgeUi]}
+                      alt={judgeUi}
+                      className="w-40 max-w-[48vw] object-contain"
+                      draggable={false}
+                      style={{
+                        filter: "drop-shadow(0 0 18px rgba(255,255,255,0.18))",
+                        opacity: Math.max(0, 1 - (now - judgeUiAt) / 520),
+                        transform: `scale(${1 + Math.min(0.08, (now - judgeUiAt) / 380)})`,
+                      }}
+                    />
+                  </div>
+                )}
+                <img
+                  src={
+                    view !== "play"
+                      ? castUrl
+                      : judgeUi === "miss"
+                      ? BS_ASSETS.bunnies.dizzy
+                      : judgeUi === "good"
+                      ? BS_ASSETS.bunnies.runR
+                      : judgeUi === "perfect"
+                      ? BS_ASSETS.bunnies.yayR
+                      : BS_ASSETS.bunnies.standR
+                  }
+                  alt=""
+                  className="absolute right-[-6%] bottom-[-10%] w-[44%] max-w-[260px] object-contain opacity-35"
+                  draggable={false}
+                />
               </div>
 
-              {/* Tap pads (always visible, safe-area aware) */}
+{/* Tap pads (always visible, safe-area aware) */}
               <div
-                className="mt-3 grid grid-cols-4 gap-2 pb-[calc(env(safe-area-inset-bottom)+4px)]"
-                style={{ WebkitTapHighlightColor: "transparent" }}
+                className="mt-3 grid grid-cols-4 gap-2"
+                style={{ WebkitTapHighlightColor: "transparent", paddingBottom: `calc(env(safe-area-inset-bottom) + ${isMobile ? 104 : 12}px)` }}
               >
                 {[0, 1, 2, 3].map((lane) => {
                   const icon = [BS_ASSETS.arrows.left, BS_ASSETS.arrows.down, BS_ASSETS.arrows.up, BS_ASSETS.arrows.right][lane];
@@ -6368,9 +6509,6 @@ useEffect(() => {
 <div className="mt-3 flex items-center justify-between gap-2">
               <div className="text-white/45 text-[11px] tracking-[0.18em]">
                 {track.title} / {difficulty}
-              </div>
-              <div className="text-white/35 text-[11px] tracking-[0.18em]">
-                Tap lanes • Bonus bunny = +320
               </div>
             </div>
           </div>
@@ -6437,12 +6575,8 @@ useEffect(() => {
                   </button>
                 </div>
 
-                {/* show all bunnies again (ensures "use all assets") */}
-                <div className="mt-5 flex items-center gap-2 overflow-x-auto osb-bs-tray pb-1">
-                  {Object.values(BS_ASSETS.bunnies).map((u) => (
-                    <img key={u} src={u} alt="" className="h-10 w-10 rounded-xl object-cover opacity-90 border border-white/10" draggable={false} />
-                  ))}
-                </div>
+                
+
               </div>
             </div>
           </>
@@ -6452,9 +6586,7 @@ useEffect(() => {
       <style>{`
         .osb-bs-carousel::-webkit-scrollbar { height: 8px; }
         .osb-bs-carousel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 999px; }
-        .osb-bs-tray::-webkit-scrollbar { height: 8px; }
-        .osb-bs-tray::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 999px; }
-      `}</style>
+              `}</style>
     </div>
   );
 };
