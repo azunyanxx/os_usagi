@@ -5002,8 +5002,6 @@ const Desktop = ({ bgm }) => {
 // OS Bunny — Beat Sync (Game App)  [REPLACE THIS WHOLE BLOCK]
 // ==============================
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Music, Play, Pause, RotateCcw, Settings, Volume2, X } from "lucide-react";
 
 /* --- Safari Pure Glass / OS Bunny Palette --- */
 const COLORS = {
