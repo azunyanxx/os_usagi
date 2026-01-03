@@ -446,10 +446,7 @@ const isUI = (target) => {
     'button, a, input, textarea, select, [role="button"], [contenteditable="true"], [data-os-ui], [data-os-bunny="true"]'
   );
 };
-    const isUI = (target) => {
-      if (!(target instanceof Element)) return false;
-      return !!target.closest('[data-os-ui="true"], [data-os-bunny="true"]');
-    };
+
 
     const addEffectAt = (x, y) => {
       const theme = THEMES[themeKey] || THEMES.cyan;
