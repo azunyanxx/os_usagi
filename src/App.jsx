@@ -5508,7 +5508,7 @@ const BS_updateHud = useCallback(
       a.removeEventListener("loadedmetadata", onMeta);
       a.removeEventListener("ended", onEnded);
     };
- 
+
   }, [setTrack]);
 
   // whenever selected track changes, load + preview
