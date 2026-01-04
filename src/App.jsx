@@ -5023,10 +5023,7 @@ const BS_ASSETS = {
     up: "https://files.catbox.moe/zb8qnn.png",
     right: "https://files.catbox.moe/zg5lru.png",
     down: "https://files.catbox.moe/v4g9e7.png",
-    lef
-
-const BS_SILENCE_DATA_URI = "data:audio/wav;base64,UklGRl4RAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YToRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
-t: "https://files.catbox.moe/rmbi75.png",
+    left: "https://files.catbox.moe/rmbi75.png",
   },
   bunnies: {
     standL: "https://files.catbox.moe/3revxm.png",
@@ -5213,6 +5210,13 @@ function BS_makeSfx() {
 const BeatSyncApp = () => {
   const rootRef = useRef(null);
 
+  const BS_fmtTime = (sec) => {
+    const s = Math.max(0, Math.floor(sec || 0));
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${m}:${String(r).padStart(2, "0")}`;
+  };
+
   // views: select -> play -> result
   const [view, setView] = useState("select");
 
@@ -5242,6 +5246,7 @@ const BeatSyncApp = () => {
 
   // preload images
   const imgMapRef = useRef({});
+  const preloadPromiseRef = useRef(Promise.resolve());
   const [imagesReady, setImagesReady] = useState(false);
 
   useEffect(() => {
@@ -5251,19 +5256,16 @@ const BeatSyncApp = () => {
       ...Object.values(BS_ASSETS.bunnies),
     ];
     const { promise, cancel } = BS_preloadImages(urls);
+    preloadPromiseRef.current = promise;
     promise.then((m) => {
       imgMapRef.current = m || {};
       setImagesReady(true);
     });
     return () => cancel();
-  }, [setTrack]);
+  }, []);
 
   // music (preview + play)
   const musicRef = useRef(null);
-  const unlockAudioElRef = useRef(null);
-  const timeMonotonicRef = useRef(0);
-  const hudCacheRef = useRef({ lastMs: 0, score: 0, combo: 0, time: "--:--" });
-  const [timeLeftStr, setTimeLeftStr] = useState("--:--");
   const [musicReady, setMusicReady] = useState(false);
   const [musicDur, setMusicDur] = useState(0);
 
@@ -5284,95 +5286,36 @@ const BeatSyncApp = () => {
     }
   }, [settings.musicVol, settings.sfxOn, settings.sfxVol]);
 
-const BS_formatMMSS = useCallback((sec) => {
-  if (!isFinite(sec)) return "--:--";
-  const s = Math.max(0, sec);
-  const mm = Math.floor(s / 60);
-  const ss = Math.floor(s % 60);
-  const m2 = String(mm).padStart(2, "0");
-  const s2 = String(ss).padStart(2, "0");
-  return `${m2}:${s2}`;
-}, [setTrack]);
-
-const BS_getNowSec = useCallback(() => {
-  const a = musicRef.current;
-  const pnow = performance.now();
-  const tPerf = startedAtRef.current ? (pnow - startedAtRef.current) / 1000 : 0;
-  const tAud = a && isFinite(a.currentTime) ? a.currentTime : 0;
-  let t = Math.max(tPerf, tAud || 0);
-  if (!isFinite(t) || t < 0) t = tPerf;
-  if (t < timeMonotonicRef.current) t = timeMonotonicRef.current;
-  timeMonotonicRef.current = t;
-  return t;
-}, [setTrack]);
-
-const BS_updateHud = useCallback(
-  (nowSec) => {
-    const ms = performance.now();
-    const cache = hudCacheRef.current;
-    if (ms - cache.lastMs < 120) return; // ~8Hz max
-    cache.lastMs = ms;
-
-    const st = statsRef.current;
-    const timeStr = musicDur > 0 ? BS_formatMMSS(musicDur - nowSec) : "--:--";
-
-    if (st.score !== cache.score || st.combo !== cache.combo) {
-      cache.score = st.score;
-      cache.combo = st.combo;
-      BS_updateHud(now);
-    }
-    if (timeStr !== cache.time) {
-      cache.time = timeStr;
-      setTimeLeftStr(timeStr);
-    }
-  },
-  [BS_formatMMSS, musicDur]
-);
-
   useEffect(() => {
     applyVolumes();
   }, [applyVolumes]);
 
-  const BS_unlockAudio = useCallback(() => {
-    // keep this synchronous inside a gesture; never touch the BGM element
+  const BS_unlockAudio = useCallback(async () => {
     let ok = true;
-
-    // WebAudio first
+    // WebAudio
     try {
-      const r = sfxRef.current?.resume?.();
-      if (r && typeof r.then === "function") r.catch(() => {});
+      ok = (await sfxRef.current?.resume?.()) !== false;
     } catch {
       ok = false;
     }
-
-    // optional tiny silent <audio> ping (separate from BGM)
+    // HTMLAudio warm-up
     try {
-      let u = unlockAudioElRef.current;
-      if (!u) {
-        u = new Audio(BS_SILENCE_DATA_URI);
-        u.preload = "auto";
-        unlockAudioElRef.current = u;
-      }
-      u.loop = false;
-      u.volume = 0.0001;
-      const p = u.play();
-      if (p && typeof p.then === "function") {
-        p.then(() => {
-          // let it finish naturally
-          setNeedsAudioUnlock(false);
-        }).catch(() => {
-          setNeedsAudioUnlock(true);
-        });
-      } else {
-        setNeedsAudioUnlock(false);
+      const a = musicRef.current;
+      if (a) {
+        const prevVol = a.volume;
+        a.volume = 0;
+        const p = a.play();
+        if (p && typeof p.then === "function") await p;
+        a.pause();
+        a.currentTime = 0;
+        a.volume = prevVol;
       }
     } catch {
-      setNeedsAudioUnlock(true);
       ok = false;
     }
-
+    setNeedsAudioUnlock(!ok);
     return ok;
-  }, [sfxRef]);
+  }, []);
 
   const BS_sfx = useCallback(
     (kind) => {
@@ -5413,6 +5356,8 @@ const BS_updateHud = useCallback(
   });
 
   const [hud, setHud] = useState({ score: 0, combo: 0 });
+  const [timeLeft, setTimeLeft] = useState(0); // seconds remaining (HUD)
+  const lastTimeLeftUpdateRef = useRef(0);
   const [judge, setJudge] = useState(null); // 'perfect' | 'good' | 'miss'
   const [judgeBump, setJudgeBump] = useState(0); // re-trigger anim
   const judgeTimerRef = useRef(0);
@@ -5429,7 +5374,7 @@ const BS_updateHud = useCallback(
     playingRef.current = false;
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = 0;
-  }, [setTrack]);
+  }, []);
 
   const stopMusic = useCallback(() => {
     try {
@@ -5439,24 +5384,20 @@ const BS_updateHud = useCallback(
         a.currentTime = 0;
       }
     } catch {}
-  }, [setTrack]);
+  }, []);
 
-  const startPreview = useCallback(() => {
+  const startPreview = useCallback(async () => {
     const a = musicRef.current;
     if (!a) return;
     try {
       a.loop = true;
       a.currentTime = 0;
-    } catch {}
-    try {
       const p = a.play();
-      if (p && typeof p.then === "function") {
-        p.then(() => setNeedsAudioUnlock(false)).catch(() => setNeedsAudioUnlock(true));
+      if (p && typeof p.catch === "function") {
+        await p.catch(() => {});
       }
-    } catch {
-      setNeedsAudioUnlock(true);
-    }
-  }, [setTrack]);
+    } catch {}
+  }, []);
 
   const setTrack = useCallback(
     async (idx, { preview = true } = {}) => {
@@ -5508,25 +5449,20 @@ const BS_updateHud = useCallback(
       a.removeEventListener("loadedmetadata", onMeta);
       a.removeEventListener("ended", onEnded);
     };
-
-  }, [setTrack]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // whenever selected track changes, load + preview
   useEffect(() => {
     if (!musicRef.current) return;
-    // init track (no autoplay; iOS will start on user gesture)
-    setTrack(0, { preview: false });
-  }, [setTrack]);
+    setTrack(selectedIdx, { preview: view === "select" });
+  }, [selectedIdx, setTrack, view]);
 
   // ensure preview stops when leaving select
   useEffect(() => {
-    const a = musicRef.current;
-    if (!a) return;
-    // never pause/seek on view changes; only toggle looping
-    try {
-      a.loop = view === "select";
-    } catch {}
-  }, [view]);
+    if (view !== "select") stopMusic();
+    if (view === "select") startPreview();
+  }, [view, stopMusic, startPreview]);
 
   const getDiffParams = useCallback((diff) => {
     const base = {
@@ -5556,7 +5492,7 @@ const BS_updateHud = useCallback(
       },
     };
     return base[diff] || base.EASY;
-  }, [setTrack]);
+  }, []);
 
   const buildChart = useCallback(
     (diff, durSec) => {
@@ -5593,7 +5529,7 @@ const BS_updateHud = useCallback(
       setJudge(k);
       setJudgeBump((x) => x + 1);
       if (judgeTimerRef.current) clearTimeout(judgeTimerRef.current);
-      judgeTimerRef.current = setTimeout(() => setJudge(null), 240);
+      judgeTimerRef.current = setTimeout(() => setJudge(null), 320);
     },
     []
   );
@@ -5612,7 +5548,7 @@ const BS_updateHud = useCallback(
     (laneIdx) => {
       if (!playingRef.current) return;
 
-      const now = BS_getNowSec();
+      const now = musicRef.current ? musicRef.current.currentTime : (performance.now() - startedAtRef.current) / 1000;
       const diff = effectiveDiffRef.current;
       const p = getDiffParams(diff);
 
@@ -5677,8 +5613,8 @@ const BS_updateHud = useCallback(
         vibrate(12);
       }
 
-      // HUD (4–10Hz)
-      BS_updateHud(now);
+      // update HUD (throttle)
+      setHud({ score: st.score, combo: st.combo });
 
       // advance nextIdxRef
       while (nextIdxRef.current < notes.length && (notes[nextIdxRef.current].hit || notes[nextIdxRef.current].t < now - 0.25)) {
@@ -5690,117 +5626,78 @@ const BS_updateHud = useCallback(
 
   const finishGame = useCallback(() => {
     stopLoop();
-    // do not pause/seek here; let audio end naturally
+    stopMusic();
     playingRef.current = false;
     BS_sfx("result");
     setView("result");
-  }, [BS_sfx, stopLoop]);
+  }, [BS_sfx, stopLoop, stopMusic]);
 
-  const startGame = useCallback(() => {
+  const startGame = useCallback(async () => {
     // lock in difficulty for this run
     effectiveDiffRef.current = difficulty;
 
-    // gesture-based unlock + volume apply (no awaits)
-    BS_unlockAudio();
+    // unlock audio on explicit start
+    await BS_unlockAudio();
     applyVolumes();
 
+    // stop preview and start music for play
+    stopMusic();
     const a = musicRef.current;
-    if (a) {
-      try {
-        a.loop = false;
-      } catch {}
-      try {
-        // restart from top without pausing (keeps gesture context intact)
-        a.currentTime = 0;
-      } catch {}
-      try {
-        const p = a.play();
-        if (p && typeof p.then === "function") {
-          p.then(() => setNeedsAudioUnlock(false)).catch(() => setNeedsAudioUnlock(true));
-        }
-      } catch {
-        setNeedsAudioUnlock(true);
-      }
-    }
+    if (!a) return;
 
-    // reset timing base
-    startedAtRef.current = performance.now();
-    timeMonotonicRef.current = 0;
-    hudCacheRef.current.lastMs = 0;
+    // reset stats
+    statsRef.current = { score: 0, combo: 0, maxCombo: 0, perfect: 0, good: 0, miss: 0, total: 0 };
+    setHud({ score: 0, combo: 0 });
+    setJudge(null);
 
-    // reset state
-    const st = statsRef.current;
-    st.perfect = 0;
-    st.good = 0;
-    st.miss = 0;
-    st.combo = 0;
-    st.maxCombo = 0;
-    st.score = 0;
-
-    // build chart
-    const notes = buildChart();
-    chartRef.current = notes;
+    // build chart using duration if available
+    const dur = musicDur || 60;
+    chartRef.current = buildChart(effectiveDiffRef.current, dur);
     nextIdxRef.current = 0;
 
-    // start
-    stopLoop();
-    playingRef.current = true;
-    setHud({ score: 0, combo: 0 });
-    setTimeLeftStr(musicDur > 0 ? BS_formatMMSS(musicDur) : "--:--");
-    setView("play");
-    BS_sfx("start");
+    // start play
+    try {
+      a.loop = false;
+      a.currentTime = 0;
+      const p = a.play();
+      if (p && typeof p.catch === "function") await p.catch(() => {});
+    } catch {}
 
-    const loop = () => {
+    startedAtRef.current = performance.now();
+    playingRef.current = true;
+
+    BS_sfx("start");
+    setView("play");
+
+    // start RAF
+    stopLoop();
+    const tick = () => {
       if (!playingRef.current) return;
       renderFrame();
-      rafRef.current = requestAnimationFrame(loop);
+      rafRef.current = requestAnimationFrame(tick);
     };
-    rafRef.current = requestAnimationFrame(loop);
-  }, [BS_formatMMSS, BS_sfx, BS_unlockAudio, applyVolumes, buildChart, difficulty, musicDur, renderFrame, stopLoop]);
+    rafRef.current = requestAnimationFrame(tick);
+  }, [
+    BS_sfx,
+    BS_unlockAudio,
+    applyVolumes,
+    buildChart,
+    difficulty,
+    musicDur,
+    stopLoop,
+    stopMusic,
+  ]);
 
   const retry = useCallback(() => {
     BS_sfx("click");
-    // stop game loop (no audio pause)
-    playingRef.current = false;
-    stopLoop();
-    timeMonotonicRef.current = 0;
-    const a = musicRef.current;
-    if (a) {
-      try {
-        a.loop = true;
-        a.currentTime = 0;
-        const p = a.play();
-        if (p && typeof p.then === "function") {
-          p.then(() => setNeedsAudioUnlock(false)).catch(() => setNeedsAudioUnlock(true));
-        }
-      } catch {
-        setNeedsAudioUnlock(true);
-      }
-    }
     setView("select");
-  }, [BS_sfx, stopLoop]);
+    // will restart preview automatically
+  }, [BS_sfx]);
 
   const backToSelect = useCallback(() => {
     BS_sfx("back");
-    // stop game loop (no audio pause)
-    playingRef.current = false;
-    stopLoop();
-    timeMonotonicRef.current = 0;
-    const a = musicRef.current;
-    if (a) {
-      try {
-        a.loop = true;
-        a.currentTime = 0;
-        const p = a.play();
-        if (p && typeof p.then === "function") {
-          p.then(() => setNeedsAudioUnlock(false)).catch(() => setNeedsAudioUnlock(true));
-        }
-      } catch {
-        setNeedsAudioUnlock(true);
-      }
-    }
     setView("select");
-  }, [BS_sfx, stopLoop]);
+  }, [BS_sfx]);
 
   // --- Canvas sizing: base on canvas element rect (fix stretch / touch mismatch) ---
   const resizeCanvas = useCallback(() => {
@@ -5814,7 +5711,7 @@ const BS_updateHud = useCallback(
       c.width = w;
       c.height = h;
     }
-  }, [setTrack]);
+  }, []);
 
   useEffect(() => {
     if (view !== "play") return;
@@ -5841,17 +5738,11 @@ const BS_updateHud = useCallback(
     if (!ctx) return;
 
     const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-    const rect = c.getBoundingClientRect();
-    const w = rect.width || c.width / dpr;
-    const h = rect.height || c.height / dpr;
-
-    // clear in device pixels then draw in CSS px
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, c.width, c.height);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const w = c.width;
+    const h = c.height;
 
     // background
-    // cleared above
+    ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = "rgba(0,0,0,0)";
     ctx.fillRect(0, 0, w, h);
 
@@ -5873,7 +5764,7 @@ const BS_updateHud = useCallback(
       const pulse = 0.35 + 0.15 * Math.sin(t * 2.2 + i);
       ctx.save();
       ctx.strokeStyle = accent.replace("0.55", String(0.22 + pulse * 0.12)).replace("0.50", String(0.22 + pulse * 0.12)).replace("0.45", String(0.20 + pulse * 0.10)).replace("0.40", String(0.18 + pulse * 0.10));
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = 1.2 * dpr;
       ctx.shadowColor = accent;
       ctx.shadowBlur = 10 * dpr * (settings.motion ? 1 : 0.6);
       ctx.beginPath();
@@ -5886,9 +5777,9 @@ const BS_updateHud = useCallback(
     // hit line (soft glow)
     ctx.save();
     ctx.strokeStyle = "rgba(255,255,255,0.14)";
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 1.2 * dpr;
     ctx.shadowColor = accent;
-    ctx.shadowBlur = 14;
+    ctx.shadowBlur = 14 * dpr;
     ctx.beginPath();
     ctx.moveTo(0, hitY);
     ctx.lineTo(w, hitY);
@@ -5896,13 +5787,21 @@ const BS_updateHud = useCallback(
     ctx.restore();
 
     // notes
-    const now = BS_getNowSec();
+    const now = musicRef.current ? musicRef.current.currentTime : (performance.now() - startedAtRef.current) / 1000;
+    const notes = chartRef.current;
+    const lastT = notes && notes.length ? notes[notes.length - 1].t : 0;
+    const durGuess = musicDur > 0 ? musicDur : (musicRef.current && Number.isFinite(musicRef.current.duration) ? Number(musicRef.current.duration) : (lastT ? lastT + 1.2 : 60));
+    // update time-left at ~5fps (avoid rerender each frame)
+    const tNow = performance.now();
+    if (tNow - lastTimeLeftUpdateRef.current > 200) {
+      lastTimeLeftUpdateRef.current = tNow;
+      setTimeLeft(Math.max(0, durGuess - now));
+    }
     const diff = effectiveDiffRef.current;
     const p = getDiffParams(diff);
-    const speed = p.speed;
+    const speed = p.speed * dpr;
 
-    const notes = chartRef.current;
-    const noteSize = Math.max(22, Math.min(42, laneW * 0.22)) ;
+    const noteSize = Math.max(22, Math.min(42, laneW * 0.22)) * dpr;
 
     const drawContain = (img, cx, cy, box) => {
       if (!img) return;
@@ -5926,7 +5825,7 @@ const BS_updateHud = useCallback(
       ctx.save();
       // soft glow per note
       ctx.shadowColor = accent;
-      ctx.shadowBlur = 18;
+      ctx.shadowBlur = 18 * dpr;
       if (n.kind === "bonus") {
         drawContain(imgMapRef.current[BS_ASSETS.bunnies.button], cx, y, noteSize * 1.15);
       } else {
@@ -5937,16 +5836,9 @@ const BS_updateHud = useCallback(
     }
 
     // finish if near end
-    if (musicRef.current && musicDur > 0 && now >= musicDur - 0.08) {
+    if (durGuess > 0 && now >= durGuess - 0.05) {
       finishGame();
     }
-
-    // fallback finish (when duration is missing or timebase stalls)
-    if (musicDur <= 0 && notes.length) {
-      const lastT = notes[notes.length - 1].t || 0;
-      if (lastT > 0 && now >= lastT + 6) finishGame();
-    }
-    if (musicDur > 0 && now >= musicDur + 2) finishGame();
 
     // miss notes behind window
     while (nextIdxRef.current < notes.length && notes[nextIdxRef.current].t < now - 0.22) {
@@ -5957,14 +5849,11 @@ const BS_updateHud = useCallback(
         st.miss += 1;
         st.total += 1;
         st.combo = 0;
-        BS_updateHud(now);
+        setHud({ score: st.score, combo: st.combo });
       }
       nextIdxRef.current += 1;
     }
-
-    // HUD + time (4–10Hz)
-    BS_updateHud(now);
-}, [accent, finishGame, BS_getNowSec, BS_updateHud, getDiffParams, musicDur, settings.motion]);
+  }, [accent, finishGame, getDiffParams, musicDur, settings.motion]);
 
   // cleanup timers
   useEffect(() => {
@@ -5982,13 +5871,12 @@ const BS_updateHud = useCallback(
     const bunny = imgMapRef.current[BS_ASSETS.bunnies.button];
     return (
       <button
-        onPointerDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            BS_sfx("click");
-            BS_unlockAudio();
-            setAudioPanelOpen((v) => !v);
-          }}
+        onClick={async (e) => {
+          e.stopPropagation();
+          BS_sfx("click");
+          await BS_unlockAudio();
+          setAudioPanelOpen((v) => !v);
+        }}
         className="relative px-3 py-2 rounded-full bg-white/[0.08] border border-white/[0.12] hover:bg-white/[0.10] active:scale-[0.99] select-none"
         style={{
           boxShadow: `0 0 0 1px rgba(255,255,255,0.05), 0 0 24px ${accent}`,
@@ -6028,10 +5916,12 @@ const BS_updateHud = useCallback(
     if (!audioPanelOpen) return null;
     return (
       <div
-        className="absolute z-[60] top-14 right-3 left-auto rounded-3xl bg-black/60 border border-white/[0.14] backdrop-blur-xl overflow-hidden"
+        className="fixed z-[60] rounded-3xl bg-white/[0.06] border border-white/[0.14] backdrop-blur-xl overflow-hidden"
         style={{
-          width: "min(360px, 92vw)",
-          maxHeight: "min(70dvh, 520px)",
+          top: `calc(56px + env(safe-area-inset-top, 0px))`,
+          right: `max(12px, env(safe-area-inset-right, 0px))`,
+          width: `min(420px, calc(100vw - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))`,
+          maxHeight: `min(calc(100dvh - 92px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)), 560px)`,
           boxShadow: `0 10px 40px rgba(0,0,0,0.55), 0 0 30px ${accent}`,
         }}
       >
@@ -6049,16 +5939,15 @@ const BS_updateHud = useCallback(
           </button>
         </div>
 
-        <div className="p-4 space-y-4 overflow-y-auto">
+        <div className="p-4 space-y-4 overflow-y-auto" style={{ paddingBottom: "calc(16px + env(safe-area-inset-bottom, 0px))" }}>
           {needsAudioUnlock && (
             <button
               className="w-full px-3 py-2 rounded-2xl bg-white/[0.10] border border-white/[0.16] text-white/85 text-[12px] tracking-[0.14em] hover:bg-white/[0.12]"
               style={{ boxShadow: `0 0 18px ${accent}` }}
-              onPointerDown={(e) => {
-                e.preventDefault();
+              onClick={async (e) => {
                 e.stopPropagation();
                 BS_sfx("start");
-                BS_unlockAudio();
+                await BS_unlockAudio();
               }}
             >
               ENABLE AUDIO
@@ -6088,7 +5977,8 @@ const BS_updateHud = useCallback(
                 const v = Number(e.target.value) / 100;
                 setSettingsPatch({ sfxVol: v });
               }}
-              className="w-full"
+              className="bsRange w-full"
+              style={{ "--bsAccent": accent, "--bsFill": `${Math.round(settings.sfxVol * 100)}%` }}
             />
           </div>
 
@@ -6106,7 +5996,8 @@ const BS_updateHud = useCallback(
                 const v = Number(e.target.value) / 100;
                 setSettingsPatch({ musicVol: v });
               }}
-              className="w-full"
+              className="bsRange w-full"
+              style={{ "--bsAccent": accent, "--bsFill": `${Math.round(settings.musicVol * 100)}%` }}
             />
           </div>
 
@@ -6136,7 +6027,7 @@ const BS_updateHud = useCallback(
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="text-white/70 text-[12px] tracking-[0.14em]">CAST</div>
-              <div className="text-white/45 text-[11px] tracking-[0.14em]">brings a buddy</div>
+              {" "}
             </div>
 
             <div className="flex gap-2 overflow-x-auto pb-1">
@@ -6165,7 +6056,7 @@ const BS_updateHud = useCallback(
           </div>
 
           <div className="text-white/40 text-[11px] leading-relaxed">
-            Tip: iOS Safari may block autoplay. Tap AUDIO → ENABLE AUDIO once, then everything will play normally.
+            {" "}
           </div>
         </div>
       </div>
@@ -6221,7 +6112,7 @@ const BS_updateHud = useCallback(
     const cRect = child.getBoundingClientRect();
     const delta = (cRect.left + cRect.width / 2) - (elRect.left + elRect.width / 2);
     el.scrollTo({ left: el.scrollLeft + delta, behavior: "smooth" });
-  }, [setTrack]);
+  }, []);
 
   // --- render ---
   const selectedTrack = BS_ASSETS.tracks[selectedIdx] || BS_ASSETS.tracks[0];
@@ -6388,7 +6279,7 @@ const BS_updateHud = useCallback(
                       <div className="min-w-0 flex-1">
                         <div className="text-white/90 text-[14px] tracking-[0.06em] truncate">{t.title}</div>
                         <div className="text-white/40 text-[11px] tracking-[0.14em] mt-1 truncate">
-                          Tap to select · Swipe to browse
+                          {' '}
                         </div>
                       </div>
                     </div>
@@ -6411,10 +6302,9 @@ const BS_updateHud = useCallback(
             {/* start */}
             <div className="sticky" style={{ bottom: "calc(env(safe-area-inset-bottom) + 14px)" }}>
               <button
-                onPointerDown={(e) => {
-                  e.preventDefault();
+                onClick={async (e) => {
                   e.stopPropagation();
-                  startGame();
+                  await startGame();
                 }}
                 className="w-full px-4 py-4 rounded-3xl bg-white/[0.10] border border-white/[0.18] text-white/90 font-semibold tracking-[0.16em] hover:bg-white/[0.12] active:scale-[0.995]"
                 style={{
@@ -6424,11 +6314,7 @@ const BS_updateHud = useCallback(
                 START
               </button>
               <div className="text-white/35 text-[11px] tracking-[0.12em] mt-2 text-center">
-                {needsAudioUnlock ? (
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-white/45 shadow-[0_0_14px_rgba(255,255,255,0.25)]" />
-              ) : (
-                <span className="inline-block w-1.5 h-1.5 rounded-full opacity-0" />
-              )}
+                {" "}
               </div>
             </div>
           </div>
@@ -6441,7 +6327,7 @@ const BS_updateHud = useCallback(
               <div className="min-w-0">
                 <div className="text-white/80 text-[12px] tracking-[0.16em] truncate">{selectedTrack.title}</div>
                 <div className="text-white/45 text-[11px] tracking-[0.14em] mt-0.5">
-                  {effectiveDiffRef.current} · SCORE {hud.score} · COMBO {hud.combo}
+                  {effectiveDiffRef.current} · SCORE {hud.score} · COMBO {hud.combo} · LEFT {BS_fmtTime(timeLeft)}
                 </div>
               </div>
               <div className="w-10 h-10 rounded-2xl overflow-hidden bg-black/30 border border-white/[0.12] shrink-0">
@@ -6456,16 +6342,16 @@ const BS_updateHud = useCallback(
               {judge && (
                 <div
                   key={`${judge}-${judgeBump}`}
-                  className="absolute left-1/2 top-[18%] -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                  className="absolute left-1/2 top-[20%] -translate-x-1/2 -translate-y-1/2 pointer-events-none"
                   style={{
-                    animation: settings.motion ? "bsPop 240ms ease-out both" : "none",
+                    animation: settings.motion ? "bsPop 320ms ease-out both" : "none",
                     filter: `drop-shadow(0 0 22px ${accent})`,
                   }}
                 >
                   <img
                     src={BS_ASSETS.judge[judge]}
                     alt={judge}
-                    className="w-[min(220px,62vw)] h-auto"
+                    className="w-[min(200px,56vw)] h-auto"
                     draggable={false}
                   />
                 </div>
@@ -6523,6 +6409,7 @@ const BS_updateHud = useCallback(
                       className="relative h-16 rounded-2xl bg-black/20 border border-white/[0.10] active:scale-[0.99] select-none overflow-hidden"
                       style={{
                         boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.06), 0 0 20px rgba(0,0,0,0.25)`,
+                        touchAction: "none",
                       }}
                       aria-label={`lane-${i}`}
                     >
@@ -6648,6 +6535,51 @@ const BS_updateHud = useCallback(
           35% { opacity: 0.42; }
           100% { transform: scale(1.08); opacity: 0.0; }
         }
+
+                /* Finder-like slider (SFX/MUSIC) */
+                .bsRange {
+                  -webkit-appearance: none;
+                  appearance: none;
+                  height: 14px;
+                  border-radius: 9999px;
+                  border: 1px solid rgba(255,255,255,0.14);
+                  background: rgba(255,255,255,0.06);
+                  backdrop-filter: blur(18px);
+                  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05), 0 10px 30px rgba(0,0,0,0.30);
+                  outline: none;
+                  cursor: pointer;
+                }
+                .bsRange {
+                  background-image: linear-gradient(90deg,
+                    var(--bsAccent, rgba(140,200,255,0.9)) 0%,
+                    var(--bsAccent, rgba(140,200,255,0.9)) var(--bsFill, 50%),
+                    rgba(255,255,255,0.10) var(--bsFill, 50%),
+                    rgba(255,255,255,0.06) 100%);
+                }
+                .bsRange:focus { filter: brightness(1.08); }
+                .bsRange:active { filter: brightness(1.14); }
+                .bsRange::-webkit-slider-thumb {
+                  -webkit-appearance: none;
+                  appearance: none;
+                  width: 22px;
+                  height: 22px;
+                  border-radius: 9999px;
+                  border: 1px solid rgba(255,255,255,0.22);
+                  background: rgba(0,0,0,0.25);
+                  box-shadow: 0 0 18px var(--bsAccent, rgba(140,200,255,0.9)), inset 0 0 0 1px rgba(255,255,255,0.06);
+                }
+                .bsRange::-moz-range-thumb {
+                  width: 22px;
+                  height: 22px;
+                  border-radius: 9999px;
+                  border: 1px solid rgba(255,255,255,0.22);
+                  background: rgba(0,0,0,0.25);
+                  box-shadow: 0 0 18px var(--bsAccent, rgba(140,200,255,0.9)), inset 0 0 0 1px rgba(255,255,255,0.06);
+                }
+                .bsRange::-moz-range-track {
+                  background: transparent;
+                }
+
       `}</style>
     </div>
   );
