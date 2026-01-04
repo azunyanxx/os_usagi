@@ -5211,7 +5211,8 @@ const BeatSyncApp = () => {
   const rootRef = useRef(null);
 
   const BS_fmtTime = (sec) => {
-    const s = Math.max(0, Math.floor(sec || 0));
+    if (!Number.isFinite(sec)) return "—:—";
+    const s = Math.max(0, Math.floor(sec));
     const m = Math.floor(s / 60);
     const r = s % 60;
     return `${m}:${String(r).padStart(2, "0")}`;
@@ -5342,9 +5343,6 @@ setNeedsAudioUnlock(!ok);
   const startedAtRef = useRef(0);
   const playingRef = useRef(false);
   const effectiveDiffRef = useRef("EASY");
-
-  const runDurRef = useRef(0); // duration for this run (sec)
-  const chartDurRef = useRef(0); // duration chart was generated for (sec)
 
   const chartRef = useRef([]); // notes: {t, lane, kind}
   const nextIdxRef = useRef(0);
@@ -5506,8 +5504,7 @@ setNeedsAudioUnlock(!ok);
   const buildChart = useCallback(
     (diff, durSec) => {
       const p = getDiffParams(diff);
-      const length = BS_clamp(durSec || 60, 35, 600);
-      chartDurRef.current = length;
+      const length = BS_clamp(durSec || 60, 35, 300);
       const notes = [];
       let t = 2.2; // intro lead-in
       let lane = 0;
@@ -5670,20 +5667,13 @@ setNeedsAudioUnlock(!ok);
     setHud({ score: 0, combo: 0 });
     setJudge(null);
 
-    // build chart using audio duration if available (mobile: duration can arrive late)
-    const aDur = Number(a.duration);
-    const dur =
-      Number.isFinite(aDur) && aDur > 5
-        ? aDur
-        : musicDur > 5
-          ? musicDur
-          : 600; // safe fallback to prevent "notes stop early"
-    runDurRef.current = dur;
-    chartRef.current = buildChart(effectiveDiffRef.current, dur);
+    // build chart with a generous length so notes never stop early if the MP3 duration becomes known mid-play (iOS)
+    const durRaw =
+      ((Number.isFinite(musicDur) && musicDur > 1) ? musicDur : 0) ||
+      ((a && Number.isFinite(a.duration) && a.duration > 1) ? a.duration : 0);
+    const durForChart = durRaw ? BS_clamp(Math.max(60, durRaw + 2), 35, 300) : 300;
+    chartRef.current = buildChart(effectiveDiffRef.current, durForChart);
     nextIdxRef.current = 0;
-    // initialize HUD time immediately (avoid 0s display on first frames)
-    lastTimeLeftUpdateRef.current = 0;
-    setTimeLeft(dur);
 
     // start play
     try {
@@ -5796,6 +5786,32 @@ setNeedsAudioUnlock(!ok);
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, w, h);
 
+    // OS Bunny glass micro-waves (very light, non-gameplay)
+    if (settings.motion) {
+      const tt = performance.now() * 0.001;
+      ctx.save();
+      ctx.globalAlpha = 0.18;
+      ctx.lineWidth = 1 * dpr;
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      const baseY = h * 0.18;
+      const amp = 5.5 * dpr;
+      for (let k = 0; k < 3; k++) {
+        const y0 = baseY + k * h * 0.09;
+        ctx.beginPath();
+        for (let x = 0; x <= w; x += 12 * dpr) {
+          const y =
+            y0 +
+            Math.sin(x / (120 * dpr) + tt * (1.15 + k * 0.12) + k) *
+              amp *
+              (0.72 - k * 0.16);
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     // lanes geometry
     const laneW = w / 4;
     const hitY = h * 0.82;
@@ -5840,26 +5856,20 @@ setNeedsAudioUnlock(!ok);
         : (performance.now() - startedAtRef.current) / 1000;
     const notes = chartRef.current;
     const lastT = notes && notes.length ? notes[notes.length - 1].t : 0;
-    const realDur = aNow && Number.isFinite(aNow.duration) ? Number(aNow.duration) : 0;
-    // if duration becomes available during play, sync the run duration (fix: notes/time mismatch)
-    if (realDur > 5 && (!runDurRef.current || Math.abs(runDurRef.current - realDur) > 0.5)) {
-      runDurRef.current = realDur;
-    }
-    const durGuess =
-      runDurRef.current > 0
-        ? runDurRef.current
-        : musicDur > 0
-          ? musicDur
-          : realDur > 0
-            ? realDur
-            : lastT
-              ? lastT + 1.2
-              : 60;
+    const durKnown =
+      (Number.isFinite(musicDur) && musicDur > 1) ||
+      (aNow && Number.isFinite(aNow.duration) && Number(aNow.duration) > 1);
+    const durTotal = (Number.isFinite(musicDur) && musicDur > 1)
+      ? Number(musicDur)
+      : (aNow && Number.isFinite(aNow.duration) && Number(aNow.duration) > 1
+        ? Number(aNow.duration)
+        : 0);
+    const durGuess = durTotal || (lastT ? lastT + 1.2 : 60);
     // update time-left at ~5fps (avoid rerender each frame)
     const tNow = performance.now();
     if (tNow - lastTimeLeftUpdateRef.current > 200) {
       lastTimeLeftUpdateRef.current = tNow;
-      setTimeLeft(Math.max(0, durGuess - now));
+      setTimeLeft(durTotal > 0 ? Math.max(0, durTotal - now) : NaN);
     }
     const diff = effectiveDiffRef.current;
     const p = getDiffParams(diff);
@@ -5899,11 +5909,11 @@ setNeedsAudioUnlock(!ok);
       ctx.restore();
     }
 
-    // finish if near end
-    if (durGuess > 0 && now >= durGuess - 0.05) {
+    // finish only when total duration is known (avoid early finish when iOS exposes duration late)
+    if (durKnown && durTotal > 0 && now >= durTotal - 0.05) {
       finishGame();
+      return;
     }
-
     // miss notes behind window
     while (nextIdxRef.current < notes.length && notes[nextIdxRef.current].t < now - 0.22) {
       const n = notes[nextIdxRef.current];
@@ -5981,7 +5991,7 @@ setNeedsAudioUnlock(!ok);
     if (!audioPanelOpen) return null;
     return (
       <div
-        className="fixed z-[60] rounded-3xl bg-white/[0.06] border border-white/[0.14] backdrop-blur-xl overflow-hidden shrink-0"
+        className="fixed z-[60] rounded-3xl bg-white/[0.06] border border-white/[0.14] backdrop-blur-xl overflow-hidden"
         style={{
           top: `calc(56px + env(safe-area-inset-top, 0px))`,
           right: `max(12px, env(safe-area-inset-right, 0px))`,
@@ -6207,7 +6217,6 @@ setNeedsAudioUnlock(!ok);
   };
 
   const safeBottom = "calc(env(safe-area-inset-bottom) + 112px)"; // avoid OS Dock overlap
-  const playBottom = "env(safe-area-inset-bottom)"; // play view: avoid home-indicator only (no extra blank)
 
   return (
     <div
@@ -6270,7 +6279,7 @@ setNeedsAudioUnlock(!ok);
       {/* main */}
       <div
         className={`relative z-[10] flex-1 min-h-0 px-4 ${view === "play" ? "overflow-hidden pb-0" : "overflow-y-auto pb-4"}`}
-        style={view === "play" ? undefined : { paddingBottom: safeBottom }}
+        style={{ paddingBottom: view === "play" ? 0 : safeBottom }}
       >
         {view === "select" && (
           <div className="flex flex-col gap-4">
@@ -6390,9 +6399,9 @@ setNeedsAudioUnlock(!ok);
         )}
 
         {view === "play" && (
-          <div className="h-full flex flex-col gap-4 min-h-0" style={{ paddingBottom: playBottom }}>
+          <div className="flex flex-col gap-3 min-h-0 flex-1">
             {/* play HUD */}
-            <div className="px-4 py-3 rounded-3xl bg-white/[0.06] border border-white/[0.12] backdrop-blur-xl flex items-center justify-between gap-3 shrink-0">
+            <div className="px-4 py-3 rounded-3xl bg-white/[0.06] border border-white/[0.12] backdrop-blur-xl flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <div className="text-white/80 text-[12px] tracking-[0.16em] truncate">{selectedTrack.title}</div>
                 <div className="text-white/45 text-[11px] tracking-[0.14em] mt-0.5">
@@ -6405,7 +6414,7 @@ setNeedsAudioUnlock(!ok);
             </div>
 
             {/* stage */}
-            <div className="relative rounded-3xl bg-white/[0.04] border border-white/[0.10] overflow-hidden flex-1 min-h-0">
+            <div className="relative flex-1 min-h-0 rounded-3xl bg-white/[0.04] border border-white/[0.10] overflow-hidden">
               <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
               {/* judge overlay (always visible; avoid canvas-load timing issues) */}
               {judge && (
@@ -6441,7 +6450,10 @@ setNeedsAudioUnlock(!ok);
 
             {/* pads */}
             <div
-              className="relative rounded-3xl bg-white/[0.06] border border-white/[0.12] backdrop-blur-xl overflow-hidden shrink-0"
+              className="relative rounded-3xl bg-white/[0.06] border border-white/[0.12] backdrop-blur-xl overflow-hidden"
+              style={{
+                paddingBottom: "calc(env(safe-area-inset-bottom) + 18px)",
+              }}
             >
               {/* lane glow guides (no box) */}
               <div className="absolute inset-0 pointer-events-none opacity-70">
@@ -6461,7 +6473,7 @@ setNeedsAudioUnlock(!ok);
                 ))}
               </div>
 
-              <div className="grid grid-cols-4 gap-2 p-3">
+              <div className="absolute left-0 right-0 z-[20] grid grid-cols-4 gap-2 px-3 pt-3" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 112px)", paddingBottom: 12 }}>
                 {[0, 1, 2, 3].map((i) => {
                   const dir = BS_laneArrowByIdx[i];
                   return (
@@ -6484,7 +6496,8 @@ setNeedsAudioUnlock(!ok);
                         <img
                           src={BS_ASSETS.arrows[dir]}
                           alt={dir}
-                          className="w-8 h-8 object-contain opacity-90"
+                          className="w-8 h-8 object-contain opacity-90 bs-float"
+                          style={{ animationDelay: `${i * 90}ms` }}
                           draggable={false}
                         />
                       </div>
@@ -6646,7 +6659,17 @@ setNeedsAudioUnlock(!ok);
                   background: transparent;
                 }
 
-      `}</style>
+      `}
+        @keyframes bsFloat {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-3px); }
+        }
+        .bs-float { animation: bsFloat 2.8s ease-in-out infinite; will-change: transform; }
+        @media (prefers-reduced-motion: reduce) {
+          .bs-float { animation: none; }
+        }
+
+      </style>
     </div>
   );
 };
