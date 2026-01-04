@@ -5283,7 +5283,7 @@ const BeatSyncApp = () => {
     };
     a.addEventListener("ended", onEnded);
     return () => a.removeEventListener("ended", onEnded);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [screen, settings.musicVol]);
 
   // keep preview playing on select (do NOT pause on audio panel open)
