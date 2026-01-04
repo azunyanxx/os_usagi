@@ -5298,10 +5298,11 @@ const BeatSyncApp = () => {
     } catch {
       ok = false;
     }
-    // HTMLAudio warm-up
+    // HTMLAudio warm-up (avoid disrupting currently-playing BGM)
     try {
       const a = musicRef.current;
-      if (a) {
+      // Only warm-up if the element is paused; never touch a playing track.
+      if (a && a.paused) {
         const prevVol = a.volume;
         a.volume = 0;
         const p = a.play();
@@ -5313,7 +5314,7 @@ const BeatSyncApp = () => {
     } catch {
       ok = false;
     }
-    setNeedsAudioUnlock(!ok);
+setNeedsAudioUnlock(!ok);
     return ok;
   }, []);
 
@@ -5449,7 +5450,7 @@ const BeatSyncApp = () => {
       a.removeEventListener("loadedmetadata", onMeta);
       a.removeEventListener("ended", onEnded);
     };
- 
+
   }, []);
 
   // whenever selected track changes, load + preview
@@ -5460,8 +5461,12 @@ const BeatSyncApp = () => {
 
   // ensure preview stops when leaving select
   useEffect(() => {
-    if (view !== "select") stopMusic();
-    if (view === "select") startPreview();
+    if (view === "select") {
+      startPreview();
+      return;
+    }
+    // Do NOT stop music when entering play; keep BGM running.
+    if (view === "result") stopMusic();
   }, [view, stopMusic, startPreview]);
 
   const getDiffParams = useCallback((diff) => {
@@ -5636,8 +5641,8 @@ const BeatSyncApp = () => {
     // lock in difficulty for this run
     effectiveDiffRef.current = difficulty;
 
-    // unlock audio on explicit start
-    await BS_unlockAudio();
+    // unlock audio on explicit start (do not await; keep within user gesture)
+    BS_unlockAudio();
     applyVolumes();
 
     // stop preview and start music for play
@@ -5871,10 +5876,11 @@ const BeatSyncApp = () => {
     const bunny = imgMapRef.current[BS_ASSETS.bunnies.button];
     return (
       <button
-        onClick={async (e) => {
+        onClick={(e) => {
           e.stopPropagation();
           BS_sfx("click");
-          await BS_unlockAudio();
+          // Unlock audio without touching currently-playing BGM
+          BS_unlockAudio();
           setAudioPanelOpen((v) => !v);
         }}
         className="relative px-3 py-2 rounded-full bg-white/[0.08] border border-white/[0.12] hover:bg-white/[0.10] active:scale-[0.99] select-none"
