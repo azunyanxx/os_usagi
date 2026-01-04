@@ -5404,6 +5404,7 @@ setNeedsAudioUnlock(!ok);
     async (idx, { preview = true } = {}) => {
       const a = musicRef.current;
       if (!a) return;
+      if (playingRef.current) return; // don't interrupt active gameplay
       stopMusic();
       setMusicReady(false);
       setMusicDur(0);
@@ -5450,14 +5451,14 @@ setNeedsAudioUnlock(!ok);
       a.removeEventListener("loadedmetadata", onMeta);
       a.removeEventListener("ended", onEnded);
     };
-    
+
   }, []);
 
   // whenever selected track changes, load + preview
   useEffect(() => {
     if (!musicRef.current) return;
     setTrack(selectedIdx, { preview: view === "select" });
-  }, [selectedIdx, setTrack, view]);
+  }, [selectedIdx, setTrack]);
 
   // ensure preview stops when leaving select
   useEffect(() => {
@@ -5553,7 +5554,14 @@ setNeedsAudioUnlock(!ok);
     (laneIdx) => {
       if (!playingRef.current) return;
 
-      const now = musicRef.current ? musicRef.current.currentTime : (performance.now() - startedAtRef.current) / 1000;
+      const aNow = musicRef.current;
+      const now =
+        aNow &&
+        !aNow.paused &&
+        Number.isFinite(aNow.currentTime) &&
+        aNow.currentTime > 0.0001
+          ? aNow.currentTime
+          : (performance.now() - startedAtRef.current) / 1000;
       const diff = effectiveDiffRef.current;
       const p = getDiffParams(diff);
 
@@ -5668,7 +5676,7 @@ setNeedsAudioUnlock(!ok);
       a.loop = false;
       a.currentTime = 0;
       const p = a.play();
-      if (p && typeof p.catch === "function") await p.catch(() => {});
+      if (p && typeof p.catch === "function") p.catch(() => {});
     } catch {}
 
     startedAtRef.current = performance.now();
@@ -5808,10 +5816,24 @@ setNeedsAudioUnlock(!ok);
     ctx.restore();
 
     // notes
-    const now = musicRef.current ? musicRef.current.currentTime : (performance.now() - startedAtRef.current) / 1000;
+    const aNow = musicRef.current;
+    const now =
+      aNow &&
+      !aNow.paused &&
+      Number.isFinite(aNow.currentTime) &&
+      aNow.currentTime > 0.0001
+        ? aNow.currentTime
+        : (performance.now() - startedAtRef.current) / 1000;
     const notes = chartRef.current;
     const lastT = notes && notes.length ? notes[notes.length - 1].t : 0;
-    const durGuess = musicDur > 0 ? musicDur : (musicRef.current && Number.isFinite(musicRef.current.duration) ? Number(musicRef.current.duration) : (lastT ? lastT + 1.2 : 60));
+    const durGuess =
+      musicDur > 0
+        ? musicDur
+        : aNow && Number.isFinite(aNow.duration)
+          ? Number(aNow.duration)
+          : lastT
+            ? lastT + 1.2
+            : 60;
     // update time-left at ~5fps (avoid rerender each frame)
     const tNow = performance.now();
     if (tNow - lastTimeLeftUpdateRef.current > 200) {
