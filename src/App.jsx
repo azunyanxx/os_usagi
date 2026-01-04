@@ -5501,7 +5501,7 @@ const BeatSyncApp = () => {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = 0;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [screen, trackIdx, difficulty, settings.reducedMotion]);
 
   // ---------- Hit logic ----------
