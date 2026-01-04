@@ -5553,7 +5553,8 @@ setNeedsAudioUnlock(!ok);
     (laneIdx) => {
       if (!playingRef.current) return;
 
-      const now = musicRef.current ? musicRef.current.currentTime : (performance.now() - startedAtRef.current) / 1000;
+      const a = musicRef.current;
+      const now = a && !a.paused && Number.isFinite(a.currentTime) ? a.currentTime : (performance.now() - startedAtRef.current) / 1000;
       const diff = effectiveDiffRef.current;
       const p = getDiffParams(diff);
 
@@ -5637,20 +5638,18 @@ setNeedsAudioUnlock(!ok);
     setView("result");
   }, [BS_sfx, stopLoop, stopMusic]);
 
-  const startGame = useCallback(async () => {
+  const startGame = useCallback(() => {
     // lock in difficulty for this run
     effectiveDiffRef.current = difficulty;
 
-    // unlock audio on explicit start (do not await; keep within user gesture)
+    // ensure audio is unlocked (do not pause/stop current playback here)
     BS_unlockAudio();
     applyVolumes();
 
-    // stop preview and start music for play
-    stopMusic();
     const a = musicRef.current;
     if (!a) return;
 
-    // reset stats
+    // reset stats for new run
     statsRef.current = { score: 0, combo: 0, maxCombo: 0, perfect: 0, good: 0, miss: 0, total: 0 };
     setHud({ score: 0, combo: 0 });
     setJudge(null);
@@ -5660,28 +5659,43 @@ setNeedsAudioUnlock(!ok);
     chartRef.current = buildChart(effectiveDiffRef.current, dur);
     nextIdxRef.current = 0;
 
-    // start play
+    const begin = () => {
+      // mark play started
+      startedAtRef.current = performance.now();
+      playingRef.current = true;
+
+      // switch to play view
+      setView("play");
+
+      // start RAF loop
+      stopLoop();
+      const tick = () => {
+        if (!playingRef.current) return;
+        renderFrame();
+        rafRef.current = requestAnimationFrame(tick);
+      };
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    // start playback for run WITHOUT pausing first (pausing can cause iOS to block subsequent play)
     try {
       a.loop = false;
       a.currentTime = 0;
       const p = a.play();
-      if (p && typeof p.catch === "function") await p.catch(() => {});
-    } catch {}
-
-    startedAtRef.current = performance.now();
-    playingRef.current = true;
-
-    BS_sfx("start");
-    setView("play");
-
-    // start RAF
-    stopLoop();
-    const tick = () => {
-      if (!playingRef.current) return;
-      renderFrame();
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
+      if (p && typeof p.then === "function") {
+        p.then(begin).catch(() => {
+          // could not start audio (likely iOS gesture restriction)
+          playingRef.current = false;
+          setNeedsAudioUnlock(true);
+        });
+      } else {
+        // older browsers
+        begin();
+      }
+    } catch {
+      playingRef.current = false;
+      setNeedsAudioUnlock(true);
+    }
   }, [
     BS_sfx,
     BS_unlockAudio,
@@ -5690,7 +5704,6 @@ setNeedsAudioUnlock(!ok);
     difficulty,
     musicDur,
     stopLoop,
-    stopMusic,
   ]);
 
   const retry = useCallback(() => {
@@ -5792,7 +5805,8 @@ setNeedsAudioUnlock(!ok);
     ctx.restore();
 
     // notes
-    const now = musicRef.current ? musicRef.current.currentTime : (performance.now() - startedAtRef.current) / 1000;
+    const a = musicRef.current;
+      const now = a && !a.paused && Number.isFinite(a.currentTime) ? a.currentTime : (performance.now() - startedAtRef.current) / 1000;
     const notes = chartRef.current;
     const lastT = notes && notes.length ? notes[notes.length - 1].t : 0;
     const durGuess = musicDur > 0 ? musicDur : (musicRef.current && Number.isFinite(musicRef.current.duration) ? Number(musicRef.current.duration) : (lastT ? lastT + 1.2 : 60));
@@ -6208,7 +6222,7 @@ setNeedsAudioUnlock(!ok);
       <AudioPanel />
 
       {/* main */}
-      <div className="relative z-[10] flex-1 min-h-0 overflow-y-auto px-4 pb-4" style={{ paddingBottom: safeBottom }}>
+      <div className={`relative z-[10] flex-1 min-h-0 ${view === "play" ? "overflow-hidden" : "overflow-y-auto"} px-4 pb-4`} style={{ paddingBottom: safeBottom, overscrollBehavior: "contain" }}>
         {view === "select" && (
           <div className="flex flex-col gap-4">
             {/* music bar */}
