@@ -5343,6 +5343,9 @@ setNeedsAudioUnlock(!ok);
   const playingRef = useRef(false);
   const effectiveDiffRef = useRef("EASY");
 
+  const runDurRef = useRef(0); // duration for this run (sec)
+  const chartDurRef = useRef(0); // duration chart was generated for (sec)
+
   const chartRef = useRef([]); // notes: {t, lane, kind}
   const nextIdxRef = useRef(0);
 
@@ -5451,7 +5454,7 @@ setNeedsAudioUnlock(!ok);
       a.removeEventListener("loadedmetadata", onMeta);
       a.removeEventListener("ended", onEnded);
     };
-
+    
   }, []);
 
   // whenever selected track changes, load + preview
@@ -5503,7 +5506,8 @@ setNeedsAudioUnlock(!ok);
   const buildChart = useCallback(
     (diff, durSec) => {
       const p = getDiffParams(diff);
-      const length = BS_clamp(durSec || 60, 35, 120);
+      const length = BS_clamp(durSec || 60, 35, 600);
+      chartDurRef.current = length;
       const notes = [];
       let t = 2.2; // intro lead-in
       let lane = 0;
@@ -5666,10 +5670,20 @@ setNeedsAudioUnlock(!ok);
     setHud({ score: 0, combo: 0 });
     setJudge(null);
 
-    // build chart using duration if available
-    const dur = musicDur || 60;
+    // build chart using audio duration if available (mobile: duration can arrive late)
+    const aDur = Number(a.duration);
+    const dur =
+      Number.isFinite(aDur) && aDur > 5
+        ? aDur
+        : musicDur > 5
+          ? musicDur
+          : 600; // safe fallback to prevent "notes stop early"
+    runDurRef.current = dur;
     chartRef.current = buildChart(effectiveDiffRef.current, dur);
     nextIdxRef.current = 0;
+    // initialize HUD time immediately (avoid 0s display on first frames)
+    lastTimeLeftUpdateRef.current = 0;
+    setTimeLeft(dur);
 
     // start play
     try {
@@ -5826,14 +5840,21 @@ setNeedsAudioUnlock(!ok);
         : (performance.now() - startedAtRef.current) / 1000;
     const notes = chartRef.current;
     const lastT = notes && notes.length ? notes[notes.length - 1].t : 0;
+    const realDur = aNow && Number.isFinite(aNow.duration) ? Number(aNow.duration) : 0;
+    // if duration becomes available during play, sync the run duration (fix: notes/time mismatch)
+    if (realDur > 5 && (!runDurRef.current || Math.abs(runDurRef.current - realDur) > 0.5)) {
+      runDurRef.current = realDur;
+    }
     const durGuess =
-      musicDur > 0
-        ? musicDur
-        : aNow && Number.isFinite(aNow.duration)
-          ? Number(aNow.duration)
-          : lastT
-            ? lastT + 1.2
-            : 60;
+      runDurRef.current > 0
+        ? runDurRef.current
+        : musicDur > 0
+          ? musicDur
+          : realDur > 0
+            ? realDur
+            : lastT
+              ? lastT + 1.2
+              : 60;
     // update time-left at ~5fps (avoid rerender each frame)
     const tNow = performance.now();
     if (tNow - lastTimeLeftUpdateRef.current > 200) {
@@ -5960,7 +5981,7 @@ setNeedsAudioUnlock(!ok);
     if (!audioPanelOpen) return null;
     return (
       <div
-        className="fixed z-[60] rounded-3xl bg-white/[0.06] border border-white/[0.14] backdrop-blur-xl overflow-hidden"
+        className="fixed z-[60] rounded-3xl bg-white/[0.06] border border-white/[0.14] backdrop-blur-xl overflow-hidden shrink-0"
         style={{
           top: `calc(56px + env(safe-area-inset-top, 0px))`,
           right: `max(12px, env(safe-area-inset-right, 0px))`,
@@ -6186,6 +6207,7 @@ setNeedsAudioUnlock(!ok);
   };
 
   const safeBottom = "calc(env(safe-area-inset-bottom) + 112px)"; // avoid OS Dock overlap
+  const playBottom = "env(safe-area-inset-bottom)"; // play view: avoid home-indicator only (no extra blank)
 
   return (
     <div
@@ -6246,7 +6268,10 @@ setNeedsAudioUnlock(!ok);
       <AudioPanel />
 
       {/* main */}
-      <div className="relative z-[10] flex-1 min-h-0 overflow-y-auto px-4 pb-4" style={{ paddingBottom: safeBottom }}>
+      <div
+        className={`relative z-[10] flex-1 min-h-0 px-4 ${view === "play" ? "overflow-hidden pb-0" : "overflow-y-auto pb-4"}`}
+        style={view === "play" ? undefined : { paddingBottom: safeBottom }}
+      >
         {view === "select" && (
           <div className="flex flex-col gap-4">
             {/* music bar */}
@@ -6365,9 +6390,9 @@ setNeedsAudioUnlock(!ok);
         )}
 
         {view === "play" && (
-          <div className="flex flex-col gap-4">
+          <div className="h-full flex flex-col gap-4 min-h-0" style={{ paddingBottom: playBottom }}>
             {/* play HUD */}
-            <div className="px-4 py-3 rounded-3xl bg-white/[0.06] border border-white/[0.12] backdrop-blur-xl flex items-center justify-between gap-3">
+            <div className="px-4 py-3 rounded-3xl bg-white/[0.06] border border-white/[0.12] backdrop-blur-xl flex items-center justify-between gap-3 shrink-0">
               <div className="min-w-0">
                 <div className="text-white/80 text-[12px] tracking-[0.16em] truncate">{selectedTrack.title}</div>
                 <div className="text-white/45 text-[11px] tracking-[0.14em] mt-0.5">
@@ -6380,7 +6405,7 @@ setNeedsAudioUnlock(!ok);
             </div>
 
             {/* stage */}
-            <div className="relative rounded-3xl bg-white/[0.04] border border-white/[0.10] overflow-hidden" style={{ height: "min(56dvh, 520px)" }}>
+            <div className="relative rounded-3xl bg-white/[0.04] border border-white/[0.10] overflow-hidden flex-1 min-h-0">
               <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
               {/* judge overlay (always visible; avoid canvas-load timing issues) */}
               {judge && (
@@ -6416,10 +6441,7 @@ setNeedsAudioUnlock(!ok);
 
             {/* pads */}
             <div
-              className="relative rounded-3xl bg-white/[0.06] border border-white/[0.12] backdrop-blur-xl overflow-hidden"
-              style={{
-                paddingBottom: "calc(env(safe-area-inset-bottom) + 18px)",
-              }}
+              className="relative rounded-3xl bg-white/[0.06] border border-white/[0.12] backdrop-blur-xl overflow-hidden shrink-0"
             >
               {/* lane glow guides (no box) */}
               <div className="absolute inset-0 pointer-events-none opacity-70">
