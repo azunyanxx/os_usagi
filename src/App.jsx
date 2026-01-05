@@ -5015,6 +5015,20 @@ const Desktop = ({ bgm }) => {
  * - Play pads always above Dock/safe-area; lane guidance uses glowing lines (no box frames)
  * - EASY/NORMAL/HARD affects speed & density; locked during play
  */
+// ==============================
+// OS Bunny — Beat Sync (Game App)  [REPLACE THIS WHOLE BLOCK]
+// ==============================
+
+/**
+ * Beat Sync — Safari “pure app” style
+ * - single-file / no deps
+ * - mobile-first (100dvh + safe-area)
+ * - Audio bunny button = unlock + panel toggle (never disappears)
+ * - Settings panel fits within viewport (no right clipping)
+ * - CAST selects the buddy and also swaps the background bunny
+ * - Play pads always above Dock/safe-area; lane guidance uses glowing lines (no box frames)
+ * - EASY/NORMAL/HARD affects speed & density; locked during play
+ */
 
 const BS_ASSETS = {
   judge: {
@@ -6551,8 +6565,6 @@ const BeatSyncApp = () => {
 // ==============================
 // END — Beat Sync (Game App)
 // ==============================
-
-
 
 
 
