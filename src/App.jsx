@@ -5001,23 +5001,6 @@ const Desktop = ({ bgm }) => {
 // ==============================
 // OS Bunny — Beat Sync (Game App)  [REPLACE THIS WHOLE BLOCK]
 // ==============================
-// ==============================
-// OS Bunny — Beat Sync (Game App)  [REPLACE THIS WHOLE BLOCK]
-// ==============================
-
-/**
- * Beat Sync — Safari “pure app” style
- * - single-file / no deps
- * - mobile-first (100dvh + safe-area)
- * - Audio bunny button = unlock + panel toggle (never disappears)
- * - Settings panel fits within viewport (no right clipping)
- * - CAST selects the buddy and also swaps the background bunny
- * - Play pads always above Dock/safe-area; lane guidance uses glowing lines (no box frames)
- * - EASY/NORMAL/HARD affects speed & density; locked during play
- */
-// ==============================
-// OS Bunny — Beat Sync (Game App)  [REPLACE THIS WHOLE BLOCK]
-// ==============================
 
 /**
  * Beat Sync — Safari “pure app” style
@@ -5224,43 +5207,148 @@ function BS_makeSfx() {
   return { resume, setVolume, beep, getCtx };
 }
 
-const BS_SESSION_SEC = 90; // unified run length (sec) — mobile-first rhythm game
-
 const BeatSyncApp = () => {
   const rootRef = useRef(null);
-  const stageRef = useRef(null);
-  const canvasRef = useRef(null);
-  const musicRef = useRef(null);
 
-  // ---------- state ----------
-  const [view, setView] = useState("select"); // select | play | result
+  const BS_fmtTime = (sec) => {
+    const s = Math.max(0, Math.floor(sec || 0));
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${m}:${String(r).padStart(2, "0")}`;
+  };
+
+  // views: select -> play -> result
+  const [view, setView] = useState("select");
+
+  // selection
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const [difficulty, setDifficulty] = useState("EASY");
-  const [castKey, setCastKey] = useState("standR"); // key in BS_ASSETS.bunnies
-  const [audioOpen, setAudioOpen] = useState(false);
+  const [difficulty, setDifficulty] = useState("EASY"); // EASY | NORMAL | HARD (UI)
+  const difficultyLocked = view === "play";
 
-  const [musicVol, setMusicVol] = useState(0.72);
-  const [sfxVol, setSfxVol] = useState(0.85);
+  // cast (also background)
+  const [castKey, setCastKey] = useState("standL");
+
+  // audio panel
+  const [audioPanelOpen, setAudioPanelOpen] = useState(false);
   const [needsAudioUnlock, setNeedsAudioUnlock] = useState(true);
 
-  const [hud, setHud] = useState({ score: 0, combo: 0 });
-  const [timeLeft, setTimeLeft] = useState(BS_SESSION_SEC);
-  const [judge, setJudge] = useState(null);
+  // settings
+  const [settings, setSettings] = useState(() => ({
+    sfxOn: true,
+    sfxVol: 0.75,
+    musicVol: 0.75,
+    motion: true,
+    haptics: true,
+  }));
 
-  const [padsDown, setPadsDown] = useState([false, false, false, false]);
-  const [ripples, setRipples] = useState([]);
+  const setSettingsPatch = (patch) =>
+    setSettings((p) => ({ ...p, ...patch }));
 
-  // ---------- refs ----------
+  // preload images
+  const imgMapRef = useRef({});
+  const preloadPromiseRef = useRef(Promise.resolve());
+  const [imagesReady, setImagesReady] = useState(false);
+
+  useEffect(() => {
+    const urls = [
+      ...Object.values(BS_ASSETS.judge),
+      ...Object.values(BS_ASSETS.arrows),
+      ...Object.values(BS_ASSETS.bunnies),
+    ];
+    const { promise, cancel } = BS_preloadImages(urls);
+    preloadPromiseRef.current = promise;
+    promise.then((m) => {
+      imgMapRef.current = m || {};
+      setImagesReady(true);
+    });
+    return () => cancel();
+  }, []);
+
+  // music (preview + play)
+  const musicRef = useRef(null);
+  const [musicReady, setMusicReady] = useState(false);
+  const [musicDur, setMusicDur] = useState(0);
+
+  // SFX engine
+  const sfxRef = useRef(null);
+  if (!sfxRef.current && typeof window !== "undefined") {
+    sfxRef.current = BS_makeSfx();
+  }
+
+  const applyVolumes = useCallback(() => {
+    // music volume
+    const a = musicRef.current;
+    if (a) a.volume = BS_clamp(settings.musicVol, 0, 1);
+    // sfx volume
+    if (sfxRef.current) {
+      const v = settings.sfxOn ? settings.sfxVol : 0;
+      sfxRef.current.setVolume(v);
+    }
+  }, [settings.musicVol, settings.sfxOn, settings.sfxVol]);
+
+  useEffect(() => {
+    applyVolumes();
+  }, [applyVolumes]);
+
+  const BS_unlockAudio = useCallback(async () => {
+    let ok = true;
+    // WebAudio
+    try {
+      ok = (await sfxRef.current?.resume?.()) !== false;
+    } catch {
+      ok = false;
+    }
+    // HTMLAudio warm-up (avoid disrupting currently-playing BGM)
+    try {
+      const a = musicRef.current;
+      // Only warm-up if the element is paused; never touch a playing track.
+      if (a && a.paused) {
+        const prevVol = a.volume;
+        a.volume = 0;
+        const p = a.play();
+        if (p && typeof p.then === "function") await p;
+        a.pause();
+        a.currentTime = 0;
+        a.volume = prevVol;
+      }
+    } catch {
+      ok = false;
+    }
+setNeedsAudioUnlock(!ok);
+    return ok;
+  }, []);
+
+  const BS_sfx = useCallback(
+    (kind) => {
+      if (!settings.sfxOn) return;
+      try {
+        sfxRef.current?.beep?.(kind, settings.sfxVol);
+      } catch {}
+    },
+    [settings.sfxOn, settings.sfxVol]
+  );
+
+  // keep castKey valid
+  useEffect(() => {
+    if (!BS_ASSETS.bunnies[castKey]) setCastKey("standL");
+  }, [castKey]);
+
+  // accent
+  const accent = BS_ACCENTS[selectedIdx % BS_ACCENTS.length];
+
+  // --- Chart & game state (ref-based) ---
+  const canvasRef = useRef(null);
   const rafRef = useRef(0);
-  const fallbackTimerRef = useRef(0);
-  const lastFrameMsRef = useRef(0);
-
+  const startedAtRef = useRef(0);
   const playingRef = useRef(false);
-  const startedAtMsRef = useRef(0);
-  const chartRef = useRef([]);
+  const effectiveDiffRef = useRef("EASY");
+
+  const runDurRef = useRef(0); // duration for this run (sec)
+  const chartDurRef = useRef(0); // duration chart was generated for (sec)
+
+  const chartRef = useRef([]); // notes: {t, lane, kind}
   const nextIdxRef = useRef(0);
 
-  const effectiveDiffRef = useRef("EASY");
   const statsRef = useRef({
     score: 0,
     combo: 0,
@@ -5268,286 +5356,290 @@ const BeatSyncApp = () => {
     perfect: 0,
     good: 0,
     miss: 0,
-    ghost: 0,
-    totalNotes: 0,
+    total: 0,
   });
 
-  const lastHudCommitRef = useRef(0);
-  const hudDirtyRef = useRef(false);
-
+  const [hud, setHud] = useState({ score: 0, combo: 0 });
+  const [timeLeft, setTimeLeft] = useState(0); // seconds remaining (HUD)
   const lastTimeLeftUpdateRef = useRef(0);
-  const lastShownTimeRef = useRef(BS_SESSION_SEC);
+  const [judge, setJudge] = useState(null); // 'perfect' | 'good' | 'miss'
+  const [judgeBump, setJudgeBump] = useState(0); // re-trigger anim
+  const judgeTimerRef = useRef(0);
 
-  // ---------- device / cosmetics ----------
-  const isIOS = useMemo(() => {
-    if (typeof navigator === "undefined") return false;
-    const ua = navigator.userAgent || "";
-    return /iP(hone|ad|od)/.test(ua);
+  // ripples for tactile feel (DOM overlay)
+  const [ripples, setRipples] = useState([]);
+  const addRipple = (laneIdx) => {
+    const id = Math.random().toString(36).slice(2);
+    setRipples((r) => [...r, { id, laneIdx, t: Date.now() }]);
+    setTimeout(() => setRipples((r) => r.filter((x) => x.id !== id)), 280);
+  };
+
+  const stopLoop = useCallback(() => {
+    playingRef.current = false;
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = 0;
   }, []);
-
-  const selectedTrack = BS_ASSETS.tracks[selectedIdx % BS_ASSETS.tracks.length];
-  const accentBase = BS_ACCENTS[selectedIdx % BS_ACCENTS.length];
-
-  const BS_parseRgba = useCallback((s) => {
-    const m = String(s || "").match(/rgba?\(\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*([0-9]+)\s*(?:,\s*([0-9.]+)\s*)?\)/i);
-    if (!m) return { r: 180, g: 220, b: 255, a: 0.55 };
-    return { r: Number(m[1]), g: Number(m[2]), b: Number(m[3]), a: m[4] == null ? 1 : Number(m[4]) };
-  }, []);
-
-  const BS_rgba = useCallback((r, g, b, a) => `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a})`, []);
-
-  const accent = useMemo(() => {
-    const c = BS_parseRgba(accentBase);
-    const solid = BS_rgba(c.r, c.g, c.b, c.a);
-    const line = BS_rgba(c.r, c.g, c.b, Math.min(0.22, c.a));
-    const glow = `linear-gradient(90deg, rgba(255,255,255,0.00), ${BS_rgba(c.r, c.g, c.b, Math.min(0.75, c.a + 0.20))}, rgba(255,255,255,0.00))`;
-    const bloom = `radial-gradient(120% 120% at 50% 20%, ${BS_rgba(c.r, c.g, c.b, Math.min(0.28, c.a * 0.55))}, rgba(0,0,0,0) 60%)`;
-    const shadow = `0 0 28px ${BS_rgba(c.r, c.g, c.b, Math.min(0.32, c.a * 0.6))}`;
-    return { solid, glow, bloom, line, shadow };
-  }, [BS_parseRgba, BS_rgba, accentBase]);
-
-  // ---------- SFX ----------
-  const sfxRef = useRef(null);
-  if (!sfxRef.current) sfxRef.current = BS_makeSfx();
-
-  const BS_sfx = useCallback(
-    (name) => {
-      const eng = sfxRef.current;
-      if (!eng) return;
-      eng.setVolume(sfxVol);
-      // handcrafted "pleasant OS" beeps
-      if (name === "click") eng.beep(420, 0.055, 0.25);
-      else if (name === "select") eng.beep(540, 0.08, 0.32);
-      else if (name === "start") eng.beep(620, 0.10, 0.42);
-      else if (name === "back") eng.beep(360, 0.06, 0.22);
-      else if (name === "hitP") eng.beep(820, 0.06, 0.50);
-      else if (name === "hitG") eng.beep(640, 0.05, 0.40);
-      else if (name === "miss") eng.beep(220, 0.09, 0.26);
-      else if (name === "bonus") eng.beep(980, 0.07, 0.55);
-      else if (name === "result") eng.beep(520, 0.12, 0.46);
-      else eng.beep(500, 0.06, 0.30);
-    },
-    [sfxVol]
-  );
-
-  const vibrate = useCallback((ms) => {
-    try {
-      if (navigator && navigator.vibrate) navigator.vibrate(ms);
-    } catch {}
-  }, []);
-
-  // ---------- audio controls ----------
-  const applyVolumes = useCallback(() => {
-    const a = musicRef.current;
-    if (!a) return;
-    a.volume = BS_clamp(musicVol, 0, 1);
-  }, [musicVol]);
 
   const stopMusic = useCallback(() => {
-    const a = musicRef.current;
-    if (!a) return;
     try {
-      a.pause();
-      a.currentTime = 0;
-      a.loop = false;
+      const a = musicRef.current;
+      if (a) {
+        a.pause();
+        a.currentTime = 0;
+      }
     } catch {}
   }, []);
 
   const startPreview = useCallback(async () => {
     const a = musicRef.current;
-    if (!a || !selectedTrack) return;
+    if (!a) return;
     try {
-      a.src = selectedTrack.url;
       a.loop = true;
       a.currentTime = 0;
-      applyVolumes();
       const p = a.play();
-      if (p && typeof p.catch === "function") p.catch(() => {});
+      if (p && typeof p.catch === "function") {
+        await p.catch(() => {});
+      }
     } catch {}
-  }, [applyVolumes, selectedTrack]);
-
-  const BS_unlockAudio = useCallback(() => {
-    const a = musicRef.current;
-    const eng = sfxRef.current;
-    try {
-      eng && eng.resume && eng.resume();
-    } catch {}
-
-    if (!a) return false;
-
-    // iOS: must be within user gesture. We'll "prime" play.
-    let ok = true;
-    try {
-      const prevMuted = a.muted;
-      a.muted = true;
-      a.src = a.src || (selectedTrack ? selectedTrack.url : "");
-      a.currentTime = 0;
-      const p = a.play();
-      if (p && typeof p.catch === "function") p.catch(() => {});
-      a.pause();
-      a.muted = prevMuted;
-    } catch {
-      ok = false;
-    }
-    setNeedsAudioUnlock(!ok);
-    return ok;
-  }, [selectedTrack]);
-
-  useEffect(() => {
-    applyVolumes();
-  }, [applyVolumes]);
-
-  // auto preview in select view
-  useEffect(() => {
-    if (view !== "select") return;
-    if (!needsAudioUnlock) startPreview();
-    return () => {
-      // keep music if switching track quickly; stop on unmount
-    };
-  }, [view, needsAudioUnlock, startPreview]);
-
-  useEffect(() => {
-    if (view !== "select") return;
-    if (!needsAudioUnlock) startPreview();
-  }, [view, selectedIdx, needsAudioUnlock, startPreview]);
-
-  // stop audio on leaving select
-  useEffect(() => {
-    if (view === "select") return;
-    stopMusic();
-  }, [view, stopMusic]);
-
-  // ---------- gameplay (difficulty / chart) ----------
-  const getDiffParams = useCallback((d) => {
-    if (d === "HARD") {
-      return { approach: 1.35, perfectW: 0.085, goodW: 0.165, missAfter: 0.19, density: 1.00, chordRate: 0.18, burstRate: 0.20 };
-    }
-    if (d === "NORMAL") {
-      return { approach: 1.60, perfectW: 0.10, goodW: 0.20, missAfter: 0.24, density: 0.82, chordRate: 0.10, burstRate: 0.12 };
-    }
-    // EASY (more forgiving + longer approach time)
-    return { approach: 2.05, perfectW: 0.12, goodW: 0.24, missAfter: 0.28, density: 0.62, chordRate: 0.05, burstRate: 0.06 };
   }, []);
 
-  const BS_seeded = useCallback((seed0) => {
-    let seed = (seed0 >>> 0) || 1;
-    return () => {
-      seed = (seed * 1664525 + 1013904223) >>> 0;
-      return seed / 4294967296;
+  const setTrack = useCallback(
+    async (idx, { preview = true } = {}) => {
+      const a = musicRef.current;
+      if (!a) return;
+      if (playingRef.current) return; // don't interrupt active gameplay
+      stopMusic();
+      setMusicReady(false);
+      setMusicDur(0);
+      a.src = BS_ASSETS.tracks[idx]?.url || "";
+      a.load();
+      if (preview) {
+        // don't auto-open audio panel; just try play (will be blocked on iOS until unlock)
+        await startPreview();
+      }
+    },
+    [startPreview, stopMusic]
+  );
+
+  // init audio element once
+  useEffect(() => {
+    const a = new Audio();
+    a.preload = "auto";
+    a.crossOrigin = "anonymous";
+    a.volume = BS_clamp(settings.musicVol, 0, 1);
+    musicRef.current = a;
+
+    const onCanPlay = () => setMusicReady(true);
+    const onMeta = () => {
+      const d = Number(a.duration);
+      if (isFinite(d)) setMusicDur(d);
     };
+    const onEnded = () => {
+      // play ended -> finish (avoid stale-closure view)
+      if (playingRef.current) finishGame();
+    };
+
+    a.addEventListener("canplay", onCanPlay);
+    a.addEventListener("loadedmetadata", onMeta);
+    a.addEventListener("ended", onEnded);
+
+    // load initial track
+    setTrack(0, { preview: true });
+
+    return () => {
+      try {
+        a.pause();
+      } catch {}
+      a.removeEventListener("canplay", onCanPlay);
+      a.removeEventListener("loadedmetadata", onMeta);
+      a.removeEventListener("ended", onEnded);
+    };
+
+  }, []);
+
+  // whenever selected track changes, load + preview
+  useEffect(() => {
+    if (!musicRef.current) return;
+    setTrack(selectedIdx, { preview: view === "select" });
+  }, [selectedIdx, setTrack]);
+
+  // ensure preview stops when leaving select
+  useEffect(() => {
+    if (view === "select") {
+      startPreview();
+      return;
+    }
+    // Do NOT stop music when entering play; keep BGM running.
+    if (view === "result") stopMusic();
+  }, [view, stopMusic, startPreview]);
+
+  const getDiffParams = useCallback((diff) => {
+    const base = {
+      EASY: {
+        speed: 440, // px/sec
+        step: 0.65, // sec
+        pairP: 0.06,
+        bonusP: 0.08,
+        perfectW: 0.075,
+        goodW: 0.13,
+      },
+      NORMAL: {
+        speed: 560,
+        step: 0.52,
+        pairP: 0.10,
+        bonusP: 0.10,
+        perfectW: 0.06,
+        goodW: 0.11,
+      },
+      HARD: {
+        speed: 700,
+        step: 0.42,
+        pairP: 0.14,
+        bonusP: 0.12,
+        perfectW: 0.05,
+        goodW: 0.095,
+      },
+    };
+    return base[diff] || base.EASY;
   }, []);
 
   const buildChart = useCallback(
-    (d, durSec, seedBase) => {
-      // Fixed 90s playtime per your requirement (ignore external durSec)
-      const len = BS_SESSION_SEC;
-      const p = getDiffParams(d);
-
-      // deterministic per (track + diff)
-      const rand = BS_seeded((seedBase >>> 0) ^ (d === "HARD" ? 0xA53 : d === "NORMAL" ? 0xBEE : 0xC0F));
-
-      // pseudo BPM per track (keeps "song personality" without analysis)
-      const bpmTable = [138, 148, 132, 144, 156, 128, 140];
-      const bpm = bpmTable[seedBase % bpmTable.length] * (0.98 + rand() * 0.06);
-      const beat = 60 / bpm;
-
-      const motifs = [
-        [0, 1, 0, 1, 2, 3, 2, 3], // alt
-        [0, 1, 2, 3, 2, 1, 0, 1], // stair
-        [0, 2, 0, 2, 1, 3, 1, 3], // opposite
-        [1, 1, 2, 2, 3, 3, 0, 0], // doubles
-        [0, 1, 2, 1, 0, 2, 3, 2], // bounce
-      ];
-
+    (diff, durSec) => {
+      const p = getDiffParams(diff);
+      const length = BS_clamp(durSec || 60, 35, 600);
+      chartDurRef.current = length;
       const notes = [];
-      const leadIn = 2.0;
-
-      const sectionBeats = 8;
-      let t = leadIn;
-
-      // base step: EASY = quarter, NORMAL/HARD = eighth
-      const baseStep = d === "EASY" ? beat : beat / 2;
-
-      const pushNote = (time, lane, kind = "tap") => {
-        notes.push({ t: time, lane, kind, hit: false });
-      };
-
-      while (t < len - 0.35) {
-        // choose motif for this section
-        const m = motifs[Math.floor(rand() * motifs.length)];
-        const sectionStart = t;
-
-        // occasional burst (more notes, still fair)
-        const burst = rand() < p.burstRate;
-        const step = burst ? baseStep / 2 : baseStep;
-
-        const steps = Math.floor((sectionBeats * beat) / step);
-        for (let i = 0; i < steps; i++) {
-          const tt = sectionStart + i * step;
-
-          // density gate (EASY uses fewer notes)
-          if (rand() > p.density) continue;
-
-          const lane = m[i % m.length];
-
-          // avoid same-lane repeats too often
-          const prev = notes.length ? notes[notes.length - 1].lane : -1;
-          const lane2 = prev === lane && rand() < 0.6 ? (lane + 1 + Math.floor(rand() * 3)) % 4 : lane;
-
-          // bonus spark: rare
-          const isBonus = rand() < 0.035;
-
-          pushNote(tt, lane2, isBonus ? "bonus" : "tap");
-
-          // chord (only when not EASY and not bonus) — kept modest for mobile
-          if (d !== "EASY" && !isBonus && rand() < p.chordRate) {
-            const chordLane = (lane2 + (rand() < 0.5 ? 2 : 1)) % 4;
-            if (chordLane !== lane2) pushNote(tt, chordLane, "tap");
-          }
+      let t = 2.2; // intro lead-in
+      let lane = 0;
+      while (t < length - 1.0) {
+        // choose lane
+        lane = (lane + (Math.random() < 0.45 ? 1 : 3) + (Math.random() < 0.22 ? 1 : 0)) % 4;
+        notes.push({
+          t,
+          lane,
+          kind: Math.random() < p.bonusP ? "bonus" : "arrow",
+        });
+        // rare pair (not on EASY much)
+        if (Math.random() < p.pairP) {
+          const lane2 = (lane + 2) % 4;
+          notes.push({ t, lane: lane2, kind: "arrow" });
         }
-
-        t += sectionBeats * beat;
+        // slightly varied step
+        const wobble = (Math.random() - 0.5) * 0.08;
+        t += Math.max(0.28, p.step + wobble);
       }
-
-      // sort & de-duplicate tight collisions
-      notes.sort((a, b) => a.t - b.t || a.lane - b.lane);
-      const cleaned = [];
-      for (let i = 0; i < notes.length; i++) {
-        const n = notes[i];
-        const last = cleaned[cleaned.length - 1];
-        if (last && Math.abs(last.t - n.t) < 0.015 && last.lane === n.lane) continue;
-        cleaned.push(n);
-      }
-      return cleaned;
+      notes.sort((a, b) => a.t - b.t);
+      return notes;
     },
-    [BS_seeded, getDiffParams]
+    [getDiffParams]
   );
 
-  // ---------- HUD commits (throttle) ----------
-  const commitHud = useCallback((force = false) => {
-    const now = performance.now();
-    if (!force && now - lastHudCommitRef.current < 120) return;
-    lastHudCommitRef.current = now;
-    if (!hudDirtyRef.current) return;
-    hudDirtyRef.current = false;
-    const st = statsRef.current;
-    setHud({ score: st.score, combo: st.combo });
-  }, []);
+  const showJudge = useCallback(
+    (k) => {
+      setJudge(k);
+      setJudgeBump((x) => x + 1);
+      if (judgeTimerRef.current) clearTimeout(judgeTimerRef.current);
+      judgeTimerRef.current = setTimeout(() => setJudge(null), 320);
+    },
+    []
+  );
 
-  const showJudge = useCallback((label) => {
-    setJudge(label);
-    window.clearTimeout(showJudge._t);
-    showJudge._t = window.setTimeout(() => setJudge(null), 240);
-  }, []);
+  const vibrate = useCallback(
+    (ms) => {
+      if (!settings.haptics) return;
+      try {
+        if (navigator.vibrate) navigator.vibrate(ms);
+      } catch {}
+    },
+    [settings.haptics]
+  );
 
-  // ---------- loop controls ----------
-  const stopLoop = useCallback(() => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = 0;
-    if (fallbackTimerRef.current) clearInterval(fallbackTimerRef.current);
-    fallbackTimerRef.current = 0;
-    lastFrameMsRef.current = 0;
-  }, []);
+  const hitLane = useCallback(
+    (laneIdx) => {
+      if (!playingRef.current) return;
+
+      const aNow = musicRef.current;
+      const now =
+        aNow &&
+        !aNow.paused &&
+        Number.isFinite(aNow.currentTime) &&
+        aNow.currentTime > 0.0001
+          ? aNow.currentTime
+          : (performance.now() - startedAtRef.current) / 1000;
+      const diff = effectiveDiffRef.current;
+      const p = getDiffParams(diff);
+
+      // find closest note in this lane from nextIdxRef backward a bit
+      const notes = chartRef.current;
+      const startSearch = Math.max(0, nextIdxRef.current - 6);
+      let best = -1;
+      let bestDt = 999;
+
+      for (let i = startSearch; i < Math.min(notes.length, nextIdxRef.current + 16); i++) {
+        const n = notes[i];
+        if (!n || n.hit || n.lane !== laneIdx) continue;
+        const dt = n.t - now;
+        const adt = Math.abs(dt);
+        if (adt < bestDt) {
+          bestDt = adt;
+          best = i;
+        }
+      }
+
+      const st = statsRef.current;
+      st.total += 1;
+
+      if (best >= 0) {
+        const n = notes[best];
+        const dt = Math.abs(n.t - now);
+        if (dt <= p.perfectW) {
+          n.hit = true;
+          st.perfect += 1;
+          st.combo += 1;
+          st.maxCombo = Math.max(st.maxCombo, st.combo);
+          st.score += n.kind === "bonus" ? 320 : 200;
+          showJudge("perfect");
+          BS_sfx(n.kind === "bonus" ? "bonus" : "perfect");
+          addRipple(laneIdx);
+          vibrate(10);
+        } else if (dt <= p.goodW) {
+          n.hit = true;
+          st.good += 1;
+          st.combo += 1;
+          st.maxCombo = Math.max(st.maxCombo, st.combo);
+          st.score += n.kind === "bonus" ? 220 : 120;
+          showJudge("good");
+          BS_sfx("good");
+          addRipple(laneIdx);
+          vibrate(6);
+        } else {
+          // miss (no note)
+          st.miss += 1;
+          st.combo = 0;
+          showJudge("miss");
+          BS_sfx("miss");
+          addRipple(laneIdx);
+          vibrate(12);
+        }
+      } else {
+        st.miss += 1;
+        st.combo = 0;
+        showJudge("miss");
+        BS_sfx("miss");
+        addRipple(laneIdx);
+        vibrate(12);
+      }
+
+      // update HUD (throttle)
+      setHud({ score: st.score, combo: st.combo });
+
+      // advance nextIdxRef
+      while (nextIdxRef.current < notes.length && (notes[nextIdxRef.current].hit || notes[nextIdxRef.current].t < now - 0.25)) {
+        nextIdxRef.current += 1;
+      }
+    },
+    [BS_sfx, addRipple, getDiffParams, showJudge, vibrate]
+  );
 
   const finishGame = useCallback(() => {
     stopLoop();
@@ -5557,892 +5649,937 @@ const BeatSyncApp = () => {
     setView("result");
   }, [BS_sfx, stopLoop, stopMusic]);
 
-  // ---------- hit detection ----------
-  const hitLane = useCallback(
-    (lane) => {
-      if (!playingRef.current) return;
-
-      const a = musicRef.current;
-      const now = a ? a.currentTime : (performance.now() - startedAtMsRef.current) / 1000;
-      const notes = chartRef.current;
-      const st = statsRef.current;
-
-      const p = getDiffParams(effectiveDiffRef.current);
-
-      // Find closest unhit note in this lane around now.
-      // Search from nextIdxRef backwards a bit to allow minor offsets.
-      let bestIdx = -1;
-      let bestAbs = 999;
-
-      const startIdx = Math.max(0, nextIdxRef.current - 18);
-      const endIdx = Math.min(notes.length - 1, nextIdxRef.current + 48);
-
-      for (let i = startIdx; i <= endIdx; i++) {
-        const n = notes[i];
-        if (!n || n.hit || n.lane !== lane) continue;
-        const dt = n.t - now;
-        const adt = Math.abs(dt);
-        if (adt < bestAbs) {
-          bestAbs = adt;
-          bestIdx = i;
-        }
-      }
-
-      if (bestIdx === -1 || bestAbs > p.goodW) {
-        // ghost tap (break combo but do not inflate miss count)
-        st.combo = 0;
-        st.ghost += 1;
-        showJudge("MISS");
-        BS_sfx("miss");
-        vibrate(18);
-        hudDirtyRef.current = true;
-        commitHud(true);
-        return;
-      }
-
-      const n = notes[bestIdx];
-      n.hit = true;
-
-      if (bestAbs <= p.perfectW) {
-        st.perfect += 1;
-        st.combo += 1;
-        st.maxCombo = Math.max(st.maxCombo, st.combo);
-        st.score += 120 + Math.min(50, Math.floor(st.combo * 0.6));
-        showJudge("PERFECT");
-        BS_sfx("hitP");
-        vibrate(10);
-        if (n.kind === "bonus") {
-          st.score += 220;
-          BS_sfx("bonus");
-        }
-      } else {
-        st.good += 1;
-        st.combo += 1;
-        st.maxCombo = Math.max(st.maxCombo, st.combo);
-        st.score += 80 + Math.min(30, Math.floor(st.combo * 0.35));
-        showJudge("GOOD");
-        BS_sfx("hitG");
-        vibrate(8);
-      }
-
-      hudDirtyRef.current = true;
-      commitHud();
-    },
-    [BS_sfx, commitHud, getDiffParams, showJudge, vibrate]
-  );
-
-  // ---------- ripples ----------
-  const addRipple = useCallback((lane, e) => {
-    const rect = e?.currentTarget?.getBoundingClientRect?.();
-    const cx = rect ? e.clientX - rect.left : 40;
-    const cy = rect ? e.clientY - rect.top : 40;
-    const size = rect ? Math.max(rect.width, rect.height) * 1.25 : 88;
-
-    const id = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-
-    setRipples((prev) => {
-      const next = [...prev, { id, lane, x: cx, y: cy, size }];
-      return next.length > 22 ? next.slice(next.length - 22) : next;
-    });
-
-    window.setTimeout(() => {
-      setRipples((prev) => prev.filter((r) => r.id !== id));
-    }, 560);
-  }, []);
-
-  const onPadDown = useCallback(
-    (lane, e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      // visual
-      setPadsDown((prev) => {
-        if (prev[lane]) return prev;
-        const n = [...prev];
-        n[lane] = true;
-        return n;
-      });
-
-      addRipple(lane, e);
-
-      // gameplay
-      if (view === "play") hitLane(lane);
-    },
-    [addRipple, hitLane, view]
-  );
-
-  const onPadUp = useCallback((lane, e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setPadsDown((prev) => {
-      if (!prev[lane]) return prev;
-      const n = [...prev];
-      n[lane] = false;
-      return n;
-    });
-  }, []);
-
-  // keyboard support (desktop QA)
-  useEffect(() => {
-    const onKeyDown = (e) => {
-      if (view !== "play") return;
-      const key = (e.key || "").toLowerCase();
-      const map = {
-        arrowleft: 0,
-        arrowup: 1,
-        arrowdown: 2,
-        arrowright: 3,
-        a: 0,
-        w: 1,
-        s: 2,
-        d: 3,
-      };
-      if (map[key] == null) return;
-      e.preventDefault();
-      hitLane(map[key]);
-    };
-    window.addEventListener("keydown", onKeyDown, { passive: false });
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [hitLane, view]);
-
-  // ---------- canvas sizing ----------
-  const resizeCanvas = useCallback(() => {
-    const c = canvasRef.current;
-    const host = stageRef.current;
-    if (!c || !host) return;
-
-    const rect = host.getBoundingClientRect();
-    const w = Math.max(1, Math.floor(rect.width));
-    const h = Math.max(1, Math.floor(rect.height));
-    const dpr = Math.min(3, Math.max(1, window.devicePixelRatio || 1));
-
-    const wantW = Math.floor(w * dpr);
-    const wantH = Math.floor(h * dpr);
-
-    if (c.width !== wantW || c.height !== wantH) {
-      c.width = wantW;
-      c.height = wantH;
-      c.style.width = `${w}px`;
-      c.style.height = `${h}px`;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (view !== "play") return;
-    resizeCanvas();
-    let raf = 0;
-    const onResize = () => {
-      if (raf) cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => resizeCanvas());
-    };
-    window.addEventListener("resize", onResize);
-    window.addEventListener("orientationchange", onResize);
-    return () => {
-      if (raf) cancelAnimationFrame(raf);
-      window.removeEventListener("resize", onResize);
-      window.removeEventListener("orientationchange", onResize);
-    };
-  }, [resizeCanvas, view]);
-
-  // ---------- renderFrame ----------
-  const renderFrame = useCallback(() => {
-    lastFrameMsRef.current = performance.now();
-
-    const c = canvasRef.current;
-    if (!c) return;
-    const ctx = c.getContext("2d");
-    if (!ctx) return;
-
-    const a = musicRef.current;
-    const now = a ? a.currentTime : (performance.now() - startedAtMsRef.current) / 1000;
-
-    const st = statsRef.current;
-    const notes = chartRef.current;
-    const p = getDiffParams(effectiveDiffRef.current);
-
-    // time left (integer seconds; throttle to avoid iOS flicker)
-    const tleft = Math.max(0, Math.ceil(BS_SESSION_SEC - now));
-    const tms = performance.now();
-    if (tleft !== lastShownTimeRef.current && (tms - lastTimeLeftUpdateRef.current > 140)) {
-      lastShownTimeRef.current = tleft;
-      lastTimeLeftUpdateRef.current = tms;
-      setTimeLeft(tleft);
-    }
-
-    // finish condition
-    if (now >= BS_SESSION_SEC) {
-      finishGame();
-      return;
-    }
-
-    // mark misses
-    while (nextIdxRef.current < notes.length) {
-      const n = notes[nextIdxRef.current];
-      if (!n) { nextIdxRef.current += 1; continue; }
-      if (n.hit) { nextIdxRef.current += 1; continue; }
-      if (n.t < now - p.missAfter) {
-        n.hit = true; // consumed
-        st.miss += 1;
-        st.combo = 0;
-        showJudge("MISS");
-        BS_sfx("miss");
-        hudDirtyRef.current = true;
-        nextIdxRef.current += 1;
-        continue;
-      }
-      break;
-    }
-
-    // draw
-    const W = c.width;
-    const H = c.height;
-    ctx.clearRect(0, 0, W, H);
-
-    // background glow (cheapness fix)
-    ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.12)";
-    ctx.fillRect(0, 0, W, H);
-    ctx.restore();
-
-    const lanes = 4;
-    const laneW = W / lanes;
-    const noteSize = Math.max(18, Math.min(44, laneW * 0.36));
-    const hitY = H * 0.76;
-    const spawnY = -noteSize * 1.35;
-
-    const speed = (hitY - spawnY) / p.approach; // px/sec based on approach time
-
-    // lane guides
-    for (let i = 0; i < lanes; i++) {
-      const x = i * laneW + laneW / 2;
-
-      ctx.save();
-      ctx.globalAlpha = 0.22;
-      ctx.strokeStyle = accent.line;
-      ctx.lineWidth = Math.max(1.5, laneW * 0.014);
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, hitY);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // hit line
-    ctx.save();
-    ctx.globalAlpha = 0.55;
-    ctx.strokeStyle = accent.solid;
-    ctx.lineWidth = Math.max(2, laneW * 0.02);
-    ctx.beginPath();
-    ctx.moveTo(0, hitY);
-    ctx.lineTo(W, hitY);
-    ctx.stroke();
-
-    // subtle glow band
-    const grad = ctx.createLinearGradient(0, hitY - noteSize, 0, hitY + noteSize);
-    grad.addColorStop(0, "rgba(255,255,255,0)");
-    grad.addColorStop(0.5, accent.solid);
-    grad.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.globalAlpha = 0.14;
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, hitY - noteSize, W, noteSize * 2);
-    ctx.restore();
-
-    // notes in window
-    // we draw a bit ahead: until dt <= approach + extra
-    const startIdx = Math.max(0, nextIdxRef.current - 6);
-    const endIdx = Math.min(notes.length - 1, nextIdxRef.current + 220);
-
-    for (let i = startIdx; i <= endIdx; i++) {
-      const n = notes[i];
-      if (!n || n.hit) continue;
-      const dt = n.t - now;
-      if (dt > p.approach + 0.35) continue; // too early
-      if (dt < -p.missAfter) continue;
-
-      const y = hitY - dt * speed;
-      if (y < spawnY - noteSize) continue;
-      if (y > hitY + noteSize * 2) continue;
-
-      const cx = n.lane * laneW + laneW / 2;
-      const r = Math.max(10, noteSize * 0.36);
-      const w = noteSize * (n.kind === "bonus" ? 1.08 : 1.0);
-      const h = noteSize * 0.72;
-
-      // glow
-      ctx.save();
-      ctx.globalAlpha = n.kind === "bonus" ? 0.62 : 0.42;
-      ctx.shadowColor = accent.solid;
-      ctx.shadowBlur = n.kind === "bonus" ? 26 : 20;
-      ctx.fillStyle = "rgba(255,255,255,0.14)";
-      roundRect(ctx, cx - w / 2, y - h / 2, w, h, r);
-      ctx.fill();
-      ctx.restore();
-
-      // body
-      ctx.save();
-      ctx.fillStyle = n.kind === "bonus" ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.18)";
-      ctx.strokeStyle = "rgba(255,255,255,0.22)";
-      ctx.lineWidth = 1.25;
-      roundRect(ctx, cx - w / 2, y - h / 2, w, h, r);
-      ctx.fill();
-      ctx.stroke();
-
-      // arrow / star
-      ctx.fillStyle = "rgba(255,255,255,0.90)";
-      ctx.font = `600 ${Math.floor(noteSize * 0.44)}px system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      const label = n.kind === "bonus" ? "✦" : n.lane === 0 ? "◀" : n.lane === 1 ? "▲" : n.lane === 2 ? "▼" : "▶";
-      ctx.fillText(label, cx, y + 0.5);
-      ctx.restore();
-    }
-
-    // commit HUD if needed
-    commitHud();
-
-    // continue loop
-  }, [accent, BS_sfx, commitHud, finishGame, getDiffParams, showJudge]);
-
-  // helper for rounded rect
-  function roundRect(ctx, x, y, w, h, r) {
-    const rr = Math.min(r, w / 2, h / 2);
-    ctx.beginPath();
-    ctx.moveTo(x + rr, y);
-    ctx.arcTo(x + w, y, x + w, y + h, rr);
-    ctx.arcTo(x + w, y + h, x, y + h, rr);
-    ctx.arcTo(x, y + h, x, y, rr);
-    ctx.arcTo(x, y, x + w, y, rr);
-    ctx.closePath();
-  }
-
-  // ---------- start / retry ----------
   const startGame = useCallback(async () => {
-    // audio unlock must happen in user gesture
-    BS_unlockAudio();
-
+    // lock in difficulty for this run
     effectiveDiffRef.current = difficulty;
 
-    // reset stats
-    statsRef.current = {
-      score: 0,
-      combo: 0,
-      maxCombo: 0,
-      perfect: 0,
-      good: 0,
-      miss: 0,
-      ghost: 0,
-      totalNotes: 0,
-    };
-    setHud({ score: 0, combo: 0 });
-    setJudge(null);
+    // unlock audio on explicit start (do not await; keep within user gesture)
+    BS_unlockAudio();
+    applyVolumes();
 
-    // stop previous
+    // stop any previous RAF loop before starting a new run
     stopLoop();
+
+    // stop preview and start music for play
     stopMusic();
-
-    // build chart
-    const seedBase = selectedIdx % 9999;
-    chartRef.current = buildChart(effectiveDiffRef.current, BS_SESSION_SEC, seedBase);
-    statsRef.current.totalNotes = chartRef.current.length;
-    nextIdxRef.current = 0;
-
-    // start play
     const a = musicRef.current;
     if (!a) return;
 
+    // reset stats
+    statsRef.current = { score: 0, combo: 0, maxCombo: 0, perfect: 0, good: 0, miss: 0, total: 0 };
+    setHud({ score: 0, combo: 0 });
+    setJudge(null);
+
+    // build chart using audio duration if available (mobile: duration can arrive late)
+    const aDur = Number(a.duration);
+    const dur =
+      Number.isFinite(aDur) && aDur > 5
+        ? aDur
+        : musicDur > 5
+          ? musicDur
+          : 600; // safe fallback to prevent "notes stop early"
+    runDurRef.current = dur;
+    chartRef.current = buildChart(effectiveDiffRef.current, dur);
+    nextIdxRef.current = 0;
+    // initialize HUD time immediately (avoid 0s display on first frames)
+    lastTimeLeftUpdateRef.current = 0;
+    setTimeLeft(dur);
+
+    // start play
     try {
-      a.src = selectedTrack.url;
-      a.loop = true; // ensure 90s play even if the file is shorter
+      a.loop = false;
       a.currentTime = 0;
-      applyVolumes();
       const p = a.play();
       if (p && typeof p.catch === "function") p.catch(() => {});
     } catch {}
 
-    startedAtMsRef.current = performance.now();
+    startedAtRef.current = performance.now();
     playingRef.current = true;
-
-    // UI
-    lastHudCommitRef.current = 0;
-    hudDirtyRef.current = false;
-    lastTimeLeftUpdateRef.current = 0;
-    lastShownTimeRef.current = BS_SESSION_SEC;
-    setTimeLeft(BS_SESSION_SEC);
 
     BS_sfx("start");
     setView("play");
 
-    // ensure canvas
-    requestAnimationFrame(() => resizeCanvas());
-
-    // RAF loop
+    // start RAF
     const tick = () => {
       if (!playingRef.current) return;
       renderFrame();
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
-
-    // fallback timer (iOS Safari can stall rAF under pressure)
-    if (fallbackTimerRef.current) clearInterval(fallbackTimerRef.current);
-    lastFrameMsRef.current = 0;
-    fallbackTimerRef.current = window.setInterval(() => {
-      if (!playingRef.current) return;
-      const t = performance.now();
-      if (!lastFrameMsRef.current || t - lastFrameMsRef.current > 150) {
-        renderFrame();
-      }
-    }, 120);
-  }, [BS_sfx, BS_unlockAudio, applyVolumes, buildChart, difficulty, renderFrame, resizeCanvas, selectedIdx, selectedTrack, stopLoop, stopMusic]);
-
-  const backToSelect = useCallback(() => {
-    BS_sfx("back");
-    playingRef.current = false;
-    stopLoop();
-    stopMusic();
-    setView("select");
-  }, [BS_sfx, stopLoop, stopMusic]);
+  }, [
+    BS_sfx,
+    BS_unlockAudio,
+    applyVolumes,
+    buildChart,
+    difficulty,
+    musicDur,
+    stopLoop,
+    stopMusic,
+  ]);
 
   const retry = useCallback(() => {
     BS_sfx("click");
-    playingRef.current = false;
-    stopLoop();
-    stopMusic();
     setView("select");
-  }, [BS_sfx, stopLoop, stopMusic]);
+    // will restart preview automatically
+  }, [BS_sfx]);
 
-  // prevent scroll / overscroll during play (mobile)
+  const backToSelect = useCallback(() => {
+    BS_sfx("back");
+    setView("select");
+  }, [BS_sfx]);
+
+  // --- Canvas sizing: base on canvas element rect (fix stretch / touch mismatch) ---
+  const resizeCanvas = useCallback(() => {
+    const c = canvasRef.current;
+    if (!c) return;
+    const rect = c.getBoundingClientRect();
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const w = Math.max(2, Math.floor(rect.width * dpr));
+    const h = Math.max(2, Math.floor(rect.height * dpr));
+    if (c.width !== w || c.height !== h) {
+      c.width = w;
+      c.height = h;
+    }
+  }, []);
+
   useEffect(() => {
     if (view !== "play") return;
-    const prevOverflow = document.body.style.overflow;
-    const prevOverscroll = document.body.style.overscrollBehavior;
-    document.body.style.overflow = "hidden";
-    document.body.style.overscrollBehavior = "none";
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      document.body.style.overscrollBehavior = prevOverscroll;
-    };
-  }, [view]);
 
-  // ---------- render ----------
-  const safeTop = 12;
-  const safeBottom = 12;
+    // Mobile first: prevent page scroll / bounce during play so taps always register.
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevBodyTouchAction = document.body.style.touchAction;
+    const prevHtmlOverscroll = document.documentElement.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+    document.documentElement.style.overscrollBehavior = "none";
+
+    resizeCanvas();
+    let ro;
+    try {
+      ro = new ResizeObserver(() => resizeCanvas());
+      if (canvasRef.current) ro.observe(canvasRef.current);
+    } catch {}
+    const onWin = () => resizeCanvas();
+    window.addEventListener("resize", onWin);
+    return () => {
+      // restore scroll settings
+      document.body.style.overflow = prevBodyOverflow;
+      document.body.style.touchAction = prevBodyTouchAction;
+      document.documentElement.style.overscrollBehavior = prevHtmlOverscroll;
+
+      window.removeEventListener("resize", onWin);
+      try {
+        ro?.disconnect?.();
+      } catch {}
+    };
+  }, [resizeCanvas, view]);
+
+  const renderFrame = useCallback(() => {
+    const c = canvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const w = c.width;
+    const h = c.height;
+
+    // background
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(0,0,0,0)";
+    ctx.fillRect(0, 0, w, h);
+
+    // subtle vertical gradient wash
+    const grd = ctx.createLinearGradient(0, 0, 0, h);
+    grd.addColorStop(0, "rgba(255,255,255,0.03)");
+    grd.addColorStop(1, "rgba(255,255,255,0.00)");
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, w, h);
+
+    // lanes geometry
+    const laneW = w / 4;
+    const hitY = h * 0.82;
+
+    // lane guidance: glowing lines (no boxes)
+    const t = (performance.now() * 0.001) % 10;
+    for (let i = 0; i < 4; i++) {
+      const x = i * laneW + laneW / 2;
+      const pulse = 0.35 + 0.15 * Math.sin(t * 2.2 + i);
+      ctx.save();
+      ctx.strokeStyle = accent.replace("0.55", String(0.22 + pulse * 0.12)).replace("0.50", String(0.22 + pulse * 0.12)).replace("0.45", String(0.20 + pulse * 0.10)).replace("0.40", String(0.18 + pulse * 0.10));
+      ctx.lineWidth = 1.2 * dpr;
+      ctx.shadowColor = accent;
+      ctx.shadowBlur = 10 * dpr * (settings.motion ? 1 : 0.6);
+      ctx.beginPath();
+      ctx.moveTo(x, h * 0.10);
+      ctx.lineTo(x, hitY + 10 * dpr);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // hit line (soft glow)
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,255,255,0.14)";
+    ctx.lineWidth = 1.2 * dpr;
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = 14 * dpr;
+    ctx.beginPath();
+    ctx.moveTo(0, hitY);
+    ctx.lineTo(w, hitY);
+    ctx.stroke();
+    ctx.restore();
+
+    // notes
+    const aNow = musicRef.current;
+    const now =
+      aNow &&
+      !aNow.paused &&
+      Number.isFinite(aNow.currentTime) &&
+      aNow.currentTime > 0.0001
+        ? aNow.currentTime
+        : (performance.now() - startedAtRef.current) / 1000;
+    const notes = chartRef.current;
+    const lastT = notes && notes.length ? notes[notes.length - 1].t : 0;
+    const realDur = aNow && Number.isFinite(aNow.duration) ? Number(aNow.duration) : 0;
+    // if duration becomes available during play, sync the run duration (fix: notes/time mismatch)
+    if (realDur > 5 && (!runDurRef.current || Math.abs(runDurRef.current - realDur) > 0.5)) {
+      runDurRef.current = realDur;
+    }
+    const durGuess =
+      runDurRef.current > 0
+        ? runDurRef.current
+        : musicDur > 0
+          ? musicDur
+          : realDur > 0
+            ? realDur
+            : lastT
+              ? lastT + 1.2
+              : 60;
+    // update time-left at ~5fps (avoid rerender each frame)
+    const tNow = performance.now();
+    if (tNow - lastTimeLeftUpdateRef.current > 200) {
+      lastTimeLeftUpdateRef.current = tNow;
+      setTimeLeft(Math.max(0, durGuess - now));
+    }
+    const diff = effectiveDiffRef.current;
+    const p = getDiffParams(diff);
+    const speed = p.speed * dpr;
+
+    const noteSize = Math.max(22, Math.min(42, laneW * 0.22)) * dpr;
+
+    const drawContain = (img, cx, cy, box) => {
+      if (!img) return;
+      const iw = img.naturalWidth || img.width || 1;
+      const ih = img.naturalHeight || img.height || 1;
+      const s = Math.min(box / iw, box / ih);
+      const dw = iw * s;
+      const dh = ih * s;
+      ctx.drawImage(img, cx - dw / 2, cy - dh / 2, dw, dh);
+    };
+
+    for (let i = nextIdxRef.current; i < notes.length; i++) {
+      const n = notes[i];
+      if (!n || n.hit) continue;
+      const dt = n.t - now;
+      const y = hitY - dt * speed;
+      if (y < -noteSize) continue;
+      if (y > h + noteSize) break;
+
+      const cx = n.lane * laneW + laneW / 2;
+      ctx.save();
+      // soft glow per note
+      ctx.shadowColor = accent;
+      ctx.shadowBlur = 18 * dpr;
+      if (n.kind === "bonus") {
+        drawContain(imgMapRef.current[BS_ASSETS.bunnies.button], cx, y, noteSize * 1.15);
+      } else {
+        const dir = BS_laneArrowByIdx[n.lane];
+        drawContain(imgMapRef.current[BS_ASSETS.arrows[dir]], cx, y, noteSize);
+      }
+      ctx.restore();
+    }
+
+    // finish if near end
+    if (durGuess > 0 && now >= durGuess - 0.05) {
+      finishGame();
+    }
+
+    // miss notes behind window
+    while (nextIdxRef.current < notes.length && notes[nextIdxRef.current].t < now - 0.22) {
+      const n = notes[nextIdxRef.current];
+      if (n && !n.hit) {
+        // count as miss
+        const st = statsRef.current;
+        st.miss += 1;
+        st.total += 1;
+        st.combo = 0;
+        setHud({ score: st.score, combo: st.combo });
+      }
+      nextIdxRef.current += 1;
+    }
+  }, [accent, finishGame, getDiffParams, musicDur, settings.motion]);
+
+  // cleanup timers
+  useEffect(() => {
+    return () => {
+      try {
+        if (judgeTimerRef.current) clearTimeout(judgeTimerRef.current);
+      } catch {}
+      stopLoop();
+      stopMusic();
+    };
+  }, [stopLoop, stopMusic]);
+
+  // --- UI helpers ---
+  const AudioBunnyButton = () => {
+    const bunny = imgMapRef.current[BS_ASSETS.bunnies.button];
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          BS_sfx("click");
+          // Unlock audio without touching currently-playing BGM
+          BS_unlockAudio();
+          setAudioPanelOpen((v) => !v);
+        }}
+        className="relative px-3 py-2 rounded-full bg-white/[0.08] border border-white/[0.12] hover:bg-white/[0.10] active:scale-[0.99] select-none"
+        style={{
+          boxShadow: `0 0 0 1px rgba(255,255,255,0.05), 0 0 24px ${accent}`,
+        }}
+        aria-label="Audio settings"
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full overflow-hidden bg-black/30 border border-white/[0.10]">
+            {bunny ? (
+              <img
+                src={BS_ASSETS.bunnies.button}
+                alt="audio"
+                className="w-full h-full object-contain"
+                draggable={false}
+              />
+            ) : (
+              <div className="w-full h-full" />
+            )}
+          </div>
+          <div className="text-white/80 text-[12px] tracking-[0.14em]">AUDIO</div>
+        </div>
+
+        {needsAudioUnlock && (
+          <div
+            className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full"
+            style={{
+              background: accent,
+              boxShadow: `0 0 10px ${accent}`,
+            }}
+          />
+        )}
+      </button>
+    );
+  };
+
+  const AudioPanel = () => {
+    if (!audioPanelOpen) return null;
+    return (
+      <div
+        className="fixed z-[60] rounded-3xl bg-white/[0.06] border border-white/[0.14] backdrop-blur-xl overflow-hidden shrink-0"
+        style={{
+          top: `calc(56px + env(safe-area-inset-top, 0px))`,
+          right: `max(12px, env(safe-area-inset-right, 0px))`,
+          width: `min(420px, calc(100vw - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))`,
+          maxHeight: `min(calc(100dvh - 92px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)), 560px)`,
+          boxShadow: `0 10px 40px rgba(0,0,0,0.55), 0 0 30px ${accent}`,
+        }}
+      >
+        <div className="px-4 py-3 flex items-center justify-between border-b border-white/[0.10]">
+          <div className="text-white/80 text-[12px] tracking-[0.16em]">AUDIO / PLAY</div>
+          <button
+            className="px-2 py-1 rounded-full bg-white/[0.06] border border-white/[0.10] text-white/70 text-[11px] tracking-[0.14em] hover:bg-white/[0.08]"
+            onClick={(e) => {
+              e.stopPropagation();
+              BS_sfx("click");
+              setAudioPanelOpen(false);
+            }}
+          >
+            CLOSE
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4 overflow-y-auto" style={{ paddingBottom: "calc(16px + env(safe-area-inset-bottom, 0px))" }}>
+          {needsAudioUnlock && (
+            <button
+              className="w-full px-3 py-2 rounded-2xl bg-white/[0.10] border border-white/[0.16] text-white/85 text-[12px] tracking-[0.14em] hover:bg-white/[0.12]"
+              style={{ boxShadow: `0 0 18px ${accent}` }}
+              onClick={async (e) => {
+                e.stopPropagation();
+                BS_sfx("start");
+                await BS_unlockAudio();
+              }}
+            >
+              ENABLE AUDIO
+            </button>
+          )}
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="text-white/70 text-[12px] tracking-[0.14em]">SFX</div>
+              <button
+                className="px-2 py-1 rounded-full bg-white/[0.06] border border-white/[0.10] text-white/70 text-[11px] tracking-[0.14em] hover:bg-white/[0.08]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  BS_sfx("click");
+                  setSettingsPatch({ sfxOn: !settings.sfxOn });
+                }}
+              >
+                {settings.sfxOn ? "ON" : "OFF"}
+              </button>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={Math.round(settings.sfxVol * 100)}
+              onChange={(e) => {
+                const v = Number(e.target.value) / 100;
+                setSettingsPatch({ sfxVol: v });
+              }}
+              className="bsRange w-full"
+              style={{ "--bsAccent": accent, "--bsFill": `${Math.round(settings.sfxVol * 100)}%` }}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="text-white/70 text-[12px] tracking-[0.14em]">MUSIC</div>
+              <div className="text-white/40 text-[11px] tracking-[0.14em]">{Math.round(settings.musicVol * 100)}</div>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={Math.round(settings.musicVol * 100)}
+              onChange={(e) => {
+                const v = Number(e.target.value) / 100;
+                setSettingsPatch({ musicVol: v });
+              }}
+              className="bsRange w-full"
+              style={{ "--bsAccent": accent, "--bsFill": `${Math.round(settings.musicVol * 100)}%` }}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              className="px-3 py-2 rounded-2xl bg-white/[0.06] border border-white/[0.10] text-white/70 text-[12px] tracking-[0.12em] hover:bg-white/[0.08]"
+              onClick={(e) => {
+                e.stopPropagation();
+                BS_sfx("click");
+                setSettingsPatch({ haptics: !settings.haptics });
+              }}
+            >
+              HAPTICS {settings.haptics ? "ON" : "OFF"}
+            </button>
+            <button
+              className="px-3 py-2 rounded-2xl bg-white/[0.06] border border-white/[0.10] text-white/70 text-[12px] tracking-[0.12em] hover:bg-white/[0.08]"
+              onClick={(e) => {
+                e.stopPropagation();
+                BS_sfx("click");
+                setSettingsPatch({ motion: !settings.motion });
+              }}
+            >
+              MOTION {settings.motion ? "ON" : "OFF"}
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="text-white/70 text-[12px] tracking-[0.14em]">CAST</div>
+              {" "}
+            </div>
+
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {Object.entries(BS_ASSETS.bunnies)
+                .filter(([k]) => k !== "button")
+                .map(([k, url]) => (
+                  <button
+                    key={k}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      BS_sfx("select");
+                      setCastKey(k);
+                    }}
+                    className={`shrink-0 w-11 h-11 rounded-2xl border overflow-hidden bg-black/30 ${
+                      castKey === k ? "border-white/[0.35]" : "border-white/[0.12]"
+                    }`}
+                    style={{
+                      boxShadow: castKey === k ? `0 0 18px ${accent}` : "none",
+                    }}
+                    title={k}
+                  >
+                    <img src={url} alt={k} className="w-full h-full object-contain" draggable={false} />
+                  </button>
+                ))}
+            </div>
+          </div>
+
+          <div className="text-white/40 text-[11px] leading-relaxed">
+            {" "}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // --- background bunny (casts changes) ---
+  const BgBunny = () => {
+    const bgUrl = BS_ASSETS.bunnies[castKey] || BS_ASSETS.bunnies.standL;
+    return (
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(600px 420px at 35% 20%, rgba(255,255,255,0.06), rgba(0,0,0,0) 60%), radial-gradient(520px 420px at 70% 25%, rgba(255,255,255,0.045), rgba(0,0,0,0) 62%)",
+          }}
+        />
+        <img
+          src={bgUrl}
+          alt="bg"
+          draggable={false}
+          className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 opacity-[0.18] blur-[0.1px]"
+          style={{
+            width: "min(520px, 82vw)",
+            filter: `drop-shadow(0 0 26px ${accent})`,
+            transform: "translate3d(-50%, -50%, 0)",
+          }}
+        />
+        {/* gentle bloom */}
+        <div
+          className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 rounded-full"
+          style={{
+            width: "min(540px, 86vw)",
+            height: "min(540px, 86vw)",
+            background: `radial-gradient(circle at 50% 45%, ${accent}, rgba(0,0,0,0) 62%)`,
+            opacity: settings.motion ? 0.16 : 0.12,
+            filter: "blur(18px)",
+          }}
+        />
+      </div>
+    );
+  };
+
+  // --- UI: track carousel centering (no scrollIntoView) ---
+  const carouselRef = useRef(null);
+  const centerCard = useCallback((idx) => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const child = el.querySelector(`[data-track-idx="${idx}"]`);
+    if (!child) return;
+    const elRect = el.getBoundingClientRect();
+    const cRect = child.getBoundingClientRect();
+    const delta = (cRect.left + cRect.width / 2) - (elRect.left + elRect.width / 2);
+    el.scrollTo({ left: el.scrollLeft + delta, behavior: "smooth" });
+  }, []);
+
+  // --- render ---
+  const selectedTrack = BS_ASSETS.tracks[selectedIdx] || BS_ASSETS.tracks[0];
+  const coverKey = BS_COVERS[selectedIdx % BS_COVERS.length];
+  const coverUrl = BS_ASSETS.bunnies[coverKey];
+
+  const diffChip = (k) => {
+    const active = difficulty === k;
+    return (
+      <button
+        key={k}
+        disabled={difficultyLocked}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (difficultyLocked) return;
+          BS_sfx("select");
+          setDifficulty(k);
+        }}
+        className={`px-2.5 py-1.5 rounded-full text-[12px] tracking-[0.12em] border ${
+          active ? "bg-white/[0.12] border-white/[0.22] text-white/90" : "bg-white/[0.05] border-white/[0.10] text-white/65"
+        } ${difficultyLocked ? "opacity-40 pointer-events-none" : "hover:bg-white/[0.08]"}`}
+        style={active ? { boxShadow: `0 0 18px ${accent}` } : undefined}
+      >
+        {k}
+      </button>
+    );
+  };
+
+  const safeBottom = "calc(env(safe-area-inset-bottom) + 112px)"; // avoid OS Dock overlap
+  const playBottom = "env(safe-area-inset-bottom)"; // play view: avoid home-indicator only (no extra blank)
 
   return (
     <div
       ref={rootRef}
-      className={`relative w-full h-[100dvh] overflow-hidden text-white ${view === "play" && isIOS ? "bsNoBlur" : ""}`}
+      className="relative w-full h-full flex flex-col overflow-hidden rounded-3xl"
       style={{
         background:
-          "radial-gradient(140% 110% at 20% 0%, rgba(255,255,255,0.08), rgba(0,0,0,0) 55%), radial-gradient(140% 120% at 70% 15%, rgba(255,255,255,0.06), rgba(0,0,0,0) 55%), #05060a",
+          "linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02) 28%, rgba(0,0,0,0.00) 100%)",
+      }}
+      onPointerDown={() => {
+        // any user gesture can unlock audio; don't force panel open
+        BS_unlockAudio();
       }}
     >
-      {/* background bunny (cast) */}
-      <div className="absolute inset-0 opacity-[0.20] pointer-events-none">
-        <div className="absolute inset-0 bsGrain" />
-        <img
-          src={BS_ASSETS.bunnies[castKey] || BS_ASSETS.bunnies.standR || BS_ASSETS.bunnies.standL}
-          alt=""
-          className="absolute right-[-10%] top-[10%] w-[420px] max-w-[92vw] object-contain bs-float"
-          draggable={false}
-          style={{
-            filter: `drop-shadow(${accent.shadow})`,
-          }}
-        />
-      </div>
+      <BgBunny />
 
-      {/* audio bunny button (never disappears) */}
-      <button
-        className="absolute right-3 top-3 z-[60] w-12 h-12 rounded-2xl border border-white/[0.14] bg-black/45 bsBlur shadow-[0_18px_60px_rgba(0,0,0,0.38)] active:scale-[0.99]"
-        style={{
-          backdropFilter: view === "play" && isIOS ? "none" : "blur(18px)",
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          // unlock + toggle
-          const ok = BS_unlockAudio();
-          if (ok) setAudioOpen((v) => !v);
-          else setAudioOpen(true);
-          BS_sfx("click");
-        }}
-      >
-        <img src={BS_ASSETS.bunnies.button} alt="" className="w-full h-full object-contain" draggable={false} />
-      </button>
+      {/* header */}
+      <div className="relative z-[20] px-4 pt-4 pb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-white/80 text-[12px] tracking-[0.18em]">OS BUNNY / SAFARI</div>
+          <div className="mt-1 flex items-center gap-2">
+            <div className="text-white/92 text-[18px] font-semibold tracking-[0.06em]">BEAT SYNC</div>
+            <div
+              className="h-[1px] w-10"
+              style={{
+                background: `linear-gradient(90deg, rgba(255,255,255,0.00), ${accent}, rgba(255,255,255,0.00))`,
+              }}
+            />
+          </div>
 
-      {/* audio panel */}
-      {audioOpen && (
-        <div className="absolute right-3 top-[68px] z-[60] w-[min(360px,calc(100vw-24px))] rounded-3xl bg-black/55 border border-white/[0.14] bsBlur shadow-[0_20px_70px_rgba(0,0,0,0.55)] overflow-hidden"
-             style={{ backdropFilter: view === "play" && isIOS ? "none" : "blur(18px)" }}
-        >
-          <div className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="text-[11px] tracking-[0.34em] text-white/55">AUDIO</div>
-              <button
-                className="w-9 h-9 rounded-2xl border border-white/[0.12] bg-white/[0.06] flex items-center justify-center"
-                onClick={() => { setAudioOpen(false); BS_sfx("click"); }}
-              >
-                <span className="text-white/75">✕</span>
-              </button>
-            </div>
-
-            {needsAudioUnlock && (
-              <div className="mt-3 rounded-2xl border border-white/[0.12] bg-white/[0.06] p-3 text-[12px] text-white/70">
-                Tap the bunny once to unlock audio on iOS Safari.
-              </div>
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            {["EASY", "NORMAL", "HARD"].map(diffChip)}
+            {difficultyLocked && (
+              <div className="text-white/35 text-[11px] tracking-[0.14em] ml-1">LOCKED</div>
             )}
-
-            <div className="mt-4">
-              <div className="flex items-center justify-between">
-                <div className="text-white/70 text-[12px] tracking-[0.14em]">MUSIC</div>
-                <div className="text-white/45 text-[12px] tabular-nums">{Math.round(musicVol * 100)}%</div>
-              </div>
-              <input
-                className="bsRange mt-2"
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={musicVol}
-                onChange={(e) => setMusicVol(Number(e.target.value))}
-              />
-            </div>
-
-            <div className="mt-4">
-              <div className="flex items-center justify-between">
-                <div className="text-white/70 text-[12px] tracking-[0.14em]">SFX</div>
-                <div className="text-white/45 text-[12px] tabular-nums">{Math.round(sfxVol * 100)}%</div>
-              </div>
-              <input
-                className="bsRange mt-2"
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={sfxVol}
-                onChange={(e) => setSfxVol(Number(e.target.value))}
-              />
-            </div>
           </div>
         </div>
-      )}
 
-      {/* main content */}
-      <div className="relative z-10 w-full h-full flex flex-col" style={{ paddingTop: safeTop, paddingBottom: safeBottom }}>
-        {/* header */}
-        <div className="px-4 pt-1 pb-3">
-          <div className="text-white/55 text-[11px] tracking-[0.38em]">BEAT SYNC</div>
-          <div className="mt-1 text-white/90 text-[18px] font-semibold tracking-[0.06em]">OS Bunny</div>
+        <div className="flex items-center gap-2 shrink-0">
+          <AudioBunnyButton />
+          {view !== "select" && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                BS_sfx("back");
+                stopLoop();
+                stopMusic();
+                setView("select");
+              }}
+              className="px-3 py-2 rounded-full bg-white/[0.06] border border-white/[0.10] text-white/70 text-[12px] tracking-[0.14em] hover:bg-white/[0.08]"
+            >
+              BACK
+            </button>
+          )}
         </div>
+      </div>
 
-        {/* select */}
+      <AudioPanel />
+
+      {/* main */}
+      <div
+        className={`relative z-[10] flex-1 min-h-0 px-4 ${view === "play" ? "overflow-hidden pb-0" : "overflow-y-auto pb-4"}`}
+        style={view === "play" ? undefined : { paddingBottom: safeBottom }}
+      >
         {view === "select" && (
-          <div className="flex-1 min-h-0 flex flex-col gap-4 px-4 pb-4">
-            {/* cast */}
-            <div className="rounded-3xl bg-white/[0.05] border border-white/[0.12] p-4 bsBlur"
-                 style={{ backdropFilter: "blur(18px)" }}
+          <div className="flex flex-col gap-4">
+            {/* music bar */}
+            <div
+              className="px-4 py-3 rounded-3xl bg-white/[0.06] border border-white/[0.12] backdrop-blur-xl"
+              style={{ boxShadow: `0 0 22px rgba(0,0,0,0.25), 0 0 16px ${accent}` }}
             >
-              <div className="flex items-center justify-between">
-                <div className="text-white/60 text-[11px] tracking-[0.34em]">CAST</div>
-                <div className="text-white/40 text-[11px] tracking-[0.14em]">choose buddy</div>
-              </div>
-              <div className="mt-3 grid grid-cols-4 gap-2">
-                {Object.keys(BS_ASSETS.bunnies).filter((k)=>k!=="button" && k!=="front").map((k) => (
-                  <button
-                    key={k}
-                    className={`h-14 rounded-2xl border ${castKey === k ? "border-white/[0.26]" : "border-white/[0.12]"} bg-black/30 overflow-hidden`}
-                    style={{ boxShadow: castKey === k ? accent.shadow : "none" }}
-                    onClick={() => { setCastKey(k); BS_sfx("select"); }}
-                  >
-                    <img src={BS_ASSETS.bunnies[k]} alt="" className="w-full h-full object-contain" draggable={false} />
-                  </button>
-                ))}
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl overflow-hidden bg-black/30 border border-white/[0.12] shrink-0">
+                  <img src={coverUrl} alt="cover" className="w-full h-full object-contain" draggable={false} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-white/85 text-[13px] tracking-[0.06em] truncate">
+                    {selectedTrack.title}
+                  </div>
+                  <div className="text-white/45 text-[11px] tracking-[0.14em] mt-0.5 truncate">
+                    {musicReady ? "PREVIEW" : "LOADING…"} · {imagesReady ? "UI READY" : "ASSETS…"}
+                  </div>
+                </div>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    BS_sfx("click");
+                    setAudioPanelOpen(true);
+                  }}
+                  className="px-3 py-2 rounded-2xl bg-white/[0.06] border border-white/[0.10] text-white/70 text-[12px] tracking-[0.14em] hover:bg-white/[0.08]"
+                >
+                  SETTINGS
+                </button>
               </div>
             </div>
 
-            {/* difficulty */}
-            <div className="rounded-3xl bg-white/[0.05] border border-white/[0.12] p-4 bsBlur"
-                 style={{ backdropFilter: "blur(18px)" }}
+            {/* carousel */}
+            <div
+              ref={carouselRef}
+              className="flex gap-3 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 pb-2"
+              style={{
+                scrollPaddingLeft: 16,
+                scrollPaddingRight: 16,
+                WebkitOverflowScrolling: "touch",
+              }}
+              onPointerDownCapture={(e) => {
+                // prevent parent drag/scroll fights
+                e.stopPropagation();
+              }}
             >
-              <div className="flex items-center justify-between">
-                <div className="text-white/60 text-[11px] tracking-[0.34em]">DIFFICULTY</div>
-                <div className="text-white/40 text-[11px] tracking-[0.14em]">{difficulty}</div>
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                {["EASY", "NORMAL", "HARD"].map((d) => (
+              {BS_ASSETS.tracks.map((t, idx) => {
+                const isSel = idx === selectedIdx;
+                const ck = BS_COVERS[idx % BS_COVERS.length];
+                const cu = BS_ASSETS.bunnies[ck];
+                return (
                   <button
-                    key={d}
-                    className={`h-11 rounded-2xl border ${difficulty === d ? "border-white/[0.26]" : "border-white/[0.12]"} bg-black/35`}
+                    key={t.url}
+                    data-track-idx={idx}
+                    className={`snap-center shrink-0 w-[min(260px,78vw)] rounded-3xl bg-white/[0.05] border ${
+                      isSel ? "border-white/[0.26]" : "border-white/[0.12]"
+                    } overflow-hidden text-left active:scale-[0.995]`}
                     style={{
-                      boxShadow: difficulty === d ? accent.shadow : "none",
+                      boxShadow: isSel ? `0 0 24px ${accent}` : "none",
                     }}
-                    onClick={() => {
-                      setDifficulty(d);
+                    onClick={async (e) => {
+                      e.stopPropagation();
                       BS_sfx("select");
+                      setSelectedIdx(idx);
+                      centerCard(idx);
+                      // preview will auto switch on effect
                     }}
                   >
-                    <span className="text-[12px] tracking-[0.22em] text-white/80">{d}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* tracks */}
-            <div className="rounded-3xl bg-white/[0.05] border border-white/[0.12] p-4 bsBlur"
-                 style={{ backdropFilter: "blur(18px)" }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="text-white/60 text-[11px] tracking-[0.34em]">TRACK</div>
-                <div className="text-white/40 text-[11px] tracking-[0.14em]">90 sec fixed</div>
-              </div>
-
-              <div className="mt-3 flex gap-2 overflow-x-auto snap-x snap-mandatory pb-2">
-                {BS_ASSETS.tracks.map((t, idx) => {
-                  const isSel = idx === selectedIdx;
-                  const a = BS_ACCENTS[idx % BS_ACCENTS.length];
-                  const cu = BS_COVERS[idx % BS_COVERS.length];
-                  return (
-                    <button
-                      key={t.url}
-                      className={`snap-center shrink-0 w-[min(260px,78vw)] rounded-3xl bg-black/30 border ${
-                        isSel ? "border-white/[0.26]" : "border-white/[0.12]"
-                      } overflow-hidden text-left active:scale-[0.995]`}
-                      style={{ boxShadow: isSel ? `0 0 26px ${a}` : "none" }}
-                      onClick={() => {
-                        BS_sfx("select");
-                        setSelectedIdx(idx);
-                        if (!needsAudioUnlock) {
-                          // swap preview to selected
-                          startPreview();
-                        }
+                    <div className="p-4 flex items-center gap-3">
+                      <div className="w-14 h-14 rounded-2xl overflow-hidden bg-black/30 border border-white/[0.10]">
+                        <img src={cu} alt="" className="w-full h-full object-contain" draggable={false} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-white/90 text-[14px] tracking-[0.06em] truncate">{t.title}</div>
+                        <div className="text-white/40 text-[11px] tracking-[0.14em] mt-1 truncate">
+                          {' '}
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      className="h-[1px] w-full"
+                      style={{
+                        background: `linear-gradient(90deg, rgba(255,255,255,0.00), ${accent}, rgba(255,255,255,0.00))`,
+                        opacity: isSel ? 1 : 0.4,
                       }}
-                    >
-                      <div className="p-4 flex items-center gap-3">
-                        <div className="w-14 h-14 rounded-2xl overflow-hidden bg-black/30 border border-white/[0.10]">
-                          <img src={cu} alt="" className="w-full h-full object-cover" draggable={false} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-white/90 text-[14px] tracking-[0.06em] truncate">{t.title}</div>
-                          <div className="text-white/40 text-[11px] tracking-[0.14em] mt-1 truncate">{isSel ? "SELECTED" : " "}</div>
-                        </div>
-                      </div>
-                      <div className="h-[1px] w-full" style={{ background: `linear-gradient(90deg, rgba(255,255,255,0.00), ${a}, rgba(255,255,255,0.00))` }} />
-                      <div className="px-4 py-3 text-white/45 text-[11px] tracking-[0.14em] flex items-center justify-between">
-                        <span>{difficulty}</span>
-                        <span className="tabular-nums">90s</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                    />
+                    <div className="px-4 py-3 text-white/45 text-[11px] tracking-[0.14em] flex items-center justify-between">
+                      <span>{isSel ? "SELECTED" : " "}</span>
+                      <span>{difficulty}</span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
 
             {/* start */}
-            <div className="mt-auto sticky" style={{ bottom: "calc(env(safe-area-inset-bottom) + 14px)" }}>
+            <div className="sticky" style={{ bottom: "calc(env(safe-area-inset-bottom) + 14px)" }}>
               <button
-                className="w-full px-4 py-4 rounded-3xl bg-white/[0.10] border border-white/[0.18] text-white/90 font-semibold tracking-[0.16em] hover:bg-white/[0.12] active:scale-[0.995]"
-                style={{ boxShadow: `0 0 32px ${accent.solid}` }}
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation();
-                  startGame();
+                  await startGame();
+                }}
+                className="w-full px-4 py-4 rounded-3xl bg-white/[0.10] border border-white/[0.18] text-white/90 font-semibold tracking-[0.16em] hover:bg-white/[0.12] active:scale-[0.995]"
+                style={{
+                  boxShadow: `0 0 30px ${accent}`,
                 }}
               >
                 START
               </button>
               <div className="text-white/35 text-[11px] tracking-[0.12em] mt-2 text-center">
-                {needsAudioUnlock ? "Tap the bunny to unlock audio first (iOS Safari)" : " "}
+                {" "}
               </div>
             </div>
           </div>
         )}
 
-        {/* play */}
         {view === "play" && (
-          <div className="flex-1 min-h-0 flex flex-col gap-3 px-4 pb-4">
-            {/* HUD */}
-            <div
-              className="px-4 py-3 rounded-3xl bg-white/[0.06] border border-white/[0.12] bsBlur flex items-center justify-between gap-3"
-              style={{ backdropFilter: isIOS ? "none" : "blur(14px)" }}
-            >
+          <div className="h-full flex flex-col gap-4 min-h-0" style={{ paddingBottom: playBottom }}>
+            {/* play HUD */}
+            <div className="px-4 py-3 rounded-3xl bg-white/[0.06] border border-white/[0.12] backdrop-blur-xl flex items-center justify-between gap-3 shrink-0">
               <div className="min-w-0">
                 <div className="text-white/80 text-[12px] tracking-[0.16em] truncate">{selectedTrack.title}</div>
-                <div className="text-white/45 text-[11px] tracking-[0.12em] mt-1">
-                  {effectiveDiffRef.current} · <span className="tabular-nums">{timeLeft}s</span>
+                <div className="text-white/45 text-[11px] tracking-[0.14em] mt-0.5">
+                  {effectiveDiffRef.current} · SCORE {hud.score} · COMBO {hud.combo} · LEFT {BS_fmtTime(timeLeft)}
                 </div>
               </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="px-3 py-2 rounded-2xl bg-black/35 border border-white/[0.12]">
-                  <div className="text-white/45 text-[10px] tracking-[0.34em]">SCORE</div>
-                  <div className="text-white/92 text-[16px] font-semibold leading-none tabular-nums">{hud.score}</div>
-                </div>
-                <div className="px-3 py-2 rounded-2xl bg-black/35 border border-white/[0.12]">
-                  <div className="text-white/45 text-[10px] tracking-[0.34em]">COMBO</div>
-                  <div className="text-white/92 text-[16px] font-semibold leading-none tabular-nums">{hud.combo}</div>
-                </div>
-                <button
-                  className="w-11 h-11 rounded-2xl border border-white/[0.12] bg-black/35 flex items-center justify-center"
-                  onClick={backToSelect}
-                >
-                  <span className="text-white/75">✕</span>
-                </button>
+              <div className="w-10 h-10 rounded-2xl overflow-hidden bg-black/30 border border-white/[0.12] shrink-0">
+                <img src={BS_ASSETS.bunnies[castKey]} alt="cast" className="w-full h-full object-contain" draggable={false} />
               </div>
             </div>
 
             {/* stage */}
-            <div ref={stageRef} className="relative flex-1 min-h-0 rounded-3xl bg-black/35 border border-white/[0.12] overflow-hidden">
-              <canvas ref={canvasRef} className="absolute inset-0 bsCanvas" />
-              <div className="absolute inset-0 pointer-events-none" style={{ background: accent.bloom, opacity: 0.40 }} />
-
-              {/* judge overlay */}
+            <div className="relative rounded-3xl bg-white/[0.04] border border-white/[0.10] overflow-hidden flex-1 min-h-0">
+              <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+              {/* judge overlay (always visible; avoid canvas-load timing issues) */}
               {judge && (
-                <div className="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-                  <div className="px-4 py-2 rounded-2xl border border-white/[0.12] bg-black/45 bsBlur" style={{ backdropFilter: isIOS ? "none" : "blur(12px)", animation: "bsPop 220ms ease-out" }}>
-                    <div className="text-[11px] tracking-[0.32em] text-white/55">JUDGE</div>
-                    <div className="text-[28px] font-semibold text-white/92 leading-none">{judge}</div>
-                  </div>
+                <div
+                  key={`${judge}-${judgeBump}`}
+                  className="absolute left-1/2 top-[20%] -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{
+                    animation: settings.motion ? "bsPop 320ms ease-out both" : "none",
+                    filter: `drop-shadow(0 0 22px ${accent})`,
+                  }}
+                >
+                  <img
+                    src={BS_ASSETS.judge[judge]}
+                    alt={judge}
+                    className="w-[min(200px,56vw)] h-auto"
+                    draggable={false}
+                  />
                 </div>
               )}
 
-              {/* pads */}
-              <div className="absolute left-0 right-0 bottom-0 pointer-events-none" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)" }}>
-                <div className="mx-3 mb-3 rounded-3xl bg-white/[0.06] border border-white/[0.12] bsBlur shadow-[0_18px_60px_rgba(0,0,0,0.38)] pointer-events-auto"
-                     style={{ backdropFilter: isIOS ? "none" : "blur(16px)" }}
-                >
-                  <div className="grid grid-cols-4 gap-2 p-2">
-                    {[0, 1, 2, 3].map((lane) => {
-                      const isDown = padsDown[lane];
-                      return (
-                        <button
-                          key={lane}
-                          onPointerDown={(e) => {
-                            try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
-                            onPadDown(lane, e);
-                          }}
-                          onPointerUp={(e) => {
-                            try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
-                            onPadUp(lane, e);
-                          }}
-                          onPointerCancel={(e) => {
-                            try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
-                            onPadUp(lane, e);
-                          }}
-                          className="relative h-[64px] rounded-2xl border border-white/[0.12] bg-black/35 overflow-hidden select-none"
-                          style={{
-                            touchAction: "none",
-                            transform: isDown ? "translateY(1px)" : "translateY(0)",
-                            boxShadow: isDown ? `inset 0 0 0 1px rgba(255,255,255,0.10), ${accent.shadow}` : "inset 0 0 0 1px rgba(255,255,255,0.06), 0 18px 50px rgba(0,0,0,0.38)",
-                          }}
-                        >
-                          {/* ripple */}
-                          {ripples
-                            .filter((r) => r.lane === lane)
-                            .map((r) => (
-                              <span
-                                key={r.id}
-                                className="absolute rounded-full pointer-events-none"
-                                style={{
-                                  left: r.x,
-                                  top: r.y,
-                                  width: r.size,
-                                  height: r.size,
-                                  transform: "translate(-50%, -50%)",
-                                  background: "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.38), rgba(255,255,255,0) 68%)",
-                                  animation: "bsRipple 520ms ease-out forwards",
-                                }}
-                              />
-                            ))}
+              {/* subtle ripple sheen overlay */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: settings.motion
+                    ? `radial-gradient(600px 220px at 50% 14%, ${accent}, rgba(0,0,0,0) 60%)`
+                    : "none",
+                  opacity: 0.08,
+                  filter: "blur(16px)",
+                }}
+              />
+            </div>
 
-                          <div className="absolute inset-0 pointer-events-none" style={{ background: isDown ? accent.bloom : "radial-gradient(140% 120% at 50% 20%, rgba(255,255,255,0.10), rgba(0,0,0,0) 60%)", opacity: isDown ? 0.78 : 0.46 }} />
-                          <div className="absolute inset-x-0 bottom-0 h-[2px]" style={{ background: accent.glow, opacity: isDown ? 0.86 : 0.36 }} />
-
-                          <div className="relative h-full flex items-center justify-center">
-                            <div className="text-white/80 text-[18px] font-semibold" style={{ textShadow: "0 10px 26px rgba(0,0,0,0.45)" }}>
-                              {lane === 0 ? "◀" : lane === 1 ? "▲" : lane === 2 ? "▼" : "▶"}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+            {/* pads */}
+            <div
+              className="relative rounded-3xl bg-white/[0.06] border border-white/[0.12] backdrop-blur-xl overflow-hidden shrink-0"
+            >
+              {/* lane glow guides (no box) */}
+              <div className="absolute inset-0 pointer-events-none opacity-70">
+                {[0, 1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="absolute top-0 bottom-0"
+                    style={{
+                      left: `${(i * 25) + 12.5}%`,
+                      width: "1px",
+                      background: `linear-gradient(180deg, rgba(255,255,255,0.00), ${accent}, rgba(255,255,255,0.00))`,
+                      boxShadow: `0 0 18px ${accent}`,
+                      transform: "translateX(-0.5px)",
+                      opacity: 0.55,
+                    }}
+                  />
+                ))}
               </div>
+
+              <div className="grid grid-cols-4 gap-2 p-3">
+                {[0, 1, 2, 3].map((i) => {
+                  const dir = BS_laneArrowByIdx[i];
+                  return (
+                    <button
+                      key={i}
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        hitLane(i);
+                      }}
+                      className="relative h-16 rounded-2xl bg-black/20 border border-white/[0.10] active:scale-[0.99] select-none overflow-hidden"
+                      style={{
+                        boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.06), 0 0 20px rgba(0,0,0,0.25)`,
+                        touchAction: "none",
+                      }}
+                      aria-label={`lane-${i}`}
+                    >
+                      {/* icon */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <img
+                          src={BS_ASSETS.arrows[dir]}
+                          alt={dir}
+                          className="w-8 h-8 object-contain opacity-90"
+                          draggable={false}
+                        />
+                      </div>
+
+                      {/* tactile ripple */}
+                      {ripples
+                        .filter((r) => r.laneIdx === i)
+                        .map((r) => (
+                          <div
+                            key={r.id}
+                            className="absolute inset-0"
+                            style={{
+                              background: `radial-gradient(circle at 50% 50%, ${accent}, rgba(0,0,0,0) 60%)`,
+                              opacity: 0.35,
+                              filter: "blur(10px)",
+                              animation: settings.motion ? "bsRipple 280ms ease-out both" : "none",
+                            }}
+                          />
+                        ))}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* avoid OS Dock overlap explicitly */}
+              <div style={{ height: safeBottom }} />
             </div>
           </div>
         )}
 
-        {/* result */}
         {view === "result" && (
-          <div className="flex-1 min-h-0 flex flex-col gap-4 px-4 pb-4">
+          <div className="flex flex-col gap-4">
             {(() => {
               const st = statsRef.current;
-              const total = Math.max(1, st.totalNotes);
-              const acc = (st.perfect + st.good * 0.6) / total;
-              const accPct = Math.round(acc * 1000) / 10;
-              const rank = acc >= 0.95 ? "S" : acc >= 0.9 ? "A" : acc >= 0.82 ? "B" : acc >= 0.7 ? "C" : "D";
-              const poseKey = rank === "S" ? "yayR" : rank === "A" ? "standR" : st.miss > st.good + st.perfect ? "dizzy" : "flop";
-              const pose = BS_ASSETS.bunnies[poseKey] || BS_ASSETS.bunnies.standR || BS_ASSETS.bunnies.standR || BS_ASSETS.bunnies.standL;
-
-              const statCard = (label, value, tone) => (
-                <div className="rounded-3xl bg-white/[0.05] border border-white/[0.12] p-4" style={{ boxShadow: tone }}>
-                  <div className="text-white/55 text-[11px] tracking-[0.34em]">{label}</div>
-                  <div className="mt-1 text-white/92 text-[22px] font-semibold tabular-nums">{value}</div>
-                </div>
-              );
-
+              const acc = st.total ? (st.perfect + st.good * 0.6) / st.total : 0;
+              const pose =
+                acc > 0.88 ? "yayR" : acc > 0.72 ? "standR" : st.miss > st.good + st.perfect ? "dizzy" : "flop";
               return (
                 <>
-                  <div className="rounded-3xl bg-white/[0.05] border border-white/[0.12] p-4">
+                  <div className="px-4 py-4 rounded-3xl bg-white/[0.06] border border-white/[0.12] backdrop-blur-xl">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="text-white/55 text-[11px] tracking-[0.36em]">RESULT</div>
-                        <div className="mt-1 text-white/92 text-[18px] font-semibold truncate">{selectedTrack.title}</div>
-                        <div className="mt-1 text-white/55 text-[12px]">
-                          {effectiveDiffRef.current} · ACC {accPct.toFixed(1)}% · MAX {st.maxCombo} · GHOST {st.ghost}
+                        <div className="text-white/70 text-[12px] tracking-[0.16em]">RESULT</div>
+                        <div className="mt-1 text-white/92 text-[20px] font-semibold tracking-[0.06em]">
+                          {selectedTrack.title}
+                        </div>
+                        <div className="text-white/45 text-[12px] tracking-[0.14em] mt-1">
+                          ACC {BS_fmtPct(acc)} · MAX COMBO {st.maxCombo}
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="px-3 py-2 rounded-2xl bg-white/[0.06] border border-white/[0.12]">
-                          <div className="text-white/45 text-[10px] tracking-[0.34em]">RANK</div>
-                          <div className="text-white/92 text-[22px] font-semibold leading-none">{rank}</div>
-                        </div>
-                        <div className="w-14 h-14 rounded-2xl bg-black/30 border border-white/[0.12] overflow-hidden">
-                          <img src={pose} alt="pose" className="w-full h-full object-contain" draggable={false} />
-                        </div>
+                      <div className="w-16 h-16 rounded-3xl overflow-hidden bg-black/30 border border-white/[0.12] shrink-0">
+                        <img
+                          src={BS_ASSETS.bunnies[pose]}
+                          alt="pose"
+                          className="w-full h-full object-contain"
+                          draggable={false}
+                        />
                       </div>
                     </div>
 
-                    <div className="mt-4 flex items-center justify-between gap-3">
-                      <div className="text-white/45 text-[11px] tracking-[0.12em]">SCORE</div>
-                      <div className="text-white/92 text-[28px] font-semibold tabular-nums">{st.score}</div>
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <div className="rounded-2xl bg-white/[0.05] border border-white/[0.10] p-3">
+                        <div className="text-white/45 text-[11px] tracking-[0.16em]">SCORE</div>
+                        <div className="mt-1 text-white/90 text-[18px] font-semibold tracking-[0.06em]">
+                          {st.score}
+                        </div>
+                      </div>
+                      <div className="rounded-2xl bg-white/[0.05] border border-white/[0.10] p-3">
+                        <div className="text-white/45 text-[11px] tracking-[0.16em]">BREAKDOWN</div>
+                        <div className="mt-1 text-white/70 text-[12px] tracking-[0.10em] leading-relaxed">
+                          PERFECT {st.perfect} / GOOD {st.good} / MISS {st.miss}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3">
-                    {statCard("PERFECT", st.perfect, "0 0 24px rgba(255,255,255,0.06)")}
-                    {statCard("GOOD", st.good, "0 0 24px rgba(255,255,255,0.04)")}
-                    {statCard("MISS", st.miss, "0 0 24px rgba(255,255,255,0.03)")}
-                  </div>
-
-                  <div className="mt-auto grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <button
-                      className="h-12 rounded-3xl bg-white/[0.08] border border-white/[0.14] text-white/85 tracking-[0.16em] active:scale-[0.995]"
-                      onClick={() => {
-                        BS_sfx("click");
-                        setView("select");
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        retry();
                       }}
+                      className="px-4 py-4 rounded-3xl bg-white/[0.08] border border-white/[0.16] text-white/85 font-semibold tracking-[0.16em] hover:bg-white/[0.10]"
+                      style={{ boxShadow: `0 0 22px ${accent}` }}
                     >
-                      BACK
+                      RETRY
                     </button>
                     <button
-                      className="h-12 rounded-3xl bg-white/[0.12] border border-white/[0.18] text-white/92 font-semibold tracking-[0.16em] active:scale-[0.995]"
-                      style={{ boxShadow: `0 0 30px ${accent.solid}` }}
-                      onClick={() => {
-                        BS_sfx("click");
-                        setView("select");
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        backToSelect();
                       }}
+                      className="px-4 py-4 rounded-3xl bg-white/[0.05] border border-white/[0.10] text-white/70 font-semibold tracking-[0.16em] hover:bg-white/[0.08]"
                     >
-                      PLAY AGAIN
+                      BACK
                     </button>
                   </div>
                 </>
@@ -6452,119 +6589,74 @@ const BeatSyncApp = () => {
         )}
       </div>
 
-      {/* hidden audio element */}
-      <audio ref={musicRef} preload="auto" playsInline />
-
+      {/* local keyframes (scoped) */}
       <style>{`
-            @keyframes bsPop {
-              0% { transform: translateY(6px) scale(0.96); opacity: 0; }
-              100% { transform: translateY(0) scale(1); opacity: 1; }
-            }
-            @keyframes bsRipple {
-              0% { opacity: 0.62; transform: translate(-50%, -50%) scale(0.12); }
-              100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
-            }
-            @keyframes bsFloat {
-              0% { transform: translateY(0); }
-              50% { transform: translateY(-4px); }
-              100% { transform: translateY(0); }
-            }
-            .bs-float {
-              animation: bsFloat 2.8s ease-in-out infinite;
-              will-change: transform;
-            }
+        @keyframes bsPop {
+          0% { transform: translate(-50%, -50%) scale(0.92); opacity: 0.0; }
+          35% { opacity: 1.0; }
+          100% { transform: translate(-50%, -50%) scale(1.0); opacity: 0.0; }
+        }
+        @keyframes bsRipple {
+          0% { transform: scale(0.92); opacity: 0.0; }
+          35% { opacity: 0.42; }
+          100% { transform: scale(1.08); opacity: 0.0; }
+        }
 
-            /* perf / flicker guards */
-            .bsStage {
-              contain: paint;
-              transform: translateZ(0);
-            }
-            .bsCanvas {
-              transform: translateZ(0);
-              backface-visibility: hidden;
-              will-change: transform;
-            }
+                /* Finder-like slider (SFX/MUSIC) */
+                .bsRange {
+                  -webkit-appearance: none;
+                  appearance: none;
+                  height: 14px;
+                  border-radius: 9999px;
+                  border: 1px solid rgba(255,255,255,0.14);
+                  background: rgba(255,255,255,0.06);
+                  backdrop-filter: blur(18px);
+                  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05), 0 10px 30px rgba(0,0,0,0.30);
+                  outline: none;
+                  cursor: pointer;
+                }
+                .bsRange {
+                  background-image: linear-gradient(90deg,
+                    var(--bsAccent, rgba(140,200,255,0.9)) 0%,
+                    var(--bsAccent, rgba(140,200,255,0.9)) var(--bsFill, 50%),
+                    rgba(255,255,255,0.10) var(--bsFill, 50%),
+                    rgba(255,255,255,0.06) 100%);
+                }
+                .bsRange:focus { filter: brightness(1.08); }
+                .bsRange:active { filter: brightness(1.14); }
+                .bsRange::-webkit-slider-thumb {
+                  -webkit-appearance: none;
+                  appearance: none;
+                  width: 22px;
+                  height: 22px;
+                  border-radius: 9999px;
+                  border: 1px solid rgba(255,255,255,0.22);
+                  background: rgba(0,0,0,0.25);
+                  box-shadow: 0 0 18px var(--bsAccent, rgba(140,200,255,0.9)), inset 0 0 0 1px rgba(255,255,255,0.06);
+                }
+                .bsRange::-moz-range-thumb {
+                  width: 22px;
+                  height: 22px;
+                  border-radius: 9999px;
+                  border: 1px solid rgba(255,255,255,0.22);
+                  background: rgba(0,0,0,0.25);
+                  box-shadow: 0 0 18px var(--bsAccent, rgba(140,200,255,0.9)), inset 0 0 0 1px rgba(255,255,255,0.06);
+                }
+                .bsRange::-moz-range-track {
+                  background: transparent;
+                }
 
-            /* range styling (Audio panel) */
-            .bsRange {
-              -webkit-appearance: none;
-              appearance: none;
-              width: 100%;
-              height: 30px;
-              background: transparent;
-              outline: none;
-            }
-            .bsRange::-webkit-slider-runnable-track {
-              height: 6px;
-              border-radius: 999px;
-              background: rgba(255,255,255,0.18);
-              border: 1px solid rgba(255,255,255,0.10);
-            }
-            .bsRange::-webkit-slider-thumb {
-              -webkit-appearance: none;
-              width: 20px;
-              height: 20px;
-              border-radius: 999px;
-              background: rgba(255,255,255,0.92);
-              border: 1px solid rgba(255,255,255,0.24);
-              margin-top: -8px;
-              box-shadow: 0 12px 34px rgba(0,0,0,0.44);
-            }
-            .bsRange:focus::-webkit-slider-runnable-track {
-              background: rgba(255,255,255,0.24);
-            }
-            .bsRange::-moz-range-track {
-              height: 6px;
-              border-radius: 999px;
-              background: rgba(255,255,255,0.18);
-              border: 1px solid rgba(255,255,255,0.10);
-            }
-            .bsRange::-moz-range-thumb {
-              width: 20px;
-              height: 20px;
-              border-radius: 999px;
-              background: rgba(255,255,255,0.92);
-              border: 1px solid rgba(255,255,255,0.24);
-              box-shadow: 0 12px 34px rgba(0,0,0,0.44);
-            }
-            .bsRange::-moz-range-progress {
-              height: 6px;
-              border-radius: 999px;
-              background: rgba(255,255,255,0.28);
-            }
-
-            
-            /* play flicker guard (iOS Safari): avoid expensive backdrop filters during gameplay */
-            .bsNoBlur .bsBlur {
-              -webkit-backdrop-filter: none !important;
-              backdrop-filter: none !important;
-            }
-
-            /* subtle scanline grain to de-cheapen (very low contrast) */
-            .bsGrain:before{
-              content:"";
-              position:absolute;
-              inset:0;
-              pointer-events:none;
-              background:
-                linear-gradient(transparent, rgba(255,255,255,0.018), transparent),
-                radial-gradient(120% 80% at 30% 0%, rgba(255,255,255,0.032), rgba(0,0,0,0) 55%);
-              mix-blend-mode: overlay;
-              opacity: 0.55;
-            }
-
-            @media (prefers-reduced-motion: reduce) {
-              .bs-float { animation: none !important; }
-            }
-          `}</style>
+      `}</style>
     </div>
   );
 };
 
-
 // ==============================
 // END — Beat Sync (Game App)
 // ==============================
+
+
+
 
 
 
